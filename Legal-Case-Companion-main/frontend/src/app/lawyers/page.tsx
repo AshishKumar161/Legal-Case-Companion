@@ -1,0 +1,487 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { apiClient } from "@/api/client";
+import { LawyerProfileItem } from "@/types";
+import { StatusBadge } from "@/components/StatusBadge";
+import { EmptyState } from "@/components/EmptyState";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+
+interface SlotItem {
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  is_available: boolean;
+}
+
+export default function LawyerDiscovery() {
+  const [lawyers, setLawyers] = useState<LawyerProfileItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [location, setLocation] = useState("");
+  const [practiceArea, setPracticeArea] = useState("");
+  const [jurisdiction, setJurisdiction] = useState("");
+  const [minExp, setMinExp] = useState("");
+  const [maxFee, setMaxFee] = useState("");
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+
+  // Booking modal state
+  const [bookingLawyer, setBookingLawyer] = useState<LawyerProfileItem | null>(null);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split("T")[0];
+  });
+  const [slots, setSlots] = useState<SlotItem[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<SlotItem | null>(null);
+  const [fetchingSlots, setFetchingSlots] = useState(false);
+  const [bookingSubmitting, setBookingSubmitting] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState("");
+  const [bookingError, setBookingError] = useState("");
+
+  const fetchLawyers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchTerm.trim()) params.set("search", searchTerm.trim());
+      if (location.trim()) params.set("location", location.trim());
+      if (practiceArea.trim()) params.set("practice_area", practiceArea.trim());
+      if (jurisdiction.trim()) params.set("court_jurisdiction", jurisdiction.trim());
+      if (minExp) params.set("min_experience", minExp);
+      if (maxFee) params.set("max_fee", maxFee);
+      params.set("verified_only", verifiedOnly ? "true" : "false");
+
+      const url = `/api/v1/lawyers?${params.toString()}`;
+      const res = await apiClient.get(url);
+      setLawyers(res.items || (Array.isArray(res) ? res : []));
+    } catch (err) {
+      console.error("Failed to fetch lawyers", err);
+      setLawyers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchTerm, location, practiceArea, jurisdiction, minExp, maxFee, verifiedOnly]);
+
+  useEffect(() => {
+    void fetchLawyers();
+  }, [fetchLawyers]);
+
+  // Fetch slots when booking lawyer or date changes
+  useEffect(() => {
+    if (!bookingLawyer) return;
+    const fetchSlots = async () => {
+      setFetchingSlots(true);
+      setSelectedSlot(null);
+      try {
+        const lawyerId = bookingLawyer.user_id || bookingLawyer.id;
+        const res = await apiClient.get(`/api/v1/lawyers/${lawyerId}/slots?date=${selectedDate}&duration_minutes=30`);
+        setSlots(Array.isArray(res) ? res : res?.items || []);
+      } catch {
+        setSlots([]);
+      } finally {
+        setFetchingSlots(false);
+      }
+    };
+    void fetchSlots();
+  }, [bookingLawyer, selectedDate]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    void fetchLawyers();
+  };
+
+  const handleBookConsultation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingLawyer || !selectedSlot) return;
+    setBookingSubmitting(true);
+    setBookingError("");
+    setBookingSuccess("");
+
+    try {
+      const lawyerId = bookingLawyer.user_id || bookingLawyer.id;
+      await apiClient.post("/api/v1/consultations", {
+        lawyer_id: lawyerId,
+        scheduled_at: selectedSlot.start_time,
+        duration_minutes: 30,
+      });
+      setBookingSuccess(
+        `Consultation booked successfully with ${bookingLawyer.full_name} for ${new Date(
+          selectedSlot.start_time
+        ).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}!`
+      );
+      setTimeout(() => {
+        setBookingLawyer(null);
+        setBookingSuccess("");
+      }, 3000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Selected slot is no longer available.";
+      setBookingError(msg);
+    } finally {
+      setBookingSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: "36px 0 80px" }}>
+      <div className="container">
+        {/* Header */}
+        <div style={{ marginBottom: "32px", maxWidth: "780px" }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--accent-secondary)",
+              marginBottom: "8px",
+            }}
+          >
+            <span>●</span> Verified Indian Bar Directory
+          </div>
+          <h1 style={{ fontSize: "32px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.03em" }}>
+            Retain Verified Indian Legal Counsel
+          </h1>
+          <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginTop: "8px", lineHeight: 1.5 }}>
+            Discover verified advocates across High Courts, Supreme Court, and specialized National Tribunals. Review verified enrollment credentials, transparent fee schedules, and schedule real-time consultation sessions.
+          </p>
+        </div>
+
+        {/* Filter Bar */}
+        <form
+          onSubmit={handleSearch}
+          style={{
+            background: "var(--surface-card)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--radius-md)",
+            padding: "20px 24px",
+            marginBottom: "32px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px",
+            boxShadow: "var(--shadow-sm)",
+          }}
+        >
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "12px" }}>
+            <input
+              type="text"
+              placeholder="Search advocate name or legal specialty..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input-field"
+            />
+            <input
+              type="text"
+              placeholder="Location (e.g. New Delhi, Mumbai)"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="input-field"
+            />
+            <input
+              type="text"
+              placeholder="Practice Area (e.g. Arbitration, Commercial)"
+              value={practiceArea}
+              onChange={(e) => setPracticeArea(e.target.value)}
+              className="input-field"
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+            <input
+              type="text"
+              placeholder="Court Jurisdiction (e.g. Supreme Court, Delhi HC)"
+              value={jurisdiction}
+              onChange={(e) => setJurisdiction(e.target.value)}
+              className="input-field"
+              style={{ flex: 1 }}
+            />
+            <input
+              type="number"
+              placeholder="Min Exp (Years)"
+              value={minExp}
+              onChange={(e) => setMinExp(e.target.value)}
+              className="input-field"
+              style={{ width: "150px" }}
+            />
+            <input
+              type="number"
+              placeholder="Max Fee (₹)"
+              value={maxFee}
+              onChange={(e) => setMaxFee(e.target.value)}
+              className="input-field"
+              style={{ width: "150px" }}
+            />
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "13px",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                padding: "0 8px",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={verifiedOnly}
+                onChange={(e) => setVerifiedOnly(e.target.checked)}
+              />
+              Verified Only
+            </label>
+            <button type="submit" className="btn btn-primary" style={{ padding: "9px 20px" }}>
+              Filter Counsel
+            </button>
+          </div>
+        </form>
+
+        {/* Directory Grid */}
+        {loading ? (
+          <LoadingSkeleton type="card" count={4} />
+        ) : lawyers.length === 0 ? (
+          <EmptyState
+            icon="⚖"
+            title="No Matching Advocates Found"
+            description="No legal counsel currently matches your search filters. Try broadening your keywords, clearing court jurisdiction, or resetting practice area filters."
+            actionLabel="Reset Search Filters"
+            onAction={() => {
+              setSearchTerm("");
+              setLocation("");
+              setPracticeArea("");
+              setJurisdiction("");
+              setMinExp("");
+              setMaxFee("");
+              setVerifiedOnly(false);
+              void fetchLawyers();
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+              gap: "20px",
+            }}
+          >
+            {lawyers.map((lawyer) => {
+              const isVer = lawyer.verification_status === "VERIFIED";
+              return (
+                <div
+                  key={lawyer.id}
+                  style={{
+                    background: "var(--surface-card)",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "24px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    gap: "16px",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                      <div>
+                        <h3 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-primary)" }}>
+                          {lawyer.full_name}
+                        </h3>
+                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                          📍 {lawyer.location || "India"} • {lawyer.experience_years ? `${lawyer.experience_years}+ Yrs at Bar` : "Advocate"}
+                        </div>
+                      </div>
+                      <StatusBadge
+                        status={isVer ? "VERIFIED" : "PENDING"}
+                        label={isVer ? "Verified Bar" : "Enrolled"}
+                      />
+                    </div>
+
+                    <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "14px" }}>
+                      {lawyer.bio ? lawyer.bio.slice(0, 140) + (lawyer.bio.length > 140 ? "..." : "") : "Specialized legal practitioner representing clients in commercial and civil matters."}
+                    </p>
+
+                    {/* Practice Areas Badges */}
+                    {lawyer.practice_areas && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {(Array.isArray(lawyer.practice_areas) ? lawyer.practice_areas : [lawyer.practice_areas]).map((pa, idx) => (
+                          <span
+                            key={idx}
+                            style={{
+                              fontSize: "11px",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              background: "rgba(79, 91, 247, 0.12)",
+                              color: "#8d98ff",
+                              border: "1px solid rgba(79, 91, 247, 0.25)",
+                            }}
+                          >
+                            {pa}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      borderTop: "1px solid var(--border-subtle)",
+                      paddingTop: "14px",
+                    }}
+                  >
+                    <div>
+                      <span style={{ fontSize: "16px", fontWeight: 700, color: "#fff" }}>
+                        ₹{lawyer.consultation_fee || 2500}
+                      </span>
+                      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}> / 30 min</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setBookingLawyer(lawyer);
+                        setBookingError("");
+                        setBookingSuccess("");
+                      }}
+                      className="btn btn-primary"
+                      style={{ padding: "7px 16px", fontSize: "12px" }}
+                    >
+                      Book Session →
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Booking Modal */}
+        {bookingLawyer && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.8)",
+              backdropFilter: "blur(10px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "20px",
+            }}
+            onClick={() => setBookingLawyer(null)}
+          >
+            <div
+              style={{
+                background: "var(--surface-elevated)",
+                border: "1px solid var(--border-subtle)",
+                borderRadius: "var(--radius-md)",
+                padding: "28px",
+                width: "100%",
+                maxWidth: "520px",
+                boxShadow: "var(--shadow-lg)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                <div>
+                  <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#fff" }}>
+                    Schedule Consultation: {bookingLawyer.full_name}
+                  </h2>
+                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                    Fee: ₹{bookingLawyer.consultation_fee || 2500} for 30 minutes video consultation.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setBookingLawyer(null)}
+                  style={{ color: "var(--text-muted)", fontSize: "18px" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {bookingSuccess && (
+                <div style={{ padding: "12px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", fontSize: "13px", marginBottom: "16px" }}>
+                  {bookingSuccess}
+                </div>
+              )}
+
+              {bookingError && (
+                <div style={{ padding: "12px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", fontSize: "13px", marginBottom: "16px" }}>
+                  {bookingError}
+                </div>
+              )}
+
+              <form onSubmit={handleBookConsultation}>
+                <div className="input-group">
+                  <label className="input-label">Consultation Date</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    min={new Date().toISOString().split("T")[0]}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    required
+                    className="input-field"
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label className="input-label">Available Time Slots</label>
+                  {fetchingSlots ? (
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Synchronizing advocate calendar...</div>
+                  ) : slots.length === 0 ? (
+                    <div style={{ fontSize: "12px", color: "#f59e0b", padding: "10px", background: "rgba(245, 158, 11, 0.08)", borderRadius: "6px" }}>
+                      No available slots on this date. Please select another date.
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", maxHeight: "150px", overflowY: "auto" }}>
+                      {slots.map((slot, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSelectedSlot(slot)}
+                          style={{
+                            padding: "8px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            background: selectedSlot?.start_time === slot.start_time ? "var(--accent-primary)" : "var(--surface-subtle)",
+                            color: selectedSlot?.start_time === slot.start_time ? "#fff" : "var(--text-primary)",
+                            border: "1px solid var(--border-subtle)",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {new Date(slot.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setBookingLawyer(null)}
+                    className="btn btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={bookingSubmitting || (!selectedSlot && slots.length > 0)}
+                    className="btn btn-primary"
+                  >
+                    {bookingSubmitting ? "Reserving Slot..." : "Confirm & Reserve Slot →"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

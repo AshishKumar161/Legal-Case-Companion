@@ -1,0 +1,117 @@
+.topBar {
+  height: 60px;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mobileMenuBtn {
+  display: none;
+  color: var(--text-secondary);
+  font-size: 20px;
+  padding: 4px;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.breadcrumbLink {
+  color: var(--text-secondary);
+  transition: color 0.15s ease;
+}
+
+.breadcrumbLink:hover {
+  color: #fff;
+}
+
+.breadcrumbSeparator {
+  color: var(--text-subtle);
+}
+
+.breadcrumbActive {
+  color: #fff;
+  font-weight: 500;
+}
+
+.searchTriggerBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.searchTriggerBtn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.searchTriggerKbd {
+  font-size: 10px;
+  font-family: monospace;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.roleBadge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.logoutBtn {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  transition: all 0.15s ease;
+}
+
+.logoutBtn:hover {
+  color: #fff;
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+}
+
+@media (max-width: 900px) {
+  .mobileMenuBtn {
+    display: block;
+  }
+}
