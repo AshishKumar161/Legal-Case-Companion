@@ -217,3 +217,98 @@ def test_user_registration_and_immediate_login_flow(client: TestClient):
     )
     assert login_res.status_code == 200
     assert "access_token" in login_res.json()
+
+
+def test_email_verification_lifecycle_and_replay_protection(
+    client: TestClient, db: Session
+):
+    """Verifies complete email verification request, confirmation, and single-use replay protection."""
+    email = f"verify_{uuid.uuid4().hex[:8]}@example.com"
+    user = User(
+        id=uuid.uuid4(),
+        email=email,
+        password_hash=hash_password("SecurePass123!"),
+        role=UserRole.CLIENT,
+        account_status=AccountStatus.ACTIVE,
+    )
+    db.add(user)
+    db.commit()
+
+    # 1. Request verification
+    with patch.object(ConsoleEmailProvider, "send_email", return_value=True):
+        req_res = client.post("/api/v1/auth/email/verify/request", json={"email": email})
+        assert req_res.status_code == 200
+
+    # 2. Confirm verification with valid token
+    raw_token = f"verif_token_{uuid.uuid4().hex}"
+    from app.models.auth import EmailVerificationToken
+    verif_record = EmailVerificationToken(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        email=email,
+        token_hash=hash_refresh_token(raw_token),
+        created_at=datetime.now(UTC),
+        expires_at=datetime.now(UTC) + timedelta(minutes=60),
+        used_at=None,
+    )
+    db.add(verif_record)
+    db.commit()
+
+    confirm_res = client.post("/api/v1/auth/email/verify/confirm", json={"token": raw_token})
+    assert confirm_res.status_code == 200
+
+    # 3. Replay token must be rejected
+    replay_res = client.post("/api/v1/auth/email/verify/confirm", json={"token": raw_token})
+    assert replay_res.status_code == 401
+    assert "already been used" in replay_res.json()["error"]["message"]
+
+
+def test_authenticate_google_identity_new_and_existing_user(db: Session):
+    """Verifies that Google identity authentication creates new users and safely links verified existing accounts."""
+    from app.services.auth_service import AuthService
+    auth_service = AuthService(db)
+
+    # 1. New Google identity
+    google_sub = f"google_sub_{uuid.uuid4().hex[:12]}"
+    email = f"google_{uuid.uuid4().hex[:8]}@example.com"
+    claims = {
+        "sub": google_sub,
+        "email": email,
+        "name": "Google User",
+        "picture": "https://lh3.googleusercontent.com/a/default",
+        "email_verified": True,
+    }
+
+    user, access_token, refresh_token = auth_service.authenticate_google_identity(claims)
+    assert user.email == email
+    assert user.role == UserRole.CLIENT
+    assert access_token is not None
+    assert refresh_token is not None
+
+    # 2. Re-login existing Google identity
+    user_again, access_2, _ = auth_service.authenticate_google_identity(claims)
+    assert user_again.id == user.id
+    assert access_2 is not None
+
+    # 3. Safe linking with existing password account having matching verified email
+    pw_email = f"password_first_{uuid.uuid4().hex[:8]}@example.com"
+    pw_user = User(
+        id=uuid.uuid4(),
+        email=pw_email,
+        password_hash=hash_password("Pass123!"),
+        role=UserRole.CLIENT,
+        account_status=AccountStatus.ACTIVE,
+    )
+    db.add(pw_user)
+    db.commit()
+
+    link_claims = {
+        "sub": f"google_link_{uuid.uuid4().hex[:12]}",
+        "email": pw_email,
+        "name": "Password User",
+        "email_verified": True,
+    }
+    linked_user, link_token, _ = auth_service.authenticate_google_identity(link_claims)
+    assert linked_user.id == pw_user.id
+    assert link_token is not None
+

@@ -1,4 +1,6 @@
 import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -43,6 +45,20 @@ from app.middleware.security import SecurityHeadersMiddleware
 setup_logging(settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
+    """Lifespan handler to ensure database tables are created in development/local runtimes."""
+    if settings.ENVIRONMENT != "production" or settings.DATABASE_URL.startswith("sqlite"):
+        import app.models  # noqa: F401
+        from app.db.database import engine
+        from app.models.base import Base
+
+        Base.metadata.create_all(bind=engine)
+        logger.info("Local/development database tables initialized.")
+    yield
+
+
 # Application Bootstrap
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -50,6 +66,7 @@ app = FastAPI(
     description="India-focused Legal Case Companion Backend Foundation",
     docs_url=f"{settings.API_V1_STR}/docs",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan,
 )
 
 # Middleware stack (executed in reverse registration order: Security -> Metrics -> PayloadLimit -> CorrelationId)

@@ -140,6 +140,11 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
+        if self.GOOGLE_CLIENT_ID and not self.GOOGLE_REDIRECT_URI:
+            self.GOOGLE_REDIRECT_URI = f"{self.FRONTEND_URL}/auth/callback"
+        if self.GOOGLE_CLIENT_ID and not self.GOOGLE_OAUTH_ENABLED:
+            self.GOOGLE_OAUTH_ENABLED = True
+
         if self.ENVIRONMENT == "production":
             self.DEBUG = False
 

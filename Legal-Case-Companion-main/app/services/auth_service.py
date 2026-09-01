@@ -531,7 +531,7 @@ class AuthService:
         # Revoke all sessions on password change
         self.db.query(RefreshTokenSession).filter(
             RefreshTokenSession.user_id == user.id,
-            RefreshTokenSession.revoked_at == None,
+            RefreshTokenSession.revoked_at.is_(None),
         ).update({"revoked_at": datetime.now(UTC)})
 
         self.log_audit_event(
@@ -579,7 +579,7 @@ class AuthService:
         now = datetime.now(UTC)
         self.db.query(PasswordResetToken).filter(
             PasswordResetToken.user_id == user.id,
-            PasswordResetToken.used_at == None,
+            PasswordResetToken.used_at.is_(None),
         ).update({"used_at": now})
 
         # Generate cryptographically secure high-entropy random token
@@ -671,7 +671,7 @@ class AuthService:
         # Mandatory: Revoke all active refresh sessions across all devices
         self.db.query(RefreshTokenSession).filter(
             RefreshTokenSession.user_id == user.id,
-            RefreshTokenSession.revoked_at == None,
+            RefreshTokenSession.revoked_at.is_(None),
         ).update({"revoked_at": now})
 
         self.log_audit_event(
@@ -718,7 +718,7 @@ class AuthService:
         # Invalidate old verification tokens
         self.db.query(EmailVerificationToken).filter(
             EmailVerificationToken.user_id == user.id,
-            EmailVerificationToken.used_at == None,
+            EmailVerificationToken.used_at.is_(None),
         ).update({"used_at": now})
 
         raw_token = secrets.token_urlsafe(32)

@@ -28,7 +28,7 @@ class ConsoleEmailProvider:
         if urls:
             logger.info("Action Links:")
             for url in urls:
-                logger.info(f"  👉 {url}")
+                logger.info(f"  -> {url}")
 
         logger.info("--- Message Body ---")
         logger.info(html_body)
