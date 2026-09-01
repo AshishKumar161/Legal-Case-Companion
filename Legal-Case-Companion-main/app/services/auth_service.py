@@ -565,11 +565,7 @@ class AuthService:
             return
 
         user = self.user_service.get_user_by_email(normalized)
-        if (
-            not user
-            or user.account_status != AccountStatus.ACTIVE
-            or not user.password_hash
-        ):
+        if not user or user.account_status != AccountStatus.ACTIVE:
             logger.info(
                 f"Password reset requested for non-existent or inactive user from IP {ip_address}"
             )
