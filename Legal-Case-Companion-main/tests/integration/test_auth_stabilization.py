@@ -520,9 +520,10 @@ def test_google_auth_unverified_email_rejection(
     )
 
     service = GoogleOAuthService()
-    with pytest.raises(Exception) as exc_info:
-        service.validate_id_token(id_token, override_public_key=pub_key)
-    assert "not verified" in str(exc_info.value).lower()
+    with patch.object(settings, "GOOGLE_CLIENT_ID", "mock-google-client-id"):
+        with pytest.raises(Exception) as exc_info:
+            service.validate_id_token(id_token, override_public_key=pub_key)
+        assert "not verified" in str(exc_info.value).lower()
 
 
 def test_google_auth_expired_token_rejection(

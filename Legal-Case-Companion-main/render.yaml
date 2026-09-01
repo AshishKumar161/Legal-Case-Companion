@@ -43,6 +43,14 @@ services:
         value: INFO
       - key: AWS_WEBHOOK_SECRET
         sync: false
+      - key: GOOGLE_OAUTH_ENABLED
+        value: "true"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: "https://app.legalcasecompanion.in/auth/callback"
 
   - type: worker
     name: lcc-worker
