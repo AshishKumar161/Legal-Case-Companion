@@ -26,7 +26,21 @@ class ConsultationScheduleRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ConsultationRescheduleRequest(BaseModel):
+    scheduled_at: datetime
+    duration_minutes: int | None = None
+    reason: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class ConsultationCancelRequest(BaseModel):
+    reason: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ConsultationNoShowRequest(BaseModel):
     reason: str | None = None
 
     model_config = ConfigDict(extra="forbid")

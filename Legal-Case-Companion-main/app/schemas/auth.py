@@ -50,3 +50,28 @@ class ExternalIdentityResponse(BaseModel):
     email: str
     email_verified: bool
     created_at: datetime
+
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+
+class PasswordResetResponse(BaseModel):
+    detail: str
+
+
+class EmailVerificationRequest(BaseModel):
+    email: str
+
+
+class EmailVerificationConfirm(BaseModel):
+    token: str
+
+
+class EmailVerificationResponse(BaseModel):
+    detail: str

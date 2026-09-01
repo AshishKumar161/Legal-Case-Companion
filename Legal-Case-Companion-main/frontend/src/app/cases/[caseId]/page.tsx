@@ -15,8 +15,6 @@ import {
   CaseWorkspaceResponse,
   CaseFactItem,
   LegalIssueItem,
-  ChronologyEventItem,
-  ClaimDefenseItem,
   EvidenceGapItem,
   CaseRiskIndicatorItem,
   CaseTaskItem,
@@ -33,7 +31,6 @@ import {
   MatterBriefItem,
 } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
-import { EmptyState } from "@/components/EmptyState";
 import { IntelligenceCenter } from "@/components/Intelligence/IntelligenceCenter";
 import { CopilotChat } from "@/components/Intelligence/CopilotChat";
 import { ActionCenter } from "@/components/ActionCenter/ActionCenter";
@@ -96,16 +93,11 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
   const [conversations, setConversations] = useState<AIConversationItem[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AIMessageItem[]>([]);
-  const [chatPrompt, setChatPrompt] = useState("");
-  const [includeLegalAuthority, setIncludeLegalAuthority] = useState(true);
-  const [chatLoading, setChatLoading] = useState(false);
 
   // Intelligence state
   const [fullIntel, setFullIntel] = useState<CaseIntelligenceResponse | null>(null);
   const [facts, setFacts] = useState<CaseFactItem[]>([]);
   const [issues, setIssues] = useState<LegalIssueItem[]>([]);
-  const [chronology, setChronology] = useState<ChronologyEventItem[]>([]);
-  const [claims, setClaims] = useState<ClaimDefenseItem[]>([]);
   const [gaps, setGaps] = useState<EvidenceGapItem[]>([]);
   const [risks, setRisks] = useState<CaseRiskIndicatorItem[]>([]);
   const [refreshingIntelligence, setRefreshingIntelligence] = useState(false);
@@ -132,6 +124,12 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
   const [showAddParticipant, setShowAddParticipant] = useState(false);
   const [newParticipantEmail, setNewParticipantEmail] = useState("");
   const [newParticipantRole, setNewParticipantRole] = useState("COLLABORATING_LAWYER");
+
+  // Export Report state
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"markdown" | "json">("markdown");
+  const [exporting, setExporting] = useState(false);
+  const [exportStatus, setExportStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const fetchCollaborationData = useCallback(async () => {
     try {
@@ -228,23 +226,17 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
         setFullIntel(intelRes);
         setFacts(intelRes.facts || []);
         setIssues(intelRes.issues || []);
-        setChronology(intelRes.timeline || intelRes.chronology || []);
-        setClaims(intelRes.claims_defenses || []);
         setGaps(intelRes.evidence_gaps || []);
         setRisks(intelRes.risks || []);
       } else {
-        const [factsRes, issuesRes, chronoRes, claimsRes, gapsRes, risksRes] = await Promise.all([
+        const [factsRes, issuesRes, gapsRes, risksRes] = await Promise.all([
           apiClient.get(`/api/v1/cases/${caseId}/intelligence/facts`).catch(() => []),
           apiClient.get(`/api/v1/cases/${caseId}/intelligence/issues`).catch(() => []),
-          apiClient.get(`/api/v1/cases/${caseId}/intelligence/chronology`).catch(() => []),
-          apiClient.get(`/api/v1/cases/${caseId}/intelligence/claims-defenses`).catch(() => []),
           apiClient.get(`/api/v1/cases/${caseId}/intelligence/evidence-gaps`).catch(() => []),
           apiClient.get(`/api/v1/cases/${caseId}/intelligence/risks`).catch(() => []),
         ]);
         setFacts(Array.isArray(factsRes) ? factsRes : factsRes?.items || []);
         setIssues(Array.isArray(issuesRes) ? issuesRes : issuesRes?.items || []);
-        setChronology(Array.isArray(chronoRes) ? chronoRes : chronoRes?.items || []);
-        setClaims(Array.isArray(claimsRes) ? claimsRes : claimsRes?.items || []);
         setGaps(Array.isArray(gapsRes) ? gapsRes : gapsRes?.items || []);
         setRisks(Array.isArray(risksRes) ? risksRes : risksRes?.items || []);
       }
@@ -336,55 +328,6 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
     }
   };
 
-  // Copilot Message Send
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatPrompt.trim() || chatLoading) return;
-    setChatLoading(true);
-
-    try {
-      let currentConvId = activeConvId;
-      if (!currentConvId) {
-        const newConv = await apiClient.post(`/api/v1/cases/${caseId}/ai/conversations`, {
-          title: chatPrompt.slice(0, 42) + "...",
-        });
-        currentConvId = newConv.id;
-        setActiveConvId(newConv.id);
-        setConversations((prev) => [newConv, ...prev]);
-      }
-
-      // Optimistic prompt entry
-      const optimisticMsg: AIMessageItem = {
-        id: "temp-" + Date.now(),
-        conversation_id: currentConvId!,
-        role: "USER",
-        content: chatPrompt,
-        created_at: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, optimisticMsg]);
-      const currentQuery = chatPrompt;
-      setChatPrompt("");
-
-      // Backend API request with legal authority retrieval option
-      await apiClient.post(`/api/v1/cases/${caseId}/ai/conversations/${currentConvId}/messages`, {
-        query: currentQuery,
-        include_legal_authority: includeLegalAuthority,
-        jurisdiction: "India",
-        top_k: 5,
-        search_mode: "HYBRID",
-      });
-
-      // Reload full updated message list
-      const msgRes = await apiClient.get(`/api/v1/cases/${caseId}/ai/conversations/${currentConvId}/messages`);
-      setMessages(Array.isArray(msgRes) ? msgRes : msgRes?.items || []);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to generate AI response.";
-      alert(`Copilot error: ${msg}`);
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
   // Switch / Create conversation
   const handleSelectConversation = async (convId: string) => {
     setActiveConvId(convId);
@@ -424,18 +367,6 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
       setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus as any } : t)));
     } catch {
       alert("Failed to update task state.");
-    }
-  };
-
-  // Intelligence: Confirm fact
-  const handleConfirmFact = async (factId: string) => {
-    try {
-      await apiClient.post(`/api/v1/cases/${caseId}/intelligence/facts/${factId}/confirm`, {});
-      setFacts((prev) =>
-        prev.map((f) => (f.id === factId ? { ...f, verification_status: "HUMAN_CONFIRMED" } : f))
-      );
-    } catch {
-      alert("Failed to verify fact statement.");
     }
   };
 
@@ -505,6 +436,62 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to add participant.";
       alert(`Participant addition error: ${msg}`);
+    }
+  };
+
+  const handleExportReport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportStatus(null);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(
+        `${apiBase}/api/v1/cases/${caseId}/report?format=${exportFormat}&download=true`,
+        {
+          headers: {
+            Authorization: `Bearer ${token || ""}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.detail || `Export failed with status ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const contentDisposition = res.headers.get("content-disposition");
+      let filename = `case_${caseId.slice(0, 8)}_summary_report.${exportFormat === "markdown" ? "md" : "json"}`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^";]+)"?/);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+
+      setExportStatus({
+        type: "success",
+        message: `Case summary report (${exportFormat.toUpperCase()}) exported successfully.`,
+      });
+      setTimeout(() => {
+        setExportModalOpen(false);
+        setExportStatus(null);
+      }, 1500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to generate report export.";
+      setExportStatus({ type: "error", message: msg });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -612,6 +599,13 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
           </div>
 
           <div className={styles.headerActions}>
+            <button
+              onClick={() => setExportModalOpen(true)}
+              className={styles.secondaryBtn}
+              title="Export Case Summary Report"
+            >
+              <span>📄</span> Export Report
+            </button>
             <button onClick={() => setActiveTab("actions")} className={styles.actionBtn}>
               <span>⚡</span> Action Center
             </button>
@@ -1344,7 +1338,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               participants={participants}
               onRefresh={handleRefreshIntelligence}
               refreshing={refreshingIntelligence}
-              onAskCopilot={(_prompt) => {
+              onAskCopilot={() => {
                 setActiveTab("copilot");
                 // Pre-populate prompt in copilot if needed
               }}
@@ -1662,6 +1656,158 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Export Case Summary Report Modal */}
+        {exportModalOpen && (
+          <div className={styles.modalOverlay} onClick={() => !exporting && setExportModalOpen(false)}>
+            <div className={styles.modalWindow} onClick={(e) => e.stopPropagation()} style={{ maxWidth: "540px" }}>
+              <div className={styles.modalHeader}>
+                <div>
+                  <h3 className={styles.modalTitle} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span>📄</span> Export Case Summary Report
+                  </h3>
+                  <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
+                    Generate an authorized, structured point-in-time summary report of this matter.
+                  </p>
+                </div>
+                <button
+                  className={styles.modalCloseBtn}
+                  onClick={() => !exporting && setExportModalOpen(false)}
+                  disabled={exporting}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ padding: "20px 24px" }}>
+                {exportStatus && (
+                  <div
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      fontSize: "13px",
+                      marginBottom: "16px",
+                      background:
+                        exportStatus.type === "success"
+                          ? "rgba(16, 185, 129, 0.12)"
+                          : "rgba(239, 68, 68, 0.12)",
+                      border: `1px solid ${
+                        exportStatus.type === "success"
+                          ? "rgba(16, 185, 129, 0.3)"
+                          : "rgba(239, 68, 68, 0.3)"
+                      }`,
+                      color: exportStatus.type === "success" ? "#10b981" : "#ef4444",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span>{exportStatus.type === "success" ? "✓" : "⚠"}</span>
+                    {exportStatus.message}
+                  </div>
+                )}
+
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel} style={{ marginBottom: "8px" }}>
+                    Select Export Format
+                  </label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div
+                      onClick={() => setExportFormat("markdown")}
+                      style={{
+                        padding: "14px",
+                        borderRadius: "10px",
+                        border: `1px solid ${exportFormat === "markdown" ? "var(--primary-color, #4f5bf7)" : "#222634"}`,
+                        background: exportFormat === "markdown" ? "rgba(79, 91, 247, 0.08)" : "#13161f",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                        <span style={{ fontWeight: 600, fontSize: "14px", color: exportFormat === "markdown" ? "#8d98ff" : "#fff" }}>
+                          Markdown (.md)
+                        </span>
+                        <input
+                          type="radio"
+                          name="exportFormat"
+                          checked={exportFormat === "markdown"}
+                          onChange={() => setExportFormat("markdown")}
+                          style={{ accentColor: "#4f5bf7" }}
+                        />
+                      </div>
+                      <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.4 }}>
+                        Clean formatted document with court diary, tasks, documents & strategy notes.
+                      </p>
+                    </div>
+
+                    <div
+                      onClick={() => setExportFormat("json")}
+                      style={{
+                        padding: "14px",
+                        borderRadius: "10px",
+                        border: `1px solid ${exportFormat === "json" ? "var(--primary-color, #4f5bf7)" : "#222634"}`,
+                        background: exportFormat === "json" ? "rgba(79, 91, 247, 0.08)" : "#13161f",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                        <span style={{ fontWeight: 600, fontSize: "14px", color: exportFormat === "json" ? "#8d98ff" : "#fff" }}>
+                          Structured JSON
+                        </span>
+                        <input
+                          type="radio"
+                          name="exportFormat"
+                          checked={exportFormat === "json"}
+                          onChange={() => setExportFormat("json")}
+                          style={{ accentColor: "#4f5bf7" }}
+                        />
+                      </div>
+                      <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.4 }}>
+                        Machine-readable snapshot for archival, audit review, and programmatic ingestion.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid rgba(255, 255, 255, 0.06)",
+                    fontSize: "12px",
+                    color: "var(--text-secondary)",
+                    lineHeight: 1.5,
+                    marginBottom: "16px",
+                  }}
+                >
+                  🔒 <b>Security & Privacy Guarantee:</b> The exported report filters private counsel work products based on your authorized role. Storage keys, secret credentials, and private message bodies are excluded.
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setExportModalOpen(false)}
+                    className={styles.secondaryBtn}
+                    disabled={exporting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportReport}
+                    className={styles.actionBtn}
+                    disabled={exporting}
+                    style={{ minWidth: "140px" }}
+                  >
+                    {exporting ? "Generating..." : "Download Export"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

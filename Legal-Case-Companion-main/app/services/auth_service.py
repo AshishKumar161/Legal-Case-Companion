@@ -1,4 +1,5 @@
 import logging
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -6,7 +7,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.exceptions import AuthenticationError, ConflictError
+from app.core.exceptions import AuthenticationError, ConflictError, ValidationError
 from app.core.identifiers import generate_uuid7
 from app.core.security import (
     create_access_token,
@@ -17,9 +18,15 @@ from app.core.security import (
     verify_password,
 )
 from app.models.audit import AuditEvent
-from app.models.auth import RefreshTokenSession, UserExternalIdentity
+from app.models.auth import (
+    EmailVerificationToken,
+    PasswordResetToken,
+    RefreshTokenSession,
+    UserExternalIdentity,
+)
 from app.models.user import AccountStatus, ClientProfile, User, UserRole
 from app.schemas.auth import LoginRequest, PasswordChangeRequest
+from app.services.email_service import get_email_provider
 from app.services.user_service import UserService
 
 logger = logging.getLogger(__name__)
@@ -380,27 +387,34 @@ class AuthService:
             revoked (replay / theft detection).
         """
         hashed_input = hash_refresh_token(refresh_token_raw)
-
-        # Find session and lock it for update to prevent concurrent refresh race conditions
-        session = (
-            self.db.query(RefreshTokenSession)
-            .filter(RefreshTokenSession.token_hash == hashed_input)
-            .with_for_update()
-            .first()
-        )
-
-        if not session:
-            raise AuthenticationError("Invalid refresh token")
-
         now = datetime.now(UTC)
 
-        # Token reuse detection
-        if session.revoked_at is not None:
-            # Revoke entire family — possible token theft
+        # Atomic rotation acquisition: lock & transition active token in one step
+        # This guarantees database-level isolation against concurrent refresh race conditions
+        updated_count = (
+            self.db.query(RefreshTokenSession)
+            .filter(
+                RefreshTokenSession.token_hash == hashed_input,
+                RefreshTokenSession.revoked_at.is_(None),
+            )
+            .update({"revoked_at": now}, synchronize_session="fetch")
+        )
+
+        if updated_count == 0:
+            # Token does not exist OR was already revoked (concurrent race loser or replay attack)
+            session = (
+                self.db.query(RefreshTokenSession)
+                .filter(RefreshTokenSession.token_hash == hashed_input)
+                .first()
+            )
+            if not session:
+                raise AuthenticationError("Invalid refresh token")
+
+            # Token was already revoked -> Token reuse detected! Revoke entire family
             self.db.query(RefreshTokenSession).filter(
                 RefreshTokenSession.token_family_id == session.token_family_id,
-                RefreshTokenSession.revoked_at == None,
-            ).update({"revoked_at": now})
+                RefreshTokenSession.revoked_at.is_(None),
+            ).update({"revoked_at": now}, synchronize_session=False)
 
             self.log_audit_event(
                 "SECURITY_EVENT",
@@ -415,6 +429,15 @@ class AuthService:
             self.db.commit()
             raise AuthenticationError("Invalid refresh token")
 
+        # updated_count == 1: Successfully acquired active token for rotation
+        session = (
+            self.db.query(RefreshTokenSession)
+            .filter(RefreshTokenSession.token_hash == hashed_input)
+            .first()
+        )
+        if not session:
+            raise AuthenticationError("Invalid refresh token")
+
         # Absolute expiry check
         expires_at = (
             session.expires_at.replace(tzinfo=UTC)
@@ -422,13 +445,10 @@ class AuthService:
             else session.expires_at
         )
         if expires_at < now:
-            session.revoked_at = now
             self.db.commit()
             raise AuthenticationError("Refresh token expired")
 
-        # Phase 5 FIX: Inactivity TTL check uses last_used_at, NOT created_at.
-        # last_used_at tracks when the token was last rotated/used, so a session
-        # that is actively being used will not be expired by inactivity.
+        # Inactivity TTL check using last_used_at
         last_used_at = (
             session.last_used_at.replace(tzinfo=UTC)
             if session.last_used_at.tzinfo is None
@@ -436,17 +456,15 @@ class AuthService:
         )
         inactivity_limit = now - timedelta(days=settings.REFRESH_TOKEN_INACTIVITY_DAYS)
         if last_used_at < inactivity_limit:
-            session.revoked_at = now
             self.db.commit()
             raise AuthenticationError("Refresh token expired due to inactivity")
 
         user = self.user_service.get_user_by_id(session.user_id)
         if not user or user.account_status != AccountStatus.ACTIVE:
+            self.db.commit()
             raise AuthenticationError("User is inactive or deleted")
 
-        # Rotate: revoke the used token, issue new one in same family
-        session.revoked_at = now
-
+        # Issue new token in same family
         new_refresh_token_raw = generate_refresh_token()
         new_refresh_token_hashed = hash_refresh_token(new_refresh_token_raw)
         new_access_token = create_access_token(str(user.id), user.role.value)
@@ -501,7 +519,11 @@ class AuthService:
 
     def change_password(self, user_id: uuid.UUID, req: PasswordChangeRequest):
         user = self.user_service.get_user_by_id(user_id)
-        if not user or not verify_password(req.current_password, user.password_hash):
+        if (
+            not user
+            or not user.password_hash
+            or not verify_password(req.current_password, user.password_hash)
+        ):
             raise AuthenticationError("Invalid current password")
 
         user.password_hash = hash_password(req.new_password)
@@ -517,5 +539,264 @@ class AuthService:
             user_id,
             {"action": "password_changed_sessions_revoked"},
             action="password_change",
+        )
+        self.db.commit()
+
+    def get_user_identities(self, user_id: uuid.UUID) -> list[UserExternalIdentity]:
+        """Returns all external identities linked to the specified user."""
+        return (
+            self.db.query(UserExternalIdentity)
+            .filter(UserExternalIdentity.user_id == user_id)
+            .all()
+        )
+
+    def request_password_reset(
+        self,
+        email: str,
+        ip_address: str | None = None,
+    ) -> None:
+        """Initiates a secure password reset request with anti-enumeration defense.
+
+        Always finishes cleanly without revealing whether the email exists.
+        """
+        try:
+            normalized = normalize_email(email)
+        except ValueError:
+            return
+
+        user = self.user_service.get_user_by_email(normalized)
+        if (
+            not user
+            or user.account_status != AccountStatus.ACTIVE
+            or not user.password_hash
+        ):
+            logger.info(
+                f"Password reset requested for non-existent or inactive user from IP {ip_address}"
+            )
+            return
+
+        # Invalidate any existing unused reset tokens for this user
+        now = datetime.now(UTC)
+        self.db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at == None,
+        ).update({"used_at": now})
+
+        # Generate cryptographically secure high-entropy random token
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hash_refresh_token(raw_token)
+
+        reset_token_record = PasswordResetToken(
+            id=generate_uuid7(),
+            user_id=user.id,
+            token_hash=token_hash,
+            created_at=now,
+            expires_at=now + timedelta(minutes=15),
+            used_at=None,
+            ip_metadata=ip_address,
+        )
+        self.db.add(reset_token_record)
+
+        self.log_audit_event(
+            "PASSWORD_RESET_REQUESTED",
+            user.id,
+            {"ip": ip_address},
+            action="password_reset_request",
+        )
+        self.db.commit()
+
+        # Dispatch email notification containing the reset link
+        email_provider = get_email_provider()
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
+        email_body = f"""
+        <html>
+        <body>
+            <h2>Legal Case Companion — Password Reset</h2>
+            <p>A password reset was requested for your account. Click the link below to set a new password:</p>
+            <p><a href="{reset_link}">Reset My Password</a></p>
+            <p>This link is valid for 15 minutes and can only be used once.</p>
+            <p>If you did not request this password reset, please ignore this email.</p>
+        </body>
+        </html>
+        """
+        email_provider.send_email(
+            to_email=user.email,
+            subject="[Legal Case Companion] Password Reset Request",
+            html_body=email_body,
+        )
+
+    def confirm_password_reset(
+        self,
+        token: str,
+        new_password: str,
+        ip_address: str | None = None,
+    ) -> None:
+        """Validates the reset token, updates password, and revokes all active sessions."""
+        if not token or not token.strip():
+            raise AuthenticationError("Invalid or missing password reset token")
+
+        if not new_password or len(new_password) < 8:
+            raise ValidationError("Password must be at least 8 characters long")
+
+        token_hash = hash_refresh_token(token.strip())
+        reset_record = (
+            self.db.query(PasswordResetToken)
+            .filter(PasswordResetToken.token_hash == token_hash)
+            .first()
+        )
+
+        if not reset_record:
+            raise AuthenticationError("Invalid or expired password reset token")
+
+        if reset_record.used_at is not None:
+            raise AuthenticationError("Password reset token has already been used")
+
+        now = datetime.now(UTC)
+        expires_at = (
+            reset_record.expires_at.replace(tzinfo=UTC)
+            if reset_record.expires_at.tzinfo is None
+            else reset_record.expires_at
+        )
+        if expires_at < now:
+            raise AuthenticationError("Password reset token has expired")
+
+        user = self.user_service.get_user_by_id(reset_record.user_id)
+        if not user or user.account_status != AccountStatus.ACTIVE:
+            raise AuthenticationError("Account is inactive or deleted")
+
+        # Update password hash using Argon2id
+        user.password_hash = hash_password(new_password)
+        reset_record.used_at = now
+
+        # Mandatory: Revoke all active refresh sessions across all devices
+        self.db.query(RefreshTokenSession).filter(
+            RefreshTokenSession.user_id == user.id,
+            RefreshTokenSession.revoked_at == None,
+        ).update({"revoked_at": now})
+
+        self.log_audit_event(
+            "PASSWORD_RESET_COMPLETED",
+            user.id,
+            {"ip": ip_address, "action": "password_reset_all_sessions_revoked"},
+            action="password_reset",
+        )
+        self.db.commit()
+
+        # Send security confirmation alert (no secrets included)
+        email_provider = get_email_provider()
+        alert_body = """
+        <html>
+        <body>
+            <h2>Legal Case Companion — Security Alert</h2>
+            <p>Your account password has been successfully reset. All active sessions have been invalidated.</p>
+            <p>If you did not initiate this change, please contact support immediately.</p>
+        </body>
+        </html>
+        """
+        email_provider.send_email(
+            to_email=user.email,
+            subject="[Legal Case Companion] Security Alert: Password Reset Completed",
+            html_body=alert_body,
+        )
+
+    def request_email_verification(
+        self,
+        email: str,
+        ip_address: str | None = None,
+    ) -> None:
+        """Dispatches an email verification token with anti-enumeration protection."""
+        try:
+            normalized = normalize_email(email)
+        except ValueError:
+            return
+
+        user = self.user_service.get_user_by_email(normalized)
+        if not user or user.account_status != AccountStatus.ACTIVE:
+            return
+
+        now = datetime.now(UTC)
+        # Invalidate old verification tokens
+        self.db.query(EmailVerificationToken).filter(
+            EmailVerificationToken.user_id == user.id,
+            EmailVerificationToken.used_at == None,
+        ).update({"used_at": now})
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hash_refresh_token(raw_token)
+
+        verif_record = EmailVerificationToken(
+            id=generate_uuid7(),
+            user_id=user.id,
+            email=user.email,
+            token_hash=token_hash,
+            created_at=now,
+            expires_at=now + timedelta(minutes=60),
+            used_at=None,
+            ip_metadata=ip_address,
+        )
+        self.db.add(verif_record)
+        self.db.commit()
+
+        email_provider = get_email_provider()
+        verif_link = f"{settings.FRONTEND_URL}/verify-email?token={raw_token}"
+        email_body = f"""
+        <html>
+        <body>
+            <h2>Legal Case Companion — Verify Your Email Address</h2>
+            <p>Please click the link below to verify your email address:</p>
+            <p><a href="{verif_link}">Verify Email</a></p>
+            <p>This link is valid for 60 minutes.</p>
+        </body>
+        </html>
+        """
+        email_provider.send_email(
+            to_email=user.email,
+            subject="[Legal Case Companion] Verify Your Email Address",
+            html_body=email_body,
+        )
+
+    def confirm_email_verification(self, token: str) -> None:
+        """Validates email verification token and marks email verified."""
+        if not token or not token.strip():
+            raise AuthenticationError("Invalid or missing email verification token")
+
+        token_hash = hash_refresh_token(token.strip())
+        record = (
+            self.db.query(EmailVerificationToken)
+            .filter(EmailVerificationToken.token_hash == token_hash)
+            .first()
+        )
+
+        if not record:
+            raise AuthenticationError("Invalid or expired email verification token")
+
+        if record.used_at is not None:
+            raise AuthenticationError("Email verification token has already been used")
+
+        now = datetime.now(UTC)
+        expires_at = (
+            record.expires_at.replace(tzinfo=UTC)
+            if record.expires_at.tzinfo is None
+            else record.expires_at
+        )
+        if expires_at < now:
+            raise AuthenticationError("Email verification token has expired")
+
+        user = self.user_service.get_user_by_id(record.user_id)
+        if not user or user.account_status != AccountStatus.ACTIVE:
+            raise AuthenticationError("Account is inactive or deleted")
+
+        record.used_at = now
+
+        # Update external identity email verification if present
+        for identity in user.external_identities:
+            if identity.email.lower() == record.email.lower():
+                identity.email_verified = True
+
+        self.log_audit_event(
+            "EMAIL_VERIFIED",
+            user.id,
+            {"email": record.email},
+            action="email_verification",
         )
         self.db.commit()

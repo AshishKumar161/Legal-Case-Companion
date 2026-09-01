@@ -1,14 +1,10 @@
 from datetime import UTC, datetime
-import uuid
 
-import pytest
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from app.core.identifiers import generate_uuid7
 from app.models.audit import AuditEvent
-from app.models.case import Case, CaseParticipant, CaseStatus, ParticipantRole
-from app.models.feedback import FeedbackCategory, PilotFeedback
 from app.models.job import BackgroundJob, JobStatus, JobType
 from app.models.user import AccountStatus, User, UserRole
 

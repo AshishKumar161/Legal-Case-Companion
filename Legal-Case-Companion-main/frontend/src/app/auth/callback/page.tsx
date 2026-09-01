@@ -22,7 +22,11 @@ function AuthCallbackContent() {
 
       if (error) {
         setStatus("error");
-        setErrorMessage(`Google authorization failed: ${error}`);
+        if (error === "access_denied") {
+          setErrorMessage("Google sign-in was cancelled by the user.");
+        } else {
+          setErrorMessage(`Google authorization failed: ${error}`);
+        }
         return;
       }
 

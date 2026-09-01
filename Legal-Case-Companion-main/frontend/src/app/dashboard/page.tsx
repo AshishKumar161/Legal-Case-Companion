@@ -8,6 +8,8 @@ import Link from "next/link";
 import { CaseItem, ConsultationItem } from "@/types";
 import styles from "./dashboard.module.css";
 import { StatusBadge } from "@/components/StatusBadge";
+import { PaymentCheckoutModal } from "@/components/Payment/PaymentCheckoutModal";
+import { ConsultationActionModal } from "@/components/Consultation/ConsultationActionModal";
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
@@ -18,6 +20,11 @@ export default function Dashboard() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [checkoutConsultation, setCheckoutConsultation] = useState<ConsultationItem | null>(null);
+  const [actionConsultationModal, setActionConsultationModal] = useState<{
+    type: "RESCHEDULE" | "CANCEL";
+    consultation: ConsultationItem;
+  } | null>(null);
 
   // Search, Filter & View state
   const [searchQuery, setSearchQuery] = useState("");
@@ -411,15 +418,83 @@ export default function Dashboard() {
                         {" - "}
                         {new Date(con.scheduled_end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </div>
+
+                      {/* Financial Status & Payment Trigger */}
+                      {(con.status === "ACCEPTED" || con.status === "REQUESTED") && (con.fee_amount ?? 2500) > 0 && (
+                        <button
+                          onClick={() => setCheckoutConsultation(con)}
+                          style={{
+                            marginTop: "8px",
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                            color: "#ffffff",
+                            border: "none",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            width: "fit-content",
+                          }}
+                        >
+                          💳 Pay Fee ₹{(con.fee_amount ?? 2500).toLocaleString("en-IN")}
+                        </button>
+                      )}
+
+                      {con.status === "PAID" && (
+                        <div style={{ marginTop: "6px", fontSize: "11px", color: "#10b981", fontWeight: 600 }}>
+                          ✓ Fee Paid & Confirmed
+                        </div>
+                      )}
+
                       {con.meeting_url && (
                         <a
                           href={con.meeting_url}
                           target="_blank"
                           rel="noreferrer"
                           className={styles.consultLink}
+                          style={{ marginTop: "6px" }}
                         >
                           Join Secured Call ↗
                         </a>
+                      )}
+
+                      {/* Reschedule & Cancel Triggers for Active Consultations */}
+                      {["REQUESTED", "ACCEPTED", "PAID", "SCHEDULED"].includes(con.status) && (
+                        <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
+                          <button
+                            onClick={() => setActionConsultationModal({ type: "RESCHEDULE", consultation: con })}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              background: "rgba(96, 165, 250, 0.12)",
+                              border: "1px solid rgba(96, 165, 250, 0.3)",
+                              color: "#60a5fa",
+                              fontSize: "11px",
+                              fontWeight: 500,
+                              cursor: "pointer",
+                            }}
+                          >
+                            ↻ Reschedule
+                          </button>
+                          <button
+                            onClick={() => setActionConsultationModal({ type: "CANCEL", consultation: con })}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              background: "rgba(239, 68, 68, 0.12)",
+                              border: "1px solid rgba(239, 68, 68, 0.3)",
+                              color: "#ef4444",
+                              fontSize: "11px",
+                              fontWeight: 500,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -508,6 +583,31 @@ export default function Dashboard() {
               </form>
             </div>
           </div>
+        )}
+
+        {/* Payment Checkout Modal */}
+        {checkoutConsultation && (
+          <PaymentCheckoutModal
+            consultation={checkoutConsultation}
+            onClose={() => setCheckoutConsultation(null)}
+            onPaymentSuccess={() => {
+              setCheckoutConsultation(null);
+              fetchDashboardData();
+            }}
+          />
+        )}
+
+        {/* Consultation Reschedule & Cancel Modal */}
+        {actionConsultationModal && (
+          <ConsultationActionModal
+            type={actionConsultationModal.type}
+            consultation={actionConsultationModal.consultation}
+            onClose={() => setActionConsultationModal(null)}
+            onSuccess={() => {
+              setActionConsultationModal(null);
+              fetchDashboardData();
+            }}
+          />
         )}
       </div>
     </div>

@@ -1,15 +1,11 @@
 import uuid
-from datetime import UTC, datetime
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.identifiers import generate_uuid7
 from app.core.security import hash_password
 from app.models.analytics import ProductEvent, ProductEventType
-from app.models.case import Case
-from app.models.feedback import FeedbackCategory, PilotFeedback
 from app.models.user import AccountStatus, User, UserRole
 
 

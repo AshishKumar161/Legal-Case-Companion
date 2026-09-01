@@ -8,14 +8,14 @@ from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.schemas.availability import LawyerAvailabilityResponse, SlotResponse
 from app.schemas.pagination import PaginatedResponse
-from app.schemas.profile import LawyerProfileResponse
+from app.schemas.profile import LawyerPublicResponse
 from app.services.consultation_service import ConsultationService
 from app.services.profile_service import ProfileService
 
 router = APIRouter(prefix="/lawyers", tags=["lawyers"])
 
 
-@router.get("", response_model=PaginatedResponse[LawyerProfileResponse])
+@router.get("", response_model=PaginatedResponse[LawyerPublicResponse])
 def search_lawyers(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -52,7 +52,7 @@ def search_lawyers(
     )
 
 
-@router.get("/{user_id}", response_model=LawyerProfileResponse)
+@router.get("/{user_id}", response_model=LawyerPublicResponse)
 def get_lawyer_profile(
     user_id: UUID,
     current_user: User = Depends(get_current_user),

@@ -86,7 +86,11 @@ export default function Register() {
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message);
+        if (err.message.toLowerCase().includes('not configured')) {
+          setError('Google sign-up is currently unavailable in this environment. Please register with your email and password.');
+        } else {
+          setError(err.message);
+        }
       } else {
         setError('Failed to initiate Google signup');
       }

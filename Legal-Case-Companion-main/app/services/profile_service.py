@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy import String, cast, exists, or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.exceptions import (
@@ -59,8 +60,12 @@ class ProfileService:
 
         updated_fields = {}
         for field, value in update_data.model_dump(exclude_unset=True).items():
-            setattr(profile, field, value)
-            updated_fields[field] = value
+            if field == "phone":
+                user.phone = value
+                updated_fields["phone"] = value
+            else:
+                setattr(profile, field, value)
+                updated_fields[field] = value
 
         self.db.commit()
         self.db.refresh(profile)
@@ -86,8 +91,6 @@ class ProfileService:
         return profile
 
     def get_public_lawyer_profile(self, identifier: uuid.UUID) -> LawyerProfile:
-        from sqlalchemy import or_
-
         profile = (
             self.db.query(LawyerProfile)
             .options(selectinload(LawyerProfile.verifications))
@@ -120,8 +123,6 @@ class ProfileService:
         max_experience: int | None = None,
         verified_only: bool = True,
     ) -> dict:
-        from sqlalchemy import String, cast, exists, or_
-
         limit = min(max(limit, 1), 100)
         query = (
             self.db.query(LawyerProfile)
@@ -194,8 +195,12 @@ class ProfileService:
 
         updated_fields = {}
         for field, value in update_data.model_dump(exclude_unset=True).items():
-            setattr(profile, field, value)
-            updated_fields[field] = value
+            if field == "phone":
+                user.phone = value
+                updated_fields["phone"] = value
+            else:
+                setattr(profile, field, value)
+                updated_fields[field] = value
 
         self.db.commit()
         self.db.refresh(profile)

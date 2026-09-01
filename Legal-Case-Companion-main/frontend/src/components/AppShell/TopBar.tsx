@@ -50,6 +50,9 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
         { label: "Profile & Availability", href: "/lawyer/profile" },
       ];
     }
+    if (pathname.startsWith("/settings") || pathname.startsWith("/profile")) {
+      return [{ label: "Account & Settings", href: "/settings" }];
+    }
     if (pathname.startsWith("/admin/dashboard")) {
       return [{ label: "Admin Console", href: "/admin/dashboard" }];
     }

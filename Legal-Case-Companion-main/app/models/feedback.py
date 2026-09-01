@@ -43,4 +43,4 @@ class PilotFeedback(Base, TimestampMixin, SoftDeleteMixin):
 
 Feedback = PilotFeedback
 
-from app.models.user import User  # noqa: E402
+from app.models.user import User

@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
@@ -233,10 +232,6 @@ def test_csrf_validation_failure_modes(client: TestClient):
         settings.ENVIRONMENT = original_env
 
 
-@pytest.mark.skipif(
-    settings.DATABASE_URL.startswith("sqlite"),
-    reason="SQLite does not support FOR UPDATE locks correctly",
-)
 def test_concurrent_refresh_rotation(client: TestClient):
     """Phase 2: Verify that concurrent refresh requests do not allow multiple valid rotations."""
     import threading
@@ -273,11 +268,14 @@ def test_concurrent_refresh_rotation(client: TestClient):
             # SQLite thread-sharing session errors or locking are expected here
             results.append(500)
 
-    threads = [threading.Thread(target=attempt_refresh) for _ in range(5)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
+    try:
+        threads = [threading.Thread(target=attempt_refresh) for _ in range(5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    finally:
+        client.app.dependency_overrides.clear()
 
     # Only ONE request should succeed (200), the others should fail (401 or 500 db lock)
     successes = [code for code in results if code == 200]

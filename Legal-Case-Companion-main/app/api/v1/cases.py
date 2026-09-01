@@ -1,11 +1,12 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
 from app.models.case import CaseStatus
+from app.models.case_collaboration import MatterRequestStatus
 from app.models.task import TaskStatus
 from app.models.user import User
 from app.schemas.case import (
@@ -19,11 +20,24 @@ from app.schemas.case import (
     ParticipantUpdate,
     TimelineEventResponse,
 )
+from app.schemas.collaboration import (
+    CaseMessageCreate,
+    CaseMessageResponse,
+    MatterBriefResponse,
+    MatterParticipantDetailResponse,
+    MatterRequestCreate,
+    MatterRequestResponse,
+    MatterRequestReview,
+    MatterRequestSubmit,
+)
 from app.schemas.consultation import ConsultationCreate, ConsultationResponse
 from app.schemas.note import CaseNoteCreate, CaseNoteResponse, CaseNoteUpdate
 from app.schemas.pagination import PaginatedResponse
 from app.schemas.task import CaseTaskCreate, CaseTaskResponse, CaseTaskUpdate
+from app.services.case_report_service import CaseReportService
 from app.services.case_service import CaseService
+from app.services.collaboration_service import CollaborationService
+from app.services.consultation_service import ConsultationService
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
@@ -79,6 +93,46 @@ def get_case_workspace(
 ):
     case_service = CaseService(db)
     return case_service.get_workspace(current_user, case_id)
+
+
+@router.get("/{case_id}/report")
+def export_case_report(
+    case_id: UUID,
+    format: str = Query("json", pattern="^(json|markdown)$"),
+    download: bool = Query(False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Generates and exports an authorized point-in-time Case Summary Report.
+    Supports JSON model response or attachment downloads in JSON and Markdown.
+    """
+    report_service = CaseReportService(db)
+    report_data = report_service.generate_report_data(current_user, case_id)
+
+    if format == "markdown":
+        md_content = report_service.generate_markdown_report(report_data)
+        filename = report_service.generate_safe_filename(
+            case_id, report_data.case_overview.title, ext="markdown"
+        )
+        return Response(
+            content=md_content,
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    if download:
+        json_content = report_data.model_dump_json(indent=2)
+        filename = report_service.generate_safe_filename(
+            case_id, report_data.case_overview.title, ext="json"
+        )
+        return Response(
+            content=json_content,
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    return report_data
 
 
 @router.patch("/{case_id}", response_model=CaseResponse)
@@ -348,8 +402,6 @@ def create_case_consultation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.services.consultation_service import ConsultationService
-
     req.case_id = case_id
     consultation_service = ConsultationService(db)
     return consultation_service.request_consultation(current_user, req)
@@ -366,8 +418,6 @@ def get_case_consultations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.services.consultation_service import ConsultationService
-
     consultation_service = ConsultationService(db)
     return consultation_service.get_consultations(
         current_user, case_id=case_id, skip=skip, limit=limit
@@ -381,39 +431,33 @@ def get_case_consultations(
 
 @router.get(
     "/{case_id}/collaboration/participants",
-    response_model=list,
+    response_model=list[MatterParticipantDetailResponse],
 )
 def get_matter_participants_detailed(
     case_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.services.collaboration_service import CollaborationService
-
     service = CollaborationService(db)
-    participants = service.get_matter_participants_detailed(current_user, case_id)
-    return [p.model_dump() for p in participants]
+    return service.get_matter_participants_detailed(current_user, case_id)
 
 
 @router.get(
     "/{case_id}/collaboration/brief",
-    response_model=dict,
+    response_model=MatterBriefResponse,
 )
 def get_matter_brief(
     case_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.services.collaboration_service import CollaborationService
-
     service = CollaborationService(db)
-    brief = service.get_matter_brief(current_user, case_id)
-    return brief.model_dump()
+    return service.get_matter_brief(current_user, case_id)
 
 
 @router.get(
     "/{case_id}/collaboration/messages",
-    response_model=list,
+    response_model=list[CaseMessageResponse],
 )
 def get_case_messages(
     case_id: UUID,
@@ -422,108 +466,80 @@ def get_case_messages(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.services.collaboration_service import CollaborationService
-
     service = CollaborationService(db)
-    msgs = service.get_case_messages(current_user, case_id, skip=skip, limit=limit)
-    return [m.model_dump() for m in msgs]
+    return service.get_case_messages(current_user, case_id, skip=skip, limit=limit)
 
 
 @router.post(
     "/{case_id}/collaboration/messages",
-    response_model=dict,
+    response_model=CaseMessageResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def send_case_message(
     case_id: UUID,
-    req_body: dict,
+    req: CaseMessageCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.schemas.collaboration import CaseMessageCreate
-    from app.services.collaboration_service import CollaborationService
-
-    req = CaseMessageCreate(**req_body)
     service = CollaborationService(db)
-    res = service.send_case_message(current_user, case_id, req)
-    return res.model_dump()
+    return service.send_case_message(current_user, case_id, req)
 
 
 @router.get(
     "/{case_id}/collaboration/requests",
-    response_model=list,
+    response_model=list[MatterRequestResponse],
 )
 def get_matter_requests(
     case_id: UUID,
-    status: str | None = None,
+    status: MatterRequestStatus | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.models.case_collaboration import MatterRequestStatus
-    from app.services.collaboration_service import CollaborationService
-
-    st = MatterRequestStatus(status) if status else None
     service = CollaborationService(db)
-    requests = service.get_matter_requests(current_user, case_id, status=st)
-    return [r.model_dump() for r in requests]
+    return service.get_matter_requests(current_user, case_id, status=status)
 
 
 @router.post(
     "/{case_id}/collaboration/requests",
-    response_model=dict,
+    response_model=MatterRequestResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def create_matter_request(
     case_id: UUID,
-    req_body: dict,
+    req: MatterRequestCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.schemas.collaboration import MatterRequestCreate
-    from app.services.collaboration_service import CollaborationService
-
-    req = MatterRequestCreate(**req_body)
     service = CollaborationService(db)
-    res = service.create_matter_request(current_user, case_id, req)
-    return res.model_dump()
+    return service.create_matter_request(current_user, case_id, req)
 
 
 @router.post(
     "/{case_id}/collaboration/requests/{request_id}/submit",
-    response_model=dict,
+    response_model=MatterRequestResponse,
 )
 def submit_matter_request(
     case_id: UUID,
     request_id: UUID,
-    req_body: dict,
+    req: MatterRequestSubmit,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.schemas.collaboration import MatterRequestSubmit
-    from app.services.collaboration_service import CollaborationService
-
-    req = MatterRequestSubmit(**req_body)
     service = CollaborationService(db)
-    res = service.submit_matter_request(current_user, case_id, request_id, req)
-    return res.model_dump()
+    return service.submit_matter_request(current_user, case_id, request_id, req)
 
 
 @router.post(
     "/{case_id}/collaboration/requests/{request_id}/review",
-    response_model=dict,
+    response_model=MatterRequestResponse,
 )
 def review_matter_request(
     case_id: UUID,
     request_id: UUID,
-    req_body: dict,
+    req: MatterRequestReview,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from app.schemas.collaboration import MatterRequestReview
-    from app.services.collaboration_service import CollaborationService
-
-    req = MatterRequestReview(**req_body)
     service = CollaborationService(db)
-    res = service.review_matter_request(current_user, case_id, request_id, req)
-    return res.model_dump()
+    return service.review_matter_request(current_user, case_id, request_id, req)
 

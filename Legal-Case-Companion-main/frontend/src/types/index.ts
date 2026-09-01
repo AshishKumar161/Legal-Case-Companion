@@ -511,17 +511,35 @@ export interface LawyerAvailabilitySlot {
   is_active: boolean;
 }
 
+export interface ClientProfileItem {
+  id: string;
+  user_id: string;
+  full_name: string;
+  location?: string;
+  email?: string;
+  phone?: string;
+}
+
 export interface LawyerProfileItem {
   id: string;
   user_id: string;
   full_name: string;
   location?: string;
+  email?: string;
+  phone?: string;
   practice_areas?: string[] | string;
   experience_years?: number;
   court_jurisdictions?: string[];
   consultation_fee?: number;
   bio?: string;
-  verification_status?: "PENDING" | "VERIFIED" | "REJECTED";
+  verification_status?: "PENDING" | "VERIFIED" | "REJECTED" | "APPROVED" | "UNDER_REVIEW";
+}
+
+export interface NotificationPreferenceItem {
+  email_enabled: boolean;
+  case_updates: boolean;
+  task_updates: boolean;
+  consultation_updates: boolean;
 }
 
 export interface ConsultationItem {
@@ -531,11 +549,52 @@ export interface ConsultationItem {
   case_id?: string;
   scheduled_start: string;
   scheduled_end: string;
-  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  status:
+    | "REQUESTED"
+    | "ACCEPTED"
+    | "PAID"
+    | "SCHEDULED"
+    | "IN_PROGRESS"
+    | "COMPLETED"
+    | "CANCELLED"
+    | "REJECTED"
+    | "NO_SHOW"
+    | "PENDING"
+    | "CONFIRMED";
   notes?: string;
   meeting_url?: string;
   fee_amount?: number;
+  currency?: string;
+  duration_minutes?: number;
+  rejection_reason?: string;
+  scheduled_at?: string;
+  lawyer_name?: string;
   created_at: string;
+}
+
+export type PaymentStatus =
+  | "CREATED"
+  | "PENDING"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "REFUNDED";
+
+export interface PaymentItem {
+  id: string;
+  consultation_id: string;
+  payer_user_id: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  provider: string;
+  created_at: string;
+}
+
+export interface PaymentIntentResponse {
+  payment_id: string;
+  client_secret: string;
+  amount: number;
+  currency: string;
 }
 
 export interface VerificationItem {
@@ -559,10 +618,15 @@ export interface NotificationItem {
   title: string;
   message: string;
   is_read: boolean;
-  case_id?: string;
-  document_id?: string;
-  deadline_id?: string;
-  hearing_id?: string;
+  read_at?: string | null;
+  case_id?: string | null;
+  consultation_id?: string | null;
+  task_id?: string | null;
+  deadline_id?: string | null;
+  hearing_id?: string | null;
+  document_id?: string | null;
+  event_id?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -708,4 +772,230 @@ export interface PilotFeedbackItem {
   resolution_notes?: string | null;
   created_at: string;
 }
+
+// ----------------------------------------------------------------------------
+// ADMIN & PLATFORM OPERATIONS
+// ----------------------------------------------------------------------------
+
+export interface AdminOverviewItem {
+  total_users: number;
+  active_users: number;
+  suspended_users: number;
+  total_lawyers: number;
+  pending_verifications: number;
+  verified_lawyers: number;
+  total_cases: number;
+  active_cases: number;
+  closed_cases: number;
+  total_consultations: number;
+  paid_consultations: number;
+  scheduled_consultations: number;
+  total_payments: number;
+  succeeded_payments: number;
+  total_revenue_inr: number;
+  total_documents: number;
+  quarantined_documents: number;
+  rejected_documents: number;
+  security_event_count: number;
+}
+
+export interface AdminUserItem {
+  id: string;
+  email: string;
+  full_name: string;
+  role: "CLIENT" | "LAWYER" | "ADMIN";
+  account_status: "ACTIVE" | "SUSPENDED" | "PENDING_VERIFICATION" | "DELETED";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminCaseItem {
+  id: string;
+  title: string;
+  description: string;
+  status: "OPEN" | "IN_PROGRESS" | "CLOSED" | "CANCELLED";
+  created_at: string;
+  updated_at: string;
+  participant_count: number;
+  document_count: number;
+  owner_email?: string | null;
+}
+
+export interface AdminConsultationItem {
+  id: string;
+  client_id: string;
+  lawyer_id: string;
+  case_id?: string | null;
+  status: string;
+  fee_amount: number;
+  currency: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  meeting_url?: string | null;
+  created_at: string;
+}
+
+export interface AdminPaymentItem {
+  id: string;
+  consultation_id: string;
+  payer_user_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  provider: string;
+  provider_payment_id?: string | null;
+  created_at: string;
+}
+
+export interface AdminDocumentSecurityItem {
+  id: string;
+  case_id: string;
+  filename: string;
+  mime_type: string;
+  file_size: number;
+  security_status: string;
+  created_at: string;
+}
+
+export interface AdminSecurityEventItem {
+  id: string;
+  actor_user_id?: string | null;
+  event_type: string;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  action: string;
+  timestamp: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface AuditEventItem {
+  id: string;
+  actor_user_id?: string | null;
+  event_type: string;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  action: string;
+  timestamp: string;
+  metadata_?: Record<string, unknown>;
+}
+
+// ----------------------------------------------------------------------------
+// CASE SUMMARY REPORT EXPORT
+// ----------------------------------------------------------------------------
+
+export interface CaseReportMetadata {
+  report_id: string;
+  generated_at: string;
+  generated_by_user_id: string;
+  generated_by_name: string;
+  generated_by_role: string;
+}
+
+export interface CaseOverviewReportItem {
+  case_id: string;
+  case_number?: string | null;
+  title: string;
+  description: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ParticipantReportItem {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email?: string | null;
+  participant_role: string;
+  status: string;
+  joined_at: string;
+}
+
+export interface HearingReportItem {
+  id: string;
+  court_name: string;
+  bench_judge?: string | null;
+  hearing_date: string;
+  purpose?: string | null;
+  outcome?: string | null;
+  status: string;
+}
+
+export interface DeadlineReportItem {
+  id: string;
+  title: string;
+  deadline_type: string;
+  deadline_at: string;
+  status: string;
+  description?: string | null;
+}
+
+export interface TaskReportItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  priority: string;
+  status: string;
+  due_date?: string | null;
+  completed_at?: string | null;
+  assignee_name?: string | null;
+}
+
+export interface DocumentReportItem {
+  id: string;
+  name: string;
+  category: string;
+  security_status: string;
+  mime_type?: string | null;
+  file_size_bytes?: number | null;
+  created_at: string;
+}
+
+export interface TimelineReportItem {
+  id: string;
+  event_type: string;
+  description: string;
+  created_at: string;
+  actor_user_id?: string | null;
+}
+
+export interface ConsultationReportItem {
+  id: string;
+  lawyer_name?: string | null;
+  scheduled_at: string;
+  status: string;
+  duration_minutes?: number | null;
+  fee_amount?: number | null;
+  currency?: string | null;
+}
+
+export interface CommunicationsSummaryReportItem {
+  total_messages: number;
+  total_requests: number;
+  latest_activity_at?: string | null;
+}
+
+export interface NoteReportItem {
+  id: string;
+  title?: string | null;
+  content: string;
+  visibility: string;
+  author_name?: string | null;
+  created_at: string;
+}
+
+export interface CaseSummaryReportResponse {
+  metadata: CaseReportMetadata;
+  case_overview: CaseOverviewReportItem;
+  participants: ParticipantReportItem[];
+  hearings: HearingReportItem[];
+  deadlines: DeadlineReportItem[];
+  tasks: TaskReportItem[];
+  documents: DocumentReportItem[];
+  timeline: TimelineReportItem[];
+  consultations: ConsultationReportItem[];
+  communications_summary: CommunicationsSummaryReportItem;
+  notes: NoteReportItem[];
+}
+
 

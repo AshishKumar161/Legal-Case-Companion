@@ -1,4 +1,8 @@
 import logging
+import re
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Protocol
 
 from app.core.config import settings
@@ -11,17 +15,69 @@ class EmailProvider(Protocol):
 
 
 class ConsoleEmailProvider:
-    """Development provider that prints emails to stdout."""
+    """Development provider that prints emails to stdout with clearly extracted action links."""
 
     def send_email(self, to_email: str, subject: str, html_body: str) -> bool:
-        logger.info("--- MOCK EMAIL ---")
-        logger.info(f"To: {to_email}")
+        logger.info("==================== [DEV EMAIL DISPATCH] ====================")
+        logger.info(f"To:      {to_email}")
+        logger.info(f"From:    {settings.EMAIL_FROM}")
         logger.info(f"Subject: {subject}")
-        # Note: Do not log the raw html_body if it contains raw tokens in production
-        # In development, it's fine for debugging
-        logger.info("Body: [REDACTED FOR LOGGING LENGTH]")
-        logger.info("------------------")
+
+        # Extract links from HTML body for developer convenience
+        urls = re.findall(r'href=[\'"]?([^\'" >]+)', html_body)
+        if urls:
+            logger.info("Action Links:")
+            for url in urls:
+                logger.info(f"  👉 {url}")
+
+        logger.info("--- Message Body ---")
+        logger.info(html_body)
+        logger.info("==============================================================")
         return True
+
+
+class SMTPEmailProvider:
+    """Production and staging SMTP provider (supports TLS/SSL, Mailtrap, AWS SES SMTP, SendGrid SMTP, etc.)."""
+
+    def __init__(self):
+        if not settings.SMTP_HOST:
+            raise ValueError("SMTP_HOST is required for SMTPEmailProvider")
+        self.host = settings.SMTP_HOST
+        self.port = settings.SMTP_PORT
+        self.username = settings.SMTP_USERNAME
+        self.password = settings.SMTP_PASSWORD
+        self.from_email = settings.EMAIL_FROM
+        self.use_tls = settings.SMTP_TLS
+        self.use_ssl = settings.SMTP_SSL
+
+    def send_email(self, to_email: str, subject: str, html_body: str) -> bool:
+        logger.info(f"Sending email via SMTP ({self.host}:{self.port}) to {to_email} (Subject: {subject})")
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = self.from_email
+            msg["To"] = to_email
+
+            part = MIMEText(html_body, "html", "utf-8")
+            msg.attach(part)
+
+            if self.use_ssl:
+                server: smtplib.SMTP = smtplib.SMTP_SSL(self.host, self.port, timeout=10.0)
+            else:
+                server = smtplib.SMTP(self.host, self.port, timeout=10.0)
+
+            with server:
+                if self.use_tls and not self.use_ssl:
+                    server.starttls()
+                if self.username and self.password:
+                    server.login(self.username, self.password)
+                server.sendmail(self.from_email, [to_email], msg.as_string())
+
+            logger.info(f"SMTP email dispatched successfully to {to_email}")
+            return True
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"SMTP failed to send email to {to_email}: {e}")
+            return False
 
 
 class SendGridEmailProvider:
@@ -100,10 +156,13 @@ class SESEmailProvider:
 
 
 def get_email_provider() -> EmailProvider:
-    if settings.EMAIL_PROVIDER == "sendgrid":
+    provider = settings.EMAIL_PROVIDER.lower() if settings.EMAIL_PROVIDER else "console"
+    if provider == "sendgrid":
         return SendGridEmailProvider()
-    elif settings.EMAIL_PROVIDER == "ses":
+    elif provider == "ses":
         return SESEmailProvider()
+    elif provider in ("smtp", "mailtrap", "mailpit"):
+        return SMTPEmailProvider()
 
-    # Fallback to console (but config validates this is not allowed in production)
+    # Default to console provider for development
     return ConsoleEmailProvider()

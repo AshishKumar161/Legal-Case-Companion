@@ -1,14 +1,17 @@
-from datetime import UTC, datetime, timedelta
 import uuid
+from datetime import UTC, datetime, timedelta
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.identifiers import generate_uuid7
 from app.core.security import hash_password
-from app.models.case import Case, CaseParticipant, ParticipantRole
-from app.models.document import Document, DocumentCategory, DocumentProcessingStatus, DocumentSecurityStatus
+from app.models.document import (
+    Document,
+    DocumentCategory,
+    DocumentProcessingStatus,
+    DocumentSecurityStatus,
+)
 from app.models.user import AccountStatus, User, UserRole
 
 

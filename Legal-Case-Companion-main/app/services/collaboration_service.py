@@ -3,20 +3,25 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import AuthorizationError, ResourceNotFoundError, ValidationError
+from app.core.authorization import authorize_case_access
+from app.core.exceptions import (
+    AuthorizationError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from app.core.identifiers import generate_uuid7
-from app.models.case import Case, CaseParticipant, ParticipantRole, ParticipantStatus
+from app.models.case import CaseParticipant, ParticipantRole, ParticipantStatus
 from app.models.case_collaboration import (
     CaseMessage,
     CaseMessageType,
     MatterRequest,
     MatterRequestStatus,
-    MatterRequestType,
 )
 from app.models.document import Document
 from app.models.notification import NotificationType
 from app.models.task import CaseTask, TaskPriority, TaskSourceType, TaskStatus
-from app.models.user import LawyerProfile, User, UserRole
+from app.models.user import User, UserRole
+from app.models.workflow import CaseHearing, HearingStatus
 from app.schemas.collaboration import (
     CaseMessageCreate,
     CaseMessageResponse,
@@ -27,7 +32,6 @@ from app.schemas.collaboration import (
     MatterRequestReview,
     MatterRequestSubmit,
 )
-from app.core.authorization import authorize_case_access
 from app.services.notification_service import NotificationService
 
 
@@ -70,9 +74,10 @@ class CollaborationService:
             raise AuthorizationError("Only active participants may send messages to this matter.")
 
         # Counsel-only check: only lawyers/admins can mark messages as counsel-only
-        if req.is_counsel_only and user.role != UserRole.ADMIN:
-            if not participant or participant.participant_role != ParticipantRole.LAWYER:
-                raise AuthorizationError("Only legal counsel may send counsel-only matter messages.")
+        if req.is_counsel_only and user.role != UserRole.ADMIN and (
+            not participant or participant.participant_role != ParticipantRole.LAWYER
+        ):
+            raise AuthorizationError("Only legal counsel may send counsel-only matter messages.")
 
         # Validate linked document if provided
         linked_doc_title = None
@@ -599,7 +604,6 @@ class CollaborationService:
             .count()
         )
 
-        from app.models.workflow import CaseHearing, HearingStatus
         next_hearing = (
             self.db.query(CaseHearing)
             .filter(

@@ -1,9 +1,8 @@
 import urllib.parse
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, status
 from sqlalchemy.orm import Session
-
-from uuid import UUID
 
 from app.api.deps import RequireRole, get_current_user, get_db
 from app.core.exceptions import ResourceNotFoundError
@@ -28,7 +27,7 @@ def _sanitize_page_url(raw_url: str) -> str:
         if parsed.fragment:
             clean_path = f"{clean_path}#{parsed.fragment}"
         return clean_path[:500]
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         return "/"
 
 

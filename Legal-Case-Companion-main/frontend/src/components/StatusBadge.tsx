@@ -46,6 +46,8 @@ export function StatusBadge({ status, variant, label, pulse = false }: StatusBad
     case "VERIFIED":
     case "CONFIRMED":
     case "INDEXED":
+    case "PAID":
+    case "SUCCEEDED":
       bg = "rgba(16, 185, 129, 0.12)";
       text = "#10b981";
       border = "rgba(16, 185, 129, 0.3)";
@@ -55,6 +57,7 @@ export function StatusBadge({ status, variant, label, pulse = false }: StatusBad
     case "IN_REVIEW":
     case "SCHEDULED":
     case "ACTIVE":
+    case "ACCEPTED":
       bg = "rgba(59, 130, 246, 0.12)";
       text = "#60a5fa";
       border = "rgba(59, 130, 246, 0.3)";
@@ -65,6 +68,8 @@ export function StatusBadge({ status, variant, label, pulse = false }: StatusBad
     case "PENDING_COURT":
     case "VALIDATING":
     case "MEDIUM":
+    case "REQUESTED":
+    case "CREATED":
       bg = "rgba(245, 158, 11, 0.12)";
       text = "#f59e0b";
       border = "rgba(245, 158, 11, 0.3)";
@@ -76,10 +81,19 @@ export function StatusBadge({ status, variant, label, pulse = false }: StatusBad
     case "QUARANTINED":
     case "REJECTED":
     case "OVERDUE":
+    case "FAILED":
+    case "CANCELLED":
       bg = "rgba(239, 68, 68, 0.12)";
       text = "#ef4444";
       border = "rgba(239, 68, 68, 0.3)";
       dotColor = "#ef4444";
+      break;
+
+    case "REFUNDED":
+      bg = "rgba(168, 85, 247, 0.12)";
+      text = "#c084fc";
+      border = "rgba(168, 85, 247, 0.3)";
+      dotColor = "#c084fc";
       break;
 
     case "STATUTORY_LIMITATION":

@@ -1,20 +1,9 @@
 import uuid
-from datetime import UTC, datetime, timedelta
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models.case import Case, CaseParticipant, ParticipantRole, ParticipantStatus
-from app.models.case_collaboration import (
-    CaseMessage,
-    CaseMessageType,
-    MatterRequest,
-    MatterRequestStatus,
-    MatterRequestType,
-)
 from app.models.document import Document, DocumentCategory, DocumentSecurityStatus
-from app.models.user import User, UserRole
 
 
 def _create_user(client: TestClient, email: str, role: str) -> tuple[str, dict]:
@@ -40,7 +29,7 @@ def test_matter_collaboration_and_requests_lifecycle(client: TestClient, db: Ses
     # 1. Setup client and lawyer
     client_id, client_headers = _create_user(client, "collab_client@lcc.in", "CLIENT")
     lawyer_id, lawyer_headers = _create_user(client, "collab_lawyer@lcc.in", "LAWYER")
-    intruder_id, intruder_headers = _create_user(client, "collab_intruder@lcc.in", "CLIENT")
+    _intruder_id, intruder_headers = _create_user(client, "collab_intruder@lcc.in", "CLIENT")
 
     # 2. Client creates case
     case_res = client.post(
@@ -198,11 +187,12 @@ def test_matter_collaboration_and_requests_lifecycle(client: TestClient, db: Ses
 
 def test_counsel_only_and_cross_case_bola_isolation(client: TestClient, db: Session):
     # Setup 2 separate clients with their own cases
-    client_a_id, client_a_headers = _create_user(client, "client_a@lcc.in", "CLIENT")
-    client_b_id, client_b_headers = _create_user(client, "client_b@lcc.in", "CLIENT")
+    _client_a_id, client_a_headers = _create_user(client, "client_a@lcc.in", "CLIENT")
+    _client_b_id, client_b_headers = _create_user(client, "client_b@lcc.in", "CLIENT")
 
     case_a = client.post("/api/v1/cases", json={"title": "Case A", "description": "Matter A"}, headers=client_a_headers).json()["id"]
     case_b = client.post("/api/v1/cases", json={"title": "Case B", "description": "Matter B"}, headers=client_b_headers).json()["id"]
+    assert case_b is not None
 
     # Client A creates a message in Case A
     res_a = client.post(
@@ -240,4 +230,70 @@ def test_counsel_only_and_cross_case_bola_isolation(client: TestClient, db: Sess
         headers=client_b_headers,
     )
     assert res_b_part.status_code in (403, 404)
+
+
+def test_collaboration_pydantic_schema_validation_and_openapi(client: TestClient):
+    _client_id, client_headers = _create_user(client, "typed_collab_client@lcc.in", "CLIENT")
+    case_res = client.post(
+        "/api/v1/cases",
+        json={"title": "Schema Validation Case", "description": "Testing Pydantic schema rejection"},
+        headers=client_headers,
+    )
+    case_id = case_res.json()["id"]
+
+    # 1. Message missing required "content" -> 422
+    res_no_content = client.post(
+        f"/api/v1/cases/{case_id}/collaboration/messages",
+        json={"message_type": "GENERAL"},
+        headers=client_headers,
+    )
+    assert res_no_content.status_code == 422
+
+    # 2. Message empty content (min_length=1) -> 422
+    res_empty_content = client.post(
+        f"/api/v1/cases/{case_id}/collaboration/messages",
+        json={"content": ""},
+        headers=client_headers,
+    )
+    assert res_empty_content.status_code == 422
+
+    # 3. Message with extra forbidden fields (extra="forbid") -> 422
+    res_extra_field = client.post(
+        f"/api/v1/cases/{case_id}/collaboration/messages",
+        json={"content": "Valid message", "unrecognized_injection": "attack"},
+        headers=client_headers,
+    )
+    assert res_extra_field.status_code == 422
+
+    # 4. Matter Request missing title -> 422
+    res_req_no_title = client.post(
+        f"/api/v1/cases/{case_id}/collaboration/requests",
+        json={"description": "Missing title field"},
+        headers=client_headers,
+    )
+    assert res_req_no_title.status_code == 422
+
+    # 5. Matter Request invalid request_type -> 422
+    res_req_bad_type = client.post(
+        f"/api/v1/cases/{case_id}/collaboration/requests",
+        json={"title": "Valid Title", "description": "Valid Description", "request_type": "NON_EXISTENT"},
+        headers=client_headers,
+    )
+    assert res_req_bad_type.status_code == 422
+
+    # 6. Verify OpenAPI schema reflects typed models
+    openapi_res = client.get("/api/v1/openapi.json")
+    assert openapi_res.status_code == 200
+    schema = openapi_res.json()
+    paths = schema["paths"]
+
+    # Check POST /cases/{case_id}/collaboration/messages
+    msg_post_op = paths["/api/v1/cases/{case_id}/collaboration/messages"]["post"]
+    assert "CaseMessageCreate" in str(msg_post_op["requestBody"])
+    assert "CaseMessageResponse" in str(msg_post_op["responses"]["201"])
+
+    # Check POST /cases/{case_id}/collaboration/requests
+    req_post_op = paths["/api/v1/cases/{case_id}/collaboration/requests"]["post"]
+    assert "MatterRequestCreate" in str(req_post_op["requestBody"])
+    assert "MatterRequestResponse" in str(req_post_op["responses"]["201"])
 

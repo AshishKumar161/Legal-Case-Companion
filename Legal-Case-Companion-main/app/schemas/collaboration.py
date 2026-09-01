@@ -9,7 +9,6 @@ from app.models.case_collaboration import (
     MatterRequestType,
 )
 
-
 # ---------------------------------------------------------------------------
 # CASE MESSAGES / FORMAL INBOX
 # ---------------------------------------------------------------------------

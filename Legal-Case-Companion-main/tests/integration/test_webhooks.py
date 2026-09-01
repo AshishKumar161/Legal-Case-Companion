@@ -287,13 +287,13 @@ def test_stripe_webhook_invalid_signature(client: TestClient):
         "data": {"object": {"id": "pi_test"}},
     }
     # 1. Missing signature header
-    response = client.post("/api/v1/payments/webhooks/stripe", json=payload)
+    response = client.post("/api/v1/webhooks/stripe", json=payload)
     assert response.status_code == 401
 
     # 2. Forged signature
     sig_header, raw_body = _make_stripe_sig(payload, secret="wrong_secret")
     response = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": sig_header, "Content-Type": "application/json"},
         content=raw_body,
     )
@@ -303,7 +303,7 @@ def test_stripe_webhook_invalid_signature(client: TestClient):
     old_time = int(datetime.now(UTC).timestamp()) - 400
     sig_header_old, raw_body_old = _make_stripe_sig(payload, timestamp=old_time)
     response = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={
             "Stripe-Signature": sig_header_old,
             "Content-Type": "application/json",
@@ -316,7 +316,7 @@ def test_stripe_webhook_invalid_signature(client: TestClient):
     valid_sig, raw_body = _make_stripe_sig(payload)
     tampered_body = json.dumps({**payload, "tampered": True}).encode("utf-8")
     response = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": valid_sig, "Content-Type": "application/json"},
         content=tampered_body,
     )
@@ -341,8 +341,7 @@ def test_stripe_webhook_success(client: TestClient, db: Session):
         password_hash=hash_password("pass"),
         role=UserRole.LAWYER,
     )
-    db.add(client_user)
-    db.add(lawyer_user)
+    db.add_all([client_user, lawyer_user])
     db.commit()
 
     client_profile = ClientProfile(
@@ -352,7 +351,7 @@ def test_stripe_webhook_success(client: TestClient, db: Session):
         id=generate_uuid7(),
         user_id=lawyer_user.id,
         full_name="WH Lawyer",
-        consultation_fee=5000.0,
+        consultation_fee=1000.0,
     )
     db.add(client_profile)
     db.add(lawyer_profile)
@@ -362,10 +361,10 @@ def test_stripe_webhook_success(client: TestClient, db: Session):
         id=generate_uuid7(),
         client_id=client_profile.id,
         lawyer_id=lawyer_profile.id,
+        status=ConsultationStatus.REQUESTED,
         scheduled_at=datetime.now(UTC),
         duration_minutes=30,
-        status=ConsultationStatus.REQUESTED,
-        fee_amount=5000.0,
+        fee_amount=1000.0,
         currency="INR",
     )
     db.add(consultation)
@@ -375,7 +374,7 @@ def test_stripe_webhook_success(client: TestClient, db: Session):
         id=payment_id,
         consultation_id=consultation.id,
         payer_user_id=client_user.id,
-        amount=5000.0,
+        amount=1000.0,
         currency="INR",
         status=PaymentStatus.CREATED,
         provider="stripe",
@@ -393,7 +392,7 @@ def test_stripe_webhook_success(client: TestClient, db: Session):
     sig_header, raw_body = _make_stripe_sig(payload)
 
     response = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": sig_header, "Content-Type": "application/json"},
         content=raw_body,
     )
@@ -406,9 +405,23 @@ def test_stripe_webhook_success(client: TestClient, db: Session):
 
     # Idempotent replay of same event
     response2 = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": sig_header, "Content-Type": "application/json"},
         content=raw_body,
     )
     assert response2.status_code == 200
     assert response2.json()["status"] == "already_processed"
+
+
+def test_duplicate_payments_webhook_route_removed(client: TestClient):
+    """
+    Verifies that the duplicate registration /api/v1/payments/webhooks/stripe has been
+    completely removed and returns 404.
+    """
+    payload = {
+        "id": "evt_test",
+        "type": "payment_intent.succeeded",
+        "data": {"object": {"id": "pi_test"}},
+    }
+    response = client.post("/api/v1/payments/webhooks/stripe", json=payload)
+    assert response.status_code == 404

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.authorization import authorize_case_access
 from app.core.exceptions import ResourceNotFoundError
 from app.core.identifiers import generate_uuid7
-from app.models.ai import AIMessage, AIMessageRole, DocumentChunk
+from app.models.ai import AIConversation, AIMessage, AIMessageRole, DocumentChunk
 from app.models.case_intelligence import (
     CaseChronologyEvent,
     CaseClaimDefense,
@@ -461,7 +461,6 @@ class CaseIntelligenceService:
 
         # 10. Scan User-Reported Conversation Findings
         if req.include_conversations:
-            from app.models.ai import AIConversation
             user_msgs = (
                 self.db.query(AIMessage)
                 .join(AIConversation, AIConversation.id == AIMessage.conversation_id)

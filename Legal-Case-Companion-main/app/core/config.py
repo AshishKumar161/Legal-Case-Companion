@@ -90,11 +90,18 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str | None = None
 
     # Email Configuration
-    EMAIL_PROVIDER: str = "console"  # console, sendgrid, ses
+    EMAIL_PROVIDER: str = "console"  # console, smtp, sendgrid, ses
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_TLS: bool = True
+    SMTP_SSL: bool = False
     SENDGRID_API_KEY: str | None = None
     SES_ACCESS_KEY_ID: str | None = None
     SES_SECRET_ACCESS_KEY: str | None = None
     EMAIL_FROM: str = "noreply@legalcasecompanion.com"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     # Google OAuth / OpenID Connect Configuration
     GOOGLE_OAUTH_ENABLED: bool = False

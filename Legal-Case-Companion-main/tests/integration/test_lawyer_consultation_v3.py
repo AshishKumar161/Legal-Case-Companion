@@ -501,7 +501,7 @@ def test_consultation_payment_and_webhook_flow(client: TestClient, db: Session):
     }
     wh_sig, wh_raw = _make_stripe_sig(webhook_payload)
     res_wh = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": wh_sig, "Content-Type": "application/json"},
         content=wh_raw,
     )
@@ -510,7 +510,7 @@ def test_consultation_payment_and_webhook_flow(client: TestClient, db: Session):
 
     # Webhook idempotency check (duplicate webhook)
     res_wh_dup = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": wh_sig, "Content-Type": "application/json"},
         content=wh_raw,
     )

@@ -33,18 +33,21 @@ export function Sidebar({
     { label: "Overview", href: "/dashboard", icon: "📊" },
     { label: "My Matters", href: "/dashboard", icon: "⚖" },
     { label: "Find Lawyers", href: "/lawyers", icon: "🔍" },
+    { label: "Account & Settings", href: "/settings", icon: "⚙" },
   ];
 
   const lawyerNav = [
     { label: "Practice Overview", href: "/lawyer/dashboard", icon: "📈" },
     { label: "Profile & Slots", href: "/lawyer/profile", icon: "📅" },
     { label: "Lawyer Directory", href: "/lawyers", icon: "👥" },
+    { label: "Account & Settings", href: "/settings", icon: "⚙" },
     { label: "Client View", href: "/dashboard", icon: "📁" },
   ];
 
   const adminNav = [
     { label: "Console Overview", href: "/admin/dashboard", icon: "🛡" },
     { label: "Lawyer Directory", href: "/lawyers", icon: "⚖" },
+    { label: "Account & Settings", href: "/settings", icon: "⚙" },
     { label: "Client Workspace", href: "/dashboard", icon: "📁" },
   ];
 
@@ -151,17 +154,17 @@ export function Sidebar({
 
         {/* User Footer Summary */}
         <div className={styles.sidebarFooter}>
-          <div className={styles.userSummary}>
+          <Link href="/settings" className={styles.userSummary} style={{ textDecoration: "none", color: "inherit", width: "100%" }}>
             <div className={styles.userAvatar}>
               {user?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || "U"}
             </div>
             {!collapsed && (
               <div className={styles.userInfo}>
                 <div className={styles.userName}>{user?.full_name || user?.email?.split("@")[0]}</div>
-                <div className={styles.userRole}>{user?.role || "CLIENT"}</div>
+                <div className={styles.userRole}>{user?.role || "CLIENT"} ⚙</div>
               </div>
             )}
-          </div>
+          </Link>
         </div>
       </aside>
     </>

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.schemas.ai import AIResearchRequest, AIResearchResponse
+from app.services.ai_conversation_service import check_prompt_injection
 from app.services.ai_provider import AIProvider, get_ai_provider
 from app.services.case_service import CaseService
 from app.services.retrieval_service import RetrievalService
@@ -27,8 +28,6 @@ class AIResearchService:
         chunks = self.retrieval_service.retrieve_evidence(user, case_id, req)
 
         # 2. PROMPT INJECTION GUARD
-        from app.services.ai_conversation_service import check_prompt_injection
-
         is_injection = check_prompt_injection(req.query)
         if not is_injection:
             for chunk in chunks:

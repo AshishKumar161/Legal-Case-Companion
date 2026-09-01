@@ -16,9 +16,11 @@ from app.core.csrf import (
 from app.core.exceptions import AuthenticationError
 from app.core.oauth_security import verify_oauth_state
 from app.db.database import get_db
-from app.models.auth import UserExternalIdentity
 from app.models.user import User
 from app.schemas.auth import (
+    EmailVerificationConfirm,
+    EmailVerificationRequest,
+    EmailVerificationResponse,
     ExternalIdentityResponse,
     GoogleAuthUrlResponse,
     GoogleCallbackRequest,
@@ -26,6 +28,9 @@ from app.schemas.auth import (
     GoogleLinkRequest,
     LoginRequest,
     PasswordChangeRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    PasswordResetResponse,
     Token,
 )
 from app.schemas.user import UserCreate, UserResponse
@@ -145,6 +150,76 @@ def change_password(
     auth_service = AuthService(db)
     auth_service.change_password(current_user.id, req)
     return {"detail": "Password changed successfully"}
+
+
+@router.post("/password/reset/request", response_model=PasswordResetResponse)
+@router.post("/forgot-password", response_model=PasswordResetResponse)
+@limiter.limit("5/minute")
+def request_password_reset(
+    request: Request,
+    req: PasswordResetRequest,
+    db: Session = Depends(get_db),
+):
+    """Requests a password reset link with anti-enumeration defense.
+
+    Returns an identical success message whether or not the email address exists.
+    """
+    auth_service = AuthService(db)
+    ip_address = request.client.host if request.client else None
+    auth_service.request_password_reset(req.email, ip_address=ip_address)
+    return {
+        "detail": "If an account exists with this email address, a password reset link has been dispatched."
+    }
+
+
+@router.post("/password/reset/confirm", response_model=PasswordResetResponse)
+@router.post("/reset-password", response_model=PasswordResetResponse)
+@limiter.limit("5/minute")
+def confirm_password_reset(
+    request: Request,
+    req: PasswordResetConfirm,
+    db: Session = Depends(get_db),
+):
+    """Validates the reset token, updates password, and revokes all active sessions."""
+    auth_service = AuthService(db)
+    ip_address = request.client.host if request.client else None
+    auth_service.confirm_password_reset(
+        token=req.token,
+        new_password=req.new_password,
+        ip_address=ip_address,
+    )
+    return {
+        "detail": "Password has been successfully reset. Please log in with your new credentials."
+    }
+
+
+@router.post("/email/verify/request", response_model=EmailVerificationResponse)
+@limiter.limit("5/minute")
+def request_email_verification(
+    request: Request,
+    req: EmailVerificationRequest,
+    db: Session = Depends(get_db),
+):
+    """Requests an email verification token with anti-enumeration protection."""
+    auth_service = AuthService(db)
+    ip_address = request.client.host if request.client else None
+    auth_service.request_email_verification(req.email, ip_address=ip_address)
+    return {
+        "detail": "If an account exists with this email address, a verification link has been dispatched."
+    }
+
+
+@router.post("/email/verify/confirm", response_model=EmailVerificationResponse)
+@limiter.limit("10/minute")
+def confirm_email_verification(
+    request: Request,
+    req: EmailVerificationConfirm,
+    db: Session = Depends(get_db),
+):
+    """Confirms email verification token."""
+    auth_service = AuthService(db)
+    auth_service.confirm_email_verification(req.token)
+    return {"detail": "Email address has been successfully verified."}
 
 
 # ==========================================
@@ -347,10 +422,6 @@ def get_user_identities(
     current_user: User = Depends(get_current_user),
 ):
     """Returns all external identities linked to the authenticated user."""
-    identities = (
-        db.query(UserExternalIdentity)
-        .filter(UserExternalIdentity.user_id == current_user.id)
-        .all()
-    )
-    return identities
+    auth_service = AuthService(db)
+    return auth_service.get_user_identities(current_user.id)
 

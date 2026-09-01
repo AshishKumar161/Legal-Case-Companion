@@ -126,7 +126,7 @@ class LegalCitationNormalizer:
     @classmethod
     def extract_all_citations(cls, text: str) -> list[NormalizedLegalCitation]:
         """Extracts and normalizes all recognized legal references from a block of text."""
-        citations = []
+        citations: list[NormalizedLegalCitation] = []
         if not text:
             return citations
 

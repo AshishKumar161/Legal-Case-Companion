@@ -2,6 +2,7 @@ import uuid
 from datetime import UTC, date, datetime, time, timedelta, timezone
 from typing import ClassVar
 
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -154,8 +155,6 @@ class ConsultationService:
         target_date: date | None = None,
         duration_minutes: int = 30,
     ) -> list[dict]:
-        from sqlalchemy import or_
-
         if duration_minutes < 15 or duration_minutes > 240:
             raise ValidationError("Slot duration must be between 15 and 240 minutes")
 
@@ -266,7 +265,7 @@ class ConsultationService:
         req_start: datetime,
         req_end: datetime,
         exclude_consultation_id: uuid.UUID | None = None,
-    ):
+    ) -> None:
         query = self.db.query(Consultation).filter(
             Consultation.lawyer_id == lawyer_profile_id,
             Consultation.status.in_(self.BLOCKING_CONSULTATION_STATUSES),
@@ -302,8 +301,6 @@ class ConsultationService:
         )
         if not client_profile:
             raise ResourceNotFoundError("Client profile not found")
-
-        from sqlalchemy import or_
 
         # Acquire pessimistic row lock on lawyer profile for concurrency safety
         lawyer_profile = (
@@ -462,8 +459,11 @@ class ConsultationService:
         consultation = self._get_consultation(consultation_id)
         self._authorize_consultation_access(user, consultation)
 
-        if user.role != UserRole.LAWYER:
+        if user.role != UserRole.LAWYER and user.role != UserRole.ADMIN:
             raise AuthorizationError("Only lawyers can accept consultations")
+
+        if consultation.status == ConsultationStatus.ACCEPTED:
+            return consultation  # Idempotent
 
         if consultation.status != ConsultationStatus.REQUESTED:
             raise ValidationError(
@@ -507,8 +507,11 @@ class ConsultationService:
         consultation = self._get_consultation(consultation_id)
         self._authorize_consultation_access(user, consultation)
 
-        if user.role != UserRole.LAWYER:
+        if user.role != UserRole.LAWYER and user.role != UserRole.ADMIN:
             raise AuthorizationError("Only lawyers can reject consultations")
+
+        if consultation.status == ConsultationStatus.REJECTED:
+            return consultation  # Idempotent
 
         if consultation.status != ConsultationStatus.REQUESTED:
             raise ValidationError(
@@ -564,7 +567,7 @@ class ConsultationService:
             ConsultationStatus.NO_SHOW,
         ):
             raise ValidationError(
-                f"Cannot schedule consultation in '{consultation.status.value}' state"
+                f"Cannot schedule consultation in terminal '{consultation.status.value}' state"
             )
 
         dur = duration_minutes if (duration_minutes is not None and duration_minutes > 0) else consultation.duration_minutes
@@ -624,16 +627,93 @@ class ConsultationService:
 
         return consultation
 
-    def confirm_consultation(
-        self, user: User, consultation_id: uuid.UUID
+    def reschedule_consultation(
+        self,
+        user: User,
+        consultation_id: uuid.UUID,
+        scheduled_at: datetime,
+        duration_minutes: int | None = None,
+        reason: str | None = None,
     ) -> Consultation:
-        """
-        Maintained for backwards compatibility: confirms and schedules consultation.
-        """
         consultation = self._get_consultation(consultation_id)
         self._authorize_consultation_access(user, consultation)
 
-        if user.role != UserRole.LAWYER:
+        if consultation.status in (
+            ConsultationStatus.COMPLETED,
+            ConsultationStatus.CANCELLED,
+            ConsultationStatus.REJECTED,
+            ConsultationStatus.NO_SHOW,
+        ):
+            raise ValidationError(
+                f"Cannot reschedule consultation in terminal '{consultation.status.value}' state"
+            )
+
+        dur = duration_minutes if (duration_minutes is not None and duration_minutes > 0) else consultation.duration_minutes
+        req_start, req_end = self._validate_slot_and_business_hours(
+            scheduled_at, dur, lawyer_profile_id=consultation.lawyer_id
+        )
+
+        # Pessimistic row lock to prevent race conditions during slot reassignment
+        self.db.query(LawyerProfile).filter(LawyerProfile.id == consultation.lawyer_id).with_for_update().first()
+
+        # Overlap check excluding this consultation
+        self._assert_no_overlapping_consultation(
+            consultation.lawyer_id, req_start, req_end, exclude_consultation_id=consultation.id
+        )
+
+        old_scheduled_at = consultation.scheduled_at
+        consultation.scheduled_at = req_start
+        consultation.duration_minutes = dur
+        if consultation.status in (
+            ConsultationStatus.ACCEPTED,
+            ConsultationStatus.PAID,
+            ConsultationStatus.SCHEDULED,
+        ):
+            consultation.status = ConsultationStatus.SCHEDULED
+
+        self.db.commit()
+        self.db.refresh(consultation)
+
+        self._log_audit(
+            "CONSULTATION_RESCHEDULED",
+            user.id,
+            {
+                "consultation_id": str(consultation.id),
+                "old_scheduled_at": old_scheduled_at.isoformat() if old_scheduled_at else None,
+                "new_scheduled_at": req_start.isoformat(),
+                "reason": reason or "",
+            },
+        )
+
+        if consultation.case_id:
+            self.case_service.record_case_activity(
+                consultation.case_id,
+                user.id,
+                "CONSULTATION_RESCHEDULED",
+                "Consultation was rescheduled",
+                {"consultation_id": str(consultation.id), "new_scheduled_at": req_start.isoformat()},
+            )
+
+        for uid in (consultation.client.user_id, consultation.lawyer.user_id):
+            self.notification_service.create_notification(
+                user_id=uid,
+                type=NotificationType.CONSULTATION_SCHEDULED,
+                title="Consultation Rescheduled",
+                message=f"Consultation was rescheduled to {consultation.scheduled_at.strftime('%Y-%m-%d %H:%M UTC')}.",
+                consultation_id=consultation.id,
+                case_id=consultation.case_id,
+                event_id=f"consultation_rescheduled_{consultation.id}_{int(req_start.timestamp())}_{uid}",
+            )
+
+        return consultation
+
+    def confirm_consultation(
+        self, user: User, consultation_id: uuid.UUID
+    ) -> Consultation:
+        consultation = self._get_consultation(consultation_id)
+        self._authorize_consultation_access(user, consultation)
+
+        if user.role != UserRole.LAWYER and user.role != UserRole.ADMIN:
             raise AuthorizationError("Only lawyers can confirm consultations")
 
         # State machine enforcement
@@ -691,14 +771,16 @@ class ConsultationService:
         consultation = self._get_consultation(consultation_id)
         self._authorize_consultation_access(user, consultation)
 
+        if consultation.status == ConsultationStatus.CANCELLED:
+            return consultation  # Idempotent
+
         if consultation.status in (
             ConsultationStatus.COMPLETED,
-            ConsultationStatus.CANCELLED,
             ConsultationStatus.REJECTED,
             ConsultationStatus.NO_SHOW,
         ):
             raise ValidationError(
-                f"Cannot cancel consultation in {consultation.status} state"
+                f"Cannot cancel consultation in terminal '{consultation.status.value}' state"
             )
 
         consultation.status = ConsultationStatus.CANCELLED
@@ -735,24 +817,85 @@ class ConsultationService:
 
         return consultation
 
+    def mark_no_show(
+        self, user: User, consultation_id: uuid.UUID, reason: str | None = None
+    ) -> Consultation:
+        consultation = self._get_consultation(consultation_id)
+        self._authorize_consultation_access(user, consultation)
+
+        if user.role not in (UserRole.LAWYER, UserRole.ADMIN):
+            raise AuthorizationError(
+                "Only the lawyer or administrator can mark a consultation as no-show"
+            )
+
+        if consultation.status == ConsultationStatus.NO_SHOW:
+            return consultation  # Idempotent
+
+        if consultation.status not in (
+            ConsultationStatus.SCHEDULED,
+            ConsultationStatus.IN_PROGRESS,
+            ConsultationStatus.ACCEPTED,
+            ConsultationStatus.PAID,
+        ):
+            raise ValidationError(
+                f"Cannot mark consultation as no-show in '{consultation.status.value}' state"
+            )
+
+        consultation.status = ConsultationStatus.NO_SHOW
+        consultation.rejection_reason = reason or "Participant did not attend"
+        self.db.commit()
+        self.db.refresh(consultation)
+
+        self._log_audit(
+            "CONSULTATION_NO_SHOW",
+            user.id,
+            {"consultation_id": str(consultation.id), "reason": reason or ""},
+        )
+
+        if consultation.case_id:
+            self.case_service.record_case_activity(
+                consultation.case_id,
+                user.id,
+                "CONSULTATION_NO_SHOW",
+                "Consultation was marked as no-show",
+                {"consultation_id": str(consultation.id)},
+            )
+
+        for uid in (consultation.client.user_id, consultation.lawyer.user_id):
+            self.notification_service.create_notification(
+                user_id=uid,
+                type=NotificationType.CONSULTATION_CANCELLED,
+                title="Consultation Marked No-Show",
+                message=f"Consultation was marked as no-show: {reason or 'Participant did not attend'}.",
+                consultation_id=consultation.id,
+                case_id=consultation.case_id,
+                event_id=f"consultation_noshow_{consultation.id}_{uid}",
+            )
+
+        return consultation
+
     def complete_consultation(
         self, user: User, consultation_id: uuid.UUID
     ) -> Consultation:
         consultation = self._get_consultation(consultation_id)
         self._authorize_consultation_access(user, consultation)
 
-        if user.role != UserRole.ADMIN and user.role != UserRole.LAWYER:
+        if user.role not in (UserRole.ADMIN, UserRole.LAWYER):
             raise AuthorizationError(
-                "Only the assigned lawyer can complete the consultation"
+                "Only the assigned lawyer or administrator can complete the consultation"
             )
+
+        if consultation.status == ConsultationStatus.COMPLETED:
+            return consultation  # Idempotent
 
         if consultation.status not in (
             ConsultationStatus.SCHEDULED,
             ConsultationStatus.IN_PROGRESS,
             ConsultationStatus.ACCEPTED,
+            ConsultationStatus.PAID,
         ):
             raise ValidationError(
-                f"Cannot complete consultation in {consultation.status} state. Must be SCHEDULED or IN_PROGRESS."
+                f"Cannot complete consultation in '{consultation.status.value}' state. Must be SCHEDULED or IN_PROGRESS."
             )
 
         consultation.status = ConsultationStatus.COMPLETED

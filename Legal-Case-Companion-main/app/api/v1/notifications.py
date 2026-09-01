@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.schemas.notification import (
+    NotificationBulkDeleteRequest,
+    NotificationBulkDeleteResponse,
     NotificationBulkReadRequest,
     NotificationPreferenceResponse,
     NotificationPreferenceUpdate,
@@ -22,6 +24,8 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 @router.get("", response_model=PaginatedResponse[NotificationResponse])
 def list_notifications(
     is_read: bool | None = None,
+    category: str | None = None,
+    search: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -29,11 +33,16 @@ def list_notifications(
 ):
     """
     List notifications for the current authenticated user.
-    Supports filtering by read/unread status and bounded pagination.
+    Supports filtering by read/unread status, category, keyword search, and bounded pagination.
     """
     service = NotificationService(db)
     return service.list_notifications(
-        current_user, is_read=is_read, skip=skip, limit=limit
+        current_user,
+        is_read=is_read,
+        category=category,
+        search=search,
+        skip=skip,
+        limit=limit,
     )
 
 
@@ -126,6 +135,20 @@ def bulk_mark_as_read(
     service = NotificationService(db)
     updated = service.bulk_mark_as_read(current_user, req.notification_ids)
     return NotificationReadAllResponse(updated_count=updated)
+
+
+@router.post("/bulk-delete", response_model=NotificationBulkDeleteResponse)
+def bulk_delete_notifications(
+    req: NotificationBulkDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Soft-delete a specific list of notifications with strict recipient ownership isolation.
+    """
+    service = NotificationService(db)
+    deleted = service.bulk_delete_notifications(current_user, req.notification_ids)
+    return NotificationBulkDeleteResponse(deleted_count=deleted)
 
 
 @router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)

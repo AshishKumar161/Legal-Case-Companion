@@ -88,7 +88,11 @@ function LoginForm() {
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message);
+        if (err.message.toLowerCase().includes('not configured')) {
+          setError('Google sign-in is currently unavailable in this environment. Please sign in with your email and password.');
+        } else {
+          setError(err.message);
+        }
       } else {
         setError('Failed to initiate Google login');
       }
@@ -172,7 +176,8 @@ function LoginForm() {
           </button>
         </form>
 
-        <div className={styles.authLinks}>
+        <div className={styles.authLinks} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <Link href="/forgot-password" style={{ color: "#8d98ff" }}>Forgot your password?</Link>
           <Link href="/register">Don&apos;t have an account? Sign up</Link>
         </div>
       </div>

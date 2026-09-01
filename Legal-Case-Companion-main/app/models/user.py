@@ -93,6 +93,14 @@ class ClientProfile(Base, TimestampMixin, SoftDeleteMixin):
         "Consultation", back_populates="client", cascade="all, delete-orphan"
     )
 
+    @property
+    def email(self) -> str | None:
+        return self.user.email if self.user else None
+
+    @property
+    def phone(self) -> str | None:
+        return self.user.phone if self.user else None
+
 
 class LawyerProfile(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "lawyer_profiles"
@@ -127,6 +135,14 @@ class LawyerProfile(Base, TimestampMixin, SoftDeleteMixin):
         back_populates="lawyer_profile",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def email(self) -> str | None:
+        return self.user.email if self.user else None
+
+    @property
+    def phone(self) -> str | None:
+        return self.user.phone if self.user else None
 
     @property
     def verification_status(self) -> str:

@@ -124,7 +124,7 @@ class LegalDataPipeline:
         )
 
         is_new_source = source is None
-        if is_new_source:
+        if source is None:
             source = LegalSource(
                 id=generate_uuid7(),
                 canonical_identifier=canonical_id,
@@ -182,6 +182,8 @@ class LegalDataPipeline:
                 parsed_data.get("canonical_url") or raw_source.retrieval_url or source.canonical_url
             )
             self.db.flush()
+
+        assert source is not None
 
         # 3. Process and version provisions / judgment holdings
         provisions_to_embed: list[tuple[LegalSourceVersion, str]] = []

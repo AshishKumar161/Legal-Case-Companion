@@ -212,7 +212,7 @@ def test_consultation_and_payment_notifications(client: TestClient, db: Session)
     }
     sig_wh, raw_wh = _make_stripe_sig(payload)
     res_wh = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": sig_wh, "Content-Type": "application/json"},
         content=raw_wh,
     )

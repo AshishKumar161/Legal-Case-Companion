@@ -7,8 +7,12 @@ from app.models.ai import (
 )
 from app.models.analytics import ProductEvent, ProductEventType
 from app.models.audit import AuditEvent
-from app.models.auth import RefreshTokenSession, UserExternalIdentity
-from app.models.availability import DayOfWeek, LawyerAvailability
+from app.models.auth import (
+    EmailVerificationToken,
+    PasswordResetToken,
+    RefreshTokenSession,
+    UserExternalIdentity,
+)
 from app.models.base import Base
 from app.models.case import (
     Case,
@@ -143,6 +147,7 @@ __all__ = [
     "DocumentProcessingStatus",
     "DocumentSecurityStatus",
     "DocumentType",
+    "EmailVerificationToken",
     "EvidenceGapStatus",
     "EvidenceGapType",
     "FactSourceType",
@@ -171,6 +176,7 @@ __all__ = [
     "NotificationType",
     "ParticipantRole",
     "ParticipantStatus",
+    "PasswordResetToken",
     "Payment",
     "PaymentStatus",
     "ProductEvent",

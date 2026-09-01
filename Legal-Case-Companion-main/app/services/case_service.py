@@ -29,12 +29,20 @@ from app.models.case import (
     ParticipantRole,
     ParticipantStatus,
 )
+from app.models.case_intelligence import (
+    CaseEvidenceGap,
+    CaseFact,
+    CaseRiskIndicator,
+    LegalIssue,
+    RiskSeverity,
+)
 from app.models.consultation import Consultation, ConsultationStatus
-from app.models.document import Document
+from app.models.document import Document, DocumentSecurityStatus
 from app.models.note import CaseNote, CaseNoteVisibility
 from app.models.notification import NotificationType
 from app.models.task import CaseTask, TaskPriority, TaskSourceType, TaskStatus
-from app.models.user import AccountStatus, User, UserRole
+from app.models.user import AccountStatus, ClientProfile, LawyerProfile, User, UserRole
+from app.models.workflow import CaseDeadline, DeadlineStatus
 from app.schemas.case import (
     CaseCreate,
     CaseUpdate,
@@ -46,6 +54,7 @@ from app.schemas.note import CaseNoteCreate, CaseNoteUpdate
 from app.schemas.task import CaseTaskCreate, CaseTaskUpdate
 from app.services.auth_service import AuthService
 from app.services.notification_service import NotificationService
+from app.services.user_service import UserService
 
 ALLOWED_CASE_TRANSITIONS: dict[CaseStatus, set[CaseStatus]] = {
     CaseStatus.OPEN: {
@@ -225,8 +234,6 @@ class CaseService:
             None,
         )
         if lawyer_participant:
-            from app.models.user import LawyerProfile
-
             lawyer = (
                 self.db.query(LawyerProfile)
                 .filter(LawyerProfile.user_id == lawyer_participant.user_id)
@@ -240,12 +247,11 @@ class CaseService:
             .all()
         )
         doc_count = len(docs_rows)
-        from app.models.document import DocumentSecurityStatus
         safe_docs = sum(1 for d in docs_rows if d[0] == DocumentSecurityStatus.SAFE)
         pending_docs = sum(1 for d in docs_rows if d[0] in (DocumentSecurityStatus.PENDING, DocumentSecurityStatus.VALIDATING))
         quarantined_docs = sum(1 for d in docs_rows if d[0] in (DocumentSecurityStatus.QUARANTINED, DocumentSecurityStatus.SCANNING))
         rejected_docs = sum(1 for d in docs_rows if d[0] == DocumentSecurityStatus.REJECTED)
-        by_category = {}
+        by_category: dict[str, int] = {}
         for d in docs_rows:
             cat_str = d[1].value if hasattr(d[1], "value") else str(d[1])
             by_category[cat_str] = by_category.get(cat_str, 0) + 1
@@ -341,7 +347,6 @@ class CaseService:
                 }
             )
 
-        from app.models.workflow import CaseDeadline, DeadlineStatus
         upcoming_case_deadlines = (
             self.db.query(CaseDeadline)
             .filter(
@@ -354,14 +359,14 @@ class CaseService:
             .limit(5)
             .all()
         )
-        for d in upcoming_case_deadlines:
+        for cd in upcoming_case_deadlines:
             upcoming_deadlines.append(
                 {
                     "type": "CASE_DEADLINE",
-                    "id": str(d.id),
-                    "title": d.title,
-                    "due_date": d.deadline_at.isoformat(),
-                    "deadline_type": d.deadline_type.value if hasattr(d.deadline_type, "value") else str(d.deadline_type),
+                    "id": str(cd.id),
+                    "title": cd.title,
+                    "due_date": cd.deadline_at.isoformat(),
+                    "deadline_type": cd.deadline_type.value if hasattr(cd.deadline_type, "value") else str(cd.deadline_type),
                 }
             )
 
@@ -373,13 +378,6 @@ class CaseService:
         notes_count = notes_query.count()
 
         # Intelligence summary from persisted records (zero LLM calls)
-        from app.models.case_intelligence import (
-            CaseEvidenceGap,
-            CaseFact,
-            CaseRiskIndicator,
-            LegalIssue,
-            RiskSeverity,
-        )
         facts_count = self.db.query(func.count(CaseFact.id)).filter(CaseFact.case_id == case_id, CaseFact.deleted_at.is_(None)).scalar() or 0
         issues_count = self.db.query(func.count(LegalIssue.id)).filter(LegalIssue.case_id == case_id, LegalIssue.deleted_at.is_(None)).scalar() or 0
         gaps_count = self.db.query(func.count(CaseEvidenceGap.id)).filter(CaseEvidenceGap.case_id == case_id, CaseEvidenceGap.deleted_at.is_(None)).scalar() or 0
@@ -514,8 +512,6 @@ class CaseService:
         self, user: User, case_id: uuid.UUID, req: ParticipantAdd
     ) -> CaseParticipant:
         authorize_participant_management(self.db, user, case_id)
-
-        from app.services.user_service import UserService
 
         user_service = UserService(self.db)
         target_user = user_service.get_user_by_id(req.user_id)
@@ -653,8 +649,6 @@ class CaseService:
         authorize_participant_management(self.db, user, case_id)
 
         # 2. Target lawyer user validation
-        from app.services.user_service import UserService
-
         user_service = UserService(self.db)
         target_user = user_service.get_user_by_id(req.lawyer_user_id)
         if not target_user:
@@ -669,8 +663,6 @@ class CaseService:
             raise ValidationError("Cannot grant access to an inactive or suspended lawyer")
 
         # 3. Target lawyer profile & verification status check
-        from app.models.user import LawyerProfile
-
         lawyer_profile = (
             self.db.query(LawyerProfile)
             .filter(
@@ -684,8 +676,6 @@ class CaseService:
 
         # 4. Consultation relationship check
         # Must have an existing valid consultation between this client and lawyer, or linked to this case
-        from app.models.user import ClientProfile
-
         client_profile = (
             self.db.query(ClientProfile)
             .filter(ClientProfile.user_id == user.id)
@@ -893,8 +883,6 @@ class CaseService:
 
         # Validation matching add_participant
         if requested_role == ParticipantRole.LAWYER:
-            from app.services.user_service import UserService
-
             user_service = UserService(self.db)
             target_user = user_service.get_user_by_id(target_user_id)
             if target_user and target_user.role != UserRole.LAWYER:
@@ -903,8 +891,6 @@ class CaseService:
                 )
 
         if requested_role == ParticipantRole.OWNER:
-            from app.services.user_service import UserService
-
             user_service = UserService(self.db)
             target_user = user_service.get_user_by_id(target_user_id)
             if target_user and target_user.role not in (

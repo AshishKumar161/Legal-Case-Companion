@@ -195,6 +195,8 @@ class NotificationService:
         self,
         user: User,
         is_read: bool | None = None,
+        category: str | None = None,
+        search: str | None = None,
         skip: int = 0,
         limit: int = 20,
     ) -> dict:
@@ -205,6 +207,65 @@ class NotificationService:
 
         if is_read is not None:
             query = query.filter(Notification.is_read == is_read)
+
+        if category:
+            cat_upper = category.strip().upper()
+            if cat_upper in ("CASE", "CASES"):
+                case_types = [
+                    NotificationType.CASE_CREATED,
+                    NotificationType.CASE_STATUS_CHANGED,
+                    NotificationType.PARTICIPANT_ADDED,
+                    NotificationType.LAWYER_ASSIGNED,
+                    NotificationType.DOCUMENT_READY,
+                    NotificationType.DOCUMENT_PROCESSING_FAILED,
+                    NotificationType.AI_REVIEW_REQUIRED,
+                    NotificationType.MATTER_REQUEST_CREATED,
+                    NotificationType.MATTER_REQUEST_SUBMITTED,
+                    NotificationType.MATTER_REQUEST_REVIEWED,
+                    NotificationType.MATTER_MESSAGE_RECEIVED,
+                ]
+                query = query.filter(Notification.type.in_(case_types))
+            elif cat_upper in ("TASK", "TASKS", "WORKFLOW"):
+                task_types = [
+                    NotificationType.TASK_ASSIGNED,
+                    NotificationType.TASK_DUE_SOON,
+                    NotificationType.TASK_OVERDUE,
+                    NotificationType.TASK_COMPLETED,
+                    NotificationType.DEADLINE_APPROACHING,
+                    NotificationType.DEADLINE_OVERDUE,
+                    NotificationType.HEARING_REMINDER,
+                ]
+                query = query.filter(Notification.type.in_(task_types))
+            elif cat_upper in ("CONSULTATION", "CONSULTATIONS"):
+                consultation_types = [
+                    NotificationType.CONSULTATION_REQUESTED,
+                    NotificationType.CONSULTATION_ACCEPTED,
+                    NotificationType.CONSULTATION_REJECTED,
+                    NotificationType.CONSULTATION_SCHEDULED,
+                    NotificationType.CONSULTATION_CANCELLED,
+                    NotificationType.CONSULTATION_COMPLETED,
+                ]
+                query = query.filter(Notification.type.in_(consultation_types))
+            elif cat_upper in ("PAYMENT", "PAYMENTS"):
+                payment_types = [
+                    NotificationType.PAYMENT_CREATED,
+                    NotificationType.PAYMENT_SUCCEEDED,
+                    NotificationType.PAYMENT_FAILED,
+                    NotificationType.PAYMENT_REFUNDED,
+                ]
+                query = query.filter(Notification.type.in_(payment_types))
+            else:
+                try:
+                    exact_type = NotificationType(cat_upper)
+                    query = query.filter(Notification.type == exact_type)
+                except ValueError:
+                    pass
+
+        if search and search.strip():
+            term = f"%{search.strip()}%"
+            query = query.filter(
+                (Notification.title.ilike(term)) | (Notification.message.ilike(term))
+            )
 
         total = query.count()
         items = (
@@ -297,3 +358,21 @@ class NotificationService:
         notification = self._get_user_notification(user, notification_id)
         notification.deleted_at = datetime.now(UTC)
         self.db.commit()
+
+    def bulk_delete_notifications(
+        self, user: User, notification_ids: list[uuid.UUID]
+    ) -> int:
+        if not notification_ids:
+            return 0
+        now = datetime.now(UTC)
+        deleted = (
+            self.db.query(Notification)
+            .filter(
+                Notification.user_id == user.id,
+                Notification.id.in_(notification_ids),
+                Notification.deleted_at.is_(None),
+            )
+            .update({"deleted_at": now}, synchronize_session=False)
+        )
+        self.db.commit()
+        return deleted

@@ -1,13 +1,7 @@
 import uuid
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-
-from app.core.identifiers import generate_uuid7
-from app.models.case import Case, CaseParticipant, ParticipantRole
-from app.models.document import Document, DocumentCategory, DocumentProcessingStatus, DocumentSecurityStatus
-from app.models.user import User, UserRole
 
 
 def _create_user(client: TestClient, email: str, role: str) -> tuple[str, dict]:
@@ -33,8 +27,8 @@ def _create_user(client: TestClient, email: str, role: str) -> tuple[str, dict]:
 # FAILURE MODE 1: CLIENT ACCESS CONTROL, BOLA & FILE BOUNDS
 # ==============================================================================
 def test_client_failure_modes_and_bola_containment(client: TestClient, db: Session):
-    client_a_id, client_a_headers = _create_user(client, "victim_client@example.com", "CLIENT")
-    attacker_id, attacker_headers = _create_user(client, "attacker_client@example.com", "CLIENT")
+    _client_a_id, client_a_headers = _create_user(client, "victim_client@example.com", "CLIENT")
+    _attacker_id, attacker_headers = _create_user(client, "attacker_client@example.com", "CLIENT")
 
     # Client A creates a private matter
     case_res = client.post(
@@ -79,8 +73,8 @@ def test_client_failure_modes_and_bola_containment(client: TestClient, db: Sessi
 # ==============================================================================
 def test_lawyer_failure_modes_and_workflow_guards(client: TestClient, db: Session):
     lawyer_a_id, lawyer_a_headers = _create_user(client, "lawyer_a@example.com", "LAWYER")
-    lawyer_b_id, lawyer_b_headers = _create_user(client, "lawyer_b@example.com", "LAWYER")
-    client_id, client_headers = _create_user(client, "matter_owner@example.com", "CLIENT")
+    _lawyer_b_id, lawyer_b_headers = _create_user(client, "lawyer_b@example.com", "LAWYER")
+    _client_id, client_headers = _create_user(client, "matter_owner@example.com", "CLIENT")
 
     # Client creates matter and assigns ONLY Lawyer A
     case_res = client.post(
@@ -118,6 +112,7 @@ def test_lawyer_failure_modes_and_workflow_guards(client: TestClient, db: Sessio
         },
     )
     request_id = req_res.json()["id"]
+    assert request_id is not None
 
     # Reviewing non-existent request ID -> 404
     fake_id = str(uuid.uuid4())
@@ -133,7 +128,7 @@ def test_lawyer_failure_modes_and_workflow_guards(client: TestClient, db: Sessio
 # FAILURE MODE 3: AI CONVERSATION INPUT VALIDATION & ADVERSARIAL RESTRAINTS
 # ==============================================================================
 def test_ai_conversation_input_safety(client: TestClient, db: Session):
-    client_id, client_headers = _create_user(client, "ai_safety_user@example.com", "CLIENT")
+    _client_id, client_headers = _create_user(client, "ai_safety_user@example.com", "CLIENT")
     case_res = client.post(
         "/api/v1/cases",
         headers=client_headers,
@@ -177,7 +172,7 @@ def test_ai_conversation_input_safety(client: TestClient, db: Session):
 # FAILURE MODE 4: PRIVACY-PRESERVING FEEDBACK SANITIZATION
 # ==============================================================================
 def test_feedback_privacy_sanitization(client: TestClient, db: Session):
-    user_id, headers = _create_user(client, "feedback_tester@example.com", "CLIENT")
+    _user_id, headers = _create_user(client, "feedback_tester@example.com", "CLIENT")
 
     # Raw URL containing sensitive query parameters that must be stripped
     sensitive_url = "https://lcc.internal/cases/01923-456?token=secret123&client_phone=%2B919876543210&tab=evidence"

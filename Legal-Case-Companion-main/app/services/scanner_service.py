@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import ResourceNotFoundError, ValidationError
 from app.models.document import Document, DocumentSecurityStatus
+from app.models.job import JobType
 from app.services.auth_service import AuthService
+from app.services.job_service import JobService
 
 logger = logging.getLogger(__name__)
 
@@ -100,9 +102,6 @@ class ScannerService:
 
         # Trigger document processing if safe (e.g. text extraction)
         if is_safe:
-            from app.models.job import JobType
-            from app.services.job_service import JobService
-
             job_svc = JobService(self.db)
             job_svc.enqueue_job(
                 job_type=JobType.DOCUMENT_PROCESSING,

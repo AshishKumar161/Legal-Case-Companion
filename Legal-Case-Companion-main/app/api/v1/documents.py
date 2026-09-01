@@ -1,10 +1,11 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
 from app.api.v1.auth import limiter
+from app.core.config import settings
 from app.models.document import DocumentCategory, DocumentSecurityStatus
 from app.models.user import User
 from app.schemas.document import (
@@ -359,7 +360,6 @@ def get_document_chunks(
     )
 
 
-# DEVELOPMENT ONLY stub endpoint for malware scanning simulation
 @router.post("/documents/{document_id}/scan")
 def simulate_malware_scan(
     document_id: UUID,
@@ -367,10 +367,6 @@ def simulate_malware_scan(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from fastapi import HTTPException
-
-    from app.core.config import settings
-
     if settings.ENVIRONMENT == "production":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 

@@ -9,6 +9,7 @@ import { CaseItem, LawyerProfileItem, ConsultationItem } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { ConsultationActionModal } from "@/components/Consultation/ConsultationActionModal";
 
 export default function LawyerDashboard() {
   const { user, loading } = useAuth();
@@ -17,6 +18,10 @@ export default function LawyerDashboard() {
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
   const [fetching, setFetching] = useState(true);
+  const [actionModal, setActionModal] = useState<{
+    type: "RESCHEDULE" | "CANCEL" | "REJECT" | "NO_SHOW" | "COMPLETE" | "SCHEDULE";
+    consultation: ConsultationItem;
+  } | null>(null);
 
   const fetchLawyerData = useCallback(async () => {
     try {
@@ -326,6 +331,12 @@ export default function LawyerDashboard() {
                         {" - "}
                         {new Date(con.scheduled_end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </div>
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>Fee: ₹{(con.fee_amount ?? 2500).toLocaleString("en-IN")}</span>
+                        {con.status === "PAID" && (
+                          <span style={{ color: "#10b981", fontWeight: 600 }}>✓ Paid</span>
+                        )}
+                      </div>
                       {con.meeting_url && (
                         <a
                           href={con.meeting_url}
@@ -336,6 +347,139 @@ export default function LawyerDashboard() {
                           Join Video Session ↗
                         </a>
                       )}
+
+                      {/* Advocate Consultation Lifecycle Actions */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
+                        {con.status === "REQUESTED" && (
+                          <>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await apiClient.post(`/api/v1/consultations/${con.id}/accept`, {});
+                                  void fetchLawyerData();
+                                } catch (err: unknown) {
+                                  alert(err instanceof Error ? err.message : "Failed to accept");
+                                }
+                              }}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                background: "linear-gradient(135deg, #10b981, #059669)",
+                                color: "#fff",
+                                border: "none",
+                                fontSize: "11px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => setActionModal({ type: "REJECT", consultation: con })}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                background: "rgba(239, 68, 68, 0.12)",
+                                border: "1px solid rgba(239, 68, 68, 0.3)",
+                                color: "#ef4444",
+                                fontSize: "11px",
+                                fontWeight: 500,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Decline
+                            </button>
+                          </>
+                        )}
+
+                        {(con.status === "PAID" || con.status === "ACCEPTED") && (
+                          <button
+                            onClick={() => setActionModal({ type: "SCHEDULE", consultation: con })}
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                              color: "#fff",
+                              border: "none",
+                              fontSize: "11px",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            📅 Schedule Slot
+                          </button>
+                        )}
+
+                        {(con.status === "SCHEDULED" || con.status === "IN_PROGRESS") && (
+                          <>
+                            <button
+                              onClick={() => setActionModal({ type: "COMPLETE", consultation: con })}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                background: "rgba(16, 185, 129, 0.15)",
+                                border: "1px solid rgba(16, 185, 129, 0.3)",
+                                color: "#10b981",
+                                fontSize: "11px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                              }}
+                            >
+                              ✓ Complete
+                            </button>
+                            <button
+                              onClick={() => setActionModal({ type: "NO_SHOW", consultation: con })}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                background: "rgba(245, 158, 11, 0.15)",
+                                border: "1px solid rgba(245, 158, 11, 0.3)",
+                                color: "#f59e0b",
+                                fontSize: "11px",
+                                fontWeight: 500,
+                                cursor: "pointer",
+                              }}
+                            >
+                              No-Show
+                            </button>
+                          </>
+                        )}
+
+                        {["REQUESTED", "ACCEPTED", "PAID", "SCHEDULED"].includes(con.status) && (
+                          <>
+                            <button
+                              onClick={() => setActionModal({ type: "RESCHEDULE", consultation: con })}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                background: "rgba(96, 165, 250, 0.12)",
+                                border: "1px solid rgba(96, 165, 250, 0.3)",
+                                color: "#60a5fa",
+                                fontSize: "11px",
+                                fontWeight: 500,
+                                cursor: "pointer",
+                              }}
+                            >
+                              ↻ Reschedule
+                            </button>
+                            <button
+                              onClick={() => setActionModal({ type: "CANCEL", consultation: con })}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                background: "rgba(239, 68, 68, 0.12)",
+                                border: "1px solid rgba(239, 68, 68, 0.3)",
+                                color: "#ef4444",
+                                fontSize: "11px",
+                                fontWeight: 500,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -344,6 +488,18 @@ export default function LawyerDashboard() {
           </aside>
         </div>
       </div>
+
+      {actionModal && (
+        <ConsultationActionModal
+          type={actionModal.type}
+          consultation={actionModal.consultation}
+          onClose={() => setActionModal(null)}
+          onSuccess={() => {
+            setActionModal(null);
+            void fetchLawyerData();
+          }}
+        />
+      )}
     </div>
   );
 }

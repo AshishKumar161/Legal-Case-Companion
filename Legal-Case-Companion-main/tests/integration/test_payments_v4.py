@@ -219,12 +219,12 @@ def test_webhook_security_and_failure_flow(client: TestClient, db: Session):
     }
 
     # 1. Missing signature -> 401
-    res_no_sig = client.post("/api/v1/payments/webhooks/stripe", json=payload)
+    res_no_sig = client.post("/api/v1/webhooks/stripe", json=payload)
     assert res_no_sig.status_code == 401
 
     # 2. Invalid signature header format -> 401
     res_bad_sig = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         json=payload,
         headers={"Stripe-Signature": "invalid_format_without_t_timestamp"},
     )
@@ -233,7 +233,7 @@ def test_webhook_security_and_failure_flow(client: TestClient, db: Session):
     # 3. Valid signature header -> 200, records failure
     sig_fail, raw_body_fail = _make_stripe_sig(payload)
     res_fail = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": sig_fail, "Content-Type": "application/json"},
         content=raw_body_fail,
     )
@@ -249,7 +249,7 @@ def test_webhook_security_and_failure_flow(client: TestClient, db: Session):
     ignored_payload = {"id": "evt_other_1", "type": "customer.created", "data": {}}
     sig_ign, raw_body_ign = _make_stripe_sig(ignored_payload)
     res_ignored = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": sig_ign, "Content-Type": "application/json"},
         content=raw_body_ign,
     )
@@ -314,7 +314,7 @@ def test_payment_success_and_consultation_sync(client: TestClient, db: Session):
     }
     wh_sig, wh_raw = _make_stripe_sig(payload)
     res_wh = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": wh_sig, "Content-Type": "application/json"},
         content=wh_raw,
     )
@@ -323,7 +323,7 @@ def test_payment_success_and_consultation_sync(client: TestClient, db: Session):
 
     # Duplicate webhook delivers idempotency
     res_wh_dup = client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": wh_sig, "Content-Type": "application/json"},
         content=wh_raw,
     )
@@ -479,7 +479,7 @@ def test_payment_audit_events_logged(client: TestClient, db: Session):
     }
     sig_aud, raw_aud = _make_stripe_sig(payload)
     client.post(
-        "/api/v1/payments/webhooks/stripe",
+        "/api/v1/webhooks/stripe",
         headers={"Stripe-Signature": sig_aud, "Content-Type": "application/json"},
         content=raw_aud,
     )

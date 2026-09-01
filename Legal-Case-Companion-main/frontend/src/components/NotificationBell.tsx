@@ -47,7 +47,7 @@ export function NotificationBell() {
   const markAsRead = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await apiClient.patch(`/api/v1/notifications/${id}/read`, {});
+      await apiClient.post(`/api/v1/notifications/${id}/read`, {});
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       );
@@ -59,7 +59,7 @@ export function NotificationBell() {
 
   const markAllRead = async () => {
     try {
-      await apiClient.post("/api/v1/notifications/mark-read", {});
+      await apiClient.post("/api/v1/notifications/read-all", {});
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (err) {
@@ -392,6 +392,31 @@ export function NotificationBell() {
               })}
             </div>
           )}
+
+          <div
+            style={{
+              padding: "10px 14px",
+              borderTop: "1px solid var(--border-subtle)",
+              textAlign: "center",
+              background: "rgba(0, 0, 0, 0.2)",
+            }}
+          >
+            <Link
+              href="/notifications"
+              onClick={() => setIsOpen(false)}
+              style={{
+                fontSize: "12px",
+                color: "var(--accent-secondary, #8d98ff)",
+                fontWeight: 600,
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              Open Full Notifications Center →
+            </Link>
+          </div>
         </div>
       )}
     </div>

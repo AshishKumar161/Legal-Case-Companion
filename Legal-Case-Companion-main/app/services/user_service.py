@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import AppException
 from app.core.identifiers import generate_uuid7
 from app.core.security import hash_password, normalize_email
+from app.models.audit import AuditEvent
 from app.models.user import AccountStatus, ClientProfile, LawyerProfile, User, UserRole
 from app.schemas.user import UserCreate
 
@@ -14,17 +15,23 @@ class UserService:
         self.db = db
 
     def get_user_by_email(self, email: str) -> User | None:
-        normalized_email = normalize_email(email)
+        if not email or not isinstance(email, str):
+            return None
+        try:
+            normalized_email = normalize_email(email)
+        except ValueError:
+            normalized_email = email.strip().lower()
+
         return (
             self.db.query(User)
-            .filter(User.email == normalized_email, User.deleted_at == None)
+            .filter(User.email == normalized_email, User.deleted_at.is_(None))
             .first()
         )
 
     def get_user_by_id(self, user_id) -> User | None:
         return (
             self.db.query(User)
-            .filter(User.id == user_id, User.deleted_at == None)
+            .filter(User.id == user_id, User.deleted_at.is_(None))
             .first()
         )
 
@@ -67,8 +74,6 @@ class UserService:
             )
 
         self.db.flush()
-
-        from app.models.audit import AuditEvent
 
         audit = AuditEvent(
             id=generate_uuid7(),

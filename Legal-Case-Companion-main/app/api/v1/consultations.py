@@ -9,7 +9,9 @@ from app.models.user import User, UserRole
 from app.schemas.consultation import (
     ConsultationCancelRequest,
     ConsultationCreate,
+    ConsultationNoShowRequest,
     ConsultationRejectRequest,
+    ConsultationRescheduleRequest,
     ConsultationResponse,
     ConsultationScheduleRequest,
 )
@@ -38,7 +40,7 @@ def request_consultation(
 @router.get("", response_model=PaginatedResponse[ConsultationResponse])
 def get_consultations(
     case_id: UUID | None = None,
-    status: ConsultationStatus | None = None,
+    consultation_status: ConsultationStatus | None = Query(None, alias="status"),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -46,7 +48,7 @@ def get_consultations(
 ):
     consultation_service = ConsultationService(db)
     return consultation_service.get_consultations(
-        current_user, case_id=case_id, status=status, skip=skip, limit=limit
+        current_user, case_id=case_id, status=consultation_status, skip=skip, limit=limit
     )
 
 
@@ -100,6 +102,23 @@ def schedule_consultation(
     )
 
 
+@router.post("/{consultation_id}/reschedule", response_model=ConsultationResponse)
+def reschedule_consultation(
+    consultation_id: UUID,
+    req: ConsultationRescheduleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    consultation_service = ConsultationService(db)
+    return consultation_service.reschedule_consultation(
+        current_user,
+        consultation_id,
+        scheduled_at=req.scheduled_at,
+        duration_minutes=req.duration_minutes,
+        reason=req.reason,
+    )
+
+
 @router.post("/{consultation_id}/confirm", response_model=ConsultationResponse)
 def confirm_consultation(
     consultation_id: UUID,
@@ -120,6 +139,20 @@ def cancel_consultation(
     consultation_service = ConsultationService(db)
     reason = req.reason if req else None
     return consultation_service.cancel_consultation(
+        current_user, consultation_id, reason=reason
+    )
+
+
+@router.post("/{consultation_id}/no-show", response_model=ConsultationResponse)
+def mark_no_show(
+    consultation_id: UUID,
+    req: ConsultationNoShowRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    consultation_service = ConsultationService(db)
+    reason = req.reason if req else None
+    return consultation_service.mark_no_show(
         current_user, consultation_id, reason=reason
     )
 

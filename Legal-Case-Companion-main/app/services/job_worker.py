@@ -18,6 +18,11 @@ from app.models.job import BackgroundJob, JobStatus, JobType
 from app.models.notification import NotificationType
 from app.models.task import CaseTask, TaskStatus
 from app.models.workflow import CaseDeadline, DeadlineStatus
+from app.services.case_intelligence_service import CaseIntelligenceService
+from app.services.case_workflow_service import CaseWorkflowService
+from app.services.document_processor import DocumentProcessor
+from app.services.job_service import JobService
+from app.services.legal_data_pipeline import LegalDataPipeline
 from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
@@ -144,8 +149,6 @@ class JobWorker:
         if not doc:
             raise ResourceNotFoundError(f"Document {doc_id} not found")
 
-        from app.services.document_processor import DocumentProcessor
-
         processor = DocumentProcessor(self.db)
         chunks = processor.process_document(
             document_id=doc_id,
@@ -166,8 +169,6 @@ class JobWorker:
 
         # Automatically enqueue downstream Case Intelligence refresh if case_id present
         if doc.case_id:
-            from app.services.job_service import JobService
-
             job_svc = JobService(self.db)
             job_svc.enqueue_job(
                 job_type=JobType.CASE_INTELLIGENCE_REFRESH,
@@ -195,52 +196,50 @@ class JobWorker:
         if not case:
             raise ResourceNotFoundError(f"Case {case_id} not found")
 
-        # 1. Refresh intelligence
-        from app.services.case_intelligence_service import CaseIntelligenceService
-
-        intel_svc = CaseIntelligenceService(self.db)
-        summary = intel_svc.refresh_case_intelligence(case_id)
-
-        # 2. Synthesize workflow suggestions
-        from app.services.case_workflow_service import CaseWorkflowService
-
-        # Use system/admin user or case owner for workflow scan
+        # 1. Use case participant (owner/counsel) for workflow scan
         admin_or_owner = (
             self.db.query(CaseParticipant)
             .filter(CaseParticipant.case_id == case_id, CaseParticipant.status == ParticipantStatus.ACTIVE)
             .first()
         )
-        if admin_or_owner and admin_or_owner.user:
-            wf_svc = CaseWorkflowService(self.db)
-            sugg_results = wf_svc.generate_suggestions_from_intelligence(admin_or_owner.user, case_id)
-            total_suggestions = (
-                sugg_results.get("suggested_tasks_count", 0)
-                + sugg_results.get("suggested_deadlines_count", 0)
-                + sugg_results.get("suggested_hearings_count", 0)
-            )
+        if not admin_or_owner or not admin_or_owner.user:
+            return {"case_id": str(case_id), "status": "SKIPPED_NO_ACTIVE_PARTICIPANT"}
 
-            # 3. If new suggestions exist, notify active lawyers on case
-            if total_suggestions > 0:
-                notif_svc = NotificationService(self.db)
-                lawyers = (
-                    self.db.query(CaseParticipant)
-                    .filter(
-                        CaseParticipant.case_id == case_id,
-                        CaseParticipant.participant_role == "LAWYER",
-                        CaseParticipant.status == ParticipantStatus.ACTIVE,
-                    )
-                    .all()
+        # 2. Refresh intelligence
+        intel_svc = CaseIntelligenceService(self.db)
+        summary = intel_svc.refresh_case_intelligence(admin_or_owner.user, case_id)
+
+        # 3. Synthesize workflow suggestions
+        wf_svc = CaseWorkflowService(self.db)
+        sugg_results = wf_svc.generate_suggestions_from_intelligence(admin_or_owner.user, case_id)
+        total_suggestions = (
+            sugg_results.get("suggested_tasks_count", 0)
+            + sugg_results.get("suggested_deadlines_count", 0)
+            + sugg_results.get("suggested_hearings_count", 0)
+        )
+
+        # 4. If new suggestions exist, notify active lawyers on case
+        if total_suggestions > 0:
+            notif_svc = NotificationService(self.db)
+            lawyers = (
+                self.db.query(CaseParticipant)
+                .filter(
+                    CaseParticipant.case_id == case_id,
+                    CaseParticipant.participant_role == "LAWYER",
+                    CaseParticipant.status == ParticipantStatus.ACTIVE,
                 )
-                today_str = datetime.now(UTC).strftime("%Y-%m-%d")
-                for lp in lawyers:
-                    notif_svc.create_notification(
-                        user_id=lp.user_id,
-                        type=NotificationType.AI_REVIEW_REQUIRED,
-                        title="AI Suggestions Require Review",
-                        message=f"{total_suggestions} new workflow suggestions have been generated for case '{case.title}'.",
-                        case_id=case_id,
-                        event_id=f"ai_review_{case_id}_{lp.user_id}_{today_str}",
-                    )
+                .all()
+            )
+            today_str = datetime.now(UTC).strftime("%Y-%m-%d")
+            for lp in lawyers:
+                notif_svc.create_notification(
+                    user_id=lp.user_id,
+                    type=NotificationType.AI_REVIEW_REQUIRED,
+                    title="AI Suggestions Require Review",
+                    message=f"{total_suggestions} new workflow suggestions have been generated for case '{case.title}'.",
+                    case_id=case_id,
+                    event_id=f"ai_review_{case_id}_{lp.user_id}_{today_str}",
+                )
 
         return {"intelligence_summary": summary}
 
@@ -391,8 +390,6 @@ class JobWorker:
         return {"status": "delivered"}
 
     def _handle_legal_authority_ingestion(self, job: BackgroundJob) -> dict[str, Any]:
-        from app.services.legal_data_pipeline import LegalDataPipeline
-
         pipeline = LegalDataPipeline(self.db)
         raw_source_id_str = job.payload.get("raw_source_id")
         if raw_source_id_str:
@@ -407,8 +404,6 @@ class JobWorker:
             return pipeline.sync_curated_fixtures()
 
     def _handle_legal_authority_reindex(self, job: BackgroundJob) -> dict[str, Any]:
-        from app.services.legal_data_pipeline import LegalDataPipeline
-
         source_id_str = job.payload.get("source_id")
         if not source_id_str:
             raise ValidationError("Missing source_id in reindex job payload")

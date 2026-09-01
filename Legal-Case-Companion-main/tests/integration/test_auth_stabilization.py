@@ -17,9 +17,10 @@ from app.core.oauth_security import (
     validate_return_url,
     verify_oauth_state,
 )
-from app.core.security import hash_password
+from app.core.security import create_access_token, hash_password
 from app.models.auth import UserExternalIdentity
 from app.models.user import AccountStatus, User, UserRole
+from app.services.auth_service import AuthService
 from app.services.google_oauth_service import GoogleOAuthService
 
 
@@ -811,4 +812,77 @@ def test_concurrent_google_identity_uniqueness(db: Session):
     with pytest.raises(IntegrityError):
         db.commit()
     db.rollback()
+
+
+def test_auth_service_get_user_identities_isolation_and_layering(client: TestClient, db: Session):
+    """
+    Verifies that AuthService.get_user_identities correctly encapsulates identity retrieval
+    and isolates identities strictly to the authenticated user.
+    """
+    user_a = User(
+        id=generate_uuid7(),
+        email="identity_user_a@example.com",
+        role=UserRole.CLIENT,
+        account_status=AccountStatus.ACTIVE,
+    )
+    user_b = User(
+        id=generate_uuid7(),
+        email="identity_user_b@example.com",
+        role=UserRole.CLIENT,
+        account_status=AccountStatus.ACTIVE,
+    )
+    db.add_all([user_a, user_b])
+    db.commit()
+
+    id_a = UserExternalIdentity(
+        id=generate_uuid7(),
+        user_id=user_a.id,
+        provider="GOOGLE",
+        provider_subject="google-sub-user-a",
+        email="identity_user_a@example.com",
+        email_verified=True,
+    )
+    id_b = UserExternalIdentity(
+        id=generate_uuid7(),
+        user_id=user_b.id,
+        provider="GOOGLE",
+        provider_subject="google-sub-user-b",
+        email="identity_user_b@example.com",
+        email_verified=True,
+    )
+    db.add_all([id_a, id_b])
+    db.commit()
+
+    auth_service = AuthService(db)
+
+    # 1. Direct service method isolation
+    identities_a = auth_service.get_user_identities(user_a.id)
+    identities_b = auth_service.get_user_identities(user_b.id)
+
+    assert len(identities_a) == 1
+    assert identities_a[0].provider_subject == "google-sub-user-a"
+    assert identities_a[0].user_id == user_a.id
+
+    assert len(identities_b) == 1
+    assert identities_b[0].provider_subject == "google-sub-user-b"
+    assert identities_b[0].user_id == user_b.id
+
+    # 2. HTTP endpoint invocation for User A
+    token_a = create_access_token(str(user_a.id), user_a.role.value)
+    res_a = client.get("/api/v1/auth/identities", headers={"Authorization": f"Bearer {token_a}"})
+    assert res_a.status_code == 200
+    items_a = res_a.json()
+    assert len(items_a) == 1
+    assert items_a[0]["email"] == "identity_user_a@example.com"
+    assert items_a[0]["provider"] == "GOOGLE"
+
+    # 3. HTTP endpoint invocation for User B
+    token_b = create_access_token(str(user_b.id), user_b.role.value)
+    res_b = client.get("/api/v1/auth/identities", headers={"Authorization": f"Bearer {token_b}"})
+    assert res_b.status_code == 200
+    items_b = res_b.json()
+    assert len(items_b) == 1
+    assert items_b[0]["email"] == "identity_user_b@example.com"
+    assert items_b[0]["provider"] == "GOOGLE"
+
 

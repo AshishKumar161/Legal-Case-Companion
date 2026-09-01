@@ -58,6 +58,15 @@ class NotificationBulkReadRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class NotificationBulkDeleteRequest(BaseModel):
+    notification_ids: list[UUID] = Field(..., max_length=100)
+    model_config = ConfigDict(extra="forbid")
+
+
+class NotificationBulkDeleteResponse(BaseModel):
+    deleted_count: int
+
+
 class NotificationPreferenceResponse(BaseModel):
     email_enabled: bool
     case_updates: bool

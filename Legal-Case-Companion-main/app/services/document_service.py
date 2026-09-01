@@ -19,6 +19,7 @@ from app.core.exceptions import (
 )
 from app.core.identifiers import generate_uuid7
 from app.core.storage import get_storage_provider
+from app.models.ai import DocumentChunk
 from app.models.case import CaseStatus
 from app.models.document import (
     ALLOWED_MIME_TYPES,
@@ -27,10 +28,12 @@ from app.models.document import (
     DocumentCategory,
     DocumentSecurityStatus,
 )
+from app.models.document_page import DocumentPage
 from app.models.user import User
 from app.schemas.document import DocumentCreate, DocumentUpdate
 from app.services.auth_service import AuthService
 from app.services.case_service import CaseService
+from app.services.document_processor import DocumentProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +57,7 @@ class DocumentService:
             or "/" in filename
             or "\\" in filename
             or "\x00" in filename
-            or filename.startswith("..")
+            or ".." in filename
         ):
             raise ValidationError("Invalid filename")
 
@@ -154,7 +157,7 @@ class DocumentService:
         if doc.case and doc.case.status in (CaseStatus.CLOSED, CaseStatus.CANCELLED):
             raise ValidationError("Cannot update documents in a closed or cancelled case")
 
-        updated_fields = {}
+        updated_fields: dict[str, Any] = {}
         if req.filename is not None:
             self._validate_filename(req.filename)
             doc.filename = req.filename.strip()
@@ -365,8 +368,7 @@ class DocumentService:
         document_id: uuid.UUID,
         case_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
-        doc = authorize_document_access(self.db, user, document_id, case_id=case_id)
-        from app.models.ai import DocumentChunk
+        doc =  authorize_document_access(self.db, user, document_id, case_id=case_id)
 
         chunk_count = (
             self.db.query(DocumentChunk)
@@ -400,7 +402,6 @@ class DocumentService:
         limit: int = 50,
     ) -> dict[str, Any]:
         doc = authorize_document_access(self.db, user, document_id, case_id=case_id)
-        from app.models.document_page import DocumentPage
 
         query = (
             self.db.query(DocumentPage)
@@ -424,7 +425,6 @@ class DocumentService:
         limit: int = 50,
     ) -> dict[str, Any]:
         doc = authorize_document_access(self.db, user, document_id, case_id=case_id)
-        from app.models.ai import DocumentChunk
 
         query = (
             self.db.query(DocumentChunk)
@@ -452,8 +452,6 @@ class DocumentService:
 
         if doc.security_status != DocumentSecurityStatus.SAFE:
             raise ValidationError("Only SAFE documents can be processed for evidence extraction")
-
-        from app.services.document_processor import DocumentProcessor
 
         processor = DocumentProcessor(self.db)
         processor.process_document(doc.id)
