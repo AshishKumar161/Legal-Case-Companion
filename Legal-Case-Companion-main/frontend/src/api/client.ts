@@ -18,19 +18,44 @@ interface RawErrorPayload {
 export class ApiError extends Error {
   public code?: string;
   public details?: unknown;
+  public status: number;
 
-  constructor(public status: number, public data: unknown) {
+  constructor(status: number, data: unknown) {
     const raw = data as RawErrorPayload | undefined;
-    const msg =
+    let msg =
       raw?.error?.message ||
       raw?.message ||
       (typeof raw?.detail === "string"
         ? raw.detail
         : raw?.detail
         ? JSON.stringify(raw.detail)
-        : `API Error: ${status}`);
+        : "");
+
+    if (!msg) {
+      if (status === 0) {
+        msg = "Unable to reach the Legal Case Companion server. Check that the backend is running.";
+      } else if (status === 401) {
+        msg = "Invalid email or password.";
+      } else if (status === 403) {
+        msg = "You do not have permission to perform this action.";
+      } else if (status === 404) {
+        msg = "The requested resource was not found.";
+      } else if (status === 409) {
+        msg = "An account with this information already exists.";
+      } else if (status === 422) {
+        msg = "Please check the entered information.";
+      } else if (status === 429) {
+        msg = "Too many attempts. Please wait and try again.";
+      } else if (status >= 500) {
+        msg = "Something went wrong on the server. Please try again.";
+      } else {
+        msg = `API Error: ${status}`;
+      }
+    }
+
     super(msg);
     this.name = "ApiError";
+    this.status = status;
     this.code = raw?.error?.code;
     this.details = raw?.error?.details;
   }
@@ -109,10 +134,23 @@ async function fetchWithAuth(url: string, options: RequestOptions = {}): Promise
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${BASE_URL}${url}`, {
-    ...fetchOptions,
-    headers,
-  });
+  const targetUrl = url.startsWith("http://") || url.startsWith("https://") ? url : `${BASE_URL}${url}`;
+
+  let response: Response;
+  try {
+    response = await fetch(targetUrl, {
+      ...fetchOptions,
+      headers,
+    });
+  } catch (err: unknown) {
+    console.error("Fetch network failure:", err);
+    throw new ApiError(0, {
+      error: {
+        code: "NETWORK_ERROR",
+        message: "Unable to reach the Legal Case Companion server. Check that the backend is running.",
+      },
+    });
+  }
 
   // Handle 401 Automatic Token Refresh and Retry
   if (

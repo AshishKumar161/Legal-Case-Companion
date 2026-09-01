@@ -312,3 +312,41 @@ def test_authenticate_google_identity_new_and_existing_user(db: Session):
     assert linked_user.id == pw_user.id
     assert link_token is not None
 
+
+def test_cors_preflight_and_allowed_origins(client: TestClient):
+    """Verifies that CORS preflight and headers correctly allow local origins and block unauthorized origins."""
+    # 1. Allowed origin localhost:3000
+    res_local = client.options(
+        "/api/v1/auth/login",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-csrf-token",
+        },
+    )
+    assert res_local.status_code == 200
+    assert res_local.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    assert res_local.headers.get("access-control-allow-credentials") == "true"
+
+    # 2. Allowed origin 127.0.0.1:3000
+    res_ip = client.options(
+        "/api/v1/auth/login",
+        headers={
+            "Origin": "http://127.0.0.1:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-csrf-token",
+        },
+    )
+    assert res_ip.status_code == 200
+    assert res_ip.headers.get("access-control-allow-origin") == "http://127.0.0.1:3000"
+
+    # 3. Disallowed origin
+    res_bad = client.options(
+        "/api/v1/auth/login",
+        headers={
+            "Origin": "http://malicious-site.com",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert res_bad.headers.get("access-control-allow-origin") is None
+

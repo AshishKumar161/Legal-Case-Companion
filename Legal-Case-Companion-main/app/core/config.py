@@ -73,7 +73,12 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # CORS Configuration
-    BACKEND_CORS_ORIGINS: list[AnyHttpUrl] | list[str] = []
+    BACKEND_CORS_ORIGINS: list[AnyHttpUrl] | list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
 
     # CSRF Configuration (Phase 6)
     CSRF_SECRET_KEY: str = Field(default="")
@@ -133,7 +138,16 @@ class Settings(BaseSettings):
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
         if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
+            return [i.strip() for i in v.split(",") if i.strip()]
+        elif isinstance(v, str) and v.startswith("["):
+            import json
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, TypeError, ValueError):
+                return v
+            return v
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
@@ -144,6 +158,15 @@ class Settings(BaseSettings):
             self.GOOGLE_REDIRECT_URI = f"{self.FRONTEND_URL}/auth/callback"
         if self.GOOGLE_CLIENT_ID and not self.GOOGLE_OAUTH_ENABLED:
             self.GOOGLE_OAUTH_ENABLED = True
+
+        # In local/development, ensure standard origins are present
+        if self.ENVIRONMENT != "production":
+            dev_origins = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000", "http://127.0.0.1:8000"]
+            current_cors = [str(o) for o in self.BACKEND_CORS_ORIGINS]
+            for origin in dev_origins:
+                if origin not in current_cors:
+                    current_cors.append(origin)
+            self.BACKEND_CORS_ORIGINS = current_cors
 
         if self.ENVIRONMENT == "production":
             self.DEBUG = False
