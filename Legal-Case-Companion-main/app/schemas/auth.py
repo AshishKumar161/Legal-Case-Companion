@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class Token(BaseModel):
     access_token: str
     token_type: str
+    return_url: str | None = None
 
 
 class LoginRequest(BaseModel):

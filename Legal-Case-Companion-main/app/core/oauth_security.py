@@ -55,20 +55,61 @@ def validate_return_url(return_url: str | None) -> str:
     return default_url
 
 
+def validate_redirect_uri(redirect_uri: str | None) -> str:
+    """Validates that a redirect URI matches the configured backend GOOGLE_REDIRECT_URI
+    or belongs to an explicitly allowed origin with a safe callback path.
+
+    Prevents open redirect attacks and ensures deterministic OAuth redirect URIs.
+    """
+    configured_default = (
+        settings.GOOGLE_REDIRECT_URI or f"{settings.FRONTEND_URL}/auth/callback"
+    )
+    if not redirect_uri or not redirect_uri.strip():
+        return configured_default
+
+    clean_uri = redirect_uri.strip()
+    if clean_uri.startswith(("//", "\\\\")):
+        return configured_default
+
+    parsed = urlparse(clean_uri)
+    if parsed.scheme in ("http", "https") and parsed.netloc:
+        origin = f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+        allowed_origins = [
+            str(o).rstrip("/") for o in settings.GOOGLE_ALLOWED_REDIRECT_ORIGINS
+        ]
+        frontend_origin = str(settings.FRONTEND_URL).rstrip("/")
+        if frontend_origin not in allowed_origins:
+            allowed_origins.append(frontend_origin)
+
+        if origin in allowed_origins:
+            # Only allow recognized callback endpoints
+            if parsed.path in (
+                "/auth/callback",
+                "/api/v1/auth/google/callback",
+                "/auth/callback/",
+            ):
+                return clean_uri
+
+    return configured_default
+
+
 def generate_oauth_state(
     purpose: str = "login",
     return_url: str | None = None,
     user_id: str | None = None,
     nonce: str | None = None,
+    redirect_uri: str | None = None,
 ) -> tuple[str, str]:
     """Generates a signed OAuth state token and nonce.
 
     The state token is short-lived (10 minutes) and signed with Ed25519.
+    Cryptographically binds purpose, nonce, safe return_url, and validated redirect_uri.
     """
     if not nonce:
         nonce = generate_nonce()
 
     safe_return_url = validate_return_url(return_url)
+    safe_redirect_uri = validate_redirect_uri(redirect_uri)
     now = datetime.now(UTC)
     expire = now + timedelta(minutes=10)
 
@@ -81,6 +122,7 @@ def generate_oauth_state(
         "purpose": purpose,
         "nonce": nonce,
         "return_url": safe_return_url,
+        "redirect_uri": safe_redirect_uri,
     }
     if user_id:
         payload["user_id"] = str(user_id)

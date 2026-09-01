@@ -17,6 +17,7 @@ function AuthCallbackContent() {
   useEffect(() => {
     const processCallback = async () => {
       const error = searchParams.get("error");
+      const errorDescription = searchParams.get("error_description");
       const code = searchParams.get("code");
       const state = searchParams.get("state");
 
@@ -24,6 +25,8 @@ function AuthCallbackContent() {
         setStatus("error");
         if (error === "access_denied") {
           setErrorMessage("Google sign-in was cancelled by the user.");
+        } else if (errorDescription) {
+          setErrorMessage(`Google authorization failed: ${error} (${errorDescription})`);
         } else {
           setErrorMessage(`Google authorization failed: ${error}`);
         }
@@ -71,8 +74,10 @@ function AuthCallbackContent() {
 
           setStatus("success");
 
-          // Navigate based on verified role
-          if (userRole === "ADMIN") {
+          // Navigate based on verified role or safe return_url
+          if (res.return_url && res.return_url !== "/dashboard" && res.return_url.startsWith("/")) {
+            router.push(res.return_url);
+          } else if (userRole === "ADMIN") {
             router.push("/admin/dashboard");
           } else if (userRole === "LAWYER") {
             router.push("/lawyer/dashboard");

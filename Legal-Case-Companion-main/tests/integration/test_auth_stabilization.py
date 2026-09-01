@@ -590,7 +590,11 @@ def test_google_callback_with_state_and_code_exchange(
 ):
     """Verifies complete GET and POST /auth/google/callback authorization code exchange flow."""
     priv_key, pub_key = rsa_key_pair
-    state_token, nonce = generate_oauth_state(purpose="login", return_url="/dashboard")
+    state_token, nonce = generate_oauth_state(
+        purpose="login",
+        return_url="/dashboard",
+        redirect_uri="http://localhost:3000/auth/callback",
+    )
 
     id_token = create_mock_google_id_token(
         priv_key,
@@ -604,20 +608,29 @@ def test_google_callback_with_state_and_code_exchange(
 
     with patch.object(settings, "GOOGLE_CLIENT_ID", "mock-google-client-id"), \
          patch.object(settings, "GOOGLE_CLIENT_SECRET", "mock-secret"), \
-         patch.object(settings, "GOOGLE_REDIRECT_URI", "http://localhost:8000/api/v1/auth/google/callback"), \
+         patch.object(settings, "GOOGLE_REDIRECT_URI", "http://localhost:3000/auth/callback"), \
          patch.object(GoogleOAuthService, "exchange_code_for_tokens", lambda self, code, redirect_uri=None: mock_tokens), \
          patch.object(GoogleOAuthService, "validate_id_token", lambda self, tok, expected_nonce=None: jwt.decode(tok, pub_key, algorithms=["RS256"], audience="mock-google-client-id", issuer=settings.GOOGLE_ISSUERS)):
 
-        # Test POST callback
+        # Test POST callback with matching redirect URI
         res_post = client.post(
             "/api/v1/auth/google/callback",
-            json={"code": "valid-auth-code", "state": state_token},
+            json={
+                "code": "valid-auth-code",
+                "state": state_token,
+                "redirect_uri": "http://localhost:3000/auth/callback",
+            },
         )
         assert res_post.status_code == 200
         assert "access_token" in res_post.json()
+        assert res_post.json()["return_url"] == "/dashboard"
 
         # Test GET callback
-        state_token_2, nonce_2 = generate_oauth_state(purpose="login", return_url="/cases")
+        state_token_2, nonce_2 = generate_oauth_state(
+            purpose="login",
+            return_url="/cases/detail",
+            redirect_uri="http://localhost:3000/auth/callback",
+        )
         id_token_2 = create_mock_google_id_token(
             priv_key,
             sub="google-callback-sub-2",
@@ -632,6 +645,32 @@ def test_google_callback_with_state_and_code_exchange(
             )
             assert res_get.status_code == 200
             assert "access_token" in res_get.json()
+            assert res_get.json()["return_url"] == "/cases/detail"
+
+
+def test_google_callback_redirect_uri_mismatch_defense(
+    client: TestClient, rsa_key_pair: tuple[Any, Any]
+):
+    """Verifies that tampering with callback redirect_uri causes immediate rejection."""
+    priv_key, pub_key = rsa_key_pair
+    state_token, _nonce = generate_oauth_state(
+        purpose="login",
+        return_url="/dashboard",
+        redirect_uri="http://localhost:3000/auth/callback",
+    )
+
+    with patch.object(settings, "GOOGLE_CLIENT_ID", "mock-google-client-id"):
+        # State expects http://localhost:3000/auth/callback, but request sends http://127.0.0.1:8000/api/v1/auth/google/callback
+        res_mismatch = client.post(
+            "/api/v1/auth/google/callback",
+            json={
+                "code": "sample-code",
+                "state": state_token,
+                "redirect_uri": "http://127.0.0.1:8000/api/v1/auth/google/callback",
+            },
+        )
+        assert res_mismatch.status_code == 401
+        assert "redirect uri mismatch" in res_mismatch.json()["error"]["message"].lower()
 
 
 def test_google_link_and_unlink_flow(

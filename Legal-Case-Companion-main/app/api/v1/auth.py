@@ -256,35 +256,63 @@ def _process_google_callback(
     db: Session,
 ) -> Token:
     """Internal helper to process Google OAuth callback and issue LCC session tokens."""
-    # 1. Verify signed state token and extract nonce
-    state_payload = verify_oauth_state(state)
-    nonce = state_payload.get("nonce")
+    logger.info("google_oauth.callback_received: processing Google OAuth callback")
 
-    # 2. Exchange authorization code for tokens
+    # 1. Verify signed state token and extract claims
+    state_payload = verify_oauth_state(state)
+    if state_payload.get("purpose") != "login":
+        logger.warning("google_oauth.invalid_purpose: OAuth state is not for login")
+        raise AuthenticationError("Invalid OAuth state purpose")
+
+    nonce = state_payload.get("nonce")
+    state_redirect_uri = state_payload.get("redirect_uri")
+    safe_return_url = state_payload.get("return_url") or "/dashboard"
+    logger.info("google_oauth.state_verified: OAuth state token verified successfully")
+
+    # 2. Enforce deterministic redirect URI matching between authorization and token exchange
+    effective_redirect_uri = redirect_uri or state_redirect_uri or settings.GOOGLE_REDIRECT_URI
+    if redirect_uri and state_redirect_uri and redirect_uri.rstrip("/") != state_redirect_uri.rstrip("/"):
+        logger.warning(
+            "google_oauth.redirect_uri_mismatch: callback redirect_uri does not match state redirect_uri"
+        )
+        raise AuthenticationError("OAuth redirect URI mismatch")
+
+    # 3. Exchange authorization code for tokens
     google_service = GoogleOAuthService()
-    tokens = google_service.exchange_code_for_tokens(code, redirect_uri=redirect_uri)
+    tokens = google_service.exchange_code_for_tokens(
+        code, redirect_uri=effective_redirect_uri
+    )
     id_token = tokens.get("id_token")
     if not id_token:
+        logger.warning("google_oauth.error: No ID token returned by Google")
         raise AuthenticationError("No ID token returned by Google")
 
-    # 3. Cryptographically validate Google ID token claims
+    # 4. Cryptographically validate Google ID token claims
     claims = google_service.validate_id_token(id_token, expected_nonce=nonce)
 
-    # 4. Authenticate or create LCC user and session
+    # 5. Authenticate or create LCC user and session
     auth_service = AuthService(db)
     ip_address = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
 
-    _, access_token, refresh_token = auth_service.authenticate_google_identity(
+    user, access_token, refresh_token = auth_service.authenticate_google_identity(
         claims, ip_address=ip_address, user_agent=user_agent
     )
+    logger.info(
+        "google_oauth.identity_resolved: Google identity mapped to LCC user",
+        extra={"user_id": str(user.id), "role": user.role.value},
+    )
 
-    # 5. Set session cookies
+    # 6. Set session cookies
     _set_refresh_cookie(response, refresh_token)
     csrf_token = generate_csrf_token()
     set_csrf_cookie(response, csrf_token)
+    logger.info("google_oauth.session_created: session tokens and security cookies issued")
+    logger.info("google_oauth.success: Google OAuth login completed successfully")
 
-    return Token(access_token=access_token, token_type="bearer")
+    return Token(
+        access_token=access_token, token_type="bearer", return_url=safe_return_url
+    )
 
 
 @router.get("/google/callback", response_model=Token)

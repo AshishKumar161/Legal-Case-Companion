@@ -15,7 +15,7 @@ from jwt import PyJWKClient
 
 from app.core.config import settings
 from app.core.exceptions import AuthenticationError
-from app.core.oauth_security import generate_oauth_state
+from app.core.oauth_security import generate_oauth_state, validate_redirect_uri
 
 logger = logging.getLogger(__name__)
 
@@ -52,18 +52,23 @@ class GoogleOAuthService:
 
         Returns (auth_url, state_token, nonce).
         """
+        logger.info(
+            "google_oauth.start: initiating Google OAuth authorization URL creation",
+            extra={"purpose": purpose, "has_user_id": bool(user_id)},
+        )
+
         client_id = settings.GOOGLE_CLIENT_ID
         if not client_id:
+            logger.warning("google_oauth.error: GOOGLE_CLIENT_ID is not configured")
             raise AuthenticationError("Google OAuth is not configured")
 
-        effective_redirect_uri = redirect_uri or settings.GOOGLE_REDIRECT_URI
-        if not effective_redirect_uri:
-            raise AuthenticationError("Google OAuth redirect URI is not configured")
+        effective_redirect_uri = validate_redirect_uri(redirect_uri)
 
         state_token, nonce = generate_oauth_state(
             purpose=purpose,
             return_url=return_url,
             user_id=str(user_id) if user_id else None,
+            redirect_uri=effective_redirect_uri,
         )
 
         params = {
@@ -78,6 +83,10 @@ class GoogleOAuthService:
         }
 
         auth_url = f"{settings.GOOGLE_AUTH_URI}?{urlencode(params)}"
+        logger.info(
+            "google_oauth.authorization_url_created: authorization URL generated successfully",
+            extra={"purpose": purpose, "redirect_uri": effective_redirect_uri},
+        )
         return auth_url, state_token, nonce
 
     def exchange_code_for_tokens(
@@ -86,10 +95,16 @@ class GoogleOAuthService:
         """Exchanges authorization code for tokens with Google's token endpoint."""
         client_id = settings.GOOGLE_CLIENT_ID
         client_secret = settings.GOOGLE_CLIENT_SECRET
-        effective_redirect_uri = redirect_uri or settings.GOOGLE_REDIRECT_URI
+        effective_redirect_uri = validate_redirect_uri(redirect_uri)
 
         if not client_id or not client_secret or not effective_redirect_uri:
+            logger.warning("google_oauth.error: incomplete Google OAuth credentials for code exchange")
             raise AuthenticationError("Google OAuth credentials are not fully configured")
+
+        logger.info(
+            "google_oauth.code_exchange_started: exchanging code with Google token endpoint",
+            extra={"redirect_uri": effective_redirect_uri},
+        )
 
         payload = {
             "code": code,
@@ -110,13 +125,14 @@ class GoogleOAuthService:
 
             if response.status_code != 200:
                 logger.warning(
-                    f"Google token exchange failed: status {response.status_code}"
+                    f"google_oauth.code_exchange_failed: status {response.status_code}"
                 )
                 raise AuthenticationError("Failed to exchange code with Google")
 
+            logger.info("google_oauth.code_exchange_success: successfully exchanged authorization code")
             return response.json()
         except httpx.RequestError as e:
-            logger.error(f"Network error during Google token exchange: {e}")
+            logger.error(f"google_oauth.network_error: during token exchange: {e}")
             raise AuthenticationError("Google identity provider unavailable") from e
 
     def validate_id_token(
@@ -187,4 +203,8 @@ class GoogleOAuthService:
             if token_nonce != expected_nonce:
                 raise AuthenticationError("OAuth nonce mismatch")
 
+        logger.info(
+            "google_oauth.id_token_verified: Google ID token validated cryptographically",
+            extra={"email_verified": email_verified},
+        )
         return claims
