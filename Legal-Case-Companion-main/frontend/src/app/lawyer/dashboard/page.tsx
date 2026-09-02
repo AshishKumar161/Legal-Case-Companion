@@ -412,6 +412,23 @@ export default function LawyerDashboard() {
 
                         {(con.status === "SCHEDULED" || con.status === "IN_PROGRESS") && (
                           <>
+                            <a
+                              href={`/consultations/${con.id}/room`}
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: "4px",
+                                background: "#2563eb",
+                                color: "#fff",
+                                fontSize: "11px",
+                                fontWeight: 600,
+                                textDecoration: "none",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              🎥 Join Video Room
+                            </a>
                             <button
                               onClick={() => setActionModal({ type: "COMPLETE", consultation: con })}
                               style={{

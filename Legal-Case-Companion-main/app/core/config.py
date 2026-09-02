@@ -90,6 +90,15 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: str | None = None
     AWS_WEBHOOK_SECRET: str | None = None
 
+    # Antivirus / Malware Scanner Configuration (ClamAV)
+    CLAMAV_HOST: str | None = None
+    CLAMAV_PORT: int = 3310
+
+    # WebRTC / TURN Relay Configuration (Coturn / Managed TURN)
+    TURN_SERVER_URL: str | None = None
+    TURN_USERNAME: str | None = None
+    TURN_CREDENTIAL: str | None = None
+
     # Stripe Configuration
     STRIPE_API_KEY: str | None = None
     STRIPE_WEBHOOK_SECRET: str | None = None

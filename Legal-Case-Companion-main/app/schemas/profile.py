@@ -20,6 +20,7 @@ class LawyerProfileUpdate(BaseModel):
     practice_areas: list[str] | None = None
     experience_years: int | None = None
     court_jurisdictions: list[str] | None = None
+    languages: list[str] | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -45,6 +46,7 @@ class LawyerPublicResponse(BaseModel):
     practice_areas: list[str] | None = None
     experience_years: int | None = None
     court_jurisdictions: list[str] | None = None
+    languages: list[str] | None = None
     verification_status: str
 
     model_config = {"from_attributes": True}
@@ -62,6 +64,7 @@ class LawyerProfileResponse(BaseModel):
     practice_areas: list[str] | None = None
     experience_years: int | None = None
     court_jurisdictions: list[str] | None = None
+    languages: list[str] | None = None
     verification_status: str
 
     model_config = {"from_attributes": True}

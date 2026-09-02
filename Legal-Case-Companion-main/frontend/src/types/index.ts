@@ -530,6 +530,7 @@ export interface LawyerProfileItem {
   practice_areas?: string[] | string;
   experience_years?: number;
   court_jurisdictions?: string[];
+  languages?: string[];
   consultation_fee?: number;
   bio?: string;
   verification_status?: "PENDING" | "VERIFIED" | "REJECTED" | "APPROVED" | "UNDER_REVIEW";
@@ -569,7 +570,52 @@ export interface ConsultationItem {
   rejection_reason?: string;
   scheduled_at?: string;
   lawyer_name?: string;
+  client_name?: string;
   created_at: string;
+}
+
+export interface ConsultationNoteItem {
+  id: string;
+  consultation_id: string;
+  author_user_id: string;
+  author_role: string;
+  summary: string;
+  action_items?: string[];
+  client_shared: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface SlotItem {
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+}
+
+export interface LawyerPublicItem {
+  id: string;
+  user_id?: string;
+  full_name: string;
+  location?: string;
+  practice_areas?: string[];
+  primary_practice_area?: string;
+  experience_years?: number;
+  court_jurisdictions?: string[];
+  languages?: string[];
+  consultation_fee?: number;
+  bio?: string;
+  verification_status?: string;
+  is_available?: boolean;
+}
+
+export interface LawyerAvailabilityItem {
+  id: string;
+  lawyer_profile_id?: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  slot_duration_minutes?: number;
+  is_active: boolean;
 }
 
 export type PaymentStatus =

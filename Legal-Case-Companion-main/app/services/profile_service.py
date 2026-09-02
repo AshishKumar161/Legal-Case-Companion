@@ -121,6 +121,7 @@ class ProfileService:
         max_fee: float | None = None,
         min_experience: int | None = None,
         max_experience: int | None = None,
+        language: str | None = None,
         verified_only: bool = True,
     ) -> dict:
         limit = min(max(limit, 1), 100)
@@ -157,6 +158,13 @@ class ProfileService:
             query = query.filter(
                 cast(LawyerProfile.practice_areas, String).ilike(
                     f"%{practice_area.strip()}%"
+                )
+            )
+
+        if language and language.strip():
+            query = query.filter(
+                cast(LawyerProfile.languages, String).ilike(
+                    f"%{language.strip()}%"
                 )
             )
 

@@ -47,6 +47,8 @@ from app.models.case_intelligence import (
     RiskSeverity,
 )
 from app.models.consultation import Consultation, ConsultationStatus
+from app.models.consultation_note import ConsultationNote
+from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
 from app.models.document import (
     Document,
     DocumentCategory,
@@ -134,6 +136,7 @@ __all__ = [
     "ClaimPositionType",
     "ClientProfile",
     "Consultation",
+    "ConsultationNote",
     "ConsultationStatus",
     "DatePrecision",
     "DayOfWeek",
@@ -194,4 +197,6 @@ __all__ = [
     "UserNotificationPreference",
     "UserRole",
     "VerificationStatus",
+    "VideoMeeting",
+    "VideoMeetingStatus",
 ]

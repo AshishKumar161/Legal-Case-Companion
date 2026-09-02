@@ -6,21 +6,34 @@ from sqlalchemy.orm import Session
 from app.api.deps import RequireRole, get_current_user, get_db
 from app.models.consultation import ConsultationStatus
 from app.models.user import User, UserRole
+from app.schemas.case import CaseResponse
 from app.schemas.consultation import (
     ConsultationCancelRequest,
     ConsultationCreate,
+    ConsultationCreateCaseRequest,
+    ConsultationLinkCaseRequest,
     ConsultationNoShowRequest,
     ConsultationRejectRequest,
     ConsultationRescheduleRequest,
     ConsultationResponse,
     ConsultationScheduleRequest,
 )
+from app.schemas.consultation_note import (
+    ConsultationNoteCreate,
+    ConsultationNoteResponse,
+)
 from app.schemas.message import MessageCreate, MessageResponse
 from app.schemas.pagination import PaginatedResponse
 from app.schemas.payment import PaymentIntentResponse, PaymentResponse
+from app.schemas.video_meeting import (
+    VideoJoinInfoResponse,
+    VideoMeetingEndRequest,
+    VideoMeetingResponse,
+)
 from app.services.consultation_service import ConsultationService
 from app.services.message_service import MessageService
 from app.services.payment_service import PaymentService
+from app.services.video_meeting_service import VideoMeetingService
 
 router = APIRouter(prefix="/consultations", tags=["consultations"])
 
@@ -210,3 +223,152 @@ def get_messages(
 ):
     service = MessageService(db)
     return service.get_messages(current_user, consultation_id)
+
+
+# --- Video Meeting Endpoints ---
+
+
+@router.get(
+    "/{consultation_id}/video/join",
+    response_model=VideoJoinInfoResponse,
+)
+def get_video_join_info(
+    consultation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve cryptographically signed join credentials for the in-app video consultation room.
+    Enforces strict participant authorization (Client, assigned Lawyer, or Admin).
+    """
+    service = VideoMeetingService(db)
+    return service.get_join_information(current_user, consultation_id)
+
+
+@router.post(
+    "/{consultation_id}/video/start",
+    response_model=VideoMeetingResponse,
+)
+def start_video_meeting(
+    consultation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Mark the video consultation meeting as ACTIVE and consultation as IN_PROGRESS.
+    """
+    service = VideoMeetingService(db)
+    return service.start_meeting(current_user, consultation_id)
+
+
+@router.post(
+    "/{consultation_id}/video/end",
+    response_model=VideoMeetingResponse,
+)
+def end_video_meeting(
+    consultation_id: UUID,
+    req: VideoMeetingEndRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Conclude the video consultation meeting and mark consultation as COMPLETED.
+    """
+    service = VideoMeetingService(db)
+    notes = req.notes if req else None
+    return service.end_meeting(current_user, consultation_id, notes=notes)
+
+
+# --- Consultation -> Case Linking Endpoints ---
+
+
+@router.post(
+    "/{consultation_id}/link-case",
+    response_model=ConsultationResponse,
+)
+def link_consultation_to_case(
+    consultation_id: UUID,
+    req: ConsultationLinkCaseRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Link this consultation to an existing active legal case matter in LCC.
+    Optionally assigns the lawyer as a LAWYER participant to the case.
+    """
+    service = ConsultationService(db)
+    return service.link_case(
+        current_user,
+        consultation_id,
+        case_id=req.case_id,
+        assign_lawyer=req.assign_lawyer,
+    )
+
+
+@router.post(
+    "/{consultation_id}/create-case",
+    response_model=CaseResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_case_from_consultation(
+    consultation_id: UUID,
+    req: ConsultationCreateCaseRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Create a new legal case matter from this consultation, assigning the client as OWNER
+    and the consultation lawyer as LAWYER participant.
+    """
+    service = ConsultationService(db)
+    return service.create_case_from_consultation(
+        current_user,
+        consultation_id,
+        title=req.title,
+        description=req.description,
+        practice_area=req.practice_area,
+        court_jurisdiction=req.court_jurisdiction,
+    )
+
+
+# --- Consultation Notes Endpoints ---
+
+
+@router.post(
+    "/{consultation_id}/notes",
+    response_model=ConsultationNoteResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_consultation_note(
+    consultation_id: UUID,
+    req: ConsultationNoteCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Record consultation advice, summary, or recommended action items.
+    """
+    service = ConsultationService(db)
+    return service.add_consultation_note(
+        current_user,
+        consultation_id,
+        summary=req.summary,
+        action_items=req.action_items,
+        client_shared=req.client_shared,
+    )
+
+
+@router.get(
+    "/{consultation_id}/notes",
+    response_model=list[ConsultationNoteResponse],
+)
+def get_consultation_notes(
+    consultation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    List consultation advice and notes. Clients see shared notes; lawyers and admins see all.
+    """
+    service = ConsultationService(db)
+    return service.get_consultation_notes(current_user, consultation_id)

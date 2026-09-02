@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.identifiers import generate_uuid7
@@ -11,9 +11,11 @@ from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.case import Case
+    from app.models.consultation_note import ConsultationNote
     from app.models.message import Message
     from app.models.payment import Payment
     from app.models.user import ClientProfile, LawyerProfile
+    from app.models.video_meeting import VideoMeeting
 
 
 class ConsultationStatus(str, enum.Enum):
@@ -45,7 +47,7 @@ class Consultation(Base, TimestampMixin, SoftDeleteMixin):
     case_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("cases.id", ondelete="RESTRICT"), nullable=True
     )
-    scheduled_at: Mapped[datetime] = mapped_column(nullable=False)
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     fee_amount: Mapped[float] = mapped_column(Numeric, nullable=False)
     currency: Mapped[str] = mapped_column(String, nullable=False)
@@ -54,8 +56,13 @@ class Consultation(Base, TimestampMixin, SoftDeleteMixin):
         default=ConsultationStatus.REQUESTED,
         nullable=False,
     )
-    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rejection_reason: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    __table_args__ = (
+        Index("ix_consultations_lawyer_scheduled", "lawyer_id", "scheduled_at"),
+        Index("ix_consultations_status", "status"),
+    )
 
     # Relationships
     client: Mapped["ClientProfile"] = relationship(
@@ -70,4 +77,10 @@ class Consultation(Base, TimestampMixin, SoftDeleteMixin):
     )
     messages: Mapped[list["Message"]] = relationship(
         "Message", back_populates="consultation", cascade="all, delete-orphan"
+    )
+    video_meeting: Mapped["VideoMeeting | None"] = relationship(
+        "VideoMeeting", back_populates="consultation", uselist=False, cascade="all, delete-orphan"
+    )
+    notes: Mapped[list["ConsultationNote"]] = relationship(
+        "ConsultationNote", back_populates="consultation", cascade="all, delete-orphan"
     )

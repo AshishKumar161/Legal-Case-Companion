@@ -46,6 +46,25 @@ class ConsultationNoShowRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+from app.schemas.video_meeting import VideoMeetingResponse
+
+
+class ConsultationLinkCaseRequest(BaseModel):
+    case_id: UUID
+    assign_lawyer: bool = True
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ConsultationCreateCaseRequest(BaseModel):
+    title: str = "Consultation Follow-up Matter"
+    description: str | None = None
+    practice_area: str | None = None
+    court_jurisdiction: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class ConsultationResponse(BaseModel):
     id: UUID
     client_id: UUID
@@ -60,5 +79,6 @@ class ConsultationResponse(BaseModel):
     rejection_reason: str | None = None
     created_at: datetime
     updated_at: datetime
+    video_meeting: VideoMeetingResponse | None = None
 
     model_config = ConfigDict(from_attributes=True)

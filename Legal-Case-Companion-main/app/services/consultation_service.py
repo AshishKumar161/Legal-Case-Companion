@@ -13,7 +13,13 @@ from app.core.exceptions import (
 )
 from app.core.identifiers import generate_uuid7
 from app.models.availability import LawyerAvailability
-from app.models.case import Case, CaseStatus
+from app.models.case import (
+    Case,
+    CaseParticipant,
+    CaseStatus,
+    ParticipantRole,
+    ParticipantStatus,
+)
 from app.models.consultation import Consultation, ConsultationStatus
 from app.models.notification import NotificationType
 from app.models.user import AccountStatus, ClientProfile, LawyerProfile, User, UserRole
@@ -596,6 +602,9 @@ class ConsultationService:
         self.db.commit()
         self.db.refresh(consultation)
 
+        from app.services.video_meeting_service import VideoMeetingService
+        VideoMeetingService(self.db).ensure_meeting_provisioned(consultation)
+
         self._log_audit(
             "CONSULTATION_SCHEDULED",
             user.id,
@@ -737,6 +746,9 @@ class ConsultationService:
         consultation.status = ConsultationStatus.SCHEDULED
         self.db.commit()
         self.db.refresh(consultation)
+
+        from app.services.video_meeting_service import VideoMeetingService
+        VideoMeetingService(self.db).ensure_meeting_provisioned(consultation)
 
         self._log_audit(
             "CONSULTATION_ACCEPTED",
@@ -929,3 +941,209 @@ class ConsultationService:
         )
 
         return consultation
+
+    def link_case(
+        self,
+        user: User,
+        consultation_id: uuid.UUID,
+        case_id: uuid.UUID,
+        assign_lawyer: bool = True,
+    ) -> Consultation:
+        """Link a consultation to an active legal case and assign lawyer if requested."""
+        consultation = self._get_consultation(consultation_id)
+        self._authorize_consultation_access(user, consultation)
+
+        if user.role != UserRole.CLIENT and user.role != UserRole.ADMIN:
+            raise AuthorizationError("Only clients or admins can link consultations to cases")
+
+        if user.role == UserRole.CLIENT and consultation.client.user_id != user.id:
+            raise AuthorizationError("Only the consultation client can link this consultation to a case")
+
+        target_case = self.case_service.get_case_by_id(user, case_id)
+        if not target_case or target_case.status in (CaseStatus.CLOSED, CaseStatus.CANCELLED):
+            raise ValidationError("Cannot link consultation to an inactive or closed case")
+
+        if consultation.case_id and consultation.case_id != case_id:
+            raise ValidationError("Consultation is already linked to another legal case matter")
+
+        consultation.case_id = case_id
+
+        # If assign_lawyer, assign the lawyer as a LAWYER participant to the case
+        if assign_lawyer and consultation.lawyer:
+            lawyer_user_id = consultation.lawyer.user_id
+            existing_participant = (
+                self.db.query(CaseParticipant)
+                .filter(
+                    CaseParticipant.case_id == case_id,
+                    CaseParticipant.user_id == lawyer_user_id,
+                )
+                .first()
+            )
+            if not existing_participant:
+                lawyer_part = CaseParticipant(
+                    id=generate_uuid7(),
+                    case_id=case_id,
+                    user_id=lawyer_user_id,
+                    participant_role=ParticipantRole.LAWYER,
+                    status=ParticipantStatus.ACTIVE,
+                    joined_at=datetime.now(UTC),
+                )
+                self.db.add(lawyer_part)
+            elif existing_participant.status != ParticipantStatus.ACTIVE:
+                existing_participant.status = ParticipantStatus.ACTIVE
+
+        self.db.commit()
+        self.db.refresh(consultation)
+
+        self._log_audit(
+            "CONSULTATION_LINKED_TO_CASE",
+            user.id,
+            {"consultation_id": str(consultation.id), "case_id": str(case_id)},
+        )
+
+        self.case_service.record_case_activity(
+            case_id,
+            user.id,
+            "CONSULTATION_LINKED",
+            "A consultation was linked to this case matter",
+            {"consultation_id": str(consultation.id)},
+        )
+        return consultation
+
+    def create_case_from_consultation(
+        self,
+        user: User,
+        consultation_id: uuid.UUID,
+        title: str,
+        description: str | None = None,
+        practice_area: str | None = None,
+        court_jurisdiction: str | None = None,
+    ) -> Case:
+        """Create a new legal case from a consultation and assign client and lawyer."""
+        consultation = self._get_consultation(consultation_id)
+        self._authorize_consultation_access(user, consultation)
+
+        if user.role != UserRole.CLIENT and user.role != UserRole.ADMIN:
+            raise AuthorizationError("Only clients or admins can create cases from consultations")
+
+        if user.role == UserRole.CLIENT and consultation.client.user_id != user.id:
+            raise AuthorizationError("Only the consultation client can create a case from this consultation")
+
+        if consultation.case_id:
+            raise ValidationError("Consultation is already linked to an existing legal case matter")
+
+        desc = description or f"Matter established following consultation with Advocate {consultation.lawyer.full_name if consultation.lawyer else 'Counsel'}."
+        meta_items = []
+        if practice_area:
+            meta_items.append(f"Practice Area: {practice_area}")
+        if court_jurisdiction:
+            meta_items.append(f"Jurisdiction: {court_jurisdiction}")
+        if meta_items:
+            desc += f"\n[{', '.join(meta_items)}]"
+
+        from app.schemas.case import CaseCreate
+        case_in = CaseCreate(
+            title=title,
+            description=desc,
+        )
+
+        new_case = self.case_service.create_case(user, case_in)
+        consultation.case_id = new_case.id
+
+        # Assign lawyer as LAWYER participant
+        if consultation.lawyer:
+            lawyer_user_id = consultation.lawyer.user_id
+            existing_participant = (
+                self.db.query(CaseParticipant)
+                .filter(
+                    CaseParticipant.case_id == new_case.id,
+                    CaseParticipant.user_id == lawyer_user_id,
+                )
+                .first()
+            )
+            if not existing_participant:
+                lawyer_part = CaseParticipant(
+                    id=generate_uuid7(),
+                    case_id=new_case.id,
+                    user_id=lawyer_user_id,
+                    participant_role=ParticipantRole.LAWYER,
+                    status=ParticipantStatus.ACTIVE,
+                    joined_at=datetime.now(UTC),
+                )
+                self.db.add(lawyer_part)
+
+        self.db.commit()
+        self.db.refresh(consultation)
+        self.db.refresh(new_case)
+
+        self._log_audit(
+            "CASE_CREATED_FROM_CONSULTATION",
+            user.id,
+            {"consultation_id": str(consultation.id), "case_id": str(new_case.id)},
+        )
+
+        self.case_service.record_case_activity(
+            new_case.id,
+            user.id,
+            "CASE_ESTABLISHED_FROM_CONSULTATION",
+            f"Case matter was formally established following consultation with Advocate {consultation.lawyer.full_name if consultation.lawyer else 'counsel'}",
+            {"consultation_id": str(consultation.id)},
+        )
+
+        return new_case
+
+    def add_consultation_note(
+        self,
+        user: User,
+        consultation_id: uuid.UUID,
+        summary: str,
+        action_items: list[str] | None = None,
+        client_shared: bool = True,
+    ):
+        consultation = self._get_consultation(consultation_id)
+        self._authorize_consultation_access(user, consultation)
+
+        if not summary or not summary.strip():
+            raise ValidationError("Consultation note summary cannot be empty")
+        if len(summary) > 10000:
+            raise ValidationError("Consultation note summary cannot exceed 10000 characters")
+
+        # Clients cannot create lawyer-private notes
+        effective_shared = client_shared
+        if user.role == UserRole.CLIENT:
+            effective_shared = True
+
+        from app.models.consultation_note import ConsultationNote
+        note = ConsultationNote(
+            id=generate_uuid7(),
+            consultation_id=consultation.id,
+            author_user_id=user.id,
+            summary=summary.strip(),
+            action_items=action_items or [],
+            client_shared=effective_shared,
+        )
+        self.db.add(note)
+        self.db.commit()
+        self.db.refresh(note)
+
+        self._log_audit(
+            "CONSULTATION_NOTE_ADDED",
+            user.id,
+            {"consultation_id": str(consultation.id), "note_id": str(note.id)},
+        )
+        return note
+
+    def get_consultation_notes(
+        self, user: User, consultation_id: uuid.UUID
+    ) -> list:
+        consultation = self._get_consultation(consultation_id)
+        self._authorize_consultation_access(user, consultation)
+
+        from app.models.consultation_note import ConsultationNote
+        query = self.db.query(ConsultationNote).filter(
+            ConsultationNote.consultation_id == consultation.id
+        )
+        if user.role == UserRole.CLIENT:
+            query = query.filter(ConsultationNote.client_shared.is_(True))
+
+        return query.order_by(ConsultationNote.created_at.desc()).all()

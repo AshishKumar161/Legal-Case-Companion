@@ -17,6 +17,7 @@ from app.core.exceptions import (
     AuthorizationError,
     ValidationError,
 )
+from app.core.file_validation import validate_file_magic_bytes, validate_filename_security
 from app.core.identifiers import generate_uuid7
 from app.core.storage import get_storage_provider
 from app.models.ai import DocumentChunk
@@ -49,17 +50,8 @@ class DocumentService:
             event_type, user_id, metadata, action="document_mutation"
         )
 
-    def _validate_filename(self, filename: str) -> None:
-        if (
-            not filename
-            or not filename.strip()
-            or len(filename) > 255
-            or "/" in filename
-            or "\\" in filename
-            or "\x00" in filename
-            or ".." in filename
-        ):
-            raise ValidationError("Invalid filename")
+    def _validate_filename(self, filename: str) -> str:
+        return validate_filename_security(filename)
 
     def create_document_metadata(
         self, user: User, case_id: uuid.UUID, req: DocumentCreate
@@ -254,6 +246,11 @@ class DocumentService:
 
         if not self.storage.object_exists(doc.storage_key):
             raise ValidationError("Uploaded file not found in storage")
+
+        # Fetch bytes to validate content signature magic bytes against declared MIME type
+        file_bytes = self.storage.get_object_bytes(doc.storage_key)
+        if file_bytes is not None:
+            validate_file_magic_bytes(file_bytes, doc.mime_type)
 
         doc.security_status = DocumentSecurityStatus.QUARANTINED
         self.db.commit()

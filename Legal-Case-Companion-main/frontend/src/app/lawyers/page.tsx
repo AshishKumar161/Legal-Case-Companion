@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { apiClient } from "@/api/client";
 import { LawyerProfileItem } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -25,6 +26,7 @@ export default function LawyerDiscovery() {
   const [jurisdiction, setJurisdiction] = useState("");
   const [minExp, setMinExp] = useState("");
   const [maxFee, setMaxFee] = useState("");
+  const [language, setLanguage] = useState("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
   // Booking modal state
@@ -40,6 +42,7 @@ export default function LawyerDiscovery() {
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState("");
   const [bookingError, setBookingError] = useState("");
+  const [bookedConsultationId, setBookedConsultationId] = useState<string | null>(null);
 
   const fetchLawyers = useCallback(async () => {
     setLoading(true);
@@ -49,6 +52,7 @@ export default function LawyerDiscovery() {
       if (location.trim()) params.set("location", location.trim());
       if (practiceArea.trim()) params.set("practice_area", practiceArea.trim());
       if (jurisdiction.trim()) params.set("court_jurisdiction", jurisdiction.trim());
+      if (language.trim()) params.set("language", language.trim());
       if (minExp) params.set("min_experience", minExp);
       if (maxFee) params.set("max_fee", maxFee);
       params.set("verified_only", verifiedOnly ? "true" : "false");
@@ -62,7 +66,7 @@ export default function LawyerDiscovery() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, location, practiceArea, jurisdiction, minExp, maxFee, verifiedOnly]);
+  }, [searchTerm, location, practiceArea, jurisdiction, language, minExp, maxFee, verifiedOnly]);
 
   useEffect(() => {
     void fetchLawyers();
@@ -101,20 +105,17 @@ export default function LawyerDiscovery() {
 
     try {
       const lawyerId = bookingLawyer.user_id || bookingLawyer.id;
-      await apiClient.post("/api/v1/consultations", {
+      const res: any = await apiClient.post("/api/v1/consultations", {
         lawyer_id: lawyerId,
         scheduled_at: selectedSlot.start_time,
         duration_minutes: 30,
       });
+      setBookedConsultationId(res.id);
       setBookingSuccess(
-        `Consultation booked successfully with ${bookingLawyer.full_name} for ${new Date(
+        `Consultation slot reserved successfully with ${bookingLawyer.full_name} for ${new Date(
           selectedSlot.start_time
         ).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}!`
       );
-      setTimeout(() => {
-        setBookingLawyer(null);
-        setBookingSuccess("");
-      }, 3000);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Selected slot is no longer available.";
       setBookingError(msg);
@@ -207,6 +208,24 @@ export default function LawyerDiscovery() {
               className="input-field"
               style={{ width: "150px" }}
             />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="input-field"
+              style={{ width: "160px" }}
+            >
+              <option value="">All Languages</option>
+              <option value="English">English</option>
+              <option value="Hindi">Hindi (हिंदी)</option>
+              <option value="Bengali">Bengali (বাংলা)</option>
+              <option value="Tamil">Tamil (தமிழ்)</option>
+              <option value="Telugu">Telugu (తెలుగు)</option>
+              <option value="Marathi">Marathi (मराठी)</option>
+              <option value="Gujarati">Gujarati (ગુજરાતી)</option>
+              <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
+              <option value="Malayalam">Malayalam (മലയാളം)</option>
+              <option value="Punjabi">Punjabi (ਪੰਜਾਬੀ)</option>
+            </select>
             <input
               type="number"
               placeholder="Max Fee (₹)"
@@ -253,6 +272,7 @@ export default function LawyerDiscovery() {
               setLocation("");
               setPracticeArea("");
               setJurisdiction("");
+              setLanguage("");
               setMinExp("");
               setMaxFee("");
               setVerifiedOnly(false);
@@ -324,6 +344,28 @@ export default function LawyerDiscovery() {
                         ))}
                       </div>
                     )}
+
+                    {/* Languages Spoken */}
+                    {lawyer.languages && (
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", marginTop: "10px" }}>
+                        <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>🗣️ Speaks:</span>
+                        {(Array.isArray(lawyer.languages) ? lawyer.languages : [lawyer.languages]).map((lang, idx) => (
+                          <span
+                            key={idx}
+                            style={{
+                              fontSize: "11px",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              background: "rgba(16, 185, 129, 0.12)",
+                              color: "#34d399",
+                              border: "1px solid rgba(16, 185, 129, 0.25)",
+                            }}
+                          >
+                            {lang}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div
@@ -341,17 +383,26 @@ export default function LawyerDiscovery() {
                       </span>
                       <span style={{ fontSize: "11px", color: "var(--text-muted)" }}> / 30 min</span>
                     </div>
-                    <button
-                      onClick={() => {
-                        setBookingLawyer(lawyer);
-                        setBookingError("");
-                        setBookingSuccess("");
-                      }}
-                      className="btn btn-primary"
-                      style={{ padding: "7px 16px", fontSize: "12px" }}
-                    >
-                      Book Session →
-                    </button>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <Link
+                        href={`/lawyers/${lawyer.id}`}
+                        className="btn btn-secondary"
+                        style={{ padding: "7px 12px", fontSize: "12px" }}
+                      >
+                        Profile
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setBookingLawyer(lawyer);
+                          setBookingError("");
+                          setBookingSuccess("");
+                        }}
+                        className="btn btn-primary"
+                        style={{ padding: "7px 14px", fontSize: "12px" }}
+                      >
+                        Book Session →
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -404,80 +455,130 @@ export default function LawyerDiscovery() {
                 </button>
               </div>
 
-              {bookingSuccess && (
-                <div style={{ padding: "12px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", fontSize: "13px", marginBottom: "16px" }}>
-                  {bookingSuccess}
+              {bookingSuccess && bookedConsultationId ? (
+                <div style={{ textAlign: "center", padding: "12px 0" }}>
+                  <div
+                    style={{
+                      width: "56px",
+                      height: "56px",
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(16, 185, 129, 0.15)",
+                      color: "#10b981",
+                      fontSize: "28px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 16px",
+                    }}
+                  >
+                    ✓
+                  </div>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#fff", marginBottom: "8px" }}>
+                    Appointment Confirmed!
+                  </h3>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "14px", lineHeight: 1.5, marginBottom: "20px" }}>
+                    {bookingSuccess}
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <a
+                      href={`/consultations/${bookedConsultationId}/room`}
+                      className="btn btn-primary"
+                      style={{
+                        padding: "12px",
+                        fontSize: "14px",
+                        textAlign: "center",
+                        textDecoration: "none",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Enter Video Consultation Room 🎥
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBookingLawyer(null);
+                        setBookingSuccess("");
+                        setBookedConsultationId(null);
+                      }}
+                      className="btn btn-secondary"
+                      style={{ padding: "10px" }}
+                    >
+                      Done & Return to Directory
+                    </button>
+                  </div>
                 </div>
-              )}
-
-              {bookingError && (
-                <div style={{ padding: "12px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", fontSize: "13px", marginBottom: "16px" }}>
-                  {bookingError}
-                </div>
-              )}
-
-              <form onSubmit={handleBookConsultation}>
-                <div className="input-group">
-                  <label className="input-label">Consultation Date</label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    min={new Date().toISOString().split("T")[0]}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    required
-                    className="input-field"
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label className="input-label">Available Time Slots</label>
-                  {fetchingSlots ? (
-                    <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Synchronizing advocate calendar...</div>
-                  ) : slots.length === 0 ? (
-                    <div style={{ fontSize: "12px", color: "#f59e0b", padding: "10px", background: "rgba(245, 158, 11, 0.08)", borderRadius: "6px" }}>
-                      No available slots on this date. Please select another date.
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", maxHeight: "150px", overflowY: "auto" }}>
-                      {slots.map((slot, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setSelectedSlot(slot)}
-                          style={{
-                            padding: "8px",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            background: selectedSlot?.start_time === slot.start_time ? "var(--accent-primary)" : "var(--surface-subtle)",
-                            color: selectedSlot?.start_time === slot.start_time ? "#fff" : "var(--text-primary)",
-                            border: "1px solid var(--border-subtle)",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {new Date(slot.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </button>
-                      ))}
+              ) : (
+                <>
+                  {bookingError && (
+                    <div style={{ padding: "12px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", fontSize: "13px", marginBottom: "16px" }}>
+                      {bookingError}
                     </div>
                   )}
-                </div>
 
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px" }}>
-                  <button
-                    type="button"
-                    onClick={() => setBookingLawyer(null)}
-                    className="btn btn-secondary"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={bookingSubmitting || (!selectedSlot && slots.length > 0)}
-                    className="btn btn-primary"
-                  >
-                    {bookingSubmitting ? "Reserving Slot..." : "Confirm & Reserve Slot →"}
-                  </button>
-                </div>
-              </form>
+                  <form onSubmit={handleBookConsultation}>
+                    <div className="input-group">
+                      <label className="input-label">Consultation Date</label>
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        min={new Date().toISOString().split("T")[0]}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        required
+                        className="input-field"
+                      />
+                    </div>
+
+                    <div className="input-group">
+                      <label className="input-label">Available Time Slots</label>
+                      {fetchingSlots ? (
+                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Synchronizing advocate calendar...</div>
+                      ) : slots.length === 0 ? (
+                        <div style={{ fontSize: "12px", color: "#f59e0b", padding: "10px", background: "rgba(245, 158, 11, 0.08)", borderRadius: "6px" }}>
+                          No available slots on this date. Please select another date.
+                        </div>
+                      ) : (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", maxHeight: "150px", overflowY: "auto" }}>
+                          {slots.map((slot, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setSelectedSlot(slot)}
+                              style={{
+                                padding: "8px",
+                                borderRadius: "6px",
+                                fontSize: "12px",
+                                background: selectedSlot?.start_time === slot.start_time ? "var(--accent-primary)" : "var(--surface-subtle)",
+                                color: selectedSlot?.start_time === slot.start_time ? "#fff" : "var(--text-primary)",
+                                border: "1px solid var(--border-subtle)",
+                                fontWeight: 500,
+                              }}
+                            >
+                              {new Date(slot.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setBookingLawyer(null)}
+                        className="btn btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={bookingSubmitting || (!selectedSlot && slots.length > 0)}
+                        className="btn btn-primary"
+                      >
+                        {bookingSubmitting ? "Reserving Slot..." : "Confirm & Reserve Slot →"}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
             </div>
           </div>
         )}

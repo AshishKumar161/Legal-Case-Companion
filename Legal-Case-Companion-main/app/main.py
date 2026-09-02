@@ -31,6 +31,7 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.payments import router as payments_router
 from app.api.v1.profiles import router as profiles_router
 from app.api.v1.search import router as search_router
+from app.api.v1.video_signaling import router as video_signaling_router
 from app.api.v1.webhooks import router as webhooks_router
 from app.api.v1.workflow import router as workflow_router
 from app.core.config import settings
@@ -199,3 +200,4 @@ app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(audit_router, prefix=settings.API_V1_STR)
 app.include_router(health_router, prefix=settings.API_V1_STR)
 app.include_router(webhooks_router, prefix=settings.API_V1_STR)
+app.include_router(video_signaling_router, prefix=settings.API_V1_STR)

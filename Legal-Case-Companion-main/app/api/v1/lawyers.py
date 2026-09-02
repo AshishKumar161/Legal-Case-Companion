@@ -27,6 +27,7 @@ def search_lawyers(
     max_fee: float | None = None,
     min_experience: int | None = None,
     max_experience: int | None = None,
+    language: str | None = None,
     verified_only: bool = True,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -48,6 +49,7 @@ def search_lawyers(
         max_fee=max_fee,
         min_experience=min_experience,
         max_experience=max_experience,
+        language=language,
         verified_only=verified_only,
     )
 

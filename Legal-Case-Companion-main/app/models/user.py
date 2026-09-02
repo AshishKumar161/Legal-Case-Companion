@@ -119,6 +119,7 @@ class LawyerProfile(Base, TimestampMixin, SoftDeleteMixin):
     practice_areas: Mapped[list | None] = mapped_column(JSON, nullable=True)
     experience_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
     court_jurisdictions: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    languages: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="lawyer_profile")

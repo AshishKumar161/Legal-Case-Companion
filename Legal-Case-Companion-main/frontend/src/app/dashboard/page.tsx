@@ -449,15 +449,57 @@ export default function Dashboard() {
                         </div>
                       )}
 
-                      {con.meeting_url && (
+                      {["SCHEDULED", "IN_PROGRESS"].includes(con.status) && (
                         <a
-                          href={con.meeting_url}
-                          target="_blank"
-                          rel="noreferrer"
+                          href={`/consultations/${con.id}/room`}
                           className={styles.consultLink}
-                          style={{ marginTop: "6px" }}
+                          style={{
+                            marginTop: "8px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            backgroundColor: "#2563eb",
+                            color: "#ffffff",
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            fontWeight: 600,
+                            fontSize: "12px",
+                            textDecoration: "none",
+                          }}
                         >
-                          Join Secured Call ↗
+                          🎥 Enter Video Consultation Room
+                        </a>
+                      )}
+
+                      {con.status === "COMPLETED" && con.case_id && (
+                        <a
+                          href={`/cases/${con.case_id}`}
+                          style={{
+                            marginTop: "6px",
+                            display: "inline-block",
+                            fontSize: "12px",
+                            color: "#38bdf8",
+                            textDecoration: "underline",
+                            fontWeight: 600,
+                          }}
+                        >
+                          ⚖️ View Linked Case Matter →
+                        </a>
+                      )}
+
+                      {con.status === "COMPLETED" && !con.case_id && (
+                        <a
+                          href={`/consultations/${con.id}/room`}
+                          style={{
+                            marginTop: "6px",
+                            display: "inline-block",
+                            fontSize: "12px",
+                            color: "#a855f7",
+                            textDecoration: "underline",
+                            fontWeight: 600,
+                          }}
+                        >
+                          ⚖️ Convert into Legal Case →
                         </a>
                       )}
 

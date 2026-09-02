@@ -31,24 +31,30 @@ export function Sidebar({
   // Navigation Items per Role
   const clientNav = [
     { label: "Overview", href: "/dashboard", icon: "📊" },
-    { label: "My Matters", href: "/dashboard", icon: "⚖" },
+    { label: "My Cases", href: "/cases", icon: "⚖" },
+    { label: "Consultations", href: "/consultations", icon: "📅" },
     { label: "Find Lawyers", href: "/lawyers", icon: "🔍" },
+    { label: "Notifications", href: "/notifications", icon: "🔔" },
     { label: "Account & Settings", href: "/settings", icon: "⚙" },
   ];
 
   const lawyerNav = [
     { label: "Practice Overview", href: "/lawyer/dashboard", icon: "📈" },
-    { label: "Profile & Slots", href: "/lawyer/profile", icon: "📅" },
+    { label: "Consultations", href: "/consultations", icon: "📅" },
+    { label: "My Cases", href: "/cases", icon: "⚖" },
+    { label: "Profile & Availability", href: "/lawyer/profile", icon: "👤" },
     { label: "Lawyer Directory", href: "/lawyers", icon: "👥" },
+    { label: "Notifications", href: "/notifications", icon: "🔔" },
     { label: "Account & Settings", href: "/settings", icon: "⚙" },
-    { label: "Client View", href: "/dashboard", icon: "📁" },
   ];
 
   const adminNav = [
     { label: "Console Overview", href: "/admin/dashboard", icon: "🛡" },
-    { label: "Lawyer Directory", href: "/lawyers", icon: "⚖" },
+    { label: "Consultations", href: "/consultations", icon: "📅" },
+    { label: "Cases", href: "/cases", icon: "⚖" },
+    { label: "Lawyer Directory", href: "/lawyers", icon: "👥" },
+    { label: "Notifications", href: "/notifications", icon: "🔔" },
     { label: "Account & Settings", href: "/settings", icon: "⚙" },
-    { label: "Client Workspace", href: "/dashboard", icon: "📁" },
   ];
 
   const navItems =
