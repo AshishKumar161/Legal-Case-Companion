@@ -70,3 +70,12 @@ class ConflictError(AppException):
     ):
         super().__init__(status_code=409, code=code, message=message)
 
+
+class ScannerUnavailableError(AppException):
+    def __init__(
+        self,
+        message: str = "Malware scanner service is temporarily unavailable",
+        code: str = "SCANNER_UNAVAILABLE",
+    ):
+        super().__init__(status_code=503, code=code, message=message)
+

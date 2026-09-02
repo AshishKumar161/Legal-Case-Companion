@@ -1,9 +1,10 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import RequireRole, get_current_user, get_db
+from app.api.v1.auth import limiter
 from app.models.consultation import ConsultationStatus
 from app.models.user import User, UserRole
 from app.schemas.case import CaseResponse
@@ -41,7 +42,9 @@ router = APIRouter(prefix="/consultations", tags=["consultations"])
 @router.post(
     "", response_model=ConsultationResponse, status_code=status.HTTP_201_CREATED
 )
+@limiter.limit("30/minute")
 def request_consultation(
+    request: Request,
     req: ConsultationCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -183,7 +186,9 @@ def complete_consultation(
 @router.post(
     "/{consultation_id}/payments", response_model=PaymentIntentResponse, status_code=201
 )
+@limiter.limit("20/minute")
 def create_payment(
+    request: Request,
     consultation_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(RequireRole([UserRole.CLIENT])),
@@ -232,7 +237,9 @@ def get_messages(
     "/{consultation_id}/video/join",
     response_model=VideoJoinInfoResponse,
 )
-def get_video_join_info(
+@limiter.limit("60/minute")
+def join_video_meeting(
+    request: Request,
     consultation_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

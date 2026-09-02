@@ -37,11 +37,23 @@ services:
         value: lcc-secure-documents
       - key: BACKEND_CORS_ORIGINS
         value: '["https://app.legalcasecompanion.in"]'
+      - key: FRONTEND_URL
+        value: "https://app.legalcasecompanion.in"
       - key: ENVIRONMENT
         value: production
       - key: LOG_LEVEL
         value: INFO
       - key: AWS_WEBHOOK_SECRET
+        sync: false
+      - key: CLAMAV_HOST
+        sync: false
+      - key: CLAMAV_PORT
+        value: "3310"
+      - key: TURN_SERVER_URL
+        sync: false
+      - key: TURN_USERNAME
+        sync: false
+      - key: TURN_CREDENTIAL
         sync: false
       - key: GOOGLE_OAUTH_ENABLED
         value: "true"
@@ -57,7 +69,7 @@ services:
     env: docker
     region: singapore
     plan: starter
-    dockerCommand: "python -m app.services.job_worker"
+    dockerCommand: "python -m app.worker"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -71,6 +83,46 @@ services:
         value: ap-south-1
       - key: AWS_S3_BUCKET_NAME
         value: lcc-secure-documents
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: CLAMAV_HOST
+        sync: false
+      - key: CLAMAV_PORT
+        value: "3310"
+      - key: OPENAI_API_KEY
+        sync: false
+
+  - type: worker
+    name: lcc-scheduler
+    env: docker
+    region: singapore
+    plan: starter
+    dockerCommand: "python -m app.scheduler"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lcc-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+
+  - type: web
+    name: lcc-frontend
+    env: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    region: singapore
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://api.legalcasecompanion.in"
 
   - type: psql
     name: lcc-db

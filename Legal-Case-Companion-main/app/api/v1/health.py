@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 @root_router.get("/health", status_code=status.HTTP_200_OK)
 @router.get("/health/live", status_code=status.HTTP_200_OK)
 @root_router.get("/health/live", status_code=status.HTTP_200_OK)
+@root_router.get("/liveness", status_code=status.HTTP_200_OK)
 def liveness_check():
     """Liveness probe.
 
@@ -28,6 +29,7 @@ def liveness_check():
 @router.get("/health/ready")
 @root_router.get("/health/ready")
 @root_router.get("/ready")
+@root_router.get("/readiness")
 def readiness_check(db: Session = Depends(get_db)):
     """Readiness probe.
 

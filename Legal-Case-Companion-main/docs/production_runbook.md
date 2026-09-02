@@ -2,7 +2,7 @@
 
 ## 1. System Architecture & Process Topology
 
-Legal Case Companion is structured as a hardened **modular monolith** backend in Python / FastAPI with PostgreSQL and private AWS S3 storage.
+Legal Case Companion is structured as a hardened **modular monolith** backend in Python / FastAPI with PostgreSQL, private AWS S3 storage, real-time WebRTC video signaling, ClamAV antivirus scanning, and coturn NAT traversal.
 
 ```text
                                   +---------------------------------------+
@@ -11,9 +11,16 @@ Legal Case Companion is structured as a hardened **modular monolith** backend in
                                                       |
                                                       v HTTPS (Port 443)
                                   +---------------------------------------+
+                                  |     Next.js Frontend Container        |
+                                  |     (Multi-stage node:20-alpine)      |
+                                  +---------------------------------------+
+                                                      |
+                                                      v Internal / Rewrites
+                                  +---------------------------------------+
                                   |     FastAPI Web API (uvicorn)         |
                                   |  - CorrelationId & Metrics Middleware |
                                   |  - RBAC & BOLA Enforced API Endpoints |
+                                  |  - WebRTC WebSocket Signaling (/ws)   |
                                   +---------------------------------------+
                                            |                     |
                         Job Enqueue / Reads|                     | S3 Presigned URLs
@@ -32,6 +39,13 @@ Legal Case Companion is structured as a hardened **modular monolith** backend in
 |  - Deadline & task scans      |
 |  - Stale job recovery         |
 +-------------------------------+
+                                           |
+                    TCP Stream (Port 3310) |               UDP/TCP (3478 / 5349)
+                                           v                               v
+                            +----------------------+      +----------------------+
+                            | ClamAV / ClamD       |      | CoTURN STUN / TURN   |
+                            | (Fail-Closed Daemon) |      | (WebRTC NAT Relay)   |
+                            +----------------------+      +----------------------+
 ```
 
 ---
@@ -43,7 +57,7 @@ Production environments must set all required environment variables securely wit
 | Variable | Description | Production Requirement |
 |---|---|---|
 | `ENVIRONMENT` | Deployment environment | Must be `production` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/dbname` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql+psycopg://user:pass@host:5432/dbname` |
 | `DB_POOL_SIZE` | SQLAlchemy connection pool size | Recommended `20` |
 | `DB_MAX_OVERFLOW` | Maximum pool overflow | Recommended `10` |
 | `DB_STATEMENT_TIMEOUT_MS` | PostgreSQL query execution timeout | Default `30000` (30s) |
@@ -55,67 +69,64 @@ Production environments must set all required environment variables securely wit
 | `AWS_ACCESS_KEY_ID` | IAM user with S3 read/write | Restricted IAM policy |
 | `AWS_SECRET_ACCESS_KEY`| IAM secret | Restricted IAM policy |
 | `AWS_WEBHOOK_SECRET` | HMAC secret for malware scanning | Secret string |
+| `CLAMAV_HOST` | ClamAV TCP daemon hostname | e.g. `clamav` or internal IP |
+| `CLAMAV_PORT` | ClamAV TCP daemon port | `3310` |
+| `TURN_SERVER_URL` | Coturn STUN/TURN server URL | `turn:turn.legalcasecompanion.in:3478` |
+| `TURN_USERNAME` | Turn username | Configured TURN user |
+| `TURN_CREDENTIAL` | Turn password / static auth secret | Secure random string |
 | `STRIPE_API_KEY` | Stripe secret key | Secret string |
 | `STRIPE_WEBHOOK_SECRET`| Stripe webhook verification | Secret string |
-| `EMAIL_PROVIDER` | Email provider engine | `sendgrid` or `ses` (not `console`) |
-| `SENDGRID_API_KEY` | SendGrid API key | Secret string |
-| `OPENAI_API_KEY` | OpenAI API key for embeddings/LLM | Secret string |
-| `LOG_LEVEL` | Application logging level | `INFO` |
+| `EMAIL_PROVIDER` | Email provider engine | `sendgrid`, `ses`, or `smtp` (not `console`) |
+| `FRONTEND_URL` | Client application domain | `https://app.legalcasecompanion.in` |
+| `BACKEND_CORS_ORIGINS`| Authorized CORS origins | JSON list of trusted domains (never `*`) |
 
 ---
 
-## 3. Database Migration & Deployment Runbook
+## 3. Operational Configuration Diagnostics
 
-### Pre-Deployment Migrations
-In production (Render, Docker, or Kubernetes), migrations are executed before starting web traffic:
+Before deploying or promoting application versions, execute the non-destructive diagnostics CLI:
+
+```bash
+python scripts/verify_production_config.py --env production
+```
+This utility validates that:
+1. All Ed25519 cryptographic keys and CSRF tokens are present and PEM-formatted.
+2. The database is reachable and tests connection latency.
+3. ClamAV TCP daemon is accepting connections on port 3310.
+4. TURN credentials and server URLs are configured.
+5. Stripe API keys and webhook signing secrets are formatted correctly.
+6. Zero secrets or passwords are printed to console logs.
+
+---
+
+## 4. Database Schema Migrations (Alembic)
+
+Schema management is strictly controlled via Alembic. **`Base.metadata.create_all()` is disabled in production**.
+
+### Current Revision Head
+The active production revision head is:
+```text
+f1a2b3c4d5e6 (head)
+```
+
+### Pre-Deployment Migration Command
+In automated deployment workflows (e.g. Render `preDeployCommand`):
 ```bash
 alembic upgrade head
 ```
 
-### Migration Integrity Verification
-Confirm that the migration graph has exactly one head:
-```bash
-alembic heads
-# Expected Output: 9c0d1e2f3a4b (head)
-```
-
-### Rollback Strategy
-If a deployment fails, roll back to the previous revision:
+### Rollback Limitations & Procedure
+To downgrade 1 revision in staging/emergency:
 ```bash
 alembic downgrade -1
 ```
+*Note: Dropping columns or migrating enum types in PostgreSQL with active connections requires lock timeouts (`DB_STATEMENT_TIMEOUT_MS`). Destructive rollbacks with data loss are restricted.*
 
 ---
 
-## 4. PostgreSQL Backup & Disaster Recovery (DR)
-
-### Daily Automated Backups
-Run `pg_dump` with custom compressed format:
-```bash
-pg_dump -Fc -v --no-owner --no-privileges -d "$DATABASE_URL" -f "lcc_backup_$(date +%Y%m%d_%H%M%S).dump"
-```
-
-### Point-in-Time Recovery (PITR) / Restore Procedure
-1. Provision target database instance.
-2. Restore database schema and data:
-```bash
-pg_restore -v --clean --if-exists --no-owner -d "$NEW_DATABASE_URL" lcc_backup_20260830.dump
-```
-3. Run migration verification:
-```bash
-alembic current
-```
-4. Verify readiness probe:
-```bash
-curl -I https://api.legalcasecompanion.in/health/ready
-```
-
----
-
-## 5. Background Jobs, Worker & Scheduler Operations
+## 5. Background Worker & Scheduler Operations
 
 ### Running Standalone Worker
-In a dedicated container or background worker service:
 ```bash
 python -m app.worker 2.0 10
 ```
@@ -123,22 +134,43 @@ python -m app.worker 2.0 10
 - Responds gracefully to `SIGINT` / `SIGTERM` signals.
 
 ### Running Standalone Scheduler
-In a dedicated scheduler container:
+In a dedicated scheduler container (strictly 1 instance):
 ```bash
 python -m app.scheduler 60.0
 ```
 - Idempotently enqueues periodic deadline scans, task overdue scans, and stale job recoveries.
 
-### Stale Job Recovery
-If an unmanaged worker crash occurs, the scheduler's `STALE_JOB_RECOVERY` job reclaims jobs locked for longer than lease expiry and resets them to `RETRYING` or `FAILED`.
+---
+
+## 6. Antivirus & Document Malware Scanning (ClamAV)
+
+1. **Daemon Connectivity**: ClamD TCP daemon on port 3310 (`clamav:3310`).
+2. **Fail-Closed Assurance**:
+   - If the ClamAV daemon is unreachable, the scanner raises `ScannerUnavailableError`.
+   - The document remains in `DocumentSecurityStatus.QUARANTINED` with processing error `"Malware scanner service is temporarily unavailable. Document remains quarantined."`.
+   - Documents are **never** permitted to transition to `SAFE` without byte-level verification.
+3. **Recovery**: When ClamD recovers, the scheduler loop re-enqueues quarantined documents for verification.
 
 ---
 
-## 6. Observability, Metrics & Security
+## 7. WebRTC & Video Room Signaling (Coturn)
 
-### Health & Readiness Probes
-- `GET /health/live` or `GET /health`: Liveness probe (returns 200 OK if process is running).
-- `GET /health/ready` or `GET /ready`: Readiness probe (executes `SELECT 1` on DB connection pool).
+1. **WebSocket Signaling Endpoint**:
+   `GET /api/v1/consultations/{id}/video/ws?token=...`
+2. **Authentication**:
+   HMAC-SHA256 signed access token (2-hour TTL).
+3. **STUN/TURN Relay (Coturn)**:
+   - Config file: `coturn/turnserver.conf`.
+   - Ports: 3478 (UDP/TCP), 5349 (TLS).
+   - Dynamic ICE servers populated in `VideoMeetingService.create_meeting_room`.
+
+---
+
+## 8. Observability & Health Probes
+
+### Health Probes
+- `GET /health/live`, `GET /liveness`: Liveness probe (returns 200 OK if process is alive).
+- `GET /health/ready`, `GET /readiness`: Readiness probe (executes `SELECT 1` on DB connection pool).
 
 ### Operational Metrics
 Admin-authenticated endpoint:
@@ -146,31 +178,23 @@ Admin-authenticated endpoint:
 GET /api/v1/admin/metrics
 Authorization: Bearer <ADMIN_JWT>
 ```
-Returns:
-- Server uptime in seconds.
-- Total HTTP request count and status code breakdown (2xx, 4xx, 5xx).
-- Request latency percentiles (Average, P95).
-- AI retrieval and LLM operation counts.
-
-### Security Incident Response (Token Revocation)
-If user credentials or refresh tokens are compromised:
-1. Invoke Admin User Suspension:
-```http
-POST /api/v1/admin/users/{user_id}/suspend
-```
-2. This immediately revokes all active session refresh tokens and blocks access token renewal.
+- URL paths are automatically sanitized with `{id}` masking to prevent UUID leakage and bounded cardinality.
 
 ---
 
-## 7. Production Readiness Checklist
+## 9. Production Readiness Checklist
 
-- [x] **Configuration**: All secrets externalized and validated in `Settings`.
-- [x] **Database Migrations**: Single linear chain with 1 head (`9c0d1e2f3a4b`).
+- [x] **Configuration**: All secrets externalized, classified, and verified via `scripts/verify_production_config.py`.
+- [x] **Database Migrations**: Single linear Alembic chain with head `f1a2b3c4d5e6`.
 - [x] **Security Headers**: HSTS, nosniff, DENY framing, strict CSP, Referrer-Policy, Permissions-Policy.
 - [x] **Authentication**: Ed25519 JWT access tokens + rotating opaque refresh tokens + Argon2id.
-- [x] **Authorization**: Resource-level BOLA/IDOR protection on all case resources.
-- [x] **Private Storage**: Private S3 buckets with time-limited presigned URLs.
-- [x] **Background Execution**: Persistent `background_jobs` queue with concurrency-safe locking and bounded retries.
-- [x] **Observability**: Correlation IDs on all logs/errors + `GET /api/v1/admin/metrics`.
-- [x] **Health Probes**: Liveness and readiness endpoints mounted at root and API v1.
-- [x] **Regression Baseline**: 264+ automated tests passing with 0 warnings and 0 failures.
+- [x] **Authorization**: Strict BOLA/IDOR protection and `CaseParticipant` guards.
+- [x] **Private Storage**: Private S3 buckets with AES256 server-side encryption and presigned URLs.
+- [x] **Malware Scanning**: Pluggable `HeuristicSignatureScanner` + `ClamAVScanner` with strict fail-closed behavior.
+- [x] **Video Signaling**: Real-time authenticated WebSocket signaling + configured Coturn TURN relay.
+- [x] **Payments & Webhooks**: Stripe integration with HMAC-SHA256 verification and replay idempotency.
+- [x] **Rate Limiting**: Applied to booking, payment intent, and video join token endpoints.
+- [x] **Background Execution**: Persistent `background_jobs` queue with graceful worker and scheduler shutdown.
+- [x] **Observability**: Sanitized low-cardinality metrics + separate `/liveness` and `/readiness` probes.
+- [x] **CI/CD Pipeline**: GitHub Actions CI workflow covering tests, migrations, frontend build, and Docker images.
+- [x] **Incident Response**: Emergency playbooks in `docs/INCIDENT_RESPONSE.md`.

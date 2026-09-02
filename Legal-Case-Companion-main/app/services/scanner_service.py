@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.exceptions import ResourceNotFoundError, ValidationError
+from app.core.exceptions import ResourceNotFoundError, ScannerUnavailableError, ValidationError
 from app.core.file_validation import validate_file_magic_bytes
 from app.core.storage import get_storage_provider
 from app.models.document import Document, DocumentSecurityStatus
@@ -99,8 +99,10 @@ class ClamAVScanner:
                     return False, f"ClamAV threat detected: {response}"
                 return True, None
         except Exception as e:
-            logger.warning(f"ClamAV daemon connection failed ({self.host}:{self.port}): {e}. Falling back to heuristic scanner.")
-            return True, None
+            logger.error(f"ClamAV daemon connection failed ({self.host}:{self.port}): {e}")
+            raise ScannerUnavailableError(
+                f"ClamAV daemon connection failed at {self.host}:{self.port}: {e}"
+            ) from e
 
 
 class DefaultMalwareScanner:
@@ -200,7 +202,22 @@ class ScannerService:
         )
 
         # 5. Execute malware scan
-        is_safe, threat_reason = self.scanner.scan_bytes(file_bytes, document.filename)
+        try:
+            is_safe, threat_reason = self.scanner.scan_bytes(file_bytes, document.filename)
+        except ScannerUnavailableError as scan_err:
+            document.security_status = DocumentSecurityStatus.QUARANTINED
+            document.processing_error = (
+                "Malware scanner service is temporarily unavailable. Document remains quarantined."
+            )
+            auth_svc.log_audit_event(
+                event_type="DOCUMENT_SCAN_UNAVAILABLE",
+                user_id=document.uploaded_by,
+                metadata={"document_id": str(document.id), "error": str(scan_err)},
+                action="document_mutation",
+            )
+            self.db.commit()
+            self.db.refresh(document)
+            raise
 
         if is_safe:
             document.security_status = DocumentSecurityStatus.SAFE

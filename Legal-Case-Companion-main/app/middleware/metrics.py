@@ -1,3 +1,4 @@
+import re
 import time
 from collections.abc import Awaitable, Callable
 
@@ -6,6 +7,10 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.core.metrics import metrics_collector
+
+UUID_REGEX = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
@@ -19,7 +24,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         duration_ms = (time.perf_counter() - start_time) * 1000.0
 
         # Redact raw dynamic UUID path segments to keep endpoint cardinality low
-        path = request.url.path
+        path = UUID_REGEX.sub("{id}", request.url.path)
         metrics_collector.record_http_request(
             method=request.method,
             path=path,
