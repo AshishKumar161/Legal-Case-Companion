@@ -76,3 +76,8 @@ class EmailVerificationConfirm(BaseModel):
 
 class EmailVerificationResponse(BaseModel):
     detail: str
+
+
+class EmailOTPVerifyRequest(BaseModel):
+    email: str
+    otp: str

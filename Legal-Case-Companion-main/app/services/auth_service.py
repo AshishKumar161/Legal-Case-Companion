@@ -717,8 +717,9 @@ class AuthService:
             EmailVerificationToken.used_at.is_(None),
         ).update({"used_at": now})
 
-        raw_token = secrets.token_urlsafe(32)
-        token_hash = hash_refresh_token(raw_token)
+        # Generate 6-digit numeric OTP
+        otp_code = f"{secrets.randbelow(900000) + 100000}"
+        token_hash = hash_refresh_token(otp_code)
 
         verif_record = EmailVerificationToken(
             id=generate_uuid7(),
@@ -726,7 +727,7 @@ class AuthService:
             email=user.email,
             token_hash=token_hash,
             created_at=now,
-            expires_at=now + timedelta(minutes=60),
+            expires_at=now + timedelta(minutes=15),
             used_at=None,
             ip_metadata=ip_address,
         )
@@ -734,20 +735,41 @@ class AuthService:
         self.db.commit()
 
         email_provider = get_email_provider()
-        verif_link = f"{settings.FRONTEND_URL}/verify-email?token={raw_token}"
+        verif_link = f"{settings.FRONTEND_URL}/verify-email?token={otp_code}&email={user.email}"
         email_body = f"""
         <html>
-        <body>
-            <h2>Legal Case Companion — Verify Your Email Address</h2>
-            <p>Please click the link below to verify your email address:</p>
-            <p><a href="{verif_link}">Verify Email</a></p>
-            <p>This link is valid for 60 minutes.</p>
+        <body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px; margin: 0;">
+            <div style="max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div style="background: #1e293b; color: #ffffff; padding: 24px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 20px; letter-spacing: 0.5px;">Legal Case Companion</h1>
+                </div>
+                <div style="padding: 32px 24px; text-align: center;">
+                    <h2 style="color: #0f172a; margin-top: 0; font-size: 22px;">Confirm Your Email Address</h2>
+                    <p style="color: #475569; font-size: 15px; line-height: 1.5; margin: 12px 0 24px;">
+                        Use the 6-digit verification code below to verify your account:
+                    </p>
+                    <div style="margin: 24px 0;">
+                        <span style="display: inline-block; font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #2563eb; background: #eff6ff; padding: 14px 28px; border-radius: 8px; border: 2px solid #bfdbfe; font-family: monospace;">
+                            {otp_code}
+                        </span>
+                    </div>
+                    <p style="color: #64748b; font-size: 13px; margin-bottom: 24px;">
+                        This code is valid for <b>15 minutes</b>. Enter it directly on the verification screen.
+                    </p>
+                    <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; margin-top: 20px;">
+                        <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                            Or verify by clicking this link: <br>
+                            <a href="{verif_link}" style="color: #2563eb; text-decoration: underline;">{verif_link}</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
         </body>
         </html>
         """
         email_provider.send_email(
             to_email=user.email,
-            subject="[Legal Case Companion] Verify Your Email Address",
+            subject="[Legal Case Companion] Your Verification Code",
             html_body=email_body,
         )
 
@@ -796,3 +818,76 @@ class AuthService:
             action="email_verification",
         )
         self.db.commit()
+
+    def verify_email_otp(
+        self,
+        email: str,
+        otp: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> tuple[User, str, str]:
+        """Validates a 6-digit OTP code, marks email verified, and returns an authenticated user session."""
+        if not email or not otp or not otp.strip():
+            raise AuthenticationError("Missing email or verification code")
+
+        normalized = normalize_email(email)
+        user = self.user_service.get_user_by_email(normalized)
+        if not user or user.account_status != AccountStatus.ACTIVE:
+            raise AuthenticationError("User account not found or inactive")
+
+        clean_otp = otp.strip()
+        token_hash = hash_refresh_token(clean_otp)
+
+        now = datetime.now(UTC)
+        record = (
+            self.db.query(EmailVerificationToken)
+            .filter(
+                EmailVerificationToken.user_id == user.id,
+                EmailVerificationToken.token_hash == token_hash,
+            )
+            .order_by(EmailVerificationToken.created_at.desc())
+            .first()
+        )
+
+        if not record:
+            raise AuthenticationError("Invalid verification code. Please check your email and try again.")
+
+        if record.used_at is not None:
+            raise AuthenticationError("This verification code has already been used. Please request a new one.")
+
+        expires_at = (
+            record.expires_at.replace(tzinfo=UTC)
+            if record.expires_at.tzinfo is None
+            else record.expires_at
+        )
+        if expires_at < now:
+            raise AuthenticationError("Verification code has expired. Please request a new code.")
+
+        record.used_at = now
+
+        # Update external identity email verification if present
+        for identity in user.external_identities:
+            if identity.email.lower() == record.email.lower():
+                identity.email_verified = True
+
+        self.log_audit_event(
+            "EMAIL_VERIFIED",
+            user.id,
+            {"email": record.email, "ip": ip_address},
+            action="email_verification",
+        )
+
+        # Create active login session so user goes straight to dashboard
+        access_token, refresh_token_raw = self._create_user_session(
+            user, ip_address=ip_address, user_agent=user_agent
+        )
+
+        self.log_audit_event(
+            "LOGIN_SUCCESS",
+            user.id,
+            {"ip": ip_address, "method": "email_otp"},
+            action="login",
+        )
+
+        self.db.commit()
+        return user, access_token, refresh_token_raw

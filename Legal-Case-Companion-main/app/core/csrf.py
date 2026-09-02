@@ -38,9 +38,9 @@ def set_csrf_cookie(response: Response, csrf_token: str) -> None:
         value=csrf_token,
         httponly=False,  # JS must read this
         secure=is_production,
-        samesite="strict",
+        samesite="strict" if is_production else "lax",
         max_age=30 * 24 * 60 * 60,  # 30 days, aligned with refresh token
-        path=f"{settings.API_V1_STR}/auth",
+        path="/",
     )
 
 

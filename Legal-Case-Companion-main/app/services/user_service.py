@@ -36,7 +36,14 @@ class UserService:
         )
 
     def register_user(self, user_in: UserCreate) -> User:
-        normalized_email = normalize_email(user_in.email)
+        try:
+            normalized_email = normalize_email(user_in.email)
+        except ValueError as e:
+            raise AppException(
+                status_code=400,
+                code="INVALID_EMAIL",
+                message=str(e),
+            ) from e
 
         if self.get_user_by_email(normalized_email):
             raise AppException(

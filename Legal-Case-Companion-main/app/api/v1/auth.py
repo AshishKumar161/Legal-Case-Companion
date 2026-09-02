@@ -18,6 +18,7 @@ from app.core.oauth_security import verify_oauth_state
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.auth import (
+    EmailOTPVerifyRequest,
     EmailVerificationConfirm,
     EmailVerificationRequest,
     EmailVerificationResponse,
@@ -51,7 +52,7 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         value=refresh_token,
         httponly=True,
         secure=is_production,
-        samesite="strict",
+        samesite="strict" if is_production else "lax",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         path=f"{settings.API_V1_STR}/auth",
     )
@@ -64,6 +65,14 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
 def register(request: Request, user_in: UserCreate, db: Session = Depends(get_db)):
     user_service = UserService(db)
     user = user_service.register_user(user_in)
+
+    auth_service = AuthService(db)
+    ip_address = request.client.host if request.client else None
+    try:
+        auth_service.request_email_verification(user.email, ip_address=ip_address)
+    except Exception as e:
+        logger.warning(f"Failed to dispatch initial verification email: {e}")
+
     return user
 
 
@@ -135,6 +144,7 @@ def logout(
     auth_service.logout(refresh_token, current_user.id)
 
     response.delete_cookie(key="refresh_token", path=f"{settings.API_V1_STR}/auth")
+    response.delete_cookie(key="csrf_token", path="/")
     response.delete_cookie(key="csrf_token", path=f"{settings.API_V1_STR}/auth")
     return {"detail": "Logged out successfully"}
 
@@ -220,6 +230,33 @@ def confirm_email_verification(
     auth_service = AuthService(db)
     auth_service.confirm_email_verification(req.token)
     return {"detail": "Email address has been successfully verified."}
+
+
+@router.post("/email/verify/otp", response_model=Token)
+@limiter.limit("10/minute")
+def verify_email_otp(
+    request: Request,
+    response: Response,
+    req: EmailOTPVerifyRequest,
+    db: Session = Depends(get_db),
+):
+    """Validates 6-digit email OTP, sets session cookies, and returns access token for immediate login."""
+    auth_service = AuthService(db)
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+
+    user, access_token, refresh_token = auth_service.verify_email_otp(
+        email=req.email,
+        otp=req.otp,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
+    _set_refresh_cookie(response, refresh_token)
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+
+    return Token(access_token=access_token, token_type="bearer", return_url="/dashboard")
 
 
 # ==========================================

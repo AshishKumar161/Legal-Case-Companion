@@ -24,6 +24,8 @@ if not os.environ.get("JWT_PRIVATE_KEY") or not os.environ.get("JWT_PUBLIC_KEY")
     )
     os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
 
+os.environ["EMAIL_PROVIDER"] = "console"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
@@ -36,9 +38,7 @@ from app.db.database import get_db
 from app.main import app
 from app.models import Base
 
-TEST_DB_URL = settings.DATABASE_URL
-if not TEST_DB_URL:
-    TEST_DB_URL = "sqlite:///./test_pytest.db"
+TEST_DB_URL = "sqlite:///./test_pytest.db"
 
 connect_args = (
     {"check_same_thread": False, "timeout": 30}

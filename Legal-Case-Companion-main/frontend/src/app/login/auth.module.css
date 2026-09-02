@@ -127,3 +127,129 @@
   font-size: 0.9rem;
 }
 
+.otpContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 24px 0;
+}
+
+.otpInput {
+  width: 48px;
+  height: 56px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  color: #ffffff;
+  transition: all 0.2s ease;
+  font-family: monospace;
+}
+
+.otpInput:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.35);
+  outline: none;
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.otpEmailBadge {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  display: inline-block;
+  margin-bottom: 12px;
+  word-break: break-all;
+}
+
+.resendBtn {
+  background: transparent;
+  border: none;
+  color: #60a5fa;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  transition: opacity 0.2s;
+}
+
+.resendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.backBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.backBtn:hover {
+  color: #ffffff;
+}
+
+.otpBoxesWrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 24px auto;
+  width: fit-content;
+  cursor: text;
+}
+
+.otpSegment {
+  width: 48px;
+  height: 56px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.15));
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-family: monospace;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.otpSegment.filled {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+}
+
+.otpSegment.active {
+  border-color: #60a5fa;
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.45);
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.otpUnifiedInput {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: text;
+  caret-color: transparent;
+  letter-spacing: 20px;
+  font-size: 2rem;
+}
+

@@ -57,7 +57,12 @@ out/
 *.sqlite3
 *.db
 test.db
+*.sql
 uploads/
+docs/users.csv
+docs/database.json
+docs/database_data.md
+docs/view_database.html
 
 # IDE & OS
 .vscode/

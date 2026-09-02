@@ -7,6 +7,12 @@
 *.db
 *.sqlite
 *.sqlite3
+*.sql
+test.db
+docs/users.csv
+docs/database.json
+docs/database_data.md
+docs/view_database.html
 
 # Python
 __pycache__/

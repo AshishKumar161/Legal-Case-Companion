@@ -85,10 +85,74 @@ def hash_refresh_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def normalize_email(email: str) -> str:
-    """Normalizes and validates an email address."""
+import sys
+
+DISPOSABLE_EMAIL_DOMAINS = {
+    "mailinator.com",
+    "tempmail.com",
+    "10minutemail.com",
+    "guerrillamail.com",
+    "throwawaymail.com",
+    "yopmail.com",
+    "trashmail.com",
+    "sharklasers.com",
+    "dispostable.com",
+    "temp-mail.org",
+    "fakeinbox.com",
+    "getairmail.com",
+    "maildrop.cc",
+    "mohmal.com",
+    "burnermail.io",
+    "mytemp.email",
+    "nada.ltd",
+    "crazymailing.com",
+}
+
+COMMON_DOMAIN_TYPOS = {
+    "gmai.com": "gmail.com",
+    "gmaill.com": "gmail.com",
+    "gamil.com": "gmail.com",
+    "gmial.com": "gmail.com",
+    "hotmial.com": "hotmail.com",
+    "yaho.com": "yahoo.com",
+    "outlok.com": "outlook.com",
+}
+
+
+def normalize_email(email: str, check_deliverability: bool | None = None) -> str:
+    """Normalizes and validates an email address.
+
+    Blocks disposable domains, detects provider typos, and performs MX domain
+    deliverability lookup for real addresses.
+    """
+    clean_email = email.strip()
+    if "@" not in clean_email:
+        raise ValueError("Invalid email format: missing '@'")
+
+    domain = clean_email.split("@")[-1].lower()
+
+    # 1. Block disposable / temporary email services
+    if domain in DISPOSABLE_EMAIL_DOMAINS:
+        raise ValueError(
+            "Disposable or temporary email addresses are not permitted. Please use a valid, permanent email address."
+        )
+
+    # 2. Check for common domain typos
+    if domain in COMMON_DOMAIN_TYPOS:
+        suggested = COMMON_DOMAIN_TYPOS[domain]
+        raise ValueError(
+            f"Invalid email domain '{domain}'. Did you mean '{suggested}'?"
+        )
+
+    # 3. Deliverability lookup
+    if check_deliverability is None:
+        if domain in ("example.com", "example.org", "test.com", "localhost") or "pytest" in sys.modules:
+            check_deliverability = False
+        else:
+            check_deliverability = True
+
     try:
-        email_info = validate_email(email.strip(), check_deliverability=False)
+        email_info = validate_email(clean_email, check_deliverability=check_deliverability)
         return email_info.normalized.lower()
     except EmailNotValidError as e:
         raise ValueError(str(e)) from e
