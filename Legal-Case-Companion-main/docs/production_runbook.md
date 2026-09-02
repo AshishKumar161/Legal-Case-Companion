@@ -198,3 +198,29 @@ Authorization: Bearer <ADMIN_JWT>
 - [x] **Observability**: Sanitized low-cardinality metrics + separate `/liveness` and `/readiness` probes.
 - [x] **CI/CD Pipeline**: GitHub Actions CI workflow covering tests, migrations, frontend build, and Docker images.
 - [x] **Incident Response**: Emergency playbooks in `docs/INCIDENT_RESPONSE.md`.
+- [x] **Pilot Safety Framework**: Defined in `docs/PILOT_SAFETY_AND_SCOPE.md` with explicit pending policy boundaries.
+
+---
+
+## 10. Pilot Readiness & Real-World Validation Harness
+
+### Executing Pilot Validation Tests
+To validate the end-to-end pilot workflow across Client, Lawyer, and Admin roles, run:
+```bash
+pytest tests/integration/test_pilot_readiness_validation.py -v
+```
+
+This dedicated suite executes:
+1. `test_pilot_cross_role_journey`: Comprehensive smoke test covering user onboarding, Bar Council verification, discovery, booking, payment intent, webhook fulfillment, in-app note generation, case linkage, and administrative oversight.
+2. `test_pilot_webrtc_signaling_and_video_security`: Cryptographic HMAC join token validation, time-window authorization, and intruder rejection.
+3. `test_pilot_antimalware_pipeline_and_fail_closed`: Magic byte validation, EICAR detection/quarantine, and daemon outage fail-closed resilience.
+4. `test_pilot_authorization_attack_matrix`: BOLA/IDOR defense across cross-client cases, consultations, payments, video tokens, and lawyer private strategy notes.
+5. `test_pilot_disaster_recovery_and_resilience`: Health probe status, low-cardinality endpoint masking, and idempotent cancellation.
+
+### Operational Diagnostics CLI
+Check system configuration readiness:
+```bash
+python scripts/verify_production_config.py --env development
+# or for strict production readiness audit:
+python scripts/verify_production_config.py --env production
+```

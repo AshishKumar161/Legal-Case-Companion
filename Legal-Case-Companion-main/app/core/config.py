@@ -143,6 +143,10 @@ class Settings(BaseSettings):
     RETRIEVAL_TOP_K: int = 5
     RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.7
 
+    # Business & Legal Policy Boundaries (Pending Business/Legal Policy Finalization)
+    DOCUMENT_RETENTION_DAYS: int | None = None  # None represents indefinite retention pending formal policy
+    CANCELLATION_REFUND_POLICY_MODE: str = "PENDING_BUSINESS_DECISION"  # Options: MANUAL_REVIEW, AUTOMATIC_TIERED, PENDING_BUSINESS_DECISION
+
     @field_validator("BACKEND_CORS_ORIGINS", "GOOGLE_ALLOWED_REDIRECT_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
