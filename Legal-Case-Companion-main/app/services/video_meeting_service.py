@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.exceptions import (
     AuthorizationError,
+    ConfigurationError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 class VideoMeetingProvider(Protocol):
     def create_meeting_room(self, consultation: Consultation) -> dict[str, Any]: ...
     def generate_access_token(
-        self, user: User, meeting: VideoMeeting, role: str, expires_in_seconds: int = 7200
+        self, user: User, meeting: VideoMeeting, role: str, expires_in_seconds: int = 3600
     ) -> str: ...
     def verify_access_token(
         self,
@@ -37,6 +38,7 @@ class VideoMeetingProvider(Protocol):
         expected_room_id: str | None = None,
         expected_user_id: uuid.UUID | str | None = None,
         expected_consultation_id: uuid.UUID | str | None = None,
+        expected_role: str | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -90,6 +92,7 @@ class InternalWebRTCMeetingProvider:
         expected_room_id: str | None = None,
         expected_user_id: uuid.UUID | str | None = None,
         expected_consultation_id: uuid.UUID | str | None = None,
+        expected_role: str | None = None,
     ) -> dict[str, Any]:
         """Cryptographically verifies HMAC-SHA256 signature, expiry, and context binding of video join token."""
         if not token or "." not in token:
@@ -131,6 +134,9 @@ class InternalWebRTCMeetingProvider:
         if expected_consultation_id and str(payload.get("consultation_id")) != str(expected_consultation_id):
             raise ValidationError("Video token does not match this consultation")
 
+        if expected_role and payload.get("role") != expected_role:
+            raise ValidationError("Video token role does not match expected participant role")
+
         return payload
 
 
@@ -161,9 +167,126 @@ class MockVideoMeetingProvider:
         return {"provider": "mock", "valid": True}
 
 
+class LiveKitMeetingProvider:
+    """Production SFU meeting provider using LiveKit protocol."""
+
+    def __init__(self, livekit_url: str | None = None, api_key: str | None = None, api_secret: str | None = None):
+        self.livekit_url = livekit_url or getattr(settings, "LIVEKIT_URL", "http://localhost:7880")
+        self.api_key = api_key or getattr(settings, "LIVEKIT_API_KEY", "devkey")
+        self.api_secret = api_secret or getattr(settings, "LIVEKIT_API_SECRET", "secret")
+
+    def create_meeting_room(self, consultation: Consultation) -> dict[str, Any]:
+        room_id = f"lcc-sfu-{consultation.id.hex[:12]}-{generate_uuid7().hex[:6]}"
+        return {
+            "room_id": room_id,
+            "provider": "livekit",
+            "server_url": self.livekit_url,
+            "ice_servers": [
+                {"urls": "stun:stun.l.google.com:19302"},
+            ],
+        }
+
+    def generate_access_token(
+        self, user: User, meeting: VideoMeeting, role: str, expires_in_seconds: int = 3600
+    ) -> str:
+        import jwt
+
+        now_dt = datetime.now(UTC)
+        exp = int((now_dt + timedelta(seconds=expires_in_seconds)).timestamp())
+        payload = {
+            "sub": str(user.id),
+            "name": getattr(user, "full_name", str(user.id)),
+            "iss": self.api_key,
+            "nbf": int(now_dt.timestamp()),
+            "exp": exp,
+            "video": {
+                "room": meeting.room_id,
+                "roomJoin": True,
+                "canPublish": True,
+                "canSubscribe": True,
+                "canPublishData": True,
+            },
+            "metadata": json.dumps({
+                "consultation_id": str(meeting.consultation_id),
+                "meeting_id": str(meeting.id),
+                "role": role,
+            }),
+            "room_id": meeting.room_id,
+            "consultation_id": str(meeting.consultation_id),
+            "user_id": str(user.id),
+            "role": role,
+        }
+        return jwt.encode(payload, self.api_secret, algorithm="HS256")
+
+    def verify_access_token(
+        self,
+        token: str,
+        expected_room_id: str | None = None,
+        expected_user_id: uuid.UUID | str | None = None,
+        expected_consultation_id: uuid.UUID | str | None = None,
+        expected_role: str | None = None,
+    ) -> dict[str, Any]:
+        import jwt
+
+        try:
+            payload = jwt.decode(token, self.api_secret, algorithms=["HS256"])
+        except jwt.PyJWTError as e:
+            raise ValidationError(f"Invalid LiveKit video token: {e}") from e
+
+        if expected_room_id:
+            room = payload.get("room_id") or payload.get("video", {}).get("room")
+            if room != expected_room_id:
+                raise ValidationError("Video token is not authorized for this meeting room")
+
+        if expected_user_id:
+            sub = payload.get("user_id") or payload.get("sub")
+            if str(sub) != str(expected_user_id):
+                raise ValidationError("Video token does not belong to this participant")
+
+        if expected_consultation_id:
+            con_id = payload.get("consultation_id")
+            if not con_id and payload.get("metadata"):
+                try:
+                    meta = json.loads(payload["metadata"])
+                    con_id = meta.get("consultation_id")
+                except Exception:
+                    pass
+            if str(con_id) != str(expected_consultation_id):
+                raise ValidationError("Video token does not match this consultation")
+
+        if expected_role:
+            role = payload.get("role")
+            if not role and payload.get("metadata"):
+                try:
+                    meta = json.loads(payload["metadata"])
+                    role = meta.get("role")
+                except Exception:
+                    pass
+            if role != expected_role:
+                raise ValidationError("Video token role does not match expected participant role")
+
+        return payload
+
+
 def get_video_provider() -> VideoMeetingProvider:
-    if settings.ENVIRONMENT == "production":
-        return InternalWebRTCMeetingProvider()
+    env = getattr(settings, "ENVIRONMENT", "development").lower()
+    has_livekit = bool(
+        getattr(settings, "LIVEKIT_URL", None)
+        and getattr(settings, "LIVEKIT_API_KEY", None)
+        and getattr(settings, "LIVEKIT_API_SECRET", None)
+    )
+
+    if env == "production":
+        if not has_livekit:
+            raise ConfigurationError(
+                "Production environment requires LiveKit SFU configuration (LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET). "
+                "Silent fallback to internal P2P is strictly forbidden in production."
+            )
+        return LiveKitMeetingProvider()
+
+    if has_livekit:
+        return LiveKitMeetingProvider()
+
     return InternalWebRTCMeetingProvider()
 
 
@@ -285,6 +408,9 @@ class VideoMeetingService:
         meeting = self.ensure_meeting_provisioned(consultation)
 
         # Time window check
+        from zoneinfo import ZoneInfo
+        ist_tz = ZoneInfo("Asia/Kolkata")
+
         now_utc = datetime.now(UTC)
         sched_start = meeting.scheduled_start
         if sched_start.tzinfo is None:
@@ -296,10 +422,17 @@ class VideoMeetingService:
         earliest_join = sched_start - timedelta(minutes=self.EARLY_JOIN_WINDOW_MINUTES)
         latest_join = sched_end + timedelta(minutes=self.POST_END_GRACE_PERIOD_MINUTES)
 
-        if now_utc < earliest_join and user.role != UserRole.ADMIN:
-            start_str = sched_start.strftime("%H:%M UTC")
+        # Allow immediate entry for any paid or active consultation
+        is_active_or_paid = consultation.status in (
+            ConsultationStatus.PAID,
+            ConsultationStatus.SCHEDULED,
+            ConsultationStatus.ACCEPTED,
+        )
+
+        if not is_active_or_paid and now_utc < earliest_join and user.role != UserRole.ADMIN:
+            start_ist = sched_start.astimezone(ist_tz).strftime("%I:%M %p IST")
             raise ValidationError(
-                f"Meeting room opens {self.EARLY_JOIN_WINDOW_MINUTES} minutes before scheduled time ({start_str})"
+                f"Meeting room opens {self.EARLY_JOIN_WINDOW_MINUTES} minutes before scheduled time ({start_ist})"
             )
 
         if now_utc > latest_join and user.role != UserRole.ADMIN:

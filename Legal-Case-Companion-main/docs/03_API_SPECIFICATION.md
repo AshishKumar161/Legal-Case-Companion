@@ -198,3 +198,17 @@ items\: [],
 - \POST /api/v1/admin/verifications/{id}/approve\: Approves verification and logs VERIFICATION_APPROVED event.
 - \POST /api/v1/admin/verifications/{id}/reject\: Rejects verification and logs VERIFICATION_REJECTED event.
 
+## 15. NATIVE VIDEO & RECORDING APIs
+
+- `GET /api/v1/consultations/{consultation_id}/video/join`: Generates role-scoped, room-scoped video access token. (Requires Auth: Participant)
+- `GET /api/v1/consultations/{consultation_id}/video/ice-servers`: Returns STUN/TURN traversal configurations. (Requires Auth: Participant)
+- `GET /api/v1/consultations/{consultation_id}/video/ws?token={video_token}`: Bidirectional WebSocket signaling relay for SDP offers, answers, ICE candidates, ephemeral in-meeting chat, and media toggles.
+- `GET /api/v1/consultations/{consultation_id}/video/recording/consent-status`: Returns dual-consent status for client and lawyer. (Requires Auth: Participant)
+- `POST /api/v1/consultations/{consultation_id}/video/recording/consent`: Grants or revokes participant recording consent. (Requires Auth: Participant)
+- `POST /api/v1/consultations/{consultation_id}/video/recording/start`: Starts recording session. Fails if mutual consent is absent. (Requires Auth: Participant)
+- `POST /api/v1/consultations/{consultation_id}/video/recording/stop`: Stops active recording session and transitions to UPLOADING. (Requires Auth: Participant)
+- `POST /api/v1/consultations/{consultation_id}/video/recording/upload`: Streams raw binary recording into local storage, computes SHA-256 checksum, and marks status as AVAILABLE. (Requires Auth: Participant)
+- `GET /api/v1/consultations/{consultation_id}/recordings`: Lists all finalized recordings for the consultation. (Requires Auth: Participant)
+- `POST /api/v1/recordings/{recording_id}/playback-ticket`: Exchanges bearer authentication for an ephemeral, 60-second media ticket. (Requires Auth: Participant)
+- `GET /api/v1/recordings/{recording_id}/play`: Authenticated HTTP 206 range-streaming playback endpoint. Accepts `Authorization: Bearer` or `?ticket=`. Query parameter `?token=` is strictly rejected with 401. Serves non-caching security headers.
+

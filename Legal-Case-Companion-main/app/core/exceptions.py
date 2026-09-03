@@ -79,3 +79,12 @@ class ScannerUnavailableError(AppException):
     ):
         super().__init__(status_code=503, code=code, message=message)
 
+
+class ConfigurationError(AppException):
+    def __init__(
+        self,
+        message: str = "Invalid service configuration",
+        code: str = "CONFIGURATION_ERROR",
+    ):
+        super().__init__(status_code=500, code=code, message=message)
+

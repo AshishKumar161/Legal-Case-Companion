@@ -48,6 +48,7 @@ class LawyerPublicResponse(BaseModel):
     court_jurisdictions: list[str] | None = None
     languages: list[str] | None = None
     verification_status: str
+    is_online: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -66,6 +67,7 @@ class LawyerProfileResponse(BaseModel):
     court_jurisdictions: list[str] | None = None
     languages: list[str] | None = None
     verification_status: str
+    is_online: bool = False
 
     model_config = {"from_attributes": True}
 

@@ -28,6 +28,7 @@ from app.schemas.profile import (
     LawyerVerificationCreate,
 )
 from app.services.auth_service import AuthService
+from app.services.presence_service import presence_manager
 
 
 class ProfileService:
@@ -107,6 +108,7 @@ class ProfileService:
         )
         if not profile:
             raise ResourceNotFoundError("Lawyer profile not found or inactive")
+        profile.is_online = presence_manager.is_online(profile.user_id)
         return profile
 
     def search_lawyers(
@@ -123,6 +125,7 @@ class ProfileService:
         max_experience: int | None = None,
         language: str | None = None,
         verified_only: bool = True,
+        online_only: bool = False,
     ) -> dict:
         limit = min(max(limit, 1), 100)
         query = (
@@ -134,6 +137,14 @@ class ProfileService:
                 LawyerProfile.deleted_at.is_(None),
             )
         )
+
+        online_uids = presence_manager.get_online_user_ids()
+        if online_only:
+            if not online_uids:
+                return {"items": [], "total": 0, "skip": skip, "limit": limit}
+            query = query.filter(
+                LawyerProfile.user_id.in_([uuid.UUID(uid) for uid in online_uids])
+            )
 
         if search and search.strip():
             term = f"%{search.strip()}%"
@@ -188,10 +199,21 @@ class ProfileService:
             )
             query = query.filter(has_approved_verif)
 
-        total = query.count()
-        query = query.order_by(LawyerProfile.created_at.desc(), LawyerProfile.id.desc())
-        lawyers = query.offset(skip).limit(limit).all()
-        return {"items": lawyers, "total": total, "skip": skip, "limit": limit}
+        all_matches = query.order_by(LawyerProfile.created_at.desc()).all()
+        for lp in all_matches:
+            lp.is_online = presence_manager.is_online(lp.user_id)
+
+        # Prioritize online lawyers first
+        all_matches.sort(
+            key=lambda x: (
+                not getattr(x, "is_online", False),
+                -(x.created_at.timestamp() if x.created_at else 0),
+            )
+        )
+
+        total = len(all_matches)
+        paginated = all_matches[skip : skip + limit]
+        return {"items": paginated, "total": total, "skip": skip, "limit": limit}
 
     def update_lawyer_profile(
         self, user: User, update_data: LawyerProfileUpdate

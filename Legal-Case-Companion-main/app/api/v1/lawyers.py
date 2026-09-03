@@ -12,7 +12,21 @@ from app.schemas.profile import LawyerPublicResponse
 from app.services.consultation_service import ConsultationService
 from app.services.profile_service import ProfileService
 
+from app.services.presence_service import presence_manager
+
 router = APIRouter(prefix="/lawyers", tags=["lawyers"])
+
+
+@router.post("/heartbeat")
+def record_lawyer_heartbeat(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Heartbeat ping to mark lawyer/user as online in real-time.
+    Called periodically by the client application while the lawyer tab is active.
+    """
+    presence_manager.record_heartbeat(current_user.id)
+    return {"status": "ok", "user_id": str(current_user.id), "is_online": True}
 
 
 @router.get("", response_model=PaginatedResponse[LawyerPublicResponse])
@@ -29,6 +43,7 @@ def search_lawyers(
     max_experience: int | None = None,
     language: str | None = None,
     verified_only: bool = True,
+    online_only: bool = False,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -37,6 +52,9 @@ def search_lawyers(
     Requires authentication to prevent unauthenticated scraping.
     Defaults to verified_only=True for client safety.
     """
+    # Also record activity for current user
+    presence_manager.record_heartbeat(current_user.id)
+
     profile_service = ProfileService(db)
     return profile_service.search_lawyers(
         skip=skip,
@@ -51,6 +69,7 @@ def search_lawyers(
         max_experience=max_experience,
         language=language,
         verified_only=verified_only,
+        online_only=online_only,
     )
 
 

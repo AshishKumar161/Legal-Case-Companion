@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.payment import Payment
     from app.models.user import ClientProfile, LawyerProfile
     from app.models.video_meeting import VideoMeeting
+    from app.models.video_recording import VideoRecording, VideoRecordingConsent
 
 
 class ConsultationStatus(str, enum.Enum):
@@ -83,4 +84,10 @@ class Consultation(Base, TimestampMixin, SoftDeleteMixin):
     )
     notes: Mapped[list["ConsultationNote"]] = relationship(
         "ConsultationNote", back_populates="consultation", cascade="all, delete-orphan"
+    )
+    recordings: Mapped[list["VideoRecording"]] = relationship(
+        "VideoRecording", back_populates="consultation", cascade="all, delete-orphan"
+    )
+    recording_consents: Mapped[list["VideoRecordingConsent"]] = relationship(
+        "VideoRecordingConsent", back_populates="consultation", cascade="all, delete-orphan"
     )

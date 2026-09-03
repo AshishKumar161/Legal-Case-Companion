@@ -147,6 +147,19 @@ class Settings(BaseSettings):
     DOCUMENT_RETENTION_DAYS: int | None = None  # None represents indefinite retention pending formal policy
     CANCELLATION_REFUND_POLICY_MODE: str = "PENDING_BUSINESS_DECISION"  # Options: MANUAL_REVIEW, AUTOMATIC_TIERED, PENDING_BUSINESS_DECISION
 
+    # Video Recording Storage Configuration
+    LOCAL_RECORDING_STORAGE_PATH: str = "./storage/recordings"
+
+    # Native Video & LiveKit SFU Configuration
+    LIVEKIT_URL: str | None = None
+    LIVEKIT_API_KEY: str | None = None
+    LIVEKIT_API_SECRET: str | None = None
+
+    # STUN / TURN Server Configuration
+    TURN_SERVER_URL: str | None = None
+    TURN_USERNAME: str | None = None
+    TURN_CREDENTIAL: str | None = None
+
     @field_validator("BACKEND_CORS_ORIGINS", "GOOGLE_ALLOWED_REDIRECT_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:

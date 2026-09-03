@@ -534,6 +534,7 @@ export interface LawyerProfileItem {
   consultation_fee?: number;
   bio?: string;
   verification_status?: "PENDING" | "VERIFIED" | "REJECTED" | "APPROVED" | "UNDER_REVIEW";
+  is_online?: boolean;
 }
 
 export interface NotificationPreferenceItem {
@@ -1043,5 +1044,51 @@ export interface CaseSummaryReportResponse {
   communications_summary: CommunicationsSummaryReportItem;
   notes: NoteReportItem[];
 }
+
+// ----------------------------------------------------------------------------
+// VIDEO RECORDINGS & IN-APP CONSULTATION MEETING
+// ----------------------------------------------------------------------------
+
+export type VideoRecordingStatus =
+  | "PENDING"
+  | "CONSENTED"
+  | "RECORDING"
+  | "UPLOADING"
+  | "PROCESSING"
+  | "AVAILABLE"
+  | "FAILED";
+
+export interface VideoRecordingItem {
+  id: string;
+  consultation_id: string;
+  case_id?: string | null;
+  recording_type: string;
+  status: VideoRecordingStatus;
+  started_at?: string | null;
+  ended_at?: string | null;
+  duration_seconds?: number | null;
+  file_size_bytes?: number | null;
+  mime_type: string;
+  checksum_sha256?: string | null;
+  playback_url?: string | null;
+  created_at: string;
+}
+
+export interface RecordingConsentStatus {
+  consultation_id: string;
+  client_consented: boolean;
+  lawyer_consented: boolean;
+  can_record: boolean;
+}
+
+export interface InMeetingChatMessage {
+  id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_role: string;
+  content: string;
+  timestamp: string;
+}
+
 
 

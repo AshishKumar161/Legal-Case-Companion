@@ -11,6 +11,7 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { PaymentCheckoutModal } from "@/components/Payment/PaymentCheckoutModal";
 import { ConsultationActionModal } from "@/components/Consultation/ConsultationActionModal";
+import { ConsultationRecordingsModal } from "@/components/Consultation/ConsultationRecordingsModal";
 
 type TabType = "UPCOMING" | "TODAY" | "COMPLETED" | "ALL";
 
@@ -25,6 +26,7 @@ export default function ConsultationsPage() {
 
   // Modals state
   const [checkoutConsultation, setCheckoutConsultation] = useState<ConsultationItem | null>(null);
+  const [recordingsConsultation, setRecordingsConsultation] = useState<ConsultationItem | null>(null);
   const [actionModal, setActionModal] = useState<{
     type: "RESCHEDULE" | "CANCEL" | "REJECT" | "NO_SHOW" | "COMPLETE" | "SCHEDULE";
     consultation: ConsultationItem;
@@ -47,6 +49,33 @@ export default function ConsultationsPage() {
   const [creatingCaseFromCon, setCreatingCaseFromCon] = useState(false);
   const [linkingCase, setLinkingCase] = useState(false);
   const [caseActionMsg, setCaseActionMsg] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
+  const [istClock, setIstClock] = useState("");
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+      const dateStr = now.toLocaleDateString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+      setIstClock(`${dateStr} • ${timeStr} IST`);
+      setCurrentTime(Date.now());
+    };
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchConsultations = useCallback(async () => {
     try {
@@ -72,11 +101,11 @@ export default function ConsultationsPage() {
   }, [user, loading, router, fetchConsultations]);
 
   // Tab categorization
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const todayEnd = todayStart + 24 * 60 * 60 * 1000;
-
   const filteredConsultations = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayEnd = todayStart + 24 * 60 * 60 * 1000;
+
     return consultations.filter((con) => {
       const schedTime = con.scheduled_at ? new Date(con.scheduled_at).getTime() : 0;
       if (activeTab === "UPCOMING") {
@@ -93,7 +122,7 @@ export default function ConsultationsPage() {
       }
       return true; // ALL
     });
-  }, [consultations, activeTab, todayStart, todayEnd]);
+  }, [consultations, activeTab]);
 
   // Lawyer accepts consultation
   const handleAcceptConsultation = async (conId: string) => {
@@ -198,14 +227,13 @@ export default function ConsultationsPage() {
   };
 
   const isEligibleForVideo = (con: ConsultationItem) => {
-    if (con.status !== "SCHEDULED" && con.status !== "PAID" && con.status !== "IN_PROGRESS") {
-      return false;
-    }
-    if (!con.scheduled_at) return true;
-    const sched = new Date(con.scheduled_at).getTime();
-    const durationMs = (con.duration_minutes || 30) * 60 * 1000;
-    // Allow entry 15 minutes prior to 30 minutes past
-    return now.getTime() >= sched - 15 * 60 * 1000 && now.getTime() <= sched + durationMs + 30 * 60 * 1000;
+    // Authorize immediate room entry for any scheduled, paid, accepted, or active session
+    return (
+      con.status === "SCHEDULED" ||
+      con.status === "PAID" ||
+      con.status === "IN_PROGRESS" ||
+      con.status === "ACCEPTED"
+    );
   };
 
   if (loading || fetching) {
@@ -233,20 +261,39 @@ export default function ConsultationsPage() {
           }}
         >
           <div>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                color: "var(--accent-secondary)",
-                marginBottom: "8px",
-              }}
-            >
-              <span>●</span> Direct Counsel Consultations
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "8px" }}>
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "var(--accent-secondary)",
+                }}
+              >
+                <span>●</span> Direct Counsel Consultations
+              </div>
+              {istClock && (
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "3px 10px",
+                    borderRadius: "14px",
+                    background: "rgba(79, 91, 247, 0.12)",
+                    border: "1px solid rgba(79, 91, 247, 0.3)",
+                    color: "#a5b4fc",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                  }}
+                >
+                  <span>🕒</span> Indian Standard Time: <strong>{istClock}</strong>
+                </div>
+              )}
             </div>
             <h1 style={{ fontSize: "28px", fontWeight: 700, color: "var(--text-primary)" }}>
               Consultations & Sessions
@@ -363,10 +410,11 @@ export default function ConsultationsPage() {
                       <span>
                         📅{" "}
                         {con.scheduled_at
-                          ? new Date(con.scheduled_at).toLocaleString(undefined, {
+                          ? new Date(con.scheduled_at).toLocaleString("en-IN", {
+                              timeZone: "Asia/Kolkata",
                               dateStyle: "medium",
                               timeStyle: "short",
-                            })
+                            }) + " IST"
                           : "Pending scheduling"}
                       </span>
                       <span>⏱️ {con.duration_minutes || 30} mins</span>
@@ -442,6 +490,13 @@ export default function ConsultationsPage() {
                     {/* Completed Session Actions */}
                     {con.status === "COMPLETED" && (
                       <>
+                        <button
+                          onClick={() => setRecordingsConsultation(con)}
+                          className="btn btn-secondary"
+                          style={{ padding: "8px 14px", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}
+                        >
+                          📹 Recordings
+                        </button>
                         <button
                           onClick={() => openNotesModal(con)}
                           className="btn btn-secondary"
@@ -795,6 +850,14 @@ export default function ConsultationsPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Recordings Playback Modal */}
+        {recordingsConsultation && (
+          <ConsultationRecordingsModal
+            consultation={recordingsConsultation}
+            onClose={() => setRecordingsConsultation(null)}
+          />
         )}
       </div>
     </div>

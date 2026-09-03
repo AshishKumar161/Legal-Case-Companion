@@ -93,8 +93,8 @@ def test_metrics_middleware_masks_uuids_for_low_cardinality(client: TestClient):
     top_endpoints = snapshot.get("top_endpoints", {})
 
     # The masked endpoint string must appear, NOT the raw UUID
-    assert any("GET /api/v1/cases/{id}" in ep for ep in top_endpoints.keys())
-    assert not any(fake_case_id in ep for ep in top_endpoints.keys())
+    assert any("GET /api/v1/cases/{id}" in ep for ep in metrics_collector.request_counts.keys())
+    assert not any(fake_case_id in ep for ep in metrics_collector.request_counts.keys())
 
 
 def test_clamav_fail_closed_on_daemon_outage(db: Session):

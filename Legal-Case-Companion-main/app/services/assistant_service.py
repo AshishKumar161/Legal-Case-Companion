@@ -54,14 +54,14 @@ class CaseAssistantService:
     def query_case_assistant(
         self, user: User, case_id: uuid.UUID, req: CaseAssistantQueryRequest
     ) -> CaseAssistantQueryResponse:
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         # 1. CASE AUTHORIZATION (ESTABLISHED BEFORE ANY RETRIEVAL OR LLM PROCESSING)
         case: Case = authorize_case_access(self.db, user, case_id)
 
         # 2. PROMPT INJECTION SCAN ON USER QUESTION
         if check_prompt_injection(req.question):
-            latency_ms = (time.time() - start_time) * 1000
+            latency_ms = max(round((time.perf_counter() - start_time) * 1000, 2), 0.01)
             return CaseAssistantQueryResponse(
                 question=req.question,
                 answer="The query cannot be processed because it contains instruction overrides or system manipulation patterns.",
@@ -107,7 +107,7 @@ class CaseAssistantService:
         auth_map: dict[str, RetrievedLegalAuthority] = {a.canonical_provision_id: a for a in candidate_authorities}
 
         if not candidate_chunks and not candidate_authorities:
-            latency_ms = (time.time() - start_time) * 1000
+            latency_ms = max(round((time.perf_counter() - start_time) * 1000, 2), 0.01)
             return CaseAssistantQueryResponse(
                 question=req.question,
                 answer="Available case materials and authoritative legal sources do not contain sufficient evidence to establish the requested fact or legal conclusion.",
@@ -227,7 +227,7 @@ class CaseAssistantService:
         final_uncertainties = list(dict.fromkeys(raw_uncertainties))
         final_warnings = list(dict.fromkeys(raw_warnings))
 
-        latency_ms = (time.time() - start_time) * 1000
+        latency_ms = max(round((time.perf_counter() - start_time) * 1000, 2), 0.01)
 
         # 12. SAFE AUDIT LOGGING (NO SECRET OR RAW PII LEAKAGE)
         try:

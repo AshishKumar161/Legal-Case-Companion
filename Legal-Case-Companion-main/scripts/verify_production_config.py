@@ -6,12 +6,17 @@ antivirus daemon, TURN relay, and payments without leaking sensitive values.
 """
 
 import argparse
+import os
 import socket
 import sys
 import time
 from urllib.parse import urlparse
 
+# Ensure project root is on sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from sqlalchemy import create_engine, text
+
 
 
 def mask_secret(value: str | None) -> str:
@@ -138,8 +143,33 @@ def main():
         if "[MISSING]" in stripe_wh_status or "[PLACEHOLDER" in stripe_wh_status:
             issues.append("STRIPE_WEBHOOK_SECRET is required in production.")
 
-    # 7. Operational CORS & URL Bindings
-    print("\n[7] Network & CORS:")
+    # 7. Native Video & LiveKit SFU
+    print("\n[7] Native Video SFU (LiveKit):")
+    livekit_url_status = mask_secret(settings.LIVEKIT_URL)
+    livekit_key_status = mask_secret(settings.LIVEKIT_API_KEY)
+    livekit_sec_status = mask_secret(settings.LIVEKIT_API_SECRET)
+    print(f"  - LIVEKIT_URL       : {settings.LIVEKIT_URL or '[NOT CONFIGURED]'}")
+    print(f"  - LIVEKIT_API_KEY   : {livekit_key_status}")
+    print(f"  - LIVEKIT_API_SECRET: {livekit_sec_status}")
+    if target_env == "production":
+        if not settings.LIVEKIT_URL:
+            warnings.append("LIVEKIT_URL is not configured; production video will require LiveKit SFU for multi-party reliability.")
+        if not settings.LIVEKIT_API_KEY or not settings.LIVEKIT_API_SECRET:
+            warnings.append("LiveKit API credentials missing; server cannot issue signed LiveKit room tokens.")
+
+    # 8. Local Recording Storage Persistence
+    print("\n[8] Consultation Video Recording Storage:")
+    rec_path = os.path.abspath(settings.LOCAL_RECORDING_STORAGE_PATH)
+    rec_exists = os.path.exists(rec_path)
+    rec_writable = os.access(rec_path, os.W_OK) if rec_exists else False
+    print(f"  - Storage Path      : {rec_path}")
+    print(f"  - Directory Exists  : {'[YES]' if rec_exists else '[NO - WILL BE CREATED ON STARTUP]'}")
+    print(f"  - Writable          : {'[YES]' if rec_writable else '[NOT CHECKED / CREATED ON INIT]'}")
+    if target_env == "production":
+        print(f"  - Durability Policy : Requires named volume (Docker: app_storage) or attached persistent disk (Render).")
+
+    # 9. Operational CORS & URL Bindings
+    print("\n[9] Network & CORS:")
     print(f"  - FRONTEND_URL: {settings.FRONTEND_URL}")
     print(f"  - CORS Origins: {settings.BACKEND_CORS_ORIGINS}")
     if "*" in str(settings.BACKEND_CORS_ORIGINS):

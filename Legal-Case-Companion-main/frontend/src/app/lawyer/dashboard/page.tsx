@@ -23,6 +23,59 @@ export default function LawyerDashboard() {
     consultation: ConsultationItem;
   } | null>(null);
 
+  const [incomingCall, setIncomingCall] = useState<any | null>(null);
+  const [dismissedCallId, setDismissedCallId] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(false);
+
+  // Periodic presence heartbeat so the lawyer is marked ONLINE while tab is open
+  useEffect(() => {
+    if (!user || (user.role !== "LAWYER" && user.role !== "ADMIN")) return;
+    const sendHeartbeat = async () => {
+      try {
+        await apiClient.post("/api/v1/lawyers/heartbeat", {});
+        setIsOnline(true);
+      } catch {
+        // ignore
+      }
+    };
+    void sendHeartbeat();
+    const hbInterval = setInterval(sendHeartbeat, 15000);
+    return () => clearInterval(hbInterval);
+  }, [user]);
+
+  // Periodic polling for incoming instant video consultation calls
+  useEffect(() => {
+    if (!user || (user.role !== "LAWYER" && user.role !== "ADMIN")) return;
+    const checkCalls = async () => {
+      try {
+        const calls: any = await apiClient.get("/api/v1/consultations/incoming-calls");
+        if (Array.isArray(calls) && calls.length > 0) {
+          const latest = calls[0];
+          if (latest.id !== dismissedCallId) {
+            setIncomingCall(latest);
+          }
+        } else {
+          setIncomingCall(null);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    void checkCalls();
+    const callInterval = setInterval(checkCalls, 4000);
+    return () => clearInterval(callInterval);
+  }, [user, dismissedCallId]);
+
+  const handleAcceptIncomingCall = async (callId: string) => {
+    try {
+      await apiClient.post(`/api/v1/consultations/${callId}/accept`, {}).catch(() => {});
+      router.push(`/consultations/${callId}/room`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to enter room";
+      alert(msg);
+    }
+  };
+
   const fetchLawyerData = useCallback(async () => {
     try {
       setFetching(true);
@@ -101,6 +154,25 @@ export default function LawyerDashboard() {
                 status={isVerified ? "VERIFIED" : "PENDING"}
                 label={isVerified ? "Verified Bar Counsel" : "Verification Pending"}
               />
+              {isOnline && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "4px 10px",
+                    borderRadius: "20px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    backgroundColor: "rgba(16, 185, 129, 0.15)",
+                    color: "#10b981",
+                    border: "1px solid rgba(16, 185, 129, 0.3)",
+                  }}
+                >
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981" }}></span>
+                  🟢 Online & Visible to Clients
+                </span>
+              )}
             </div>
             <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginTop: "6px", maxWidth: "680px" }}>
               Oversee retained client matters, inspect statutory limitation vulnerabilities, examine AI-grounded legal briefs, and conduct scheduled video conferences.
@@ -113,6 +185,76 @@ export default function LawyerDashboard() {
             </Link>
           </div>
         </div>
+
+        {/* Incoming Consultation Call Alert */}
+        {incomingCall && (
+          <div
+            style={{
+              padding: "20px 24px",
+              marginBottom: "28px",
+              borderRadius: "var(--radius-md)",
+              background: "linear-gradient(135deg, rgba(79, 91, 247, 0.18), rgba(16, 185, 129, 0.18))",
+              border: "2px solid #4f5bf7",
+              boxShadow: "0 8px 30px rgba(79, 91, 247, 0.25)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "16px",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+                <span style={{ fontSize: "22px" }}>🚨</span>
+                <span style={{ fontSize: "17px", fontWeight: 700, color: "#fff" }}>
+                  Incoming Video Consultation Request!
+                </span>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    background: "#10b981",
+                    color: "#fff",
+                    fontWeight: 700,
+                  }}
+                >
+                  ₹{incomingCall.fee_amount} PAID
+                </span>
+              </div>
+              <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
+                Client <strong>{incomingCall.client_name}</strong> has paid and authorized an immediate video consultation. Both permissions granted.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => handleAcceptIncomingCall(incomingCall.id)}
+                className="btn btn-primary"
+                style={{
+                  padding: "10px 22px",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  background: "linear-gradient(135deg, #10b981, #059669)",
+                  border: "none",
+                  boxShadow: "0 4px 14px rgba(16, 185, 129, 0.4)",
+                  cursor: "pointer",
+                }}
+              >
+                ✅ Accept & Enter Video Room 🎥
+              </button>
+              <button
+                onClick={() => {
+                  setDismissedCallId(incomingCall.id);
+                  setIncomingCall(null);
+                }}
+                className="btn btn-secondary"
+                style={{ padding: "10px 16px", fontSize: "13px" }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Bar Verification Banner if Pending */}
         {!isVerified && (

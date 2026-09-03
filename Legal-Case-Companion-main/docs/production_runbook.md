@@ -106,7 +106,7 @@ Schema management is strictly controlled via Alembic. **`Base.metadata.create_al
 ### Current Revision Head
 The active production revision head is:
 ```text
-f1a2b3c4d5e6 (head)
+g1a2b3c4d5e6 (head)
 ```
 
 ### Pre-Deployment Migration Command
@@ -153,12 +153,15 @@ python -m app.scheduler 60.0
 
 ---
 
-## 7. WebRTC & Video Room Signaling (Coturn)
+## 7. WebRTC & Video Infrastructure (LiveKit SFU & Coturn TURN)
 
-1. **WebSocket Signaling Endpoint**:
-   `GET /api/v1/consultations/{id}/video/ws?token=...`
-2. **Authentication**:
-   HMAC-SHA256 signed access token (2-hour TTL).
+1. **LiveKit SFU (Production Deployment)**:
+   - For multi-party consultations and production stability, LiveKit SFU handles media routing.
+   - Configuration keys: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`.
+   - Endpoint: Tokens are generated dynamically in `VideoMeetingService` with consultation participant role metadata.
+2. **WebRTC P2P & WebSocket Signaling (Development/Fallback)**:
+   - WebSocket Signaling Endpoint: `GET /api/v1/consultations/{id}/video/ws?token=...`
+   - Authentication: HMAC-SHA256 signed access token (2-hour TTL).
 3. **STUN/TURN Relay (Coturn)**:
    - Config file: `coturn/turnserver.conf`.
    - Ports: 3478 (UDP/TCP), 5349 (TLS).
@@ -166,7 +169,25 @@ python -m app.scheduler 60.0
 
 ---
 
-## 8. Observability & Health Probes
+## 8. Consultation Video Recording Storage Operations
+
+1. **Dual-Consent Requirement**:
+   - Both Client and Lawyer must submit explicit consent via `POST /api/v1/consultations/{id}/video/recording/consent`.
+   - Recording initialization fails (`HTTP 400`) if mutual consent is not achieved.
+2. **Storage Durability Policy**:
+   - Path: `{LOCAL_RECORDING_STORAGE_PATH}/consultations/{consultation_id}/{recording_id}.webm`
+   - **Docker Compose**: Mounts named volume `app_storage` to `/app/storage`.
+   - **Render Cloud**: Requires an attached persistent disk mounted to `/app/storage` (ephemeral container storage will lose recordings on restart/redeploy).
+3. **Cryptographic Checksum Verification**:
+   - During binary upload (`POST .../upload`), an in-memory SHA-256 is computed and saved to the `video_recordings` table.
+   - On playback, the physical file is verified against the stored hash before streaming.
+4. **Playback Security**:
+   - Query string access tokens (`?token=...`) are strictly prohibited.
+   - Playback requires an ephemeral ticket generated via `POST /api/v1/recordings/{id}/playback-ticket` (60s TTL).
+
+---
+
+## 9. Observability & Health Probes
 
 ### Health Probes
 - `GET /health/live`, `GET /liveness`: Liveness probe (returns 200 OK if process is alive).
@@ -182,16 +203,17 @@ Authorization: Bearer <ADMIN_JWT>
 
 ---
 
-## 9. Production Readiness Checklist
+## 10. Production Readiness Checklist
 
 - [x] **Configuration**: All secrets externalized, classified, and verified via `scripts/verify_production_config.py`.
-- [x] **Database Migrations**: Single linear Alembic chain with head `f1a2b3c4d5e6`.
+- [x] **Database Migrations**: Single linear Alembic chain with head `g1a2b3c4d5e6 (head)`.
 - [x] **Security Headers**: HSTS, nosniff, DENY framing, strict CSP, Referrer-Policy, Permissions-Policy.
 - [x] **Authentication**: Ed25519 JWT access tokens + rotating opaque refresh tokens + Argon2id.
 - [x] **Authorization**: Strict BOLA/IDOR protection and `CaseParticipant` guards.
 - [x] **Private Storage**: Private S3 buckets with AES256 server-side encryption and presigned URLs.
+- [x] **Local Recording Durability**: Persistent volume / disk policy configured with SHA-256 integrity verification.
 - [x] **Malware Scanning**: Pluggable `HeuristicSignatureScanner` + `ClamAVScanner` with strict fail-closed behavior.
-- [x] **Video Signaling**: Real-time authenticated WebSocket signaling + configured Coturn TURN relay.
+- [x] **Video Signaling**: Real-time authenticated WebSocket signaling + LiveKit SFU + Coturn TURN relay.
 - [x] **Payments & Webhooks**: Stripe integration with HMAC-SHA256 verification and replay idempotency.
 - [x] **Rate Limiting**: Applied to booking, payment intent, and video join token endpoints.
 - [x] **Background Execution**: Persistent `background_jobs` queue with graceful worker and scheduler shutdown.
@@ -202,7 +224,7 @@ Authorization: Bearer <ADMIN_JWT>
 
 ---
 
-## 10. Pilot Readiness & Real-World Validation Harness
+## 11. Pilot Readiness & Real-World Validation Harness
 
 ### Executing Pilot Validation Tests
 To validate the end-to-end pilot workflow across Client, Lawyer, and Admin roles, run:

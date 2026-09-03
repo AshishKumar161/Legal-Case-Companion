@@ -94,3 +94,25 @@ None.
 ### Impact
 - **Database Schema:** Defined the authoritative 12 core tables.
 - **Development:** Developers have a strict blueprint for SQLAlchemy ORM models.
+
+---
+
+## ADR-004: Native In-App Video Meeting & Recording Architecture
+
+**Status:** FINAL
+
+### Context
+Legal consultations between advocates and clients require high confidentiality, verified identities, privileged record-keeping, and compliance with Indian legal privacy norms. External tools (Google Meet, Zoom, MS Teams, external Jitsi) leak meeting metadata and lack unified BOLA protection, in-app audit trails, and dual-consent safeguards.
+
+### Decisions
+1. **Zero External Redirects**: The entire consultation workflow (negotiation, media, chat, notes, recording, playback) is strictly hosted natively within LCC.
+2. **Deterministic Provider Policy**:
+   - **Production**: LiveKit SFU is strictly required. Missing configuration raises `ConfigurationError`. Silent fallback to P2P is forbidden.
+   - **Development/Test**: Internal WebRTC P2P mesh allowed.
+3. **Multi-Tier Authorization Hierarchy**: Video infrastructure is never the source of authorization. LCC Identity Auth → Consultation BOLA Authorization → Meeting Token → Room/SFU Tracks.
+4. **Dual-Consent Recording**: Recording requires independent, explicit consent from both Client and Counsel recorded in PostgreSQL (`video_recording_consents`).
+5. **Ephemeral Media Playback Tickets**: Primary bearer access tokens in query parameters are rejected with HTTP 401. Authorized users exchange their bearer credentials for a 60-second, single-purpose ticket (`POST /api/v1/recordings/{id}/playback-ticket`) bound to `(user_id, recording_id)` for browser `<video>` playback.
+6. **Cryptographic Integrity Verification**: SHA-256 hash is computed on ingestion and checked prior to streaming playback to reject modified or corrupted storage files.
+7. **Security Headers**: Private, anti-caching headers (`Cache-Control: private, no-cache, no-store, must-revalidate`, `X-Content-Type-Options: nosniff`) are served on media streams.
+8. **In-Meeting Continuous Indicator**: Prominent `🔴 RECORDING` badge continuously visible across all viewport states and controls.
+

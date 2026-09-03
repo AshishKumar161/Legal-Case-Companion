@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/api/client";
@@ -17,6 +17,62 @@ function VerifyEmailContent() {
   const [success, setSuccess] = useState(false);
   const [autoTriggered, setAutoTriggered] = useState(false);
 
+  const verifyToken = useCallback(
+    async (tokenToVerify: string, emailToVerify: string) => {
+      if (!tokenToVerify.trim()) {
+        setError("Please provide a valid verification token.");
+        return;
+      }
+
+      setError("");
+      setLoading(true);
+
+      try {
+        if (emailToVerify && /^\d{6}$/.test(tokenToVerify.trim())) {
+          const res = await apiClient.post(
+            "/api/v1/auth/email/verify/otp",
+            {
+              email: emailToVerify.trim().toLowerCase(),
+              otp: tokenToVerify.trim(),
+            },
+            { requireAuth: false }
+          );
+          if (res?.access_token) {
+            let userId = "";
+            try {
+              const payload = JSON.parse(atob(res.access_token.split(".")[1]));
+              userId = payload.sub || "";
+            } catch {
+              // ignore
+            }
+            login(res.access_token, {
+              id: userId,
+              email: emailToVerify.trim().toLowerCase(),
+              role: "CLIENT",
+              account_status: "ACTIVE",
+            });
+          }
+        } else {
+          await apiClient.post(
+            "/api/v1/auth/email/verify/confirm",
+            { token: tokenToVerify.trim() },
+            { requireAuth: false }
+          );
+        }
+        setSuccess(true);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("Email verification failed. The link or code may have expired or already been used.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [login]
+  );
+
   useEffect(() => {
     const queryToken = searchParams.get("token");
     const queryEmail = searchParams.get("email");
@@ -26,62 +82,9 @@ function VerifyEmailContent() {
     if (queryToken && !autoTriggered) {
       setToken(queryToken);
       setAutoTriggered(true);
-      verifyToken(queryToken, queryEmail || "");
+      void verifyToken(queryToken, queryEmail || "");
     }
-  }, [searchParams, autoTriggered]);
-
-  const verifyToken = async (tokenToVerify: string, emailToVerify: string) => {
-    if (!tokenToVerify.trim()) {
-      setError("Please provide a valid verification token.");
-      return;
-    }
-
-    setError("");
-    setLoading(true);
-
-    try {
-      if (emailToVerify && /^\d{6}$/.test(tokenToVerify.trim())) {
-        const res = await apiClient.post(
-          "/api/v1/auth/email/verify/otp",
-          {
-            email: emailToVerify.trim().toLowerCase(),
-            otp: tokenToVerify.trim(),
-          },
-          { requireAuth: false }
-        );
-        if (res?.access_token) {
-          let userId = "";
-          try {
-            const payload = JSON.parse(atob(res.access_token.split(".")[1]));
-            userId = payload.sub || "";
-          } catch {
-            // ignore
-          }
-          login(res.access_token, {
-            id: userId,
-            email: emailToVerify.trim().toLowerCase(),
-            role: "CLIENT",
-            account_status: "ACTIVE",
-          });
-        }
-      } else {
-        await apiClient.post(
-          "/api/v1/auth/email/verify/confirm",
-          { token: tokenToVerify.trim() },
-          { requireAuth: false }
-        );
-      }
-      setSuccess(true);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Email verification failed. The link or code may have expired or already been used.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [searchParams, autoTriggered, verifyToken]);
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();

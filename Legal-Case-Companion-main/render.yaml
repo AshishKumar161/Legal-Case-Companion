@@ -63,6 +63,14 @@ services:
         sync: false
       - key: GOOGLE_REDIRECT_URI
         value: "https://app.legalcasecompanion.in/auth/callback"
+      - key: LOCAL_RECORDING_STORAGE_DIR
+        value: "/app/storage/recordings"
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
 
   - type: worker
     name: lcc-worker

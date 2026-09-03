@@ -44,6 +44,17 @@ export default function LawyerProfile() {
   const [submittingVerif, setSubmittingVerif] = useState(false);
   const [verifMsg, setVerifMsg] = useState<{ text: string; isError: boolean } | null>(null);
 
+  // Presence heartbeat while lawyer profile tab is open
+  useEffect(() => {
+    if (!user || (user.role !== "LAWYER" && user.role !== "ADMIN")) return;
+    const sendHeartbeat = () => {
+      apiClient.post("/api/v1/lawyers/heartbeat", {}).catch(() => {});
+    };
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   const fetchProfileAndAvailability = useCallback(async () => {
     try {
       setFetching(true);

@@ -326,10 +326,12 @@ def test_websocket_signaling_authentication_and_peer_exchange(client: TestClient
             assert lawyer_ice["type"] == "ice-candidate"
             assert lawyer_ice["candidate"] == ice_payload["candidate"]
 
-        # Lawyer disconnected -> Client receives 'peer-left' notification
-        leave_msg = json.loads(ws_client.receive_text())
-        assert leave_msg["type"] == "peer-left"
-        assert leave_msg["user_id"] == lawyer_id
+            # Explicitly close lawyer socket so disconnect event is processed cleanly in TestClient
+            ws_lawyer.close()
+            leave_msg = json.loads(ws_client.receive_text())
+            assert leave_msg["type"] == "peer-left"
+            assert leave_msg["user_id"] == lawyer_id
+
 
 
 def test_turn_ice_servers_configuration(client: TestClient, db: Session):

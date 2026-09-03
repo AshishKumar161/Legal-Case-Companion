@@ -190,6 +190,7 @@ async def video_signaling_websocket(
                     "ping",
                     "chat",
                     "media-status",
+                    "recording-status",
                 ):
                     continue
 

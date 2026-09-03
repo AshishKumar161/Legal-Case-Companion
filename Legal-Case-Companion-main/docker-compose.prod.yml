@@ -67,6 +67,8 @@ services:
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-lcc_admin}:${POSTGRES_PASSWORD:-ChangeThisStrongPostgresPass123!}@postgres:5432/${POSTGRES_DB:-legal_db}
       - CLAMAV_HOST=clamav
       - CLAMAV_PORT=3310
+    volumes:
+      - app_storage:/app/storage
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/ready"]
       interval: 15s
@@ -92,6 +94,8 @@ services:
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-lcc_admin}:${POSTGRES_PASSWORD:-ChangeThisStrongPostgresPass123!}@postgres:5432/${POSTGRES_DB:-legal_db}
       - CLAMAV_HOST=clamav
       - CLAMAV_PORT=3310
+    volumes:
+      - app_storage:/app/storage
 
   scheduler:
     build:
@@ -134,3 +138,5 @@ services:
 volumes:
   postgres_prod_data:
   clamav_db:
+  app_storage:
+

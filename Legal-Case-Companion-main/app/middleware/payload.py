@@ -19,13 +19,19 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
             if content_length:
                 try:
                     length_val = int(content_length)
-                    if length_val > self.max_upload_size:
+                    # Video recordings allow up to 250MB
+                    effective_limit = (
+                        250 * 1024 * 1024
+                        if "/video/recording/upload" in request.url.path
+                        else self.max_upload_size
+                    )
+                    if length_val > effective_limit:
                         return JSONResponse(
                             status_code=413,
                             content={
                                 "error": {
                                     "code": "PAYLOAD_TOO_LARGE",
-                                    "message": f"Payload size exceeds the limit of {self.max_upload_size} bytes.",
+                                    "message": f"Payload size exceeds the limit of {effective_limit} bytes.",
                                 }
                             },
                         )

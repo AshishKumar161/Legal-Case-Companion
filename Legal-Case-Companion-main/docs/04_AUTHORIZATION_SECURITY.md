@@ -151,3 +151,15 @@ FINAL:
 ## 16. UNDEFINED / DECISION REQUIRED
 None. The core authentication, external identity, and security architecture is FINAL.
 
+## 17. NATIVE VIDEO MEETING & RECORDING SECURITY
+FINAL:
+- **Zero External Redirects**: All video, audio, signaling, and playback occur 100% in-app within LCC; external redirect URLs (Google Meet, Zoom, MS Teams, external Jitsi) are strictly prohibited.
+- **Hierarchy of Authority**: Media infrastructure is never the source of authorization. Authorization flows: LCC Identity Auth → Consultation BOLA Authorization → Meeting Token → Room/SFU Tracks.
+- **BOLA / IDOR Anti-Enumeration**: Unauthorized requests to access meetings, list recordings, or stream video return HTTP 404 (`ResourceNotFoundError`) rather than 403, preventing resource existence enumeration.
+- **Dual-Consent Server Policy**: Consultation recording requires independent, mutual consent from both Client and Lawyer recorded in PostgreSQL (`video_recording_consents`). Starting recording without mutual consent is blocked by the backend (HTTP 400/422).
+- **Ephemeral Media Playback Tickets**: Main application bearer access tokens in query parameters are strictly rejected with HTTP 401. Authorized users exchange their bearer credentials for a 60-second, single-purpose media ticket (`POST /api/v1/recordings/{id}/playback-ticket`) bound to `(user_id, recording_id)` for browser `<video>` playback.
+- **Cryptographic Integrity Verification**: Uploaded recording files are hashed on write via SHA-256 and cataloged on `VideoRecording.checksum_sha256`. Prior to streaming playback, `get_recording_for_playback` verifies that the physical file's hash matches the database record, raising a `ValidationError` on disk file modification or storage corruption.
+- **Private Anti-Caching Headers**: Playback streaming endpoints serve `Cache-Control: private, no-cache, no-store, must-revalidate`, `Pragma: no-cache`, `Expires: 0`, and `X-Content-Type-Options: nosniff` to protect confidential legal consultations against proxy/shared caching.
+- **Continuous In-Meeting Recording Notice**: When recording is active, a prominent `🔴 RECORDING` badge is continuously displayed across all UI viewport states, device toggles, and participant transitions.
+- **Ephemeral In-Meeting Chat**: In-meeting chat messages are relayed purely in-memory over WebSocket signaling channels and are not permanently persisted to database tables without explicit consultation note formalization.
+

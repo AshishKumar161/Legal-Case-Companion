@@ -9,6 +9,7 @@ class ConsultationCreate(BaseModel):
     case_id: UUID | None = None
     scheduled_at: datetime
     duration_minutes: int = 30
+    is_instant: bool = False
 
     model_config = ConfigDict(extra="forbid")
 

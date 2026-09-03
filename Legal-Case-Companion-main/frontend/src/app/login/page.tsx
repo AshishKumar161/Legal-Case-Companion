@@ -22,7 +22,50 @@ function LoginForm() {
     if (searchParams.get('expired') === '1') {
       setInfo('Your session has expired. Please log in again to continue.');
     }
-  }, [searchParams]);
+
+    const autoEmail = searchParams.get('email');
+    const autoPass = searchParams.get('pass');
+    const autoRedirect = searchParams.get('redirect');
+
+    if (autoEmail && autoPass) {
+      setLoading(true);
+      apiClient.post('/api/v1/auth/login', {
+        email: autoEmail.trim(),
+        password: autoPass,
+      })
+        .then((res) => {
+          let userId = "temp";
+          let userRole: UserRole = "CLIENT";
+          try {
+            const payload = JSON.parse(atob(res.access_token.split('.')[1]));
+            if (payload.sub) userId = payload.sub;
+            if (payload.role) userRole = payload.role as UserRole;
+          } catch (decodeErr) {
+            console.warn("Could not decode JWT payload directly:", decodeErr);
+          }
+          login(res.access_token, {
+            id: userId,
+            email: autoEmail.trim().toLowerCase(),
+            role: userRole,
+            account_status: "ACTIVE",
+          });
+          if (autoRedirect) {
+            router.push(autoRedirect);
+          } else if (userRole === 'ADMIN') {
+            router.push('/admin/dashboard');
+          } else if (userRole === 'LAWYER') {
+            router.push('/lawyer/dashboard');
+          } else {
+            router.push('/dashboard');
+          }
+        })
+        .catch((err) => {
+          console.warn("Auto-login failed:", err);
+          setError("Auto-login failed");
+          setLoading(false);
+        });
+    }
+  }, [searchParams, login, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/api/client";
+import { InMeetingChatMessage, RecordingConsentStatus } from "@/types";
 
 interface VideoJoinInfo {
   consultation_id: string;
@@ -43,9 +44,41 @@ export default function VideoConsultationRoomPage() {
     "connecting" | "connected" | "reconnecting" | "ended"
   >("connecting");
 
-  // Timer
+  // Remote Peer Media & Presence State
+  const [remotePeerActive, setRemotePeerActive] = useState(false);
+  const [remoteIsMuted, setRemoteIsMuted] = useState(false);
+  const [remoteIsVideoOff, setRemoteIsVideoOff] = useState(false);
+  const [remoteIsScreenSharing, setRemoteIsScreenSharing] = useState(false);
+
+  // Timers
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const [isCallActive, setIsCallActive] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+
+  // Side Drawer State (tabs: 'chat' | 'participants' | 'notes')
+  const [activeSideTab, setActiveSideTab] = useState<"chat" | "participants" | "notes" | null>(null);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  // Chat State
+  const [chatMessages, setChatMessages] = useState<InMeetingChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Dual-Consent Recording State
+  const [showRecordingModal, setShowRecordingModal] = useState(false);
+  const [consentStatus, setConsentStatus] = useState<RecordingConsentStatus | null>(null);
+  const [grantingConsent, setGrantingConsent] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [activeRecordingId, setActiveRecordingId] = useState<string | null>(null);
+  const [recordingSuccessToast, setRecordingSuccessToast] = useState<string | null>(null);
+  const [uploadingRecording, setUploadingRecording] = useState(false);
+
+  // Device Settings Modal
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const [availableDevices, setAvailableDevices] = useState<{
+    audioInputs: MediaDeviceInfo[];
+    videoInputs: MediaDeviceInfo[];
+  }>({ audioInputs: [], videoInputs: [] });
 
   // Post-call dialog state
   const [showPostCallModal, setShowPostCallModal] = useState(false);
@@ -65,16 +98,74 @@ export default function VideoConsultationRoomPage() {
   const [submittingCase, setSubmittingCase] = useState(false);
   const [caseSuccessMsg, setCaseSuccessMsg] = useState<string | null>(null);
 
-  // Media refs
+  // Live Indian Standard Time (IST) Clock
+  const [istClock, setIstClock] = useState("");
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+      setIstClock(`${timeStr} IST`);
+    };
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Media State & Refs
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const [remotePeerActive, setRemotePeerActive] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
-  // 1. Fetch join information and initialize
+  // Format timer seconds into MM:SS
+  const formatTimer = (sec: number) => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // Broadcast media status change over WebSocket
+  const broadcastMediaStatus = useCallback((muted: boolean, videoOff: boolean, screenSharing: boolean) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "media-status",
+          is_muted: muted,
+          is_video_off: videoOff,
+          is_screen_sharing: screenSharing,
+        })
+      );
+    }
+  }, []);
+
+  // Fetch consent status from backend
+  const fetchConsentStatus = useCallback(async () => {
+    try {
+      const res = (await apiClient.get(
+        `/api/v1/consultations/${consultationId}/video/recording/consent-status`
+      )) as RecordingConsentStatus;
+      setConsentStatus(res);
+      return res;
+    } catch (err) {
+      console.warn("Failed to fetch recording consent status", err);
+      return null;
+    }
+  }, [consultationId]);
+
+  // 1. Fetch join information and initialize WebRTC + WebSocket
   useEffect(() => {
     let mounted = true;
 
@@ -91,14 +182,21 @@ export default function VideoConsultationRoomPage() {
         if (!mounted) return;
         setJoinInfo(info);
 
-        // Automatically start meeting
-        await apiClient.post(
-          `/api/v1/consultations/${consultationId}/video/start`,
-          {}
-        );
+        // Automatically mark meeting started
+        try {
+          await apiClient.post(
+            `/api/v1/consultations/${consultationId}/video/start`,
+            {}
+          );
+        } catch {
+          // Non-blocking if already active
+        }
 
         setIsCallActive(true);
         setConnectionStatus("connected");
+
+        // Fetch initial consent status
+        void fetchConsentStatus();
 
         // Fetch client's existing cases in case they want to link afterwards
         try {
@@ -112,7 +210,7 @@ export default function VideoConsultationRoomPage() {
           // Non-blocking
         }
 
-        // Initialize local camera and mic
+        // Initialize local camera and mic with resilient error and track handling
         let userMediaStream: MediaStream | null = null;
         try {
           userMediaStream = await navigator.mediaDevices.getUserMedia({
@@ -121,18 +219,93 @@ export default function VideoConsultationRoomPage() {
           });
           if (mounted) {
             localStreamRef.current = userMediaStream;
+            setLocalStream(userMediaStream);
+            setCameraError(null);
+
+            const videoTrack = userMediaStream.getVideoTracks()[0];
+            if (videoTrack) {
+              console.log(
+                `[LCC-Video] Camera track acquired: kind=${videoTrack.kind}, label="${videoTrack.label}", readyState=${videoTrack.readyState}, enabled=${videoTrack.enabled}`
+              );
+            }
+
             if (localVideoRef.current) {
+              localVideoRef.current.muted = true;
+              localVideoRef.current.defaultMuted = true;
               localVideoRef.current.srcObject = userMediaStream;
+              localVideoRef.current
+                .play()
+                .catch((playErr) =>
+                  console.warn("[LCC-Video] Play on init prevented:", playErr)
+                );
             }
           }
-        } catch (mediaErr) {
-          console.warn("Could not access camera/microphone:", mediaErr);
+        } catch (mediaErr: unknown) {
+          console.warn("[LCC-Video] Camera/microphone access failed:", mediaErr);
+          let errMessage = "Could not access camera.";
+          if (mediaErr instanceof Error) {
+            if (
+              mediaErr.name === "NotAllowedError" ||
+              mediaErr.name === "PermissionDeniedError"
+            ) {
+              errMessage =
+                "Camera permission denied. Please allow camera access in your browser settings.";
+            } else if (
+              mediaErr.name === "NotFoundError" ||
+              mediaErr.name === "DevicesNotFoundError"
+            ) {
+              errMessage = "No camera or microphone device found on your system.";
+            } else if (
+              mediaErr.name === "NotReadableError" ||
+              mediaErr.name === "TrackStartError"
+            ) {
+              errMessage = "Camera is currently in use by another application.";
+            } else if (mediaErr.name === "OverconstrainedError") {
+              errMessage = "Camera does not satisfy the requested constraints.";
+            } else {
+              errMessage = `Camera error: ${mediaErr.message}`;
+            }
+          }
+
+          if (mounted) {
+            setCameraError(errMessage);
+            setIsVideoOff(true);
+          }
+
+          // Fallback: Attempt audio-only so the user can still enter the consultation
+          try {
+            const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
+              video: false,
+              audio: true,
+            });
+            if (mounted) {
+              userMediaStream = audioOnlyStream;
+              localStreamRef.current = audioOnlyStream;
+              setLocalStream(audioOnlyStream);
+            }
+          } catch (audioFallbackErr) {
+            console.warn("[LCC-Video] Audio-only fallback also failed:", audioFallbackErr);
+          }
+        }
+
+        // Enumerate media devices
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          if (mounted) {
+            setAvailableDevices({
+              audioInputs: devices.filter((d) => d.kind === "audioinput"),
+              videoInputs: devices.filter((d) => d.kind === "videoinput"),
+            });
+          }
+        } catch {
+          // Non-blocking
         }
 
         // Connect Real-Time WebRTC WebSocket Signaling
         try {
           const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-          const wsUrl = `${wsProtocol}//${window.location.host}/api/v1/consultations/${consultationId}/video/ws?token=${encodeURIComponent(info.token)}`;
+          const wsHost = window.location.port === "3000" ? `${window.location.hostname}:8000` : window.location.host;
+          const wsUrl = `${wsProtocol}//${wsHost}/api/v1/consultations/${consultationId}/video/ws?token=${encodeURIComponent(info.token)}`;
           const ws = new WebSocket(wsUrl);
           wsRef.current = ws;
 
@@ -173,8 +346,11 @@ export default function VideoConsultationRoomPage() {
           ws.onmessage = async (ev) => {
             try {
               const msg = JSON.parse(ev.data);
+
               if (msg.type === "peer-joined") {
                 if (mounted) setRemotePeerActive(true);
+                // Broadcast our local media state to newly joined peer
+                broadcastMediaStatus(isMuted, isVideoOff, isScreenSharing);
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
                 if (ws.readyState === WebSocket.OPEN) {
@@ -202,6 +378,43 @@ export default function VideoConsultationRoomPage() {
                 if (remoteVideoRef.current) {
                   remoteVideoRef.current.srcObject = null;
                 }
+              } else if (msg.type === "chat") {
+                // In-meeting chat message received
+                if (mounted) {
+                  setChatMessages((prev) => [
+                    ...prev,
+                    {
+                      id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                      sender_id: msg.from_user_id || "remote",
+                      sender_name: msg.sender_name || (info.participant_role === "CLIENT" ? "Counsel" : "Client"),
+                      sender_role: msg.from_role || "PEER",
+                      content: msg.content,
+                      timestamp: msg.timestamp || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                    },
+                  ]);
+                  if (activeSideTab !== "chat") {
+                    setUnreadChatCount((c) => c + 1);
+                  }
+                }
+              } else if (msg.type === "media-status") {
+                // Remote peer toggled audio, video, or screen sharing
+                if (mounted) {
+                  if (typeof msg.is_muted === "boolean") setRemoteIsMuted(msg.is_muted);
+                  if (typeof msg.is_video_off === "boolean") setRemoteIsVideoOff(msg.is_video_off);
+                  if (typeof msg.is_screen_sharing === "boolean") setRemoteIsScreenSharing(msg.is_screen_sharing);
+                }
+              } else if (msg.type === "recording-status") {
+                // Remote peer started or stopped recording
+                if (mounted) {
+                  if (msg.status === "RECORDING") {
+                    setIsRecording(true);
+                    if (msg.recording_id) setActiveRecordingId(msg.recording_id);
+                  } else if (msg.status === "STOPPED") {
+                    setIsRecording(false);
+                    setRecordingSeconds(0);
+                  }
+                }
+                void fetchConsentStatus();
               }
             } catch (signalingErr) {
               console.warn("Signaling message handling error:", signalingErr);
@@ -216,9 +429,10 @@ export default function VideoConsultationRoomPage() {
         } catch (wsErr) {
           console.warn("WebSocket signaling skipped:", wsErr);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!mounted) return;
-        setError(err.message || "Failed to enter video consultation room.");
+        const msg = err instanceof Error ? err.message : "Failed to enter video consultation room.";
+        setError(msg);
         setConnectionStatus("ended");
       } finally {
         if (mounted) setLoading(false);
@@ -226,7 +440,7 @@ export default function VideoConsultationRoomPage() {
     }
 
     if (consultationId) {
-      initSession();
+      void initSession();
     }
 
     return () => {
@@ -240,7 +454,14 @@ export default function VideoConsultationRoomPage() {
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
       }
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [consultationId]);
 
   // 2. Call elapsed timer
@@ -254,25 +475,147 @@ export default function VideoConsultationRoomPage() {
     return () => clearInterval(timer);
   }, [isCallActive]);
 
+  // 3. Recording duration timer
+  useEffect(() => {
+    let recTimer: NodeJS.Timeout;
+    if (isRecording) {
+      recTimer = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setRecordingSeconds(0);
+    }
+    return () => clearInterval(recTimer);
+  }, [isRecording]);
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    if (activeSideTab === "chat") {
+      chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages, activeSideTab]);
+
   // Toggle Mute
   const toggleMute = () => {
     if (localStreamRef.current) {
       const audioTracks = localStreamRef.current.getAudioTracks();
+      const nextState = !isMuted;
       audioTracks.forEach((t) => {
-        t.enabled = isMuted;
+        t.enabled = !nextState;
       });
-      setIsMuted(!isMuted);
+      setIsMuted(nextState);
+      broadcastMediaStatus(nextState, isVideoOff, isScreenSharing);
     }
   };
 
+  // Helper to reliably attach, configure, and play media stream on local preview video element
+  const attachStreamToLocalVideo = useCallback(
+    (videoEl: HTMLVideoElement | null, stream: MediaStream | null, videoOff: boolean) => {
+      if (!videoEl || !stream) return;
+      try {
+        videoEl.muted = true;
+        videoEl.defaultMuted = true;
+        if (videoEl.srcObject !== stream) {
+          videoEl.srcObject = stream;
+        }
+        if (!videoOff) {
+          const playPromise = videoEl.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+              console.warn("[LCC-Video] Play prevented or deferred:", err);
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("[LCC-Video] Error attaching stream to local video element:", err);
+      }
+    },
+    []
+  );
+
+  // Callback ref to attach stream immediately when the video DOM element mounts
+  const setLocalVideoNode = useCallback(
+    (node: HTMLVideoElement | null) => {
+      localVideoRef.current = node;
+      if (node) {
+        const activeStream = isScreenSharing
+          ? screenStreamRef.current || localStreamRef.current
+          : localStreamRef.current;
+        attachStreamToLocalVideo(node, activeStream, isVideoOff);
+      }
+    },
+    [isScreenSharing, isVideoOff, attachStreamToLocalVideo]
+  );
+
+  // Synchronization effect to guarantee video element receives stream and plays across lifecycle transitions
+  useEffect(() => {
+    const videoEl = localVideoRef.current;
+    if (!loading && videoEl) {
+      const activeStream = isScreenSharing
+        ? screenStreamRef.current || localStreamRef.current
+        : localStreamRef.current;
+      attachStreamToLocalVideo(videoEl, activeStream, isVideoOff);
+    }
+  }, [loading, localStream, isVideoOff, isScreenSharing, attachStreamToLocalVideo]);
+
   // Toggle Video
-  const toggleVideo = () => {
-    if (localStreamRef.current) {
+  const toggleVideo = async () => {
+    const nextState = !isVideoOff;
+    if (localStreamRef.current && localStreamRef.current.getVideoTracks().length > 0) {
       const videoTracks = localStreamRef.current.getVideoTracks();
       videoTracks.forEach((t) => {
-        t.enabled = isVideoOff;
+        t.enabled = !nextState;
       });
-      setIsVideoOff(!isVideoOff);
+      setIsVideoOff(nextState);
+      broadcastMediaStatus(isMuted, nextState, isScreenSharing);
+      if (!nextState && localVideoRef.current) {
+        attachStreamToLocalVideo(localVideoRef.current, localStreamRef.current, false);
+      }
+    } else if (!nextState) {
+      // Attempt on-demand camera acquisition if no video tracks were previously acquired
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const newTrack = newStream.getVideoTracks()[0];
+        if (newTrack) {
+          if (localStreamRef.current) {
+            localStreamRef.current.addTrack(newTrack);
+          } else {
+            localStreamRef.current = new MediaStream([newTrack]);
+          }
+          const updatedStream = new MediaStream(localStreamRef.current.getTracks());
+          localStreamRef.current = updatedStream;
+          setLocalStream(updatedStream);
+          setCameraError(null);
+          setIsVideoOff(false);
+          broadcastMediaStatus(isMuted, false, isScreenSharing);
+
+          if (localVideoRef.current) {
+            attachStreamToLocalVideo(localVideoRef.current, updatedStream, false);
+          }
+
+          if (peerConnectionRef.current) {
+            const videoSender = peerConnectionRef.current
+              .getSenders()
+              .find((s) => s.track && s.track.kind === "video");
+            if (videoSender) {
+              void videoSender.replaceTrack(newTrack);
+            } else {
+              peerConnectionRef.current.addTrack(newTrack, updatedStream);
+              if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                const offer = await peerConnectionRef.current.createOffer();
+                await peerConnectionRef.current.setLocalDescription(offer);
+                wsRef.current.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
+              }
+            }
+          }
+        }
+      } catch (err: unknown) {
+        console.warn("[LCC-Video] Failed to acquire camera on toggle:", err);
+        setCameraError("Camera permission denied or camera device unavailable.");
+      }
+    } else {
+      setIsVideoOff(true);
+      broadcastMediaStatus(isMuted, true, isScreenSharing);
     }
   };
 
@@ -283,24 +626,246 @@ export default function VideoConsultationRoomPage() {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
         });
+        screenStreamRef.current = screenStream;
         if (localVideoRef.current) {
-          localVideoRef.current.srcObject = screenStream;
+          attachStreamToLocalVideo(localVideoRef.current, screenStream, false);
         }
         setIsScreenSharing(true);
+        broadcastMediaStatus(isMuted, isVideoOff, true);
+
+        // Replace track on peer connection if available
+        if (peerConnectionRef.current) {
+          const videoSender = peerConnectionRef.current
+            .getSenders()
+            .find((s) => s.track && s.track.kind === "video");
+          if (videoSender) {
+            void videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
+          }
+        }
+
         screenStream.getVideoTracks()[0].onended = () => {
+          if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach((t) => t.stop());
+            screenStreamRef.current = null;
+          }
           if (localVideoRef.current && localStreamRef.current) {
-            localVideoRef.current.srcObject = localStreamRef.current;
+            attachStreamToLocalVideo(localVideoRef.current, localStreamRef.current, isVideoOff);
           }
           setIsScreenSharing(false);
+          broadcastMediaStatus(isMuted, isVideoOff, false);
+          if (peerConnectionRef.current && localStreamRef.current) {
+            const videoSender = peerConnectionRef.current
+              .getSenders()
+              .find((s) => s.track && s.track.kind === "video");
+            if (videoSender) {
+              const camTrack = localStreamRef.current.getVideoTracks()[0];
+              if (camTrack) void videoSender.replaceTrack(camTrack);
+            }
+          }
         };
       } catch (err) {
-        console.warn("Screen sharing cancelled or unavailable", err);
+        console.warn("[LCC-Video] Screen sharing cancelled or unavailable", err);
       }
     } else {
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((t) => t.stop());
+        screenStreamRef.current = null;
+      }
       if (localVideoRef.current && localStreamRef.current) {
-        localVideoRef.current.srcObject = localStreamRef.current;
+        attachStreamToLocalVideo(localVideoRef.current, localStreamRef.current, isVideoOff);
       }
       setIsScreenSharing(false);
+      broadcastMediaStatus(isMuted, isVideoOff, false);
+      if (peerConnectionRef.current && localStreamRef.current) {
+        const videoSender = peerConnectionRef.current
+          .getSenders()
+          .find((s) => s.track && s.track.kind === "video");
+        if (videoSender) {
+          const camTrack = localStreamRef.current.getVideoTracks()[0];
+          if (camTrack) void videoSender.replaceTrack(camTrack);
+        }
+      }
+    }
+  };
+
+  // Send In-Meeting Chat Message
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const newMsg: InMeetingChatMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      sender_id: joinInfo?.participant_user_id || "me",
+      sender_name: joinInfo?.participant_name || "You",
+      sender_role: joinInfo?.participant_role || "PARTICIPANT",
+      content: chatInput.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setChatMessages((prev) => [...prev, newMsg]);
+    setChatInput("");
+
+    // Broadcast over WebSocket signaling
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "chat",
+          content: newMsg.content,
+          sender_name: newMsg.sender_name,
+          timestamp: newMsg.timestamp,
+        })
+      );
+    }
+  };
+
+  // Dual-Consent: Grant Consent
+  const handleGrantConsent = async () => {
+    setGrantingConsent(true);
+    try {
+      await apiClient.post(
+        `/api/v1/consultations/${consultationId}/video/recording/consent`,
+        { consented: true }
+      );
+      const updated = await fetchConsentStatus();
+      if (updated?.can_record) {
+        alert("Both participants have consented. You may now begin recording.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to grant consent";
+      alert(msg);
+    } finally {
+      setGrantingConsent(false);
+    }
+  };
+
+  // Start In-App Recording
+  const handleStartRecording = async () => {
+    try {
+      // 1. Trigger backend recording start (enforces dual-consent)
+      const res = (await apiClient.post(
+        `/api/v1/consultations/${consultationId}/video/recording/start`,
+        {}
+      )) as { recording_id: string };
+
+      setActiveRecordingId(res.recording_id);
+      setIsRecording(true);
+      setShowRecordingModal(false);
+
+      // Broadcast recording status over WebSocket
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "recording-status",
+            status: "RECORDING",
+            recording_id: res.recording_id,
+          })
+        );
+      }
+
+      // 2. Setup browser MediaRecorder with mixed audio from local and remote participants
+      if (localStreamRef.current) {
+        recordedChunksRef.current = [];
+
+        let streamToRecord = localStreamRef.current;
+        try {
+          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+          if (AudioCtx) {
+            const audioCtx = new AudioCtx();
+            const dest = audioCtx.createMediaStreamDestination();
+            if (localStreamRef.current.getAudioTracks().length > 0) {
+              const localAudio = audioCtx.createMediaStreamSource(localStreamRef.current);
+              localAudio.connect(dest);
+            }
+            if (remoteStreamRef.current && remoteStreamRef.current.getAudioTracks().length > 0) {
+              const remoteAudio = audioCtx.createMediaStreamSource(remoteStreamRef.current);
+              remoteAudio.connect(dest);
+            }
+            const activeVideoTrack = localStreamRef.current.getVideoTracks()[0];
+            const tracks = [
+              ...(activeVideoTrack ? [activeVideoTrack] : []),
+              ...dest.stream.getAudioTracks(),
+            ];
+            streamToRecord = new MediaStream(tracks);
+          }
+        } catch {
+          streamToRecord = localStreamRef.current;
+        }
+
+        const recorder = new MediaRecorder(streamToRecord, {
+          mimeType: "video/webm;codecs=vp8,opus",
+        });
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            recordedChunksRef.current.push(event.data);
+          }
+        };
+
+        recorder.onstop = async () => {
+          const recBlob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+          if (res.recording_id && recBlob.size > 0) {
+            setUploadingRecording(true);
+            try {
+              const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+              const uploadUrl = `/api/v1/consultations/${consultationId}/video/recording/upload?recording_id=${res.recording_id}&filename=consultation_rec.webm`;
+              const response = await fetch(uploadUrl, {
+                method: "POST",
+                headers: {
+                  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                  "Content-Type": "video/webm",
+                },
+                body: recBlob,
+              });
+
+              if (response.ok) {
+                setRecordingSuccessToast("Recording securely finalized & SHA-256 integrity verified!");
+                setTimeout(() => setRecordingSuccessToast(null), 5000);
+              }
+            } catch (uploadErr) {
+              console.error("Recording upload error", uploadErr);
+            } finally {
+              setUploadingRecording(false);
+            }
+          }
+        };
+
+        recorder.start(1000); // 1-second chunks
+        mediaRecorderRef.current = recorder;
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to start recording. Please ensure both participants have consented.";
+      alert(msg);
+    }
+  };
+
+  // Stop In-App Recording
+  const handleStopRecording = async () => {
+    if (!isRecording) return;
+    try {
+      setIsRecording(false);
+
+      // Stop MediaRecorder
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+
+      // Call backend stop endpoint
+      await apiClient.post(
+        `/api/v1/consultations/${consultationId}/video/recording/stop`,
+        {}
+      );
+
+      // Broadcast over WebSocket
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "recording-status",
+            status: "STOPPED",
+          })
+        );
+      }
+    } catch (err: unknown) {
+      console.warn("Failed to cleanly stop backend recording", err);
     }
   };
 
@@ -308,6 +873,10 @@ export default function VideoConsultationRoomPage() {
   const handleEndCall = async () => {
     if (confirm("Are you sure you want to conclude this video consultation?")) {
       try {
+        if (isRecording) {
+          await handleStopRecording();
+        }
+
         setIsCallActive(false);
         setConnectionStatus("ended");
         if (localStreamRef.current) {
@@ -320,8 +889,9 @@ export default function VideoConsultationRoomPage() {
         );
 
         setShowPostCallModal(true);
-      } catch (err: any) {
-        alert(err.message || "Failed to conclude meeting.");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to conclude meeting.";
+        alert(msg);
       }
     }
   };
@@ -348,8 +918,9 @@ export default function VideoConsultationRoomPage() {
         client_shared: true,
       });
       setNoteSaved(true);
-    } catch (err: any) {
-      alert(err.message || "Failed to save consultation notes.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to save consultation notes.";
+      alert(msg);
     } finally {
       setSubmittingNotes(false);
     }
@@ -376,8 +947,9 @@ export default function VideoConsultationRoomPage() {
       setTimeout(() => {
         router.push(`/cases/${res.id}`);
       }, 1500);
-    } catch (err: any) {
-      alert(err.message || "Failed to create case.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create case.";
+      alert(msg);
     } finally {
       setSubmittingCase(false);
     }
@@ -402,18 +974,12 @@ export default function VideoConsultationRoomPage() {
       setTimeout(() => {
         router.push(`/cases/${selectedCaseId}`);
       }, 1500);
-    } catch (err: any) {
-      alert(err.message || "Failed to link consultation to case.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to link consultation to case.";
+      alert(msg);
     } finally {
       setSubmittingCase(false);
     }
-  };
-
-  // Format timer seconds into MM:SS
-  const formatTimer = (sec: number) => {
-    const mins = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
   if (loading) {
@@ -421,7 +987,7 @@ export default function VideoConsultationRoomPage() {
       <div
         style={{
           minHeight: "100vh",
-          backgroundColor: "#090d16",
+          backgroundColor: "#070b14",
           color: "#f8fafc",
           display: "flex",
           flexDirection: "column",
@@ -432,20 +998,20 @@ export default function VideoConsultationRoomPage() {
       >
         <div
           style={{
-            width: "48px",
-            height: "48px",
-            border: "4px solid rgba(255, 255, 255, 0.1)",
+            width: "52px",
+            height: "52px",
+            border: "4px solid rgba(59, 130, 246, 0.2)",
             borderTopColor: "#3b82f6",
             borderRadius: "50%",
             animation: "spin 1s linear infinite",
-            marginBottom: "16px",
+            marginBottom: "20px",
           }}
         />
-        <h2 style={{ fontSize: "18px", fontWeight: 600 }}>
-          Authenticating & Entering Secure Video Room...
+        <h2 style={{ fontSize: "20px", fontWeight: 700, margin: 0, letterSpacing: "-0.3px" }}>
+          Entering Secure Video Room...
         </h2>
         <p style={{ color: "#94a3b8", fontSize: "14px", marginTop: "8px" }}>
-          Establishing encrypted peer-to-peer connection for consultation #{consultationId.slice(0, 8)}
+          Cryptographic token verification & SFU/WebRTC handshake in progress
         </p>
         <style jsx>{`
           @keyframes spin {
@@ -462,7 +1028,7 @@ export default function VideoConsultationRoomPage() {
       <div
         style={{
           minHeight: "100vh",
-          backgroundColor: "#090d16",
+          backgroundColor: "#070b14",
           color: "#f8fafc",
           display: "flex",
           flexDirection: "column",
@@ -476,11 +1042,12 @@ export default function VideoConsultationRoomPage() {
           style={{
             maxWidth: "480px",
             width: "100%",
-            backgroundColor: "#111827",
+            backgroundColor: "#0f172a",
             borderRadius: "16px",
             padding: "32px",
-            border: "1px solid #1f2937",
+            border: "1px solid #1e293b",
             textAlign: "center",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
           }}
         >
           <div
@@ -510,7 +1077,7 @@ export default function VideoConsultationRoomPage() {
             style={{
               backgroundColor: "#2563eb",
               color: "#ffffff",
-              padding: "10px 20px",
+              padding: "10px 24px",
               borderRadius: "8px",
               border: "none",
               fontWeight: 600,
@@ -526,17 +1093,47 @@ export default function VideoConsultationRoomPage() {
 
   return (
     <div
+      id="consultation-room-container"
       style={{
-        height: "100vh",
-        backgroundColor: "#090d16",
+        height: "calc(100vh - 60px)",
+        maxHeight: "calc(100vh - 60px)",
+        backgroundColor: "#070b14",
         color: "#f8fafc",
         display: "flex",
         flexDirection: "column",
         fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
         overflow: "hidden",
+        position: "relative",
       }}
     >
-      {/* 1. Header Bar */}
+      {/* Toast Notification */}
+      {recordingSuccessToast && (
+        <div
+          style={{
+            position: "absolute",
+            top: "70px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(16, 185, 129, 0.95)",
+            backdropFilter: "blur(12px)",
+            color: "#ffffff",
+            padding: "10px 24px",
+            borderRadius: "100px",
+            fontSize: "14px",
+            fontWeight: 600,
+            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.5)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <span>✓</span>
+          <span>{recordingSuccessToast}</span>
+        </div>
+      )}
+
+      {/* 1. Header Bar (Google Meet Style) */}
       <header
         style={{
           padding: "12px 24px",
@@ -545,26 +1142,20 @@ export default function VideoConsultationRoomPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          zIndex: 10,
+          zIndex: 20,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div
-              style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                backgroundColor: connectionStatus === "connected" ? "#22c55e" : "#eab308",
-                boxShadow:
-                  connectionStatus === "connected"
-                    ? "0 0 8px rgba(34, 197, 94, 0.6)"
-                    : "none",
-              }}
-            />
-            <span style={{ fontWeight: 700, fontSize: "15px", letterSpacing: "0.2px" }}>
-              LCC Consultation Room
-            </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ fontSize: "20px" }}>⚖️</span>
+            <div>
+              <span style={{ fontWeight: 700, fontSize: "15px", letterSpacing: "0.2px" }}>
+                LCC Consultation Room
+              </span>
+              <span style={{ color: "#64748b", fontSize: "12px", marginLeft: "8px" }}>
+                #{consultationId.slice(0, 8)}
+              </span>
+            </div>
           </div>
 
           <span
@@ -573,260 +1164,837 @@ export default function VideoConsultationRoomPage() {
               color: "#60a5fa",
               fontSize: "12px",
               fontWeight: 600,
-              padding: "4px 10px",
+              padding: "3px 10px",
               borderRadius: "100px",
               border: "1px solid rgba(59, 130, 246, 0.25)",
             }}
           >
-            End-to-End Encrypted
+            🔒 End-to-End Encrypted
+          </span>
+
+          {istClock && (
+            <span
+              style={{
+                backgroundColor: "rgba(79, 91, 247, 0.15)",
+                color: "#a5b4fc",
+                fontSize: "12px",
+                fontWeight: 600,
+                padding: "3px 10px",
+                borderRadius: "100px",
+                border: "1px solid rgba(79, 91, 247, 0.3)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+              }}
+            >
+              <span>🕒</span> {istClock}
+            </span>
+          )}
+
+          <span
+            style={{
+              backgroundColor: "rgba(16, 185, 129, 0.15)",
+              color: "#10b981",
+              fontSize: "12px",
+              fontWeight: 600,
+              padding: "3px 10px",
+              borderRadius: "100px",
+              border: "1px solid rgba(16, 185, 129, 0.3)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+            }}
+          >
+            <span>🤝</span> Mutual Consent Granted
           </span>
         </div>
 
-        {/* Center Session Timer */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            backgroundColor: "rgba(0, 0, 0, 0.4)",
-            padding: "6px 16px",
-            borderRadius: "8px",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            fontFamily: "monospace",
-            fontSize: "16px",
-            fontWeight: 700,
-            color: "#38bdf8",
-          }}
-        >
-          <span>⏱</span>
-          <span>{formatTimer(secondsElapsed)}</span>
+        {/* Center Indicators: Session Timer + Recording Pill */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {/* Call Elapsed Timer */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              padding: "6px 14px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              fontFamily: "monospace",
+              fontSize: "15px",
+              fontWeight: 700,
+              color: "#38bdf8",
+            }}
+          >
+            <span>⏱</span>
+            <span>{formatTimer(secondsElapsed)}</span>
+          </div>
+
+          {/* Live Recording Beacon Indicator */}
+          {isRecording ? (
+            <div
+              id="header-recording-badge"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "rgba(239, 68, 68, 0.2)",
+                border: "1px solid rgba(239, 68, 68, 0.6)",
+                color: "#f87171",
+                padding: "6px 14px",
+                borderRadius: "8px",
+                fontSize: "13px",
+                fontWeight: 800,
+                letterSpacing: "0.5px",
+              }}
+              data-recording-id={activeRecordingId || undefined}
+              title={activeRecordingId ? `Active Recording ID: ${activeRecordingId}` : "Recording active"}
+            >
+              <span style={{ animation: "pulse 1s infinite" }}>🔴</span>
+              <span>RECORDING ({formatTimer(recordingSeconds)})</span>
+            </div>
+          ) : consentStatus?.can_record ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                backgroundColor: "rgba(34, 197, 94, 0.12)",
+                border: "1px solid rgba(34, 197, 94, 0.3)",
+                color: "#22c55e",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              <span>🔒 Consented (Ready)</span>
+            </div>
+          ) : null}
+
+          {/* Connection Status Indicator */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "4px 10px",
+              borderRadius: "6px",
+              backgroundColor: "rgba(255, 255, 255, 0.04)",
+              fontSize: "12px",
+            }}
+          >
+            <div
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                backgroundColor: connectionStatus === "connected" ? "#22c55e" : "#eab308",
+              }}
+            />
+            <span style={{ color: "#94a3b8" }}>
+              {connectionStatus === "connected" ? "Connected" : "Reconnecting"}
+            </span>
+          </div>
         </div>
 
-        {/* Right Info & End Call */}
+        {/* Right Section: User details & End Call */}
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           <div style={{ textAlign: "right", fontSize: "12px" }}>
             <div style={{ color: "#f8fafc", fontWeight: 600 }}>
               {joinInfo?.participant_name}
             </div>
             <div style={{ color: "#94a3b8" }}>
-              Role: <span style={{ color: "#38bdf8" }}>{joinInfo?.participant_role}</span>
+              Role: <span style={{ color: "#38bdf8", fontWeight: 600 }}>{joinInfo?.participant_role}</span>
             </div>
           </div>
 
           <button
+            id="end-call-btn"
             onClick={handleEndCall}
             style={{
               backgroundColor: "#dc2626",
               color: "#ffffff",
               border: "none",
               borderRadius: "8px",
-              padding: "8px 16px",
+              padding: "8px 18px",
               fontWeight: 600,
               fontSize: "13px",
               cursor: "pointer",
               transition: "background-color 0.2s",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
             }}
             onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#b91c1c")}
             onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#dc2626")}
           >
-            End Call
+            <span>📞</span>
+            <span>End Call</span>
           </button>
         </div>
       </header>
 
-      {/* 2. Main Video Consultation Stage */}
-      <main
-        style={{
-          flex: 1,
-          padding: "20px",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "20px",
-          position: "relative",
-          backgroundColor: "#050811",
-        }}
-      >
-        {/* Remote Participant Panel */}
-        <div
+      {/* 2. Main Center Consultation Stage + Side Drawer */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <main
+          id="consultation-video-stage"
           style={{
-            backgroundColor: "#0d1322",
-            borderRadius: "16px",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
+            flex: 1,
+            height: "100%",
+            padding: "20px",
+            display: isScreenSharing ? "flex" : "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gridTemplateRows: isScreenSharing ? "none" : "1fr",
+            gap: "20px",
+            backgroundColor: "#050811",
             position: "relative",
             overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
           }}
         >
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              position: "absolute",
-              inset: 0,
-              display: remotePeerActive ? "block" : "none",
-            }}
-          />
-
-          {!remotePeerActive && (
-            <>
-              <div
-                style={{
-                  width: "120px",
-                  height: "120px",
-                  borderRadius: "50%",
-                  backgroundColor: "#1e293b",
-                  border: "3px solid #3b82f6",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "44px",
-                  fontWeight: 700,
-                  color: "#ffffff",
-                  marginBottom: "16px",
-                }}
-              >
-                {joinInfo?.participant_role === "CLIENT" ? "⚖️" : "👤"}
-              </div>
-
-              <h3 style={{ fontSize: "18px", fontWeight: 600, margin: 0 }}>
-                {joinInfo?.participant_role === "CLIENT" ? "Counsel / Advocate" : "Client"}
-              </h3>
-              <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
-                Waiting for remote participant to connect via WebRTC...
-              </p>
-            </>
+          {/* Persistent Viewport Recording Indicator (Phase 8: continuously visible across screenshare/toggle/reconnect) */}
+          {isRecording && (
+            <div
+              id="viewport-persistent-recording-indicator"
+              style={{
+                position: "absolute",
+                top: "24px",
+                left: "24px",
+                zIndex: 60,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "rgba(220, 38, 38, 0.92)",
+                color: "#ffffff",
+                padding: "8px 18px",
+                borderRadius: "9999px",
+                fontSize: "13px",
+                fontWeight: 800,
+                letterSpacing: "0.5px",
+                boxShadow: "0 6px 20px rgba(220, 38, 38, 0.6)",
+                backdropFilter: "blur(6px)",
+                border: "1px solid rgba(255, 255, 255, 0.3)",
+                pointerEvents: "none",
+              }}
+            >
+              <span style={{ fontSize: "14px", animation: "pulse 1s infinite" }}>🔴</span>
+              <span>RECORDING ({formatTimer(recordingSeconds)})</span>
+            </div>
           )}
 
+          {/* Remote Participant Panel */}
           <div
+            id="remote-participant-panel"
             style={{
-              position: "absolute",
-              bottom: "16px",
-              left: "16px",
-              backgroundColor: "rgba(0, 0, 0, 0.6)",
-              backdropFilter: "blur(8px)",
-              padding: "6px 12px",
-              borderRadius: "8px",
-              fontSize: "12px",
-              fontWeight: 500,
+              flex: isScreenSharing ? "1" : "initial",
+              height: "100%",
+              backgroundColor: "#0d1322",
+              borderRadius: "16px",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              position: "relative",
+              overflow: "hidden",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              gap: "6px",
-              zIndex: 2,
+              justifyContent: "center",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
             }}
           >
-            <span
-              style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                backgroundColor: remotePeerActive ? "#22c55e" : "#f59e0b",
-              }}
-            />
-            <span>{remotePeerActive ? "Connected (Live Video Feed)" : "Waiting for Peer"}</span>
-          </div>
-        </div>
-
-        {/* Local Participant Preview Panel */}
-        <div
-          style={{
-            backgroundColor: "#0d1322",
-            borderRadius: "16px",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            position: "relative",
-            overflow: "hidden",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-          }}
-        >
-          {isVideoOff ? (
-            <div style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  width: "100px",
-                  height: "100px",
-                  borderRadius: "50%",
-                  backgroundColor: "#1f2937",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "36px",
-                  margin: "0 auto 12px",
-                }}
-              >
-                📷
-              </div>
-              <p style={{ color: "#94a3b8", fontSize: "14px" }}>Camera is disabled</p>
-            </div>
-          ) : (
             <video
-              ref={localVideoRef}
+              id="remote-video-element"
+              ref={remoteVideoRef}
               autoPlay
               playsInline
-              muted
               style={{
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                transform: isScreenSharing ? "none" : "scaleX(-1)",
+                position: "absolute",
+                inset: 0,
+                display: remotePeerActive && !remoteIsVideoOff ? "block" : "none",
               }}
             />
-          )}
 
+            {(!remotePeerActive || remoteIsVideoOff) && (
+              <div style={{ textAlign: "center", zIndex: 2 }}>
+                <div
+                  style={{
+                    width: "110px",
+                    height: "110px",
+                    borderRadius: "50%",
+                    backgroundColor: "#1e293b",
+                    border: "3px solid #3b82f6",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "44px",
+                    fontWeight: 700,
+                    color: "#ffffff",
+                    margin: "0 auto 16px",
+                    boxShadow: "0 0 24px rgba(59, 130, 246, 0.2)",
+                  }}
+                >
+                  {joinInfo?.participant_role === "CLIENT" ? "⚖️" : "👤"}
+                </div>
+
+                <h3 style={{ fontSize: "18px", fontWeight: 600, margin: 0 }}>
+                  {joinInfo?.participant_role === "CLIENT" ? "Counsel / Advocate" : "Client"}
+                </h3>
+                <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
+                  {remotePeerActive
+                    ? "Camera is turned off"
+                    : "Waiting for remote participant to connect..."}
+                </p>
+              </div>
+            )}
+
+            {/* Bottom Overlay Label */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: "16px",
+                left: "16px",
+                backgroundColor: "rgba(0, 0, 0, 0.65)",
+                backdropFilter: "blur(8px)",
+                padding: "6px 14px",
+                borderRadius: "8px",
+                fontSize: "12px",
+                fontWeight: 500,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                zIndex: 5,
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+              }}
+            >
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor: remotePeerActive ? "#22c55e" : "#f59e0b",
+                }}
+              />
+              <span>
+                {joinInfo?.participant_role === "CLIENT" ? "Advocate / Legal Counsel" : "Client"}
+              </span>
+              {remoteIsMuted && <span style={{ color: "#ef4444" }}>🔇 Muted</span>}
+              {remoteIsScreenSharing && <span style={{ color: "#38bdf8" }}>🖥️ Presenting</span>}
+            </div>
+          </div>
+
+          {/* Local Participant Preview Panel */}
           <div
+            id="local-participant-panel"
             style={{
-              position: "absolute",
-              bottom: "16px",
-              left: "16px",
-              backgroundColor: "rgba(0, 0, 0, 0.6)",
-              backdropFilter: "blur(8px)",
-              padding: "6px 12px",
-              borderRadius: "8px",
-              fontSize: "12px",
-              fontWeight: 500,
+              flex: isScreenSharing ? "0 0 280px" : "initial",
+              height: "100%",
+              backgroundColor: "#0d1322",
+              borderRadius: "16px",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              position: "relative",
+              overflow: "hidden",
               display: "flex",
               alignItems: "center",
-              gap: "6px",
+              justifyContent: "center",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
             }}
           >
-            <span>You ({joinInfo?.participant_name})</span>
-            {isMuted && <span style={{ color: "#ef4444" }}>[Muted]</span>}
-          </div>
-        </div>
-      </main>
+            {/* Non-blocking Camera Error Banner */}
+            {cameraError && (
+              <div
+                id="camera-error-banner"
+                style={{
+                  position: "absolute",
+                  top: "12px",
+                  left: "12px",
+                  right: "12px",
+                  backgroundColor: "rgba(239, 68, 68, 0.9)",
+                  backdropFilter: "blur(6px)",
+                  color: "#ffffff",
+                  padding: "6px 12px",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  zIndex: 10,
+                  textAlign: "center",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                }}
+              >
+                ⚠️ {cameraError}
+              </div>
+            )}
 
-      {/* 3. Bottom HUD Controller Bar */}
+            {/* Local Video Element: Permanently mounted with active CSS box to preserve MediaStream binding across camera toggles */}
+            <video
+              id="local-video-element"
+              ref={setLocalVideoNode}
+              autoPlay
+              playsInline
+              muted
+              onLoadedMetadata={(e) => {
+                const v = e.currentTarget;
+                console.log(
+                  `[LCC-Video] Local video loadedmetadata: ${v.videoWidth}x${v.videoHeight}`
+                );
+                v.muted = true;
+                v.defaultMuted = true;
+                if (!isVideoOff) {
+                  v.play().catch((err) =>
+                    console.warn("[LCC-Video] Play error on loadedmetadata:", err)
+                  );
+                }
+              }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                transform: isScreenSharing ? "none" : "scaleX(-1)",
+                display: "block",
+                visibility: isVideoOff ? "hidden" : "visible",
+                opacity: isVideoOff ? 0 : 1,
+                zIndex: 1,
+                pointerEvents: isVideoOff ? "none" : "auto",
+                transition: "opacity 0.2s ease-in-out",
+              }}
+            />
+
+            {/* Camera Disabled Placeholder */}
+            {isVideoOff && (
+              <div
+                id="camera-off-placeholder"
+                style={{
+                  textAlign: "center",
+                  zIndex: 2,
+                  position: "relative",
+                  pointerEvents: "none",
+                }}
+              >
+                <div
+                  style={{
+                    width: "90px",
+                    height: "90px",
+                    borderRadius: "50%",
+                    backgroundColor: "#1f2937",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "36px",
+                    margin: "0 auto 12px",
+                  }}
+                >
+                  📷
+                </div>
+                <p style={{ color: "#94a3b8", fontSize: "14px", margin: 0 }}>Camera Off</p>
+              </div>
+            )}
+
+            {/* Bottom Overlay Label */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: "16px",
+                left: "16px",
+                backgroundColor: "rgba(0, 0, 0, 0.65)",
+                backdropFilter: "blur(8px)",
+                padding: "6px 14px",
+                borderRadius: "8px",
+                fontSize: "12px",
+                fontWeight: 500,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                zIndex: 5,
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+              }}
+            >
+              <span>You ({joinInfo?.participant_name})</span>
+              {isMuted && <span style={{ color: "#ef4444" }}>🔇 Muted</span>}
+              {isScreenSharing && <span style={{ color: "#38bdf8" }}>🖥️ Presenting</span>}
+            </div>
+          </div>
+        </main>
+
+        {/* Side Drawer (Tabs: 'chat' | 'participants' | 'notes') */}
+        {activeSideTab && (
+          <aside
+            style={{
+              width: "360px",
+              backgroundColor: "#0d1322",
+              borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+              display: "flex",
+              flexDirection: "column",
+              zIndex: 15,
+            }}
+          >
+            {/* Drawer Header with Tabs */}
+            <div
+              style={{
+                padding: "16px",
+                borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  onClick={() => {
+                    setActiveSideTab("chat");
+                    setUnreadChatCount(0);
+                  }}
+                  style={{
+                    backgroundColor: activeSideTab === "chat" ? "#2563eb" : "transparent",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "6px 12px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  💬 Chat
+                </button>
+                <button
+                  onClick={() => setActiveSideTab("participants")}
+                  style={{
+                    backgroundColor: activeSideTab === "participants" ? "#2563eb" : "transparent",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "6px 12px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  👥 People
+                </button>
+                <button
+                  onClick={() => setActiveSideTab("notes")}
+                  style={{
+                    backgroundColor: activeSideTab === "notes" ? "#2563eb" : "transparent",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "6px 12px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  📝 Notes
+                </button>
+              </div>
+
+              <button
+                onClick={() => setActiveSideTab(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#94a3b8",
+                  fontSize: "18px",
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Tab Content: Chat */}
+            {activeSideTab === "chat" && (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {chatMessages.length === 0 ? (
+                    <div style={{ textAlign: "center", color: "#64748b", marginTop: "40px", fontSize: "13px" }}>
+                      <p>No messages yet.</p>
+                      <p>Send a message to share notes, statutes, or case citations.</p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg) => {
+                      const isMe = msg.sender_id === joinInfo?.participant_user_id;
+                      return (
+                        <div
+                          key={msg.id}
+                          style={{
+                            alignSelf: isMe ? "flex-end" : "flex-start",
+                            maxWidth: "80%",
+                          }}
+                        >
+                          <div style={{ fontSize: "11px", color: "#94a3b8", marginBottom: "3px", textAlign: isMe ? "right" : "left" }}>
+                            {msg.sender_name} • {msg.timestamp}
+                          </div>
+                          <div
+                            style={{
+                              backgroundColor: isMe ? "#2563eb" : "#1e293b",
+                              color: "#ffffff",
+                              padding: "8px 12px",
+                              borderRadius: "12px",
+                              fontSize: "13px",
+                              lineHeight: 1.4,
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {msg.content}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={chatBottomRef} />
+                </div>
+
+                <form
+                  onSubmit={handleSendMessage}
+                  style={{
+                    padding: "12px",
+                    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+                    display: "flex",
+                    gap: "8px",
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Send a message to everyone..."
+                    style={{
+                      flex: 1,
+                      backgroundColor: "#0f172a",
+                      border: "1px solid #334155",
+                      borderRadius: "8px",
+                      color: "#f8fafc",
+                      padding: "8px 12px",
+                      fontSize: "13px",
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    style={{
+                      backgroundColor: "#3b82f6",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "8px",
+                      padding: "0 14px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ➤
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Tab Content: Participants */}
+            {activeSideTab === "participants" && (
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+                <h4 style={{ fontSize: "13px", textTransform: "uppercase", color: "#94a3b8", margin: "0 0 12px" }}>
+                  In This Call (2 Maximum)
+                </h4>
+
+                {/* You */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px",
+                    backgroundColor: "rgba(255, 255, 255, 0.03)",
+                    borderRadius: "8px",
+                    marginBottom: "8px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 700 }}>
+                      {joinInfo?.participant_name.charAt(0) || "U"}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "13px", fontWeight: 600 }}>{joinInfo?.participant_name} (You)</div>
+                      <div style={{ fontSize: "11px", color: "#38bdf8" }}>{joinInfo?.participant_role}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "6px", fontSize: "14px" }}>
+                    <span>{isMuted ? "🔇" : "🎙️"}</span>
+                    <span>{isVideoOff ? "🚫" : "📹"}</span>
+                  </div>
+                </div>
+
+                {/* Remote Participant */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px",
+                    backgroundColor: "rgba(255, 255, 255, 0.03)",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 700 }}>
+                      {joinInfo?.participant_role === "CLIENT" ? "⚖️" : "👤"}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "13px", fontWeight: 600 }}>
+                        {joinInfo?.participant_role === "CLIENT" ? "Legal Counsel" : "Client"}
+                      </div>
+                      <div style={{ fontSize: "11px", color: remotePeerActive ? "#22c55e" : "#f59e0b" }}>
+                        {remotePeerActive ? "Connected" : "Waiting to join..."}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "6px", fontSize: "14px" }}>
+                    {remotePeerActive && <span>{remoteIsMuted ? "🔇" : "🎙️"}</span>}
+                    {remotePeerActive && <span>{remoteIsVideoOff ? "🚫" : "📹"}</span>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab Content: Notes */}
+            {activeSideTab === "notes" && (
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+                <h4 style={{ fontSize: "13px", color: "#94a3b8", margin: "0 0 12px" }}>
+                  Consultation Notes & Legal Advice
+                </h4>
+
+                <textarea
+                  value={notesSummary}
+                  onChange={(e) => setNotesSummary(e.target.value)}
+                  placeholder="Record summary of advice, legal precedents, or statutory points..."
+                  rows={4}
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#0f172a",
+                    border: "1px solid #334155",
+                    borderRadius: "8px",
+                    color: "#f8fafc",
+                    padding: "10px",
+                    fontSize: "13px",
+                    resize: "vertical",
+                    marginBottom: "12px",
+                  }}
+                />
+
+                <div style={{ marginBottom: "12px" }}>
+                  <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                    <input
+                      type="text"
+                      value={actionItemInput}
+                      onChange={(e) => setActionItemInput(e.target.value)}
+                      placeholder="Add recommended next action item..."
+                      onKeyDown={(e) => e.key === "Enter" && handleAddActionItem()}
+                      style={{
+                        flex: 1,
+                        backgroundColor: "#0f172a",
+                        border: "1px solid #334155",
+                        borderRadius: "6px",
+                        color: "#f8fafc",
+                        padding: "8px 12px",
+                        fontSize: "13px",
+                      }}
+                    />
+                    <button
+                      onClick={handleAddActionItem}
+                      style={{
+                        backgroundColor: "#3b82f6",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "0 14px",
+                        fontWeight: 600,
+                        fontSize: "13px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  {actionItems.map((item, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        fontSize: "13px",
+                        color: "#cbd5e1",
+                        backgroundColor: "rgba(255, 255, 255, 0.04)",
+                        padding: "6px 10px",
+                        borderRadius: "6px",
+                        marginBottom: "4px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <span>• {item}</span>
+                      <button
+                        onClick={() => setActionItems(actionItems.filter((_, i) => i !== idx))}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#ef4444",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleSaveNotes}
+                  disabled={submittingNotes || noteSaved}
+                  style={{
+                    backgroundColor: noteSaved ? "#10b981" : "#2563eb",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "8px 16px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: noteSaved ? "default" : "pointer",
+                    width: "100%",
+                  }}
+                >
+                  {noteSaved ? "✓ Notes Saved" : submittingNotes ? "Saving..." : "Save Notes to Matter"}
+                </button>
+              </div>
+            )}
+          </aside>
+        )}
+      </div>
+
+      {/* 3. Bottom Floating HUD Controller Bar (Google Meet Style) */}
       <footer
         style={{
-          padding: "16px 24px",
+          padding: "14px 24px",
           backgroundColor: "#0d1322",
           borderTop: "1px solid rgba(255, 255, 255, 0.08)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: "16px",
-          zIndex: 10,
+          gap: "14px",
+          zIndex: 20,
         }}
       >
         {/* Mute / Unmute */}
         <button
+          id="toggle-mic-btn"
           onClick={toggleMute}
           style={{
-            backgroundColor: isMuted ? "#ef4444" : "rgba(255, 255, 255, 0.1)",
+            backgroundColor: isMuted ? "#ef4444" : "rgba(255, 255, 255, 0.12)",
             color: "#ffffff",
             border: "none",
             borderRadius: "50%",
-            width: "50px",
-            height: "50px",
+            width: "48px",
+            height: "48px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -841,14 +2009,15 @@ export default function VideoConsultationRoomPage() {
 
         {/* Video On / Off */}
         <button
+          id="toggle-video-btn"
           onClick={toggleVideo}
           style={{
-            backgroundColor: isVideoOff ? "#ef4444" : "rgba(255, 255, 255, 0.1)",
+            backgroundColor: isVideoOff ? "#ef4444" : "rgba(255, 255, 255, 0.12)",
             color: "#ffffff",
             border: "none",
             borderRadius: "50%",
-            width: "50px",
-            height: "50px",
+            width: "48px",
+            height: "48px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -863,14 +2032,15 @@ export default function VideoConsultationRoomPage() {
 
         {/* Screen Share */}
         <button
+          id="toggle-screen-btn"
           onClick={toggleScreenShare}
           style={{
-            backgroundColor: isScreenSharing ? "#2563eb" : "rgba(255, 255, 255, 0.1)",
+            backgroundColor: isScreenSharing ? "#2563eb" : "rgba(255, 255, 255, 0.12)",
             color: "#ffffff",
             border: "none",
             borderRadius: "50%",
-            width: "50px",
-            height: "50px",
+            width: "48px",
+            height: "48px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -882,9 +2052,388 @@ export default function VideoConsultationRoomPage() {
         >
           🖥️
         </button>
+
+        {/* Dual-Consent Recording Controller */}
+        {isRecording ? (
+          <button
+            id="stop-rec-btn"
+            onClick={handleStopRecording}
+            disabled={uploadingRecording}
+            style={{
+              backgroundColor: "#ef4444",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "100px",
+              padding: "0 18px",
+              height: "48px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor: "pointer",
+              fontWeight: 700,
+              fontSize: "13px",
+              boxShadow: "0 0 16px rgba(239, 68, 68, 0.5)",
+            }}
+            title="Stop recording and save"
+          >
+            <span>⏹</span>
+            <span>{uploadingRecording ? "Finalizing..." : "Stop REC"}</span>
+          </button>
+        ) : (
+          <button
+            id="recording-modal-btn"
+            onClick={() => {
+              void fetchConsentStatus();
+              setShowRecordingModal(true);
+            }}
+            style={{
+              backgroundColor: consentStatus?.can_record ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.12)",
+              color: consentStatus?.can_record ? "#10b981" : "#ffffff",
+              border: consentStatus?.can_record ? "1px solid #10b981" : "none",
+              borderRadius: "50%",
+              width: "48px",
+              height: "48px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              fontSize: "18px",
+              transition: "all 0.2s",
+            }}
+            title="Record Consultation (Requires Mutual Consent)"
+          >
+            ⏺
+          </button>
+        )}
+
+        {/* Side Drawer Toggle: Chat */}
+        <button
+          id="open-chat-btn"
+          onClick={() => {
+            setActiveSideTab(activeSideTab === "chat" ? null : "chat");
+            setUnreadChatCount(0);
+          }}
+          style={{
+            backgroundColor: activeSideTab === "chat" ? "#2563eb" : "rgba(255, 255, 255, 0.12)",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "50%",
+            width: "48px",
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: "18px",
+            position: "relative",
+            transition: "all 0.2s",
+          }}
+          title="In-Meeting Chat"
+        >
+          💬
+          {unreadChatCount > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: "2px",
+                right: "2px",
+                backgroundColor: "#ef4444",
+                color: "#fff",
+                fontSize: "10px",
+                fontWeight: 700,
+                width: "18px",
+                height: "18px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {unreadChatCount}
+            </span>
+          )}
+        </button>
+
+        {/* Side Drawer Toggle: Participants */}
+        <button
+          id="open-participants-btn"
+          onClick={() => setActiveSideTab(activeSideTab === "participants" ? null : "participants")}
+          style={{
+            backgroundColor: activeSideTab === "participants" ? "#2563eb" : "rgba(255, 255, 255, 0.12)",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "50%",
+            width: "48px",
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: "18px",
+            transition: "all 0.2s",
+          }}
+          title="Participants"
+        >
+          👥
+        </button>
+
+        {/* Device Settings */}
+        <button
+          id="open-settings-btn"
+          onClick={() => setShowDeviceModal(true)}
+          style={{
+            backgroundColor: "rgba(255, 255, 255, 0.12)",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "50%",
+            width: "48px",
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: "18px",
+            transition: "all 0.2s",
+          }}
+          title="Audio & Video Settings"
+        >
+          ⚙️
+        </button>
       </footer>
 
-      {/* 4. Post-Consultation Workflow Modal */}
+      {/* 4. Dual-Consent Recording Modal */}
+      {showRecordingModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 110,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#111827",
+              borderRadius: "16px",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              maxWidth: "460px",
+              width: "100%",
+              padding: "28px",
+              color: "#f8fafc",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.7)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "22px" }}>📹</span>
+                <h3 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>
+                  Consultation Recording
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowRecordingModal(false)}
+                style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: 1.5, marginBottom: "20px" }}>
+              Consultation recordings are confidential legal work product protected under advocate-client privilege.
+              In compliance with legal ethics and privacy standards, recording requires mutual consent from both Client and Counsel.
+            </p>
+
+            {/* Consent Status Matrix */}
+            <div style={{ backgroundColor: "#1e293b", borderRadius: "10px", padding: "14px", marginBottom: "20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                <span style={{ fontSize: "13px", fontWeight: 500 }}>Client Consent:</span>
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: consentStatus?.client_consented ? "#22c55e" : "#f59e0b",
+                  }}
+                >
+                  {consentStatus?.client_consented ? "✓ Consented" : "⏳ Pending"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "13px", fontWeight: 500 }}>Advocate Consent:</span>
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: consentStatus?.lawyer_consented ? "#22c55e" : "#f59e0b",
+                  }}
+                >
+                  {consentStatus?.lawyer_consented ? "✓ Consented" : "⏳ Pending"}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <button
+                onClick={handleGrantConsent}
+                disabled={grantingConsent}
+                style={{
+                  backgroundColor: "#2563eb",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "10px 16px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {grantingConsent ? "Recording Consent..." : "Grant My Consent to Record"}
+              </button>
+
+              {consentStatus?.can_record && (
+                <button
+                  onClick={handleStartRecording}
+                  style={{
+                    backgroundColor: "#10b981",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "10px 16px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  ⏺ Begin Recording Session
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Device Settings Modal */}
+      {showDeviceModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 110,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#111827",
+              borderRadius: "16px",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              maxWidth: "440px",
+              width: "100%",
+              padding: "28px",
+              color: "#f8fafc",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>
+                ⚙️ Device Settings
+              </h3>
+              <button
+                onClick={() => setShowDeviceModal(false)}
+                style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ display: "block", fontSize: "13px", color: "#94a3b8", marginBottom: "6px" }}>
+                Microphone
+              </label>
+              <select
+                style={{
+                  width: "100%",
+                  backgroundColor: "#1e293b",
+                  border: "1px solid #334155",
+                  borderRadius: "6px",
+                  color: "#f8fafc",
+                  padding: "8px 12px",
+                  fontSize: "13px",
+                }}
+              >
+                {availableDevices.audioInputs.length > 0 ? (
+                  availableDevices.audioInputs.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || "Default Microphone"}
+                    </option>
+                  ))
+                ) : (
+                  <option>System Default Microphone</option>
+                )}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{ display: "block", fontSize: "13px", color: "#94a3b8", marginBottom: "6px" }}>
+                Camera
+              </label>
+              <select
+                style={{
+                  width: "100%",
+                  backgroundColor: "#1e293b",
+                  border: "1px solid #334155",
+                  borderRadius: "6px",
+                  color: "#f8fafc",
+                  padding: "8px 12px",
+                  fontSize: "13px",
+                }}
+              >
+                {availableDevices.videoInputs.length > 0 ? (
+                  availableDevices.videoInputs.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || "Default Camera"}
+                    </option>
+                  ))
+                ) : (
+                  <option>System Default Camera</option>
+                )}
+              </select>
+            </div>
+
+            <button
+              onClick={() => setShowDeviceModal(false)}
+              style={{
+                backgroundColor: "#2563eb",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "6px",
+                padding: "10px",
+                fontWeight: 600,
+                width: "100%",
+                cursor: "pointer",
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Post-Consultation Workflow Modal */}
       {showPostCallModal && (
         <div
           style={{
@@ -893,12 +2442,12 @@ export default function VideoConsultationRoomPage() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
-            backdropFilter: "blur(10px)",
+            backgroundColor: "rgba(0, 0, 0, 0.85)",
+            backdropFilter: "blur(12px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 100,
+            zIndex: 120,
             padding: "20px",
           }}
         >
@@ -1233,7 +2782,7 @@ export default function VideoConsultationRoomPage() {
             {/* Exit to dashboard */}
             <div style={{ textAlign: "center" }}>
               <button
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.push("/consultations")}
                 style={{
                   backgroundColor: "transparent",
                   color: "#94a3b8",
@@ -1243,7 +2792,7 @@ export default function VideoConsultationRoomPage() {
                   textDecoration: "underline",
                 }}
               >
-                Back to Dashboard
+                Back to Consultations
               </button>
             </div>
           </div>

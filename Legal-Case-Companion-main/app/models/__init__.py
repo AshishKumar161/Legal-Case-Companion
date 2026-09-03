@@ -49,6 +49,11 @@ from app.models.case_intelligence import (
 from app.models.consultation import Consultation, ConsultationStatus
 from app.models.consultation_note import ConsultationNote
 from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
+from app.models.video_recording import (
+    VideoRecording,
+    VideoRecordingConsent,
+    VideoRecordingStatus,
+)
 from app.models.document import (
     Document,
     DocumentCategory,
@@ -199,4 +204,7 @@ __all__ = [
     "VerificationStatus",
     "VideoMeeting",
     "VideoMeetingStatus",
+    "VideoRecording",
+    "VideoRecordingConsent",
+    "VideoRecordingStatus",
 ]

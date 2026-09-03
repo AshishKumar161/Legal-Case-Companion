@@ -48,41 +48,15 @@ export function PaymentCheckoutModal({
   };
 
   const handleSimulatePaymentConfirmation = async () => {
-    if (!paymentIntent) return;
     setLoading(true);
     setStep("PROCESSING");
     setErrorMessage(null);
 
     try {
-      // In development/test mode or with backend webhook integration, we trigger webhook simulation
-      // or verify with the backend consultation status
-      await apiClient.post("/api/v1/webhooks/stripe", {
-        id: `evt_mock_${paymentIntent.payment_id}`,
-        type: "payment_intent.succeeded",
-        data: {
-          object: {
-            id: `pi_mock_${paymentIntent.payment_id}`,
-            amount: paymentIntent.amount * 100,
-            currency: paymentIntent.currency.toLowerCase(),
-          },
-        },
-      }).catch(() => {
-        // In case webhook requires secret header in prod, fallback gracefully
-      });
-
-      // Confirm backend consultation state is updated to PAID
-      const updatedConsultation: ConsultationItem = await apiClient.get(
-        `/api/v1/consultations/${consultation.id}`
-      );
-
-      if (updatedConsultation.status === "PAID" || updatedConsultation.status === "SCHEDULED") {
-        setStep("SUCCESS");
-        onPaymentSuccess();
-      } else {
-        // If webhook is asynchronous, grant success and trigger dashboard refresh
-        setStep("SUCCESS");
-        onPaymentSuccess();
-      }
+      // Authoritatively process test payment
+      await apiClient.post(`/api/v1/consultations/${consultation.id}/pay-test`, {});
+      setStep("SUCCESS");
+      onPaymentSuccess();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Payment processing failed. Please retry.";
       setErrorMessage(msg);
@@ -168,9 +142,10 @@ export function PaymentCheckoutModal({
               <StatusBadge status={consultation.status} />
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "13px", color: "#94a3b8" }}>Scheduled Date</span>
+              <span style={{ fontSize: "13px", color: "#94a3b8" }}>Scheduled Date (IST)</span>
               <span style={{ fontSize: "13px", fontWeight: 500 }}>
                 {new Date(consultation.scheduled_start).toLocaleDateString("en-IN", {
+                  timeZone: "Asia/Kolkata",
                   weekday: "short",
                   day: "numeric",
                   month: "short",
@@ -179,11 +154,12 @@ export function PaymentCheckoutModal({
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: "13px", color: "#94a3b8" }}>Time Window</span>
+              <span style={{ fontSize: "13px", color: "#94a3b8" }}>Time Window (IST)</span>
               <span style={{ fontSize: "13px", fontWeight: 500 }}>
-                {new Date(consultation.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {new Date(consultation.scheduled_start).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
                 {" - "}
-                {new Date(consultation.scheduled_end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {new Date(consultation.scheduled_end).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                {" IST"}
               </span>
             </div>
           </div>
@@ -309,22 +285,42 @@ export function PaymentCheckoutModal({
               <p style={{ fontSize: "13px", color: "#94a3b8", margin: "0 0 18px 0" }}>
                 Your consultation fee of ₹{feeAmount} has been verified. The consultation is now confirmed.
               </p>
-              <button
-                onClick={onClose}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  background: "#1f293d",
-                  color: "#f7f8fa",
-                  border: "1px solid #3b82f6",
-                  fontWeight: 600,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                }}
-              >
-                Done
-              </button>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <a
+                  href={`/consultations/${consultation.id}/room`}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    background: "linear-gradient(135deg, #10b981, #059669)",
+                    color: "#ffffff",
+                    textAlign: "center",
+                    fontWeight: 700,
+                    fontSize: "14px",
+                    textDecoration: "none",
+                    boxShadow: "0 4px 14px rgba(16, 185, 129, 0.4)",
+                  }}
+                >
+                  Enter Video Consultation Room 🎥
+                </a>
+                <button
+                  onClick={onClose}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: "8px",
+                    background: "#1f293d",
+                    color: "#f7f8fa",
+                    border: "1px solid #3b82f6",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Done & Return to Appointments
+                </button>
+              </div>
             </div>
           )}
 

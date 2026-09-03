@@ -28,6 +28,39 @@ export default function LawyerDiscovery() {
   const [maxFee, setMaxFee] = useState("");
   const [language, setLanguage] = useState("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [onlineOnly, setOnlineOnly] = useState(false);
+
+  // Live IST Clock
+  const [istClock, setIstClock] = useState("");
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+      const dateStr = now.toLocaleDateString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+      setIstClock(`${dateStr} • ${timeStr} IST`);
+    };
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Instant Consultation Modal state
+  const [instantCallLawyer, setInstantCallLawyer] = useState<LawyerProfileItem | null>(null);
+  const [instantSubmitting, setInstantSubmitting] = useState(false);
+  const [instantError, setInstantError] = useState("");
 
   // Booking modal state
   const [bookingLawyer, setBookingLawyer] = useState<LawyerProfileItem | null>(null);
@@ -44,8 +77,8 @@ export default function LawyerDiscovery() {
   const [bookingError, setBookingError] = useState("");
   const [bookedConsultationId, setBookedConsultationId] = useState<string | null>(null);
 
-  const fetchLawyers = useCallback(async () => {
-    setLoading(true);
+  const fetchLawyers = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchTerm.trim()) params.set("search", searchTerm.trim());
@@ -56,20 +89,29 @@ export default function LawyerDiscovery() {
       if (minExp) params.set("min_experience", minExp);
       if (maxFee) params.set("max_fee", maxFee);
       params.set("verified_only", verifiedOnly ? "true" : "false");
+      if (onlineOnly) params.set("online_only", "true");
 
       const url = `/api/v1/lawyers?${params.toString()}`;
       const res = await apiClient.get(url);
       setLawyers(res.items || (Array.isArray(res) ? res : []));
     } catch (err) {
       console.error("Failed to fetch lawyers", err);
-      setLawyers([]);
+      if (!isBackground) setLawyers([]);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
-  }, [searchTerm, location, practiceArea, jurisdiction, language, minExp, maxFee, verifiedOnly]);
+  }, [searchTerm, location, practiceArea, jurisdiction, language, minExp, maxFee, verifiedOnly, onlineOnly]);
 
   useEffect(() => {
-    void fetchLawyers();
+    void fetchLawyers(false);
+  }, [fetchLawyers]);
+
+  // Periodic background refresh (every 6 seconds) to detect lawyer presence changes live
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      void fetchLawyers(true);
+    }, 6000);
+    return () => clearInterval(pollInterval);
   }, [fetchLawyers]);
 
   // Fetch slots when booking lawyer or date changes
@@ -94,6 +136,34 @@ export default function LawyerDiscovery() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     void fetchLawyers();
+  };
+
+  const handleConfirmInstantCall = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!instantCallLawyer) return;
+    setInstantSubmitting(true);
+    setInstantError("");
+
+    try {
+      const lawyerId = instantCallLawyer.user_id || instantCallLawyer.id;
+      // 1. Create immediate consultation at current time
+      const conRes: any = await apiClient.post("/api/v1/consultations", {
+        lawyer_id: lawyerId,
+        scheduled_at: new Date().toISOString(),
+        duration_minutes: 30,
+        is_instant: true,
+      });
+
+      // 2. Authoritatively settle simulated test payment
+      await apiClient.post(`/api/v1/consultations/${conRes.id}/pay-test`, {});
+
+      // 3. Immediately redirect to video room
+      window.location.href = `/consultations/${conRes.id}/room`;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to initiate instant video call.";
+      setInstantError(msg);
+      setInstantSubmitting(false);
+    }
   };
 
   const handleBookConsultation = async (e: React.FormEvent) => {
@@ -128,27 +198,46 @@ export default function LawyerDiscovery() {
     <div style={{ padding: "36px 0 80px" }}>
       <div className="container">
         {/* Header */}
-        <div style={{ marginBottom: "32px", maxWidth: "780px" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "var(--accent-secondary)",
-              marginBottom: "8px",
-            }}
-          >
-            <span>●</span> Verified Indian Bar Directory
+        <div style={{ marginBottom: "32px", maxWidth: "820px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "8px" }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "var(--accent-secondary)",
+              }}
+            >
+              <span>●</span> Verified Indian Bar Directory
+            </div>
+            {istClock && (
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "4px 12px",
+                  borderRadius: "16px",
+                  background: "rgba(79, 91, 247, 0.12)",
+                  border: "1px solid rgba(79, 91, 247, 0.3)",
+                  color: "#a5b4fc",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                }}
+              >
+                <span>🕒</span> Indian Standard Time: <strong>{istClock}</strong>
+              </div>
+            )}
           </div>
           <h1 style={{ fontSize: "32px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.03em" }}>
             Retain Verified Indian Legal Counsel
           </h1>
           <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginTop: "8px", lineHeight: 1.5 }}>
-            Discover verified advocates across High Courts, Supreme Court, and specialized National Tribunals. Review verified enrollment credentials, transparent fee schedules, and schedule real-time consultation sessions.
+            Discover verified advocates across High Courts, Supreme Court, and specialized National Tribunals. Review verified enrollment credentials, transparent fee schedules, and schedule or conduct instant video consultation sessions.
           </p>
         </div>
 
@@ -240,6 +329,28 @@ export default function LawyerDiscovery() {
                 alignItems: "center",
                 gap: "8px",
                 fontSize: "13px",
+                fontWeight: 600,
+                color: onlineOnly ? "#10b981" : "var(--text-secondary)",
+                cursor: "pointer",
+                padding: "6px 12px",
+                borderRadius: "6px",
+                background: onlineOnly ? "rgba(16, 185, 129, 0.15)" : "rgba(255,255,255,0.04)",
+                border: onlineOnly ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid var(--border-subtle)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={onlineOnly}
+                onChange={(e) => setOnlineOnly(e.target.checked)}
+              />
+              🟢 Online Advocates Only
+            </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "13px",
                 color: "var(--text-secondary)",
                 cursor: "pointer",
                 padding: "0 8px",
@@ -314,10 +425,33 @@ export default function LawyerDiscovery() {
                           📍 {lawyer.location || "India"} • {lawyer.experience_years ? `${lawyer.experience_years}+ Yrs at Bar` : "Advocate"}
                         </div>
                       </div>
-                      <StatusBadge
-                        status={isVer ? "VERIFIED" : "PENDING"}
-                        label={isVer ? "Verified Bar" : "Enrolled"}
-                      />
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+                        <StatusBadge
+                          status={isVer ? "VERIFIED" : "PENDING"}
+                          label={isVer ? "Verified Bar" : "Enrolled"}
+                        />
+                        {lawyer.is_online ? (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              color: "#10b981",
+                              backgroundColor: "rgba(16, 185, 129, 0.15)",
+                              border: "1px solid rgba(16, 185, 129, 0.35)",
+                              padding: "2px 8px",
+                              borderRadius: "12px",
+                            }}
+                          >
+                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#10b981" }}></span>
+                            ONLINE NOW
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>⚪ Offline</span>
+                        )}
+                      </div>
                     </div>
 
                     <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "14px" }}>
@@ -383,7 +517,7 @@ export default function LawyerDiscovery() {
                       </span>
                       <span style={{ fontSize: "11px", color: "var(--text-muted)" }}> / 30 min</span>
                     </div>
-                    <div style={{ display: "flex", gap: "8px" }}>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                       <Link
                         href={`/lawyers/${lawyer.id}`}
                         className="btn btn-secondary"
@@ -391,22 +525,174 @@ export default function LawyerDiscovery() {
                       >
                         Profile
                       </Link>
-                      <button
-                        onClick={() => {
-                          setBookingLawyer(lawyer);
-                          setBookingError("");
-                          setBookingSuccess("");
-                        }}
-                        className="btn btn-primary"
-                        style={{ padding: "7px 14px", fontSize: "12px" }}
-                      >
-                        Book Session →
-                      </button>
+                      {lawyer.is_online ? (
+                        <button
+                          onClick={() => {
+                            setInstantCallLawyer(lawyer);
+                            setInstantError("");
+                          }}
+                          className="btn btn-primary"
+                          style={{
+                            padding: "7px 14px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            background: "linear-gradient(135deg, #10b981, #059669)",
+                            border: "none",
+                            boxShadow: "0 2px 10px rgba(16, 185, 129, 0.35)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          ⚡ Instant Video Call
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setBookingLawyer(lawyer);
+                            setBookingError("");
+                            setBookingSuccess("");
+                          }}
+                          className="btn btn-primary"
+                          style={{ padding: "7px 14px", fontSize: "12px" }}
+                        >
+                          Book Session →
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Instant Video Call & Simulated Test Payment Modal */}
+        {instantCallLawyer && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.85)",
+              backdropFilter: "blur(10px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "20px",
+            }}
+            onClick={() => setInstantCallLawyer(null)}
+          >
+            <div
+              style={{
+                background: "var(--surface-elevated)",
+                border: "1px solid var(--border-subtle)",
+                borderRadius: "var(--radius-md)",
+                padding: "28px",
+                width: "100%",
+                maxWidth: "520px",
+                boxShadow: "var(--shadow-lg)",
+                color: "#fff",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" }}>
+                <div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 700, color: "#10b981", textTransform: "uppercase", marginBottom: "4px" }}>
+                    <span>●</span> Instant Counsel Video Session
+                  </div>
+                  <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#fff", margin: 0 }}>
+                    Connect with {instantCallLawyer.full_name}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setInstantCallLawyer(null)}
+                  style={{ color: "var(--text-muted)", fontSize: "20px", background: "none", border: "none", cursor: "pointer" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Session Details Card */}
+              <div
+                style={{
+                  background: "#1a1e2e",
+                  border: "1px solid #282f44",
+                  borderRadius: "8px",
+                  padding: "16px",
+                  marginBottom: "18px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                  <span style={{ color: "#94a3b8" }}>Advocate Status:</span>
+                  <span style={{ color: "#10b981", fontWeight: 700 }}>🟢 Present & Online Now</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                  <span style={{ color: "#94a3b8" }}>Scheduled Start:</span>
+                  <span style={{ fontWeight: 600 }}>Immediately ({istClock ? istClock.split("•")[1]?.trim() : "Current Indian Time"})</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                  <span style={{ color: "#94a3b8" }}>Session Duration:</span>
+                  <span>30 Minutes Video Room</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", borderTop: "1px solid #282f44", paddingTop: "8px" }}>
+                  <span style={{ color: "#94a3b8" }}>Consultation Fee:</span>
+                  <span style={{ fontSize: "18px", fontWeight: 700, color: "#60a5fa" }}>₹{instantCallLawyer.consultation_fee || 2500}</span>
+                </div>
+              </div>
+
+              {/* Temporary Payment Box */}
+              <div
+                style={{
+                  padding: "14px 16px",
+                  borderRadius: "8px",
+                  background: "rgba(16, 185, 129, 0.08)",
+                  border: "1px solid rgba(16, 185, 129, 0.25)",
+                  marginBottom: "20px",
+                  fontSize: "12px",
+                  color: "#a7f3d0",
+                  lineHeight: 1.5,
+                }}
+              >
+                <strong style={{ display: "block", marginBottom: "4px", color: "#34d399" }}>💳 Simulated Test Payment Gateway:</strong>
+                This is a temporary test transaction. No real credit card charge will occur. Clicking below authoritatively marks the session as paid and initiates the video consultation with permission of both parties.
+              </div>
+
+              {instantError && (
+                <div style={{ padding: "12px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", fontSize: "13px", marginBottom: "16px" }}>
+                  {instantError}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setInstantCallLawyer(null)}
+                  className="btn btn-secondary"
+                  disabled={instantSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmInstantCall}
+                  disabled={instantSubmitting}
+                  className="btn btn-primary"
+                  style={{
+                    padding: "10px 22px",
+                    background: "linear-gradient(135deg, #10b981, #059669)",
+                    border: "none",
+                    fontWeight: 700,
+                    fontSize: "14px",
+                    boxShadow: "0 4px 14px rgba(16, 185, 129, 0.4)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {instantSubmitting ? "Starting Video Call..." : "Confirm Test Payment & Join Call 🎥"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

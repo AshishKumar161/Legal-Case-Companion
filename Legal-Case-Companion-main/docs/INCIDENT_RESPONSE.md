@@ -124,6 +124,29 @@ This document defines operational response procedures for high-severity infrastr
 3. Verify bucket CORS policy allows `PUT` from `https://app.legalcasecompanion.in`.
 4. Ensure bucket policy enforces `s3:x-amz-server-side-encryption: AES256`.
 
+### Playbook 7: LiveKit SFU Service Degradation / Disconnects
+**Symptoms:** Video room fails to establish media tracks; browser console reports `LiveKit room connection timeout` or token authorization failures.
+
+**Immediate Actions:**
+1. Check LiveKit server status or cloud dashboard (`LIVEKIT_URL`).
+2. Verify API key and secret synchronization in production secrets (`LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`).
+3. Verify client network does not block UDP ports (LiveKit media requires UDP 7880 / 7881 / 50000-60000).
+4. If LiveKit SFU is down, fallback to internal WebRTC peer-to-peer signalling for 1:1 consultations.
+
+---
+
+### Playbook 8: Local Video Recording Storage Disk Full / Checksum Mismatch
+**Symptoms:** Video upload fails with `OSError: [Errno 28] No space left on device` or playback fails with `ValidationError: Recording checksum mismatch (tampered file)`.
+
+**Immediate Actions:**
+1. Check disk utilization on host / persistent volume:
+   ```bash
+   df -h /app/storage
+   ```
+2. Verify persistent volume / disk attachment on Render or Docker host (`app_storage`).
+3. Inspect `storage/recordings/consultations/` directory permissions. Ensure backend process UID (`appuser`) has read/write permissions.
+4. For checksum mismatches, inspect audit log `RECORDING_FINALIZED` to verify expected SHA-256 vs. file integrity. Quarantined / tampered files must not be streamed.
+
 ---
 
 ## 3. Post-Incident Review (PIR) Template

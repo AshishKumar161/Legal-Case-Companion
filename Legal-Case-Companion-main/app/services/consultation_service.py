@@ -92,6 +92,7 @@ class ConsultationService:
         scheduled_at: datetime,
         duration_minutes: int,
         lawyer_profile_id: uuid.UUID | None = None,
+        is_instant: bool = False,
     ) -> tuple[datetime, datetime]:
         if duration_minutes <= 0 or duration_minutes > 240:
             raise ValidationError("Duration must be between 1 and 240 minutes")
@@ -103,18 +104,32 @@ class ConsultationService:
             req_start = scheduled_at.astimezone(UTC)
 
         now_utc = datetime.now(UTC)
-        if req_start <= now_utc:
-            raise ValidationError("Consultation must be scheduled for a future time")
+        
+        # If instant consultation, clamp to now or allow within 5-minute past buffer for clock drift
+        if is_instant:
+            if req_start < now_utc - timedelta(minutes=10):
+                req_start = now_utc
+        else:
+            # Allow 5-minute grace period for network latency / client clock slight drift
+            if req_start < now_utc - timedelta(minutes=5):
+                now_ist_str = now_utc.astimezone(self.IST_TIMEZONE).strftime("%I:%M %p IST")
+                raise ValidationError(
+                    f"Consultation must be scheduled for a future time (Current Indian Time: {now_ist_str})"
+                )
 
         req_end = req_start + timedelta(minutes=duration_minutes)
 
         ist_start = req_start.astimezone(self.IST_TIMEZONE)
         ist_end = req_end.astimezone(self.IST_TIMEZONE)
 
-        if ist_start.date() != ist_end.date():
+        if not is_instant and ist_start.date() != ist_end.date():
             raise ValidationError(
                 "Consultation cannot span across multiple calendar days"
             )
+
+        # For instant consultations, bypass static availability windows if both parties are present
+        if is_instant:
+            return req_start, req_end
 
         # If lawyer has custom active availability windows configured for this day
         if lawyer_profile_id:
@@ -140,17 +155,17 @@ class ConsultationService:
                     )
                 return req_start, req_end
 
-        # Default business hours (08:00 to 22:00 IST)
+        # Default business hours (08:00 to 23:00 IST)
         if ist_start.hour < 8:
             raise ValidationError(
-                "Consultation must start within business hours (08:00 to 21:00 IST)"
+                "Consultation must start within standard business hours (08:00 to 23:00 IST)"
             )
 
-        if ist_end.hour > 22 or (
-            ist_end.hour == 22 and (ist_end.minute > 0 or ist_end.second > 0)
+        if ist_end.hour > 23 or (
+            ist_end.hour == 23 and (ist_end.minute > 0 or ist_end.second > 0)
         ):
             raise ValidationError(
-                "Consultation must conclude within business hours (08:00 to 21:00 IST)"
+                "Consultation must conclude within standard business hours (08:00 to 23:00 IST)"
             )
 
         return req_start, req_end
@@ -271,10 +286,16 @@ class ConsultationService:
         req_start: datetime,
         req_end: datetime,
         exclude_consultation_id: uuid.UUID | None = None,
+        is_instant: bool = False,
     ) -> None:
+        blocking_statuses = (
+            [ConsultationStatus.IN_PROGRESS]
+            if is_instant
+            else self.BLOCKING_CONSULTATION_STATUSES
+        )
         query = self.db.query(Consultation).filter(
             Consultation.lawyer_id == lawyer_profile_id,
-            Consultation.status.in_(self.BLOCKING_CONSULTATION_STATUSES),
+            Consultation.status.in_(blocking_statuses),
             Consultation.deleted_at.is_(None),
             Consultation.scheduled_at < req_end,
         )
@@ -292,9 +313,12 @@ class ConsultationService:
 
             # Strict interval intersection: [req_start, req_end) overlaps [exist_start, exist_end)
             if req_start < exist_end and exist_start < req_end:
-                raise ValidationError(
-                    "The requested time slot overlaps with an existing consultation for this lawyer"
+                conflict_msg = (
+                    "Lawyer is currently active in another video consultation"
+                    if is_instant
+                    else "The requested time slot overlaps with an existing consultation for this lawyer"
                 )
+                raise ValidationError(conflict_msg)
 
     def request_consultation(self, user: User, req: ConsultationCreate) -> Consultation:
         if user.role != UserRole.CLIENT:
@@ -335,7 +359,10 @@ class ConsultationService:
             )
 
         req_start, req_end = self._validate_slot_and_business_hours(
-            req.scheduled_at, req.duration_minutes, lawyer_profile_id=lawyer_profile.id
+            req.scheduled_at,
+            req.duration_minutes,
+            lawyer_profile_id=lawyer_profile.id,
+            is_instant=req.is_instant,
         )
 
         if req.case_id:
@@ -356,7 +383,9 @@ class ConsultationService:
             self.case_service.get_case_by_id(user, req.case_id)
 
         # Slot Overlap Protection
-        self._assert_no_overlapping_consultation(lawyer_profile.id, req_start, req_end)
+        self._assert_no_overlapping_consultation(
+            lawyer_profile.id, req_start, req_end, is_instant=req.is_instant
+        )
 
         consultation = Consultation(
             id=generate_uuid7(),
@@ -468,8 +497,13 @@ class ConsultationService:
         if user.role != UserRole.LAWYER and user.role != UserRole.ADMIN:
             raise AuthorizationError("Only lawyers can accept consultations")
 
-        if consultation.status == ConsultationStatus.ACCEPTED:
-            return consultation  # Idempotent
+        if consultation.status in (
+            ConsultationStatus.ACCEPTED,
+            ConsultationStatus.PAID,
+            ConsultationStatus.SCHEDULED,
+            ConsultationStatus.IN_PROGRESS,
+        ):
+            return consultation  # Idempotent - already authorized
 
         if consultation.status != ConsultationStatus.REQUESTED:
             raise ValidationError(
