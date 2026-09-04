@@ -175,11 +175,14 @@ export default function VideoConsultationRoomPage() {
     }
   }, []);
 
-  // Helper to reliably attach, configure, and play media stream on remote video element
-  // Muted is enforced on the video element so Chrome/Safari never block video decoding due to autoplay policy
-  const attachStreamToRemoteVideo = useCallback(
-    (videoEl: HTMLVideoElement | null, stream: MediaStream | null) => {
-      if (!videoEl || !stream) return;
+  // Canonical helper to attach remote media stream to remote video and audio elements
+  const attachRemoteStream = useCallback((stream: MediaStream | null) => {
+    if (!stream) return;
+    remoteStreamRef.current = stream;
+    setRemoteStream(stream);
+
+    const videoEl = remoteVideoRef.current;
+    if (videoEl) {
       try {
         if (videoEl.srcObject !== stream) {
           videoEl.srcObject = stream;
@@ -197,16 +200,12 @@ export default function VideoConsultationRoomPage() {
           });
         }
       } catch (err) {
-        console.warn("[LCC-Video] Error attaching stream to remote video element:", err);
+        console.error("[LCC-Video] Error attaching stream to remote video element:", err);
       }
-    },
-    []
-  );
+    }
 
-  // Helper to reliably play remote audio independently from video element
-  const attachStreamToRemoteAudio = useCallback(
-    (audioEl: HTMLAudioElement | null, stream: MediaStream | null) => {
-      if (!audioEl || !stream) return;
+    const audioEl = remoteAudioRef.current;
+    if (audioEl) {
       try {
         if (audioEl.srcObject !== stream) {
           audioEl.srcObject = stream;
@@ -219,11 +218,88 @@ export default function VideoConsultationRoomPage() {
           });
         }
       } catch (err) {
-        console.warn("[LCC-Video] Error attaching stream to remote audio element:", err);
+        console.error("[LCC-Video] Error attaching stream to remote audio element:", err);
       }
+    }
+  }, []);
+
+  // Helper to attach to remote video specifically (backward-compatibility wrapper)
+  const attachStreamToRemoteVideo = useCallback(
+    (videoEl: HTMLVideoElement | null, stream: MediaStream | null) => {
+      if (!videoEl || !stream) return;
+      attachRemoteStream(stream);
     },
-    []
+    [attachRemoteStream]
   );
+
+  // Helper to attach to remote audio specifically (backward-compatibility wrapper)
+  const attachStreamToRemoteAudio = useCallback(
+    (audioEl: HTMLAudioElement | null, stream: MediaStream | null) => {
+      if (!audioEl || !stream) return;
+      attachRemoteStream(stream);
+    },
+    [attachRemoteStream]
+  );
+
+  // ICE Candidate Queueing & Race Condition Defense
+  const addRemoteIceCandidate = useCallback(async (candidate: RTCIceCandidateInit) => {
+    const pc = peerConnectionRef.current;
+    if (!pc) return;
+
+    if (pc.remoteDescription && pc.remoteDescription.type) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        console.error("[LCC-Video] Error adding remote ICE candidate:", error);
+      }
+    } else {
+      pendingCandidatesRef.current.push(candidate);
+    }
+  }, []);
+
+  const flushPendingIceCandidates = useCallback(async () => {
+    const pc = peerConnectionRef.current;
+    if (!pc || !pc.remoteDescription) return;
+
+    const pending = [...pendingCandidatesRef.current];
+    pendingCandidatesRef.current = [];
+
+    for (const candidate of pending) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        console.error("[LCC-Video] Failed to flush ICE candidate:", error);
+      }
+    }
+  }, []);
+
+  // Development-safe WebRTC Connection & RTP Diagnostics
+  const logPeerConnectionStats = useCallback(async () => {
+    const pc = peerConnectionRef.current;
+    if (!pc) return;
+
+    console.log("[LCC-Video] WebRTC state", {
+      connectionState: pc.connectionState,
+      iceConnectionState: pc.iceConnectionState,
+      iceGatheringState: pc.iceGatheringState,
+      signalingState: pc.signalingState,
+    });
+
+    try {
+      const stats = await pc.getStats();
+      stats.forEach((report) => {
+        if (
+          report.type === "candidate-pair" ||
+          report.type === "inbound-rtp" ||
+          report.type === "outbound-rtp"
+        ) {
+          console.log("[LCC-Video] Stats", report);
+        }
+      });
+    } catch (err) {
+      console.error("[LCC-Video] Failed to get stats:", err);
+    }
+  }, []);
 
   // Global user interaction listener to unblock deferred media playback on modern browsers
   useEffect(() => {
@@ -250,10 +326,10 @@ export default function VideoConsultationRoomPage() {
     (node: HTMLVideoElement | null) => {
       remoteVideoRef.current = node;
       if (node && remoteStreamRef.current) {
-        attachStreamToRemoteVideo(node, remoteStreamRef.current);
+        attachRemoteStream(remoteStreamRef.current);
       }
     },
-    [attachStreamToRemoteVideo]
+    [attachRemoteStream]
   );
 
   // Creates a simulated animated consultation stream if hardware camera is busy in another tab/app
@@ -359,7 +435,8 @@ export default function VideoConsultationRoomPage() {
         }
 
         setIsCallActive(true);
-        setConnectionStatus("connected");
+        // Do NOT set "connected" prematurely — actual WebRTC connectionState drives connection status
+        setConnectionStatus("connecting");
 
         // Fetch initial consent status
         void fetchConsentStatus();
@@ -492,18 +569,48 @@ export default function VideoConsultationRoomPage() {
           });
           peerConnectionRef.current = pc;
 
-          // Process queued ICE candidates after setting remote description
-          const drainPendingCandidates = async () => {
-            while (pendingCandidatesRef.current.length > 0) {
-              const cand = pendingCandidatesRef.current.shift();
-              if (cand) {
-                try {
-                  await pc.addIceCandidate(new RTCIceCandidate(cand));
-                } catch (e) {
-                  console.warn("[LCC-Video] Error adding queued ICE candidate:", e);
-                }
+          // WebRTC Diagnostics and State Tracking
+          pc.onconnectionstatechange = () => {
+            console.log(`[LCC-Video] RTCPeerConnection connectionState: ${pc.connectionState}`);
+            if (mounted) {
+              if (pc.connectionState === "connected") {
+                setConnectionStatus("connected");
+                setRemotePeerActive(true);
+                void logPeerConnectionStats();
+              } else if (pc.connectionState === "connecting") {
+                setConnectionStatus("connecting");
+              } else if (pc.connectionState === "disconnected") {
+                setConnectionStatus("reconnecting");
+              } else if (pc.connectionState === "failed") {
+                setConnectionStatus("reconnecting");
+                console.error("[LCC-Video] RTCPeerConnection failed");
+              } else if (pc.connectionState === "closed") {
+                setConnectionStatus("ended");
               }
             }
+          };
+
+          pc.oniceconnectionstatechange = () => {
+            console.log(`[LCC-Video] RTCPeerConnection iceConnectionState: ${pc.iceConnectionState}`);
+            if (mounted) {
+              if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+                setConnectionStatus("connected");
+                setRemotePeerActive(true);
+              } else if (pc.iceConnectionState === "failed") {
+                console.error("[LCC-Video] ICE connection state failed");
+                setConnectionStatus("reconnecting");
+              } else if (pc.iceConnectionState === "disconnected") {
+                setConnectionStatus("reconnecting");
+              }
+            }
+          };
+
+          pc.onsignalingstatechange = () => {
+            console.log(`[LCC-Video] RTCPeerConnection signalingState: ${pc.signalingState}`);
+          };
+
+          pc.onicegatheringstatechange = () => {
+            console.log(`[LCC-Video] RTCPeerConnection iceGatheringState: ${pc.iceGatheringState}`);
           };
 
           pc.onicecandidate = (event) => {
@@ -531,7 +638,6 @@ export default function VideoConsultationRoomPage() {
             remoteStreamRef.current = stream;
 
             if (mounted) {
-              setRemoteStream(stream);
               setRemotePeerActive(true);
               if (event.track.kind === "video") {
                 setRemoteIsVideoOff(!event.track.enabled);
@@ -541,31 +647,12 @@ export default function VideoConsultationRoomPage() {
                 event.track.onunmute = () => {
                   console.log("[LCC-Video] Remote video track unmuted");
                   setRemoteIsVideoOff(false);
-                  if (remoteVideoRef.current) {
-                    attachStreamToRemoteVideo(remoteVideoRef.current, stream);
-                  }
+                  attachRemoteStream(stream!);
                 };
               }
             }
 
-            if (remoteVideoRef.current) {
-              attachStreamToRemoteVideo(remoteVideoRef.current, stream);
-            }
-            if (remoteAudioRef.current) {
-              attachStreamToRemoteAudio(remoteAudioRef.current, stream);
-            }
-          };
-
-          pc.onconnectionstatechange = () => {
-            console.log(`[LCC-Video] RTCPeerConnection state: ${pc.connectionState}`);
-            if (mounted) {
-              if (pc.connectionState === "connected") {
-                setConnectionStatus("connected");
-                setRemotePeerActive(true);
-              } else if (pc.connectionState === "connecting") {
-                setConnectionStatus("connecting");
-              }
-            }
+            attachRemoteStream(stream);
           };
 
           if (userMediaStream) {
@@ -587,54 +674,81 @@ export default function VideoConsultationRoomPage() {
               const msg = JSON.parse(ev.data);
 
               if (msg.type === "peer-joined") {
+                console.log("[LCC-Video] Peer joined, initiating offer negotiation");
                 if (mounted) setRemotePeerActive(true);
                 // Broadcast our local media state to newly joined peer
                 broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
-                const offer = await pc.createOffer({
-                  offerToReceiveAudio: true,
-                  offerToReceiveVideo: true,
-                });
-                await pc.setLocalDescription(offer);
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
+
+                // Negotiation guard: only create offer if signaling state is stable
+                if (pc.signalingState !== "stable") {
+                  console.warn(`[LCC-Video] Cannot create offer: signalingState is ${pc.signalingState}`);
+                  return;
+                }
+
+                try {
+                  const offer = await pc.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true,
+                  });
+                  await pc.setLocalDescription(offer);
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
+                  }
+                } catch (offerErr) {
+                  console.error("[LCC-Video] Error creating/setting local offer:", offerErr);
                 }
               } else if (msg.type === "existing-peer") {
+                console.log("[LCC-Video] Connected to room with existing peer");
                 if (mounted) setRemotePeerActive(true);
                 // Broadcast our media state back to the existing peer
                 broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
               } else if (msg.type === "offer" && msg.sdp) {
+                console.log("[LCC-Video] Received offer from peer, applying remote description");
                 if (mounted) setRemotePeerActive(true);
-                await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: msg.sdp }));
-                await drainPendingCandidates();
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(JSON.stringify({ type: "answer", sdp: answer.sdp }));
+                try {
+                  await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: msg.sdp }));
+                  await flushPendingIceCandidates();
+                  const answer = await pc.createAnswer();
+                  await pc.setLocalDescription(answer);
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "answer", sdp: answer.sdp }));
+                  }
+                  broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
+                } catch (ansErr) {
+                  console.error("[LCC-Video] Error handling offer and creating answer:", ansErr);
                 }
-                broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
               } else if (msg.type === "answer" && msg.sdp) {
-                await pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: msg.sdp }));
-                await drainPendingCandidates();
-                broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
-              } else if (msg.type === "ice-candidate" && msg.candidate) {
-                const candidateInit = {
+                console.log("[LCC-Video] Received answer from peer, applying remote description");
+                try {
+                  await pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: msg.sdp }));
+                  await flushPendingIceCandidates();
+                  broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
+                } catch (setAnsErr) {
+                  console.error("[LCC-Video] Error applying answer remote description:", setAnsErr);
+                }
+              } else if (msg.type === "ice-candidate" && msg.candidate !== undefined) {
+                await addRemoteIceCandidate({
                   candidate: msg.candidate,
                   sdpMid: msg.sdpMid,
                   sdpMLineIndex: msg.sdpMLineIndex,
-                };
-                if (pc.remoteDescription && pc.remoteDescription.type) {
-                  await pc.addIceCandidate(new RTCIceCandidate(candidateInit));
-                } else {
-                  pendingCandidatesRef.current.push(candidateInit);
-                }
+                });
               } else if (msg.type === "peer-left") {
-                if (mounted) setRemotePeerActive(false);
+                console.log("[LCC-Video] Remote peer disconnected, cleaning up peer state");
+                if (mounted) {
+                  setRemotePeerActive(false);
+                  setRemoteStream(null);
+                  setRemoteIsScreenSharing(false);
+                  setRemoteIsMuted(false);
+                  setRemoteIsVideoOff(false);
+                }
+                remoteStreamRef.current = null;
                 if (remoteVideoRef.current) {
                   remoteVideoRef.current.srcObject = null;
                 }
                 if (remoteAudioRef.current) {
                   remoteAudioRef.current.srcObject = null;
                 }
+                pendingCandidatesRef.current = [];
               } else if (msg.type === "chat") {
                 // In-meeting chat message received
                 if (mounted) {
@@ -914,16 +1028,15 @@ export default function VideoConsultationRoomPage() {
                 await videoSender.replaceTrack(newTrack);
               } else {
                 pc.addTrack(newTrack, updatedStream);
+                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && pc.signalingState === "stable") {
+                  const offer = await pc.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true,
+                  });
+                  await pc.setLocalDescription(offer);
+                  wsRef.current.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
+                }
               }
-            }
-
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-              const offer = await pc.createOffer({
-                offerToReceiveAudio: true,
-                offerToReceiveVideo: true,
-              });
-              await pc.setLocalDescription(offer);
-              wsRef.current.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
             }
           }
         }
@@ -934,7 +1047,47 @@ export default function VideoConsultationRoomPage() {
     }
   };
 
-  // Toggle Screen Share
+  // Helper to cleanly stop screen sharing and restore camera track
+  const stopScreenShare = useCallback(async () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
+    }
+    setIsScreenSharing(false);
+    isScreenSharingRef.current = false;
+    broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, false);
+
+    if (peerConnectionRef.current) {
+      const pc = peerConnectionRef.current;
+      let videoSender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
+      if (!videoSender) {
+        const vt = pc.getTransceivers().find(
+          (t) => t.receiver.track.kind === "video" || t.sender.track?.kind === "video"
+        );
+        if (vt && vt.sender) videoSender = vt.sender;
+      }
+      if (videoSender) {
+        const camTrack = localStreamRef.current
+          ?.getVideoTracks()
+          .find((t) => t.readyState !== "ended");
+        try {
+          await videoSender.replaceTrack(isVideoOffRef.current ? null : (camTrack || null));
+        } catch (repErr) {
+          console.error("[LCC-Video] Error restoring camera track on sender:", repErr);
+        }
+      }
+    }
+
+    if (localVideoRef.current && localStreamRef.current) {
+      attachStreamToLocalVideo(
+        localVideoRef.current,
+        localStreamRef.current,
+        isVideoOffRef.current
+      );
+    }
+  }, [broadcastMediaStatus, attachStreamToLocalVideo]);
+
+  // Toggle Screen Share using RTCRtpSender.replaceTrack without destroying peer connection
   const toggleScreenShare = async () => {
     if (!isScreenSharing) {
       try {
@@ -942,9 +1095,12 @@ export default function VideoConsultationRoomPage() {
           video: true,
         });
         screenStreamRef.current = screenStream;
+
+        // Update local preview to show the shared screen
         if (localVideoRef.current) {
           attachStreamToLocalVideo(localVideoRef.current, screenStream, false);
         }
+
         setIsScreenSharing(true);
         isScreenSharingRef.current = true;
         broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, true);
@@ -952,66 +1108,34 @@ export default function VideoConsultationRoomPage() {
         const screenTrack = screenStream.getVideoTracks()[0];
         if (peerConnectionRef.current && screenTrack) {
           const pc = peerConnectionRef.current;
-          const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
+          let videoSender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
+          if (!videoSender) {
+            const vt = pc.getTransceivers().find(
+              (t) => t.receiver.track.kind === "video" || t.sender.track?.kind === "video"
+            );
+            if (vt && vt.sender) videoSender = vt.sender;
+          }
           if (videoSender) {
-            void videoSender.replaceTrack(screenTrack);
+            try {
+              await videoSender.replaceTrack(screenTrack);
+            } catch (repErr) {
+              console.error("[LCC-Video] Error swapping video track with screen track:", repErr);
+            }
           } else {
             pc.addTrack(screenTrack, screenStream);
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-              const offer = await pc.createOffer({
-                offerToReceiveAudio: true,
-                offerToReceiveVideo: true,
-              });
-              await pc.setLocalDescription(offer);
-              wsRef.current.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
-            }
           }
         }
 
-        screenStream.getVideoTracks()[0].onended = () => {
-          if (screenStreamRef.current) {
-            screenStreamRef.current.getTracks().forEach((t) => t.stop());
-            screenStreamRef.current = null;
-          }
-          if (localVideoRef.current && localStreamRef.current) {
-            attachStreamToLocalVideo(localVideoRef.current, localStreamRef.current, isVideoOffRef.current);
-          }
-          setIsScreenSharing(false);
-          isScreenSharingRef.current = false;
-          broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, false);
-          if (peerConnectionRef.current && localStreamRef.current) {
-            const videoSender = peerConnectionRef.current
-              .getSenders()
-              .find((s) => s.track && s.track.kind === "video");
-            if (videoSender) {
-              const camTrack = localStreamRef.current.getVideoTracks().find((t) => t.readyState !== "ended");
-              if (camTrack) void videoSender.replaceTrack(camTrack);
-            }
-          }
+        // Handle native browser "Stop sharing" floating bar or ended event
+        screenTrack.onended = async () => {
+          console.log("[LCC-Video] Screen track ended natively, restoring camera");
+          await stopScreenShare();
         };
       } catch (err) {
-        console.warn("[LCC-Video] Screen sharing cancelled or unavailable", err);
+        console.warn("[LCC-Video] Screen sharing cancelled or unavailable:", err);
       }
     } else {
-      if (screenStreamRef.current) {
-        screenStreamRef.current.getTracks().forEach((t) => t.stop());
-        screenStreamRef.current = null;
-      }
-      if (localVideoRef.current && localStreamRef.current) {
-        attachStreamToLocalVideo(localVideoRef.current, localStreamRef.current, isVideoOffRef.current);
-      }
-      setIsScreenSharing(false);
-      isScreenSharingRef.current = false;
-      broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, false);
-      if (peerConnectionRef.current && localStreamRef.current) {
-        const videoSender = peerConnectionRef.current
-          .getSenders()
-          .find((s) => s.track && s.track.kind === "video");
-        if (videoSender) {
-          const camTrack = localStreamRef.current.getVideoTracks().find((t) => t.readyState !== "ended");
-          if (camTrack) void videoSender.replaceTrack(camTrack);
-        }
-      }
+      await stopScreenShare();
     }
   };
 

@@ -107,12 +107,21 @@ class VideoSignalingManager:
             return
 
         payload_str = json.dumps(message)
+        dead_clients = []
         for client in self.rooms[room_id]:
             if client["ws"] != sender_ws:
                 try:
                     await client["ws"].send_text(payload_str)
                 except Exception as e:
                     logger.warning(f"Failed to relay signaling message to {client['user_id']}: {e}")
+                    dead_clients.append(client)
+
+        if dead_clients:
+            for dead in dead_clients:
+                if dead in self.rooms.get(room_id, []):
+                    self.rooms[room_id].remove(dead)
+            if not self.rooms.get(room_id):
+                self.rooms.pop(room_id, None)
 
 
 signaling_manager = VideoSignalingManager()
@@ -209,6 +218,23 @@ async def video_signaling_websocket(
                 if msg_type == "ping":
                     await websocket.send_text(json.dumps({"type": "pong"}))
                     continue
+
+                # Validate required fields for negotiation and control messages
+                if msg_type in ("offer", "answer"):
+                    sdp = message.get("sdp")
+                    if not isinstance(sdp, str) or not sdp.strip():
+                        logger.warning(f"Discarding malformed {msg_type} payload missing SDP from {user_id}")
+                        continue
+                elif msg_type == "ice-candidate":
+                    candidate = message.get("candidate")
+                    # Note: candidate can be empty string in end-of-candidates, but must be string
+                    if not isinstance(candidate, str):
+                        logger.warning(f"Discarding malformed ice-candidate payload from {user_id}")
+                        continue
+                elif msg_type == "chat":
+                    content = message.get("content")
+                    if not isinstance(content, str) or not content.strip():
+                        continue
 
                 # Attach sender metadata for peer routing
                 message["from_user_id"] = user_id

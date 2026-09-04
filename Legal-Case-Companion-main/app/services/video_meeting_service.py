@@ -49,8 +49,34 @@ class InternalWebRTCMeetingProvider:
         ice_servers: list[dict[str, Any]] = [
             {"urls": "stun:stun.l.google.com:19302"},
             {"urls": "stun:stun1.l.google.com:19302"},
+            {"urls": "stun:stun2.l.google.com:19302"},
         ]
-        if getattr(settings, "TURN_SERVER_URL", None):
+
+        turn_secret = getattr(settings, "TURN_STATIC_AUTH_SECRET", None)
+        turn_url = getattr(settings, "TURN_SERVER_URL", None) or "turn:turn.legalcasecompanion.in:3478"
+
+        if turn_secret:
+            import base64
+            # Standard RFC 5766 / CoTURN ephemeral REST API credentials:
+            # timestamp = unix timestamp of expiration (24h)
+            # username = f"{timestamp}:{consultation.id.hex[:8]}"
+            # credential = base64(hmac-sha1(turn_secret, username))
+            exp_ts = int(datetime.now(UTC).timestamp()) + 86400
+            ephemeral_user = f"{exp_ts}:{consultation.id.hex[:8]}"
+            ephemeral_cred = base64.b64encode(
+                hmac.new(turn_secret.encode("utf-8"), ephemeral_user.encode("utf-8"), hashlib.sha1).digest()
+            ).decode("utf-8")
+
+            clean_url = turn_url.split("?")[0]
+            ice_servers.append({
+                "urls": [
+                    clean_url,
+                    f"{clean_url}?transport=tcp",
+                ],
+                "username": ephemeral_user,
+                "credential": ephemeral_cred,
+            })
+        elif getattr(settings, "TURN_SERVER_URL", None):
             turn_entry: dict[str, Any] = {"urls": settings.TURN_SERVER_URL}
             if getattr(settings, "TURN_USERNAME", None):
                 turn_entry["username"] = settings.TURN_USERNAME

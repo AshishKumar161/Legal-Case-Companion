@@ -571,6 +571,12 @@ def test_websocket_signaling_chat_and_media_status_relay(client: TestClient, db:
             assert peer_joined["user_id"] == lawyer_id
             assert peer_joined["role"] == "LAWYER"
 
+            # Lawyer should receive existing-peer for client who was already connected
+            existing_peer = json.loads(ws_lawyer.receive_text())
+            assert existing_peer["type"] == "existing-peer"
+            assert existing_peer["user_id"] == client_id
+            assert existing_peer["role"] == "CLIENT"
+
             # 4. In-meeting scoped Chat message relay
             chat_payload = {
                 "type": "chat",

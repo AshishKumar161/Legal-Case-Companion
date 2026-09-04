@@ -110,6 +110,7 @@ class Settings(BaseSettings):
     TURN_SERVER_URL: str | None = None
     TURN_USERNAME: str | None = None
     TURN_CREDENTIAL: str | None = None
+    TURN_STATIC_AUTH_SECRET: str | None = None
 
     # Stripe & Sandbox Payment Configuration
     STRIPE_API_KEY: str | None = None
