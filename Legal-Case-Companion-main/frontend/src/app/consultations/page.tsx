@@ -27,6 +27,7 @@ export default function ConsultationsPage() {
   // Modals state
   const [checkoutConsultation, setCheckoutConsultation] = useState<ConsultationItem | null>(null);
   const [recordingsConsultation, setRecordingsConsultation] = useState<ConsultationItem | null>(null);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [actionModal, setActionModal] = useState<{
     type: "RESCHEDULE" | "CANCEL" | "REJECT" | "NO_SHOW" | "COMPLETE" | "SCHEDULE";
     consultation: ConsultationItem;
@@ -124,12 +125,16 @@ export default function ConsultationsPage() {
 
   // Lawyer accepts consultation
   const handleAcceptConsultation = async (conId: string) => {
+    if (acceptingId === conId) return;
+    setAcceptingId(conId);
     try {
       await apiClient.post(`/api/v1/consultations/${conId}/accept`, {});
       void fetchConsultations();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to accept consultation";
       alert(msg);
+    } finally {
+      setAcceptingId(null);
     }
   };
 
@@ -190,7 +195,11 @@ export default function ConsultationsPage() {
     setCreatingCaseFromCon(true);
     setCaseActionMsg(null);
     try {
-      const res: any = await apiClient.post(`/api/v1/consultations/${linkCaseConsultation.id}/create-case`, {});
+      const defaultTitle = `Legal Matter - Consultation #${linkCaseConsultation.id.slice(0, 8).toUpperCase()}`;
+      const res: any = await apiClient.post(`/api/v1/consultations/${linkCaseConsultation.id}/create-case`, {
+        title: defaultTitle,
+        description: `Legal matter formally established following consultation with Advocate ${linkCaseConsultation.lawyer_name || "counsel"}.`,
+      });
       setCaseActionMsg(`Matter created successfully! Redirecting to workspace...`);
       setTimeout(() => {
         router.push(`/cases/${res.id || res.case_id}`);
@@ -439,10 +448,11 @@ export default function ConsultationsPage() {
                       <>
                         <button
                           onClick={() => handleAcceptConsultation(con.id)}
+                          disabled={acceptingId === con.id}
                           className="btn btn-primary"
-                          style={{ padding: "8px 16px" }}
+                          style={{ padding: "8px 16px", opacity: acceptingId === con.id ? 0.6 : 1 }}
                         >
-                          ✓ Accept Request
+                          {acceptingId === con.id ? "Accepting..." : "✓ Accept Request"}
                         </button>
                         <button
                           onClick={() => setActionModal({ type: "REJECT", consultation: con })}

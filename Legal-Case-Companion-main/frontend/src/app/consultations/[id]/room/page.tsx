@@ -17,6 +17,8 @@ interface VideoJoinInfo {
   participant_role: string;
   scheduled_start: string;
   scheduled_end: string;
+  started_at?: string | null;
+  consultation_status?: string | null;
   token: string;
   ice_servers: Array<{ urls: string | string[] }>;
   is_live: boolean;
@@ -36,6 +38,7 @@ export default function VideoConsultationRoomPage() {
   const [joinInfo, setJoinInfo] = useState<VideoJoinInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEndingCall, setIsEndingCall] = useState(false);
 
   // Audio / Video Controls
   const [isMuted, setIsMuted] = useState(false);
@@ -424,6 +427,24 @@ export default function VideoConsultationRoomPage() {
         if (!mounted) return;
         setJoinInfo(info);
 
+        // If the consultation or meeting has already completed, display post-call state directly
+        if (info.status === "ENDED" || info.consultation_status === "COMPLETED") {
+          setIsCallActive(false);
+          setConnectionStatus("ended");
+          setShowPostCallModal(true);
+          setLoading(false);
+          return;
+        }
+
+        // Initialize authoritative call timer from server started_at timestamp
+        if (info.started_at) {
+          const startedMs = new Date(info.started_at).getTime();
+          if (!isNaN(startedMs)) {
+            const elapsedSec = Math.max(0, Math.floor((Date.now() - startedMs) / 1000));
+            setSecondsElapsed(elapsedSec);
+          }
+        }
+
         // Automatically mark meeting started
         try {
           await apiClient.post(
@@ -796,6 +817,16 @@ export default function VideoConsultationRoomPage() {
                   }
                 }
                 void fetchConsentStatus();
+              } else if (msg.type === "consultation-ended") {
+                console.log("[LCC-Video] Authoritative consultation-ended received from peer/server");
+                if (mounted) {
+                  setIsCallActive(false);
+                  setConnectionStatus("ended");
+                  if (localStreamRef.current) {
+                    localStreamRef.current.getTracks().forEach((t) => t.stop());
+                  }
+                  setShowPostCallModal(true);
+                }
               }
             } catch (signalingErr) {
               console.warn("Signaling message handling error:", signalingErr);
@@ -1322,7 +1353,9 @@ export default function VideoConsultationRoomPage() {
 
   // Conclude Call
   const handleEndCall = async () => {
+    if (isEndingCall) return;
     if (confirm("Are you sure you want to conclude this video consultation?")) {
+      setIsEndingCall(true);
       try {
         if (isRecording) {
           await handleStopRecording();
@@ -1334,6 +1367,19 @@ export default function VideoConsultationRoomPage() {
           localStreamRef.current.getTracks().forEach((t) => t.stop());
         }
 
+        // Proactively notify other peer in room over WebSocket
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          try {
+            wsRef.current.send(
+              JSON.stringify({
+                type: "consultation-ended",
+              })
+            );
+          } catch {
+            // Non-blocking
+          }
+        }
+
         await apiClient.post(
           `/api/v1/consultations/${consultationId}/video/end`,
           {}
@@ -1343,6 +1389,8 @@ export default function VideoConsultationRoomPage() {
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to conclude meeting.";
         alert(msg);
+      } finally {
+        setIsEndingCall(false);
       }
     }
   };
@@ -1764,6 +1812,7 @@ export default function VideoConsultationRoomPage() {
           <button
             id="end-call-btn"
             onClick={handleEndCall}
+            disabled={isEndingCall}
             style={{
               backgroundColor: "#dc2626",
               color: "#ffffff",
@@ -1772,17 +1821,22 @@ export default function VideoConsultationRoomPage() {
               padding: "8px 18px",
               fontWeight: 600,
               fontSize: "13px",
-              cursor: "pointer",
-              transition: "background-color 0.2s",
+              cursor: isEndingCall ? "default" : "pointer",
+              opacity: isEndingCall ? 0.6 : 1,
+              transition: "background-color 0.2s, opacity 0.2s",
               display: "flex",
               alignItems: "center",
               gap: "6px",
             }}
-            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#b91c1c")}
-            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#dc2626")}
+            onMouseOver={(e) => {
+              if (!isEndingCall) e.currentTarget.style.backgroundColor = "#b91c1c";
+            }}
+            onMouseOut={(e) => {
+              if (!isEndingCall) e.currentTarget.style.backgroundColor = "#dc2626";
+            }}
           >
             <span>📞</span>
-            <span>End Call</span>
+            <span>{isEndingCall ? "Ending..." : "End Call"}</span>
           </button>
         </div>
       </header>
@@ -2669,6 +2723,34 @@ export default function VideoConsultationRoomPage() {
           title="Audio & Video Settings"
         >
           ⚙️
+        </button>
+
+        {/* Floating Red End Call Button */}
+        <button
+          id="footer-end-call-btn"
+          onClick={handleEndCall}
+          disabled={isEndingCall}
+          style={{
+            backgroundColor: "#dc2626",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "100px",
+            padding: "0 20px",
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            cursor: isEndingCall ? "default" : "pointer",
+            fontSize: "14px",
+            fontWeight: 600,
+            opacity: isEndingCall ? 0.6 : 1,
+            transition: "all 0.2s",
+            boxShadow: "0 4px 14px rgba(220, 38, 38, 0.4)",
+          }}
+          title="Conclude Consultation"
+        >
+          <span>📞</span>
+          <span>{isEndingCall ? "Ending..." : "End Call"}</span>
         </button>
       </footer>
 

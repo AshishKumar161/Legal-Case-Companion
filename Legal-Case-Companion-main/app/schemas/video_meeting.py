@@ -33,6 +33,8 @@ class VideoJoinInfoResponse(BaseModel):
     participant_role: str  # "CLIENT", "LAWYER", "ADMIN"
     scheduled_start: datetime
     scheduled_end: datetime
+    started_at: datetime | None = None
+    consultation_status: str | None = None
     token: str
     ice_servers: list[dict[str, Any]]
     is_live: bool

@@ -548,18 +548,22 @@ class VideoMeetingService:
             participant_role=role,
             scheduled_start=meeting.scheduled_start,
             scheduled_end=meeting.scheduled_end,
+            started_at=meeting.started_at,
+            consultation_status=consultation.status.value,
             token=token,
             ice_servers=ice_servers,
             is_live=meeting.status == VideoMeetingStatus.ACTIVE,
         )
 
     def start_meeting(self, user: User, consultation_id: uuid.UUID) -> VideoMeeting:
+        # Acquire pessimistic lock on consultation row for concurrency / double-start protection
         consultation = (
             self.db.query(Consultation)
             .filter(
                 Consultation.id == consultation_id,
                 Consultation.deleted_at.is_(None),
             )
+            .with_for_update()
             .first()
         )
         if not consultation:
@@ -568,20 +572,63 @@ class VideoMeetingService:
         self._authorize_participant(user, consultation)
         meeting = self.ensure_meeting_provisioned(consultation)
 
-        if meeting.status == VideoMeetingStatus.ACTIVE:
-            return meeting  # Idempotent
+        # Idempotent return if already started
+        if meeting.status == VideoMeetingStatus.ACTIVE and consultation.status == ConsultationStatus.IN_PROGRESS:
+            return meeting
+
+        # Terminal state enforcement: Never permit starting a consultation that has terminated
+        if consultation.status in (
+            ConsultationStatus.COMPLETED,
+            ConsultationStatus.CANCELLED,
+            ConsultationStatus.REJECTED,
+            ConsultationStatus.NO_SHOW,
+            ConsultationStatus.EXPIRED,
+        ):
+            raise ValidationError(
+                f"Cannot start consultation in terminal '{consultation.status.value}' state"
+            )
 
         if meeting.status in (VideoMeetingStatus.ENDED, VideoMeetingStatus.CANCELLED):
             raise ValidationError(
                 f"Cannot start meeting in '{meeting.status.value}' state"
             )
 
+        # Server-side join window validation
         now_utc = datetime.now(UTC)
+        sched_start = meeting.scheduled_start
+        if sched_start.tzinfo is None:
+            sched_start = sched_start.replace(tzinfo=UTC)
+        sched_end = meeting.scheduled_end
+        if sched_end.tzinfo is None:
+            sched_end = sched_end.replace(tzinfo=UTC)
+
+        earliest_join = sched_start - timedelta(minutes=self.EARLY_JOIN_WINDOW_MINUTES)
+        latest_join = sched_end + timedelta(minutes=self.POST_END_GRACE_PERIOD_MINUTES)
+        is_instant = (
+            getattr(consultation, "is_instant", False)
+            or consultation.status == ConsultationStatus.PAID
+            or (consultation.scheduled_at and consultation.created_at and abs((consultation.scheduled_at - consultation.created_at).total_seconds()) <= 900)
+        )
+
+        if not is_instant and user.role != UserRole.ADMIN:
+            if now_utc < earliest_join:
+                raise ValidationError("Cannot start meeting before allowable early-join window")
+            if now_utc > latest_join:
+                raise ValidationError("Cannot start meeting after session window has expired")
+
         meeting.status = VideoMeetingStatus.ACTIVE
         if not meeting.started_at:
             meeting.started_at = now_utc
 
-        if consultation.status == ConsultationStatus.SCHEDULED:
+        # Transition consultation to IN_PROGRESS from any allowable active state
+        if consultation.status in (
+            ConsultationStatus.SCHEDULED,
+            ConsultationStatus.PAID,
+            ConsultationStatus.ACCEPTED,
+            ConsultationStatus.MUTUAL_CONSENT,
+            ConsultationStatus.CLIENT_AUTHORIZED,
+            ConsultationStatus.LAWYER_ACCEPTED,
+        ):
             consultation.status = ConsultationStatus.IN_PROGRESS
 
         self.db.commit()
@@ -601,12 +648,14 @@ class VideoMeetingService:
     def end_meeting(
         self, user: User, consultation_id: uuid.UUID, notes: str | None = None
     ) -> VideoMeeting:
+        # Acquire pessimistic lock for concurrency protection (Double-end defense)
         consultation = (
             self.db.query(Consultation)
             .filter(
                 Consultation.id == consultation_id,
                 Consultation.deleted_at.is_(None),
             )
+            .with_for_update()
             .first()
         )
         if not consultation:
@@ -615,8 +664,19 @@ class VideoMeetingService:
         self._authorize_participant(user, consultation)
         meeting = self.ensure_meeting_provisioned(consultation)
 
-        if meeting.status == VideoMeetingStatus.ENDED:
-            return meeting  # Idempotent
+        # Idempotent return if already ended
+        if meeting.status == VideoMeetingStatus.ENDED and consultation.status == ConsultationStatus.COMPLETED:
+            return meeting
+
+        # Check if consultation was already cancelled or marked no-show
+        if consultation.status in (
+            ConsultationStatus.CANCELLED,
+            ConsultationStatus.REJECTED,
+            ConsultationStatus.NO_SHOW,
+        ):
+            raise ValidationError(
+                f"Cannot conclude consultation in '{consultation.status.value}' state"
+            )
 
         now_utc = datetime.now(UTC)
         meeting.status = VideoMeetingStatus.ENDED
@@ -625,8 +685,50 @@ class VideoMeetingService:
         consultation.status = ConsultationStatus.COMPLETED
         consultation.completed_at = now_utc
 
+        # Automatically finalize or stop any active recordings belonging to this consultation
+        from app.models.video_recording import VideoRecording, VideoRecordingStatus
+        active_recordings = (
+            self.db.query(VideoRecording)
+            .filter(
+                VideoRecording.consultation_id == consultation.id,
+                VideoRecording.status.in_([
+                    VideoRecordingStatus.RECORDING,
+                    VideoRecordingStatus.PENDING,
+                ]),
+                VideoRecording.deleted_at.is_(None),
+            )
+            .all()
+        )
+        for rec in active_recordings:
+            rec.status = VideoRecordingStatus.UPLOADING
+            rec.ended_at = now_utc
+            if rec.started_at:
+                s_at = rec.started_at.replace(tzinfo=UTC) if rec.started_at.tzinfo is None else rec.started_at
+                rec.duration_seconds = max(1, int((now_utc - s_at).total_seconds()))
+
         self.db.commit()
         self.db.refresh(meeting)
+
+        # Broadcast consultation-ended signaling event to all active peers in room
+        try:
+            import asyncio
+            from app.api.v1.video_signaling import signaling_manager
+            payload = {
+                "type": "consultation-ended",
+                "consultation_id": str(consultation.id),
+                "meeting_id": str(meeting.id),
+                "ended_by": str(user.id),
+                "ended_at": now_utc.isoformat(),
+            }
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(signaling_manager.broadcast_to_room(meeting.room_id, None, payload))
+            except RuntimeError:
+                new_loop = asyncio.new_event_loop()
+                new_loop.run_until_complete(signaling_manager.broadcast_to_room(meeting.room_id, None, payload))
+                new_loop.close()
+        except Exception as e:
+            logger.warning("Could not broadcast consultation-ended event: %s", e)
 
         self._log_audit(
             "VIDEO_MEETING_ENDED",

@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import ValidationError
 from app.db.database import get_db
-from app.models.video_meeting import VideoMeeting
+from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
 from app.services.video_meeting_service import get_video_provider
 
 logger = logging.getLogger(__name__)
@@ -146,14 +146,31 @@ async def video_signaling_websocket(
     db_gen = get_db_override()
     db: Session = next(db_gen)
     try:
-        # 1. Fetch meeting record
+        # 1. Fetch meeting and consultation records
+        from app.models.consultation import Consultation, ConsultationStatus
+        consultation = (
+            db.query(Consultation)
+            .filter(Consultation.id == consultation_id, Consultation.deleted_at.is_(None))
+            .first()
+        )
+        if not consultation or consultation.status in (
+            ConsultationStatus.CANCELLED,
+            ConsultationStatus.COMPLETED,
+            ConsultationStatus.REJECTED,
+            ConsultationStatus.NO_SHOW,
+            ConsultationStatus.EXPIRED,
+        ):
+            logger.warning(f"WebSocket rejected: consultation {consultation_id} is terminated or not found")
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+
         meeting = (
             db.query(VideoMeeting)
             .filter(VideoMeeting.consultation_id == consultation_id)
             .first()
         )
-        if not meeting:
-            logger.warning(f"WebSocket rejected: no meeting record for consultation {consultation_id}")
+        if not meeting or meeting.status in (VideoMeetingStatus.ENDED, VideoMeetingStatus.CANCELLED):
+            logger.warning(f"WebSocket rejected: meeting for consultation {consultation_id} is ended/cancelled or missing")
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
@@ -211,6 +228,7 @@ async def video_signaling_websocket(
                     "media-status",
                     "recording-status",
                     "request-media-status",
+                    "consultation-ended",
                 ):
                     continue
 

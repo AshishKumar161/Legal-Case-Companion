@@ -776,7 +776,7 @@ class ConsultationService:
         scheduled_at: datetime,
         duration_minutes: int | None = None,
     ) -> Consultation:
-        consultation = self._get_consultation(consultation_id)
+        consultation = self._get_consultation(consultation_id, for_update=True)
         self._authorize_consultation_access(user, consultation)
 
         if consultation.status in (
@@ -857,7 +857,7 @@ class ConsultationService:
         duration_minutes: int | None = None,
         reason: str | None = None,
     ) -> Consultation:
-        consultation = self._get_consultation(consultation_id)
+        consultation = self._get_consultation(consultation_id, for_update=True)
         self._authorize_consultation_access(user, consultation)
 
         if consultation.status in (
@@ -932,11 +932,14 @@ class ConsultationService:
     def confirm_consultation(
         self, user: User, consultation_id: uuid.UUID
     ) -> Consultation:
-        consultation = self._get_consultation(consultation_id)
+        consultation = self._get_consultation(consultation_id, for_update=True)
         self._authorize_consultation_access(user, consultation)
 
         if user.role != UserRole.LAWYER and user.role != UserRole.ADMIN:
             raise AuthorizationError("Only lawyers can confirm consultations")
+
+        if consultation.status == ConsultationStatus.SCHEDULED:
+            return consultation  # Idempotent
 
         # State machine enforcement
         if consultation.fee_amount > 0:
@@ -986,6 +989,7 @@ class ConsultationService:
                 message=f"Consultation is scheduled for {consultation.scheduled_at.strftime('%Y-%m-%d %H:%M UTC')}.",
                 consultation_id=consultation.id,
                 case_id=consultation.case_id,
+                event_id=f"consultation_confirmed_{consultation.id}_{uid}",
             )
 
         return consultation
@@ -1056,7 +1060,7 @@ class ConsultationService:
     def mark_no_show(
         self, user: User, consultation_id: uuid.UUID, reason: str | None = None
     ) -> Consultation:
-        consultation = self._get_consultation(consultation_id)
+        consultation = self._get_consultation(consultation_id, for_update=True)
         self._authorize_consultation_access(user, consultation)
 
         if user.role not in (UserRole.LAWYER, UserRole.ADMIN):
@@ -1077,8 +1081,15 @@ class ConsultationService:
                 f"Cannot mark consultation as no-show in '{consultation.status.value}' state"
             )
 
+        now_utc = datetime.now(UTC)
         consultation.status = ConsultationStatus.NO_SHOW
         consultation.rejection_reason = reason or "Participant did not attend"
+
+        if consultation.video_meeting and consultation.video_meeting.status != VideoMeetingStatus.ENDED:
+            consultation.video_meeting.status = VideoMeetingStatus.CANCELLED
+            if not consultation.video_meeting.ended_at:
+                consultation.video_meeting.ended_at = now_utc
+
         self.db.commit()
         self.db.refresh(consultation)
 
@@ -1113,7 +1124,7 @@ class ConsultationService:
     def complete_consultation(
         self, user: User, consultation_id: uuid.UUID
     ) -> Consultation:
-        consultation = self._get_consultation(consultation_id)
+        consultation = self._get_consultation(consultation_id, for_update=True)
         self._authorize_consultation_access(user, consultation)
 
         if user.role not in (UserRole.ADMIN, UserRole.LAWYER):
@@ -1134,10 +1145,52 @@ class ConsultationService:
                 f"Cannot complete consultation in '{consultation.status.value}' state. Must be SCHEDULED or IN_PROGRESS."
             )
 
+        now_utc = datetime.now(UTC)
         consultation.status = ConsultationStatus.COMPLETED
-        consultation.completed_at = datetime.now(UTC)
+        consultation.completed_at = now_utc
+
+        if consultation.video_meeting and consultation.video_meeting.status != VideoMeetingStatus.ENDED:
+            consultation.video_meeting.status = VideoMeetingStatus.ENDED
+            consultation.video_meeting.ended_at = now_utc
+
+        # Automatically finalize or stop any active recordings belonging to this consultation
+        from app.models.video_recording import VideoRecording, VideoRecordingStatus
+        active_recordings = (
+            self.db.query(VideoRecording)
+            .filter(
+                VideoRecording.consultation_id == consultation.id,
+                VideoRecording.status.in_([
+                    VideoRecordingStatus.RECORDING,
+                    VideoRecordingStatus.PENDING,
+                ]),
+                VideoRecording.deleted_at.is_(None),
+            )
+            .all()
+        )
+        for rec in active_recordings:
+            rec.status = VideoRecordingStatus.UPLOADING
+            rec.ended_at = now_utc
+            if rec.started_at:
+                s_at = rec.started_at.replace(tzinfo=UTC) if rec.started_at.tzinfo is None else rec.started_at
+                rec.duration_seconds = max(1, int((now_utc - s_at).total_seconds()))
+
         self.db.commit()
         self.db.refresh(consultation)
+
+        # Broadcast consultation-ended signaling event to all active peers in room
+        if consultation.video_meeting:
+            try:
+                from app.api.v1.video_signaling import signaling_manager
+                payload = {
+                    "type": "consultation-ended",
+                    "consultation_id": str(consultation.id),
+                    "meeting_id": str(consultation.video_meeting.id),
+                    "ended_by": str(user.id),
+                    "ended_at": now_utc.isoformat(),
+                }
+                self._dispatch_async(signaling_manager.broadcast_to_room(consultation.video_meeting.room_id, None, payload))
+            except Exception as e:
+                logger.warning("Could not broadcast consultation-ended event: %s", e)
 
         self._log_audit(
             "CONSULTATION_COMPLETED",
