@@ -141,13 +141,17 @@ export default function Register() {
         }
 
         // Establish active login session in AuthProvider
-        login(res.access_token, {
-          id: userId,
-          email: email.trim().toLowerCase(),
-          role: role,
-          account_status: "ACTIVE",
-          full_name: fullName.trim(),
-        });
+        login(
+          res.access_token,
+          {
+            id: userId,
+            email: email.trim().toLowerCase(),
+            role: role,
+            account_status: "ACTIVE",
+            full_name: fullName.trim(),
+          },
+          res.refresh_token
+        );
 
         setStep("success");
 

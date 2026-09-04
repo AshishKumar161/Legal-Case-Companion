@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.exceptions import (
-    AuthorizationError,
     ConfigurationError,
     ResourceNotFoundError,
     ValidationError,
@@ -65,26 +64,80 @@ class InternalWebRTCMeetingProvider:
             "ice_servers": ice_servers,
         }
 
-    def generate_access_token(
-        self, user: User, meeting: VideoMeeting, role: str, expires_in_seconds: int = 7200
+    @staticmethod
+    def _get_signing_secret() -> str:
+        secret = (
+            getattr(settings, "CSRF_SECRET_KEY", None)
+            or getattr(settings, "JWT_PRIVATE_KEY", None)
+            or getattr(settings, "SECRET_KEY", None)
+        )
+        if not secret or secret == "mock-secret-for-dev":
+            if settings.ENVIRONMENT == "production":
+                raise ConfigurationError("Missing production cryptographic secret for video token signing")
+            secret = "lcc-dev-ephemeral-video-secret"
+        return secret
+
+    def create_access_token(
+        self,
+        room_name: str,
+        participant_identity: str,
+        role: str,
+        consultation_id: uuid.UUID | None = None,
+        duration_minutes: int = 120,
     ) -> str:
-        now_dt = datetime.now(UTC)
-        exp = int((now_dt + timedelta(seconds=expires_in_seconds)).timestamp())
+        """Issues an authenticated HMAC-SHA256 token encoding video session authorization context."""
+        now = datetime.now(UTC)
+        exp = int((now + timedelta(minutes=duration_minutes)).timestamp())
         payload = {
-            "jti": uuid.uuid4().hex,
-            "iat": int(now_dt.timestamp()),
-            "room_id": meeting.room_id,
-            "meeting_id": str(meeting.id),
-            "consultation_id": str(meeting.consultation_id),
-            "user_id": str(user.id),
+            "jti": str(generate_uuid7()),
+            "iat": int(now.timestamp()),
+            "room_id": room_name,
+            "room_name": room_name,
+            "user_id": str(participant_identity),
+            "sub": str(participant_identity),
+            "consultation_id": str(consultation_id) if consultation_id else None,
             "role": role,
             "exp": exp,
         }
-        secret = getattr(settings, "SECRET_KEY", None) or getattr(settings, "JWT_PRIVATE_KEY", None) or "lcc-secure-video-secret-key"
+        secret = self._get_signing_secret()
         encoded_payload = json.dumps(payload, sort_keys=True).encode("utf-8")
         signature = hmac.new(secret.encode("utf-8"), encoded_payload, hashlib.sha256).hexdigest()
         token = f"{signature}.{encoded_payload.hex()}"
         return token
+
+    def generate_access_token(
+        self,
+        user_or_room: Any,
+        meeting_or_identity: Any = None,
+        role: str = "PARTICIPANT",
+        consultation_id: uuid.UUID | None = None,
+        duration_minutes: int = 120,
+        expires_in_seconds: int | None = None,
+    ) -> str:
+        """Compatibility wrapper supporting both protocol signatures."""
+        if hasattr(user_or_room, "id") and hasattr(meeting_or_identity, "room_id"):
+            room_name = meeting_or_identity.room_id
+            participant_identity = str(user_or_room.id)
+            con_id = getattr(meeting_or_identity, "consultation_id", None)
+            dur = (expires_in_seconds // 60) if expires_in_seconds else duration_minutes
+            return self.create_access_token(
+                room_name=room_name,
+                participant_identity=participant_identity,
+                role=role,
+                consultation_id=con_id,
+                duration_minutes=dur,
+            )
+        else:
+            room_name = str(user_or_room)
+            participant_identity = str(meeting_or_identity)
+            dur = (expires_in_seconds // 60) if expires_in_seconds else duration_minutes
+            return self.create_access_token(
+                room_name=room_name,
+                participant_identity=participant_identity,
+                role=role,
+                consultation_id=consultation_id,
+                duration_minutes=dur,
+            )
 
     def verify_access_token(
         self,
@@ -103,12 +156,12 @@ class InternalWebRTCMeetingProvider:
             raise ValidationError("Invalid video token format")
 
         signature, payload_hex = parts[0], parts[1]
-        secret = getattr(settings, "SECRET_KEY", None) or getattr(settings, "JWT_PRIVATE_KEY", None) or "lcc-secure-video-secret-key"
+        secret = self._get_signing_secret()
 
         try:
             raw_payload = bytes.fromhex(payload_hex)
-        except ValueError:
-            raise ValidationError("Malformed video token hex payload")
+        except ValueError as e:
+            raise ValidationError("Malformed video token hex payload") from e
 
         expected_sig = hmac.new(secret.encode("utf-8"), raw_payload, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(signature, expected_sig):
@@ -125,10 +178,12 @@ class InternalWebRTCMeetingProvider:
             raise ValidationError("Video access token has expired")
 
         # Contextual bindings
-        if expected_room_id and payload.get("room_id") != expected_room_id:
+        room = payload.get("room_id") or payload.get("room_name")
+        if expected_room_id and room != expected_room_id:
             raise ValidationError("Video token is not authorized for this meeting room")
 
-        if expected_user_id and str(payload.get("user_id")) != str(expected_user_id):
+        uid = payload.get("user_id") or payload.get("sub")
+        if expected_user_id and str(uid) != str(expected_user_id):
             raise ValidationError("Video token does not belong to this participant")
 
         if expected_consultation_id and str(payload.get("consultation_id")) != str(expected_consultation_id):
@@ -422,14 +477,11 @@ class VideoMeetingService:
         earliest_join = sched_start - timedelta(minutes=self.EARLY_JOIN_WINDOW_MINUTES)
         latest_join = sched_end + timedelta(minutes=self.POST_END_GRACE_PERIOD_MINUTES)
 
-        # Allow immediate entry for any paid or active consultation
-        is_active_or_paid = consultation.status in (
-            ConsultationStatus.PAID,
-            ConsultationStatus.SCHEDULED,
-            ConsultationStatus.ACCEPTED,
-        )
+        # Allow immediate entry for instant consultations or active in-progress meetings
+        is_instant = getattr(consultation, "is_instant", False)
+        is_in_progress = consultation.status == ConsultationStatus.IN_PROGRESS
 
-        if not is_active_or_paid and now_utc < earliest_join and user.role != UserRole.ADMIN:
+        if not (is_instant or is_in_progress) and now_utc < earliest_join and user.role != UserRole.ADMIN:
             start_ist = sched_start.astimezone(ist_tz).strftime("%I:%M %p IST")
             raise ValidationError(
                 f"Meeting room opens {self.EARLY_JOIN_WINDOW_MINUTES} minutes before scheduled time ({start_ist})"
@@ -534,7 +586,7 @@ class VideoMeetingService:
         if not consultation:
             raise ResourceNotFoundError("Consultation not found")
 
-        role = self._authorize_participant(user, consultation)
+        self._authorize_participant(user, consultation)
         meeting = self.ensure_meeting_provisioned(consultation)
 
         if meeting.status == VideoMeetingStatus.ENDED:

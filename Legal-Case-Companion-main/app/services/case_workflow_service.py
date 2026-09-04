@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.authorization import (
     _get_case_participant,
     authorize_case_access,
+    authorize_case_modification,
 )
 from app.core.exceptions import (
     AuthorizationError,
@@ -207,7 +208,7 @@ class CaseWorkflowService:
     # --------------------------------------------------------------------------
 
     def create_task(self, user: User, case_id: uuid.UUID, req: CaseTaskCreate) -> CaseTask:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         self._check_case_active_for_mutations(case_id)
 
         if user.role != UserRole.ADMIN:
@@ -257,7 +258,7 @@ class CaseWorkflowService:
         return task
 
     def update_task(self, user: User, case_id: uuid.UUID, task_id: uuid.UUID, req: CaseTaskUpdate) -> CaseTask:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         self._check_case_active_for_mutations(case_id)
 
         task = (
@@ -308,7 +309,8 @@ class CaseWorkflowService:
         return task
 
     def confirm_task(self, user: User, case_id: uuid.UUID, task_id: uuid.UUID) -> CaseTask:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
+        self._check_case_active_for_mutations(case_id)
         task = (
             self.db.query(CaseTask)
             .filter(CaseTask.id == task_id, CaseTask.case_id == case_id, CaseTask.deleted_at.is_(None))
@@ -329,7 +331,7 @@ class CaseWorkflowService:
     # --------------------------------------------------------------------------
 
     def create_deadline(self, user: User, case_id: uuid.UUID, req: CaseDeadlineCreate) -> CaseDeadline:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         self._check_case_active_for_mutations(case_id)
 
         deadline_at = req.deadline_at.replace(tzinfo=UTC) if req.deadline_at.tzinfo is None else req.deadline_at
@@ -357,7 +359,7 @@ class CaseWorkflowService:
         return deadline
 
     def update_deadline(self, user: User, case_id: uuid.UUID, deadline_id: uuid.UUID, req: CaseDeadlineUpdate) -> CaseDeadline:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         self._check_case_active_for_mutations(case_id)
 
         deadline = (
@@ -393,7 +395,8 @@ class CaseWorkflowService:
         return deadline
 
     def confirm_deadline(self, user: User, case_id: uuid.UUID, deadline_id: uuid.UUID) -> CaseDeadline:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
+        self._check_case_active_for_mutations(case_id)
         deadline = (
             self.db.query(CaseDeadline)
             .filter(CaseDeadline.id == deadline_id, CaseDeadline.case_id == case_id, CaseDeadline.deleted_at.is_(None))
@@ -414,7 +417,7 @@ class CaseWorkflowService:
     # --------------------------------------------------------------------------
 
     def create_hearing(self, user: User, case_id: uuid.UUID, req: CaseHearingCreate) -> CaseHearing:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         self._check_case_active_for_mutations(case_id)
 
         hearing_at = req.hearing_at.replace(tzinfo=UTC) if req.hearing_at.tzinfo is None else req.hearing_at
@@ -443,7 +446,7 @@ class CaseWorkflowService:
         return hearing
 
     def update_hearing(self, user: User, case_id: uuid.UUID, hearing_id: uuid.UUID, req: CaseHearingUpdate) -> CaseHearing:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         self._check_case_active_for_mutations(case_id)
 
         hearing = (
@@ -474,7 +477,8 @@ class CaseWorkflowService:
         return hearing
 
     def confirm_hearing(self, user: User, case_id: uuid.UUID, hearing_id: uuid.UUID) -> CaseHearing:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
+        self._check_case_active_for_mutations(case_id)
         hearing = (
             self.db.query(CaseHearing)
             .filter(CaseHearing.id == hearing_id, CaseHearing.case_id == case_id, CaseHearing.deleted_at.is_(None))
@@ -499,7 +503,7 @@ class CaseWorkflowService:
 
         proposes unconfirmed tasks, deadlines, and hearings.
         """
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         self._check_case_active_for_mutations(case_id)
 
         suggested_tasks: list[CaseTask] = []

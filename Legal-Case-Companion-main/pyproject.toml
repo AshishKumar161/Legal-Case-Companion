@@ -29,6 +29,7 @@ dependencies = [
     "stripe>=7.0.0",
     "requests>=2.31.0",
     "numpy>=1.26.0",
+    "redis>=5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -51,7 +52,8 @@ profile = "black"
 known_first_party = ["app"]
 
 [tool.ruff.lint]
-extend-select = ["B"]
+select = ["E4", "E7", "E9", "F", "B"]
+ignore = ["E712", "E711", "B008", "E501", "E741", "F401", "F841", "E402", "F541", "B017", "B028"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

@@ -1,5 +1,5 @@
 import logging
-from typing import ClassVar, Protocol
+from typing import Any, ClassVar, Protocol
 
 import boto3
 from botocore.config import Config
@@ -16,7 +16,11 @@ class StorageProvider(Protocol):
     ) -> str: ...
 
     def generate_presigned_download_url(
-        self, object_key: str, expires_in: int = 3600
+        self,
+        object_key: str,
+        expires_in: int = 3600,
+        response_content_disposition: str | None = None,
+        response_content_type: str | None = None,
     ) -> str: ...
 
     def delete_object(self, object_key: str) -> bool: ...
@@ -72,12 +76,22 @@ class S3StorageProvider:
             raise RuntimeError("Could not generate upload URL") from e
 
     def generate_presigned_download_url(
-        self, object_key: str, expires_in: int = 3600
+        self,
+        object_key: str,
+        expires_in: int = 3600,
+        response_content_disposition: str | None = None,
+        response_content_type: str | None = None,
     ) -> str:
         try:
+            params: dict[str, Any] = {"Bucket": self.bucket_name, "Key": object_key}
+            if response_content_disposition:
+                params["ResponseContentDisposition"] = response_content_disposition
+            if response_content_type:
+                params["ResponseContentType"] = response_content_type
+
             url = self.client.generate_presigned_url(
                 ClientMethod="get_object",
-                Params={"Bucket": self.bucket_name, "Key": object_key},
+                Params=params,
                 ExpiresIn=expires_in,
             )
             return url
@@ -145,9 +159,20 @@ class LocalMockStorageProvider:
         return f"{self.base_url}/upload?key={object_key}"
 
     def generate_presigned_download_url(
-        self, object_key: str, expires_in: int = 3600
+        self,
+        object_key: str,
+        expires_in: int = 3600,
+        response_content_disposition: str | None = None,
+        response_content_type: str | None = None,
     ) -> str:
-        return f"{self.base_url}/download?key={object_key}"
+        url = f"{self.base_url}/download?key={object_key}"
+        if response_content_disposition:
+            from urllib.parse import quote
+            url += f"&disposition={quote(response_content_disposition)}"
+        if response_content_type:
+            from urllib.parse import quote
+            url += f"&content_type={quote(response_content_type)}"
+        return url
 
     def delete_object(self, object_key: str) -> bool:
         self._storage_data.pop(object_key, None)

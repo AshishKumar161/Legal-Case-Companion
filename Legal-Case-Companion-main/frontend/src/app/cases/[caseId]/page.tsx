@@ -4,6 +4,7 @@ import { useEffect, useState, use, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/api/client";
+import { getSessionAccessToken } from "@/api/session";
 import styles from "./caseDetail.module.css";
 import Link from "next/link";
 import {
@@ -44,6 +45,7 @@ type WorkspaceTab =
   | "collaboration"
   | "actions"
   | "intelligence"
+  | "evidence"
   | "documents"
   | "workflow"
   | "copilot"
@@ -61,7 +63,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
 
   useEffect(() => {
     const tabParam = searchParams?.get("tab") as WorkspaceTab | null;
-    if (tabParam && ["overview", "collaboration", "actions", "documents", "workflow", "copilot", "intelligence", "search", "notes"].includes(tabParam)) {
+    if (tabParam && ["overview", "collaboration", "actions", "intelligence", "evidence", "documents", "workflow", "copilot", "search", "notes"].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -444,7 +446,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
     setExporting(true);
     setExportStatus(null);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const token = getSessionAccessToken();
       const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(
         `${apiBase}/api/v1/cases/${caseId}/report?format=${exportFormat}&download=true`,
@@ -756,6 +758,17 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
           </button>
 
           <button
+            className={`${styles.tabBtn} ${activeTab === "evidence" ? styles.tabBtnActive : ""}`}
+            onClick={() => setActiveTab("evidence")}
+            style={{
+              borderColor: activeTab === "evidence" ? "#6366f1" : undefined,
+              color: activeTab === "evidence" ? "#818cf8" : undefined,
+            }}
+          >
+            <span>🔒</span> Evidence Locker
+          </button>
+
+          <button
             className={`${styles.tabBtn} ${activeTab === "documents" ? styles.tabBtnActive : ""}`}
             onClick={() => setActiveTab("documents")}
           >
@@ -995,6 +1008,74 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               onRefreshNotes={fetchNotesData}
               onNavigateToTab={(tab) => setActiveTab(tab as WorkspaceTab)}
             />
+          </div>
+        )}
+
+        {/* TAB: SECURE EVIDENCE LOCKER */}
+        {activeTab === "evidence" && (
+          <div className={styles.tabContent}>
+            <div
+              style={{
+                background: "linear-gradient(135deg, #10131c 0%, #0d0f17 100%)",
+                border: "1px solid #1f2433",
+                borderRadius: "16px",
+                padding: "36px 32px",
+                textAlign: "center",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+              }}
+            >
+              <div
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "16px",
+                  background: "rgba(99, 102, 241, 0.15)",
+                  border: "1px solid rgba(99, 102, 241, 0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "26px",
+                  margin: "0 auto 16px auto",
+                  color: "#818cf8",
+                }}
+              >
+                🔒
+              </div>
+              <h3 style={{ fontSize: "22px", fontWeight: 700, color: "#ffffff", margin: "0 0 10px 0" }}>
+                High-Security Evidence Locker
+              </h3>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#94a3b8",
+                  maxWidth: "620px",
+                  margin: "0 auto 28px auto",
+                  lineHeight: "1.6",
+                }}
+              >
+                Protected cryptographic vault for legally sensitive files. Features include immutable versioning,
+                cryptographic SHA-256 tamper verification, unbroken chain-of-custody audit logs, and controlled
+                client/lawyer access grants.
+              </p>
+              <div style={{ display: "flex", justifyContent: "center", gap: "14px" }}>
+                <Link
+                  href={`/cases/${caseId}/evidence`}
+                  className={styles.actionBtn}
+                  style={{
+                    padding: "12px 28px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>🔒</span> Enter Evidence Vault →
+                </Link>
+              </div>
+            </div>
           </div>
         )}
 

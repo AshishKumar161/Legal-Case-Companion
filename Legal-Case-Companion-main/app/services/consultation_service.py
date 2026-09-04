@@ -1,11 +1,14 @@
+import asyncio
+import logging
 import uuid
 from datetime import UTC, date, datetime, time, timedelta, timezone
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.exceptions import (
     AuthorizationError,
     ResourceNotFoundError,
@@ -23,10 +26,16 @@ from app.models.case import (
 from app.models.consultation import Consultation, ConsultationStatus
 from app.models.notification import NotificationType
 from app.models.user import AccountStatus, ClientProfile, LawyerProfile, User, UserRole
+from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
 from app.schemas.consultation import ConsultationCreate
+from app.schemas.presence import PresenceStatus
 from app.services.auth_service import AuthService
 from app.services.case_service import CaseService
+from app.services.lawyer_call_channel import incoming_call_channel_manager
 from app.services.notification_service import NotificationService
+from app.services.presence_service import presence_service
+
+logger = logging.getLogger(__name__)
 
 
 class ConsultationService:
@@ -50,42 +59,171 @@ class ConsultationService:
             event_type, user_id, metadata, action="consultation_mutation"
         )
 
-    def _get_consultation(self, consultation_id: uuid.UUID) -> Consultation:
-        consultation = (
-            self.db.query(Consultation)
-            .filter(
-                Consultation.id == consultation_id, Consultation.deleted_at.is_(None)
-            )
-            .first()
+    def _get_consultation(
+        self, consultation_id: uuid.UUID, for_update: bool = False
+    ) -> Consultation:
+        query = self.db.query(Consultation).filter(
+            Consultation.id == consultation_id, Consultation.deleted_at.is_(None)
         )
+        if for_update:
+            query = query.with_for_update()
+        consultation = query.first()
         if not consultation:
             raise ResourceNotFoundError("Consultation not found")
         return consultation
 
-    def _authorize_consultation_access(self, user: User, consultation: Consultation):
-        if user.role == UserRole.ADMIN:
-            return
+    @staticmethod
+    def _dispatch_async(coro: Any) -> None:
+        """Safely schedule an asyncio coroutine from either async or sync contexts."""
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(coro)
+        except RuntimeError:
+            try:
+                new_loop = asyncio.new_event_loop()
+                new_loop.run_until_complete(coro)
+                new_loop.close()
+            except Exception as e:
+                logger.warning("Failed to dispatch async notification: %s", e)
 
-        # Verify user matches either the client or lawyer profile associated with the consultation
-        is_client = (
-            self.db.query(ClientProfile)
-            .filter(
-                ClientProfile.id == consultation.client_id,
-                ClientProfile.user_id == user.id,
-            )
-            .first()
+    def expire_stale_incoming_calls(
+        self, lawyer_profile_id: uuid.UUID | None = None
+    ) -> list[Consultation]:
+        """Automatically expire instant consultations waiting past the ring timeout."""
+        cutoff = datetime.now(UTC) - timedelta(
+            seconds=settings.INSTANT_CALL_RING_TIMEOUT_SECONDS
         )
-        is_lawyer = (
+        query = self.db.query(Consultation).filter(
+            Consultation.status.in_([ConsultationStatus.REQUESTED, ConsultationStatus.PAID]),
+            Consultation.deleted_at.is_(None),
+            Consultation.created_at < cutoff,
+        )
+        if lawyer_profile_id:
+            query = query.filter(Consultation.lawyer_id == lawyer_profile_id)
+
+        expired_list = []
+        for con in query.all():
+            is_instant_call = (
+                getattr(con, "is_instant", False)
+                or con.status == ConsultationStatus.PAID
+                or (con.scheduled_at and con.created_at and abs((con.scheduled_at - con.created_at).total_seconds()) <= 900)
+            )
+            if is_instant_call:
+                con.status = ConsultationStatus.CANCELLED
+                con.rejection_reason = "Instant call timed out with no response from lawyer"
+                expired_list.append(con)
+                self._dispatch_async(
+                    incoming_call_channel_manager.notify_call_expired(con.lawyer_id, con.id)
+                )
+
+        if expired_list:
+            try:
+                self.db.commit()
+            except Exception as e:
+                logger.warning("Failed committing expired calls: %s", e)
+                self.db.rollback()
+
+        return expired_list
+
+    def is_lawyer_available(
+        self,
+        lawyer_profile_id: uuid.UUID,
+    ) -> tuple[bool, str, PresenceStatus]:
+        """Authoritatively evaluate whether a lawyer is available for instant consultations.
+
+        Returns (is_available, reason, presence_status).
+        """
+        self.expire_stale_incoming_calls(lawyer_profile_id)
+
+        lawyer_profile = (
             self.db.query(LawyerProfile)
+            .join(User, LawyerProfile.user_id == User.id)
             .filter(
-                LawyerProfile.id == consultation.lawyer_id,
-                LawyerProfile.user_id == user.id,
+                or_(
+                    LawyerProfile.id == lawyer_profile_id,
+                    LawyerProfile.user_id == lawyer_profile_id,
+                ),
+                User.account_status == AccountStatus.ACTIVE,
+                LawyerProfile.deleted_at.is_(None),
             )
             .first()
         )
+        if not lawyer_profile:
+            return False, "Lawyer account is inactive or not found", PresenceStatus.OFFLINE
 
-        if not (is_client or is_lawyer):
-            raise ResourceNotFoundError("Consultation not found")  # IDOR protection
+        if lawyer_profile.verification_status != "APPROVED":
+            return False, "Lawyer is not verified", PresenceStatus.ONLINE
+
+        if not presence_service.is_online(lawyer_profile.user_id):
+            return False, "Lawyer is currently offline", PresenceStatus.OFFLINE
+
+        if not presence_service.is_available_preference(lawyer_profile.user_id):
+            return False, "Lawyer is not accepting instant calls", PresenceStatus.ONLINE
+
+        # Check for active in-progress consultation
+        active_consultation = (
+            self.db.query(Consultation)
+            .filter(
+                Consultation.lawyer_id == lawyer_profile.id,
+                Consultation.status == ConsultationStatus.IN_PROGRESS,
+                Consultation.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if active_consultation:
+            return False, "Lawyer is currently active in another consultation", PresenceStatus.BUSY
+
+        # Check for active video meeting
+        now_utc = datetime.now(UTC)
+        active_meeting = (
+            self.db.query(VideoMeeting)
+            .join(Consultation, VideoMeeting.consultation_id == Consultation.id)
+            .filter(
+                Consultation.lawyer_id == lawyer_profile.id,
+                VideoMeeting.status == VideoMeetingStatus.ACTIVE,
+                VideoMeeting.ended_at.is_(None),
+                VideoMeeting.scheduled_end >= now_utc - timedelta(minutes=120),
+                Consultation.status.in_([
+                    ConsultationStatus.IN_PROGRESS,
+                    ConsultationStatus.SCHEDULED,
+                    ConsultationStatus.PAID,
+                ]),
+                Consultation.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if active_meeting:
+            return False, "Lawyer is currently in an active video meeting", PresenceStatus.BUSY
+
+        # Check for pending ringing instant calls within timeout window
+        ring_cutoff = datetime.now(UTC) - timedelta(
+            seconds=settings.INSTANT_CALL_RING_TIMEOUT_SECONDS
+        )
+        pending_call = (
+            self.db.query(Consultation)
+            .filter(
+                Consultation.lawyer_id == lawyer_profile.id,
+                Consultation.status.in_([ConsultationStatus.REQUESTED, ConsultationStatus.PAID]),
+                Consultation.created_at >= ring_cutoff,
+                Consultation.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if pending_call:
+            is_instant_call = (
+                getattr(pending_call, "is_instant", False)
+                or pending_call.status == ConsultationStatus.PAID
+                or (pending_call.scheduled_at and pending_call.created_at and abs((pending_call.scheduled_at - pending_call.created_at).total_seconds()) <= 900)
+            )
+            if is_instant_call:
+                return False, "Lawyer is currently receiving another incoming call", PresenceStatus.BUSY
+
+        return True, "Available", PresenceStatus.AVAILABLE
+
+    def _authorize_consultation_access(self, user: User, consultation: Consultation):
+        from app.core.authorization import authorize_consultation_access
+
+        authorize_consultation_access(self.db, user, consultation.id)
 
     def _validate_slot_and_business_hours(
         self,
@@ -155,17 +293,17 @@ class ConsultationService:
                     )
                 return req_start, req_end
 
-        # Default business hours (08:00 to 23:00 IST)
+        # Default business hours (08:00 to 21:00 IST)
         if ist_start.hour < 8:
             raise ValidationError(
-                "Consultation must start within standard business hours (08:00 to 23:00 IST)"
+                "Consultation must start within standard business hours (08:00 to 21:00 IST)"
             )
 
-        if ist_end.hour > 23 or (
-            ist_end.hour == 23 and (ist_end.minute > 0 or ist_end.second > 0)
+        if ist_end.hour > 21 or (
+            ist_end.hour == 21 and (ist_end.minute > 0 or ist_end.second > 0)
         ):
             raise ValidationError(
-                "Consultation must conclude within standard business hours (08:00 to 23:00 IST)"
+                "Consultation must conclude within standard business hours (08:00 to 21:00 IST)"
             )
 
         return req_start, req_end
@@ -358,6 +496,13 @@ class ConsultationService:
                 "Consultations can only be requested with verified lawyers"
             )
 
+        if req.is_instant:
+            is_avail, reason, p_status = self.is_lawyer_available(lawyer_profile.id)
+            if not is_avail:
+                raise ValidationError(
+                    f"Lawyer is currently unavailable for instant consultation: {reason}"
+                )
+
         req_start, req_end = self._validate_slot_and_business_hours(
             req.scheduled_at,
             req.duration_minutes,
@@ -436,6 +581,24 @@ class ConsultationService:
             case_id=req.case_id,
         )
 
+        # Dispatch real-time incoming call alert via WebSocket for instant consultations
+        if req.is_instant:
+            client_name = client_profile.full_name if client_profile else "Prospective Client"
+            call_data = {
+                "id": str(consultation.id),
+                "client_name": client_name,
+                "fee": float(consultation.fee_amount),
+                "case_id": str(consultation.case_id) if consultation.case_id else None,
+                "scheduled_at": consultation.scheduled_at.isoformat() if consultation.scheduled_at else None,
+                "created_at": consultation.created_at.isoformat() if consultation.created_at else None,
+                "ring_timeout_seconds": settings.INSTANT_CALL_RING_TIMEOUT_SECONDS,
+            }
+            self._dispatch_async(
+                incoming_call_channel_manager.notify_incoming_call(
+                    lawyer_profile.id, call_data
+                )
+            )
+
         return consultation
 
     def get_consultation(self, user: User, consultation_id: uuid.UUID) -> Consultation:
@@ -491,7 +654,7 @@ class ConsultationService:
     def accept_consultation(
         self, user: User, consultation_id: uuid.UUID
     ) -> Consultation:
-        consultation = self._get_consultation(consultation_id)
+        consultation = self._get_consultation(consultation_id, for_update=True)
         self._authorize_consultation_access(user, consultation)
 
         if user.role != UserRole.LAWYER and user.role != UserRole.ADMIN:
@@ -513,6 +676,15 @@ class ConsultationService:
         consultation.status = ConsultationStatus.ACCEPTED
         self.db.commit()
         self.db.refresh(consultation)
+
+        # Mark lawyer presence as busy and notify all tabs of lawyer
+        lawyer_user_id = consultation.lawyer.user_id if consultation.lawyer else user.id
+        presence_service.mark_busy(lawyer_user_id, consultation.lawyer_id, reason="In consultation")
+        self._dispatch_async(
+            incoming_call_channel_manager.notify_call_accepted(
+                consultation.lawyer_id, consultation.id
+            )
+        )
 
         self._log_audit(
             "CONSULTATION_ACCEPTED",
@@ -544,7 +716,7 @@ class ConsultationService:
     def reject_consultation(
         self, user: User, consultation_id: uuid.UUID, reason: str | None = None
     ) -> Consultation:
-        consultation = self._get_consultation(consultation_id)
+        consultation = self._get_consultation(consultation_id, for_update=True)
         self._authorize_consultation_access(user, consultation)
 
         if user.role != UserRole.LAWYER and user.role != UserRole.ADMIN:
@@ -562,6 +734,13 @@ class ConsultationService:
         consultation.rejection_reason = reason
         self.db.commit()
         self.db.refresh(consultation)
+
+        # Notify lawyer tabs that this call was rejected/cleared
+        self._dispatch_async(
+            incoming_call_channel_manager.notify_call_cancelled(
+                consultation.lawyer_id, consultation.id, reason=reason or "Rejected by lawyer"
+            )
+        )
 
         self._log_audit(
             "CONSULTATION_REJECTED",
@@ -814,7 +993,7 @@ class ConsultationService:
     def cancel_consultation(
         self, user: User, consultation_id: uuid.UUID, reason: str | None = None
     ) -> Consultation:
-        consultation = self._get_consultation(consultation_id)
+        consultation = self._get_consultation(consultation_id, for_update=True)
         self._authorize_consultation_access(user, consultation)
 
         if consultation.status == ConsultationStatus.CANCELLED:
@@ -832,8 +1011,19 @@ class ConsultationService:
         consultation.status = ConsultationStatus.CANCELLED
         if reason:
             consultation.rejection_reason = reason
+        if consultation.video_meeting and consultation.video_meeting.status != VideoMeetingStatus.ENDED:
+            consultation.video_meeting.status = VideoMeetingStatus.CANCELLED
+            if not consultation.video_meeting.ended_at:
+                consultation.video_meeting.ended_at = datetime.now(UTC)
         self.db.commit()
         self.db.refresh(consultation)
+
+        # Notify lawyer tabs that incoming call was cancelled
+        self._dispatch_async(
+            incoming_call_channel_manager.notify_call_cancelled(
+                consultation.lawyer_id, consultation.id, reason=reason or "Cancelled"
+            )
+        )
 
         self._log_audit(
             "CONSULTATION_CANCELLED",
@@ -993,7 +1183,15 @@ class ConsultationService:
         if user.role == UserRole.CLIENT and consultation.client.user_id != user.id:
             raise AuthorizationError("Only the consultation client can link this consultation to a case")
 
-        target_case = self.case_service.get_case_by_id(user, case_id)
+        if assign_lawyer:
+            from app.core.authorization import authorize_participant_management
+
+            target_case = authorize_participant_management(self.db, user, case_id)
+        else:
+            from app.core.authorization import authorize_case_modification
+
+            target_case = authorize_case_modification(self.db, user, case_id)
+
         if not target_case or target_case.status in (CaseStatus.CLOSED, CaseStatus.CANCELLED):
             raise ValidationError("Cannot link consultation to an inactive or closed case")
 

@@ -373,13 +373,65 @@ Indexes must be created to support frequent query paths and soft deletion filter
 | Document Immutability | FINAL | New uploads create new Document records |
 | AuditEvent Immutability | FINAL | Append-only. No UPDATE, DELETE, or soft-delete. |
 
-## 11. UNDEFINED / DECISION REQUIRED
-The following product/domain decisions remain explicitly tracked until resolved:
-- Exact `CaseParticipant` role model taxonomy.
-- Exact case ownership semantics (e.g., transfers, multi-owner cases).
-- Historical membership behavior and transitions.
-- Precise account/profile role consistency rules.
-- Lawyer verification states and criteria.
-- Payment refund/reversal representations.
-- Whether alternate payer types (e.g., third party) are allowed.
-- Exact audit event and case timeline event taxonomy.
+## 11. EVIDENCE LOCKER DOMAIN MODEL (PHASE XIV)
+
+Phase XIV introduces the dedicated, high-security Evidence Locker schema:
+
+### 1. `evidence`
+Primary entity for legally sensitive evidence objects.
+- `id`: UUID (PK, UUIDv7)
+- `case_id`: UUID (FK cases.id, NOT NULL)
+- `created_by_user_id`: UUID (FK users.id, NOT NULL)
+- `current_version_id`: UUID (FK evidence_versions.id, Nullable)
+- `title`: VARCHAR(255) (NOT NULL)
+- `description`: VARCHAR(1000) (Nullable)
+- `category`: Enum (FORENSIC, FINANCIAL, CONTRACTUAL, DIGITAL, TESTIMONIAL, REGULATORY, PHYSICAL_SCAN, MISCELLANEOUS)
+- `status`: Enum (UPLOADING, QUARANTINED, ACTIVE, REVOKED, DELETION_PENDING, DELETED)
+- `sensitivity`: Enum (STANDARD, CONFIDENTIAL, HIGHLY_CONFIDENTIAL, PRIVILEGED)
+- `original_filename`: VARCHAR(255) (NOT NULL)
+- `legal_hold`: BOOLEAN (Default FALSE)
+- `legal_hold_reason`: VARCHAR(500) (Nullable)
+- `retention_until`: TIMESTAMPTZ (Nullable)
+- `created_at`, `updated_at`, `deleted_at`: TIMESTAMPTZ
+
+### 2. `evidence_versions`
+Immutable versions preserving cryptographic SHA-256 digests and storage pointers.
+- `id`: UUID (PK, UUIDv7)
+- `evidence_id`: UUID (FK evidence.id, ON DELETE CASCADE)
+- `version_number`: INTEGER (NOT NULL)
+- `uploaded_by_user_id`: UUID (FK users.id)
+- `storage_key`: VARCHAR(512) (UNIQUE, NOT NULL)
+- `original_filename`: VARCHAR(255) (NOT NULL)
+- `content_type`: VARCHAR(100) (NOT NULL)
+- `size_bytes`: BIGINT (NOT NULL)
+- `sha256`: VARCHAR(64) (NOT NULL, SHA-256 hex digest)
+- `scan_status`: Enum (PENDING, VALIDATING, SCANNING, PASSED, FAILED)
+- `scan_details`: VARCHAR(500) (Nullable)
+- `integrity_status`: Enum (UNVERIFIED, VERIFIED_MATCH, TAMPER_DETECTED)
+- `last_verified_at`: TIMESTAMPTZ (Nullable)
+- `created_at`, `updated_at`: TIMESTAMPTZ
+- UniqueConstraint: `(evidence_id, version_number)`
+
+### 3. `evidence_access_grants`
+Controlled client/lawyer sharing grants with granular permissions and expiration.
+- `id`: UUID (PK, UUIDv7)
+- `evidence_id`: UUID (FK evidence.id, ON DELETE CASCADE)
+- `grantee_user_id`: UUID (FK users.id, ON DELETE CASCADE)
+- `granted_by_user_id`: UUID (FK users.id)
+- `access_level`: Enum (VIEW, DOWNLOAD, MANAGE)
+- `expires_at`: TIMESTAMPTZ (Nullable)
+- `revoked_at`: TIMESTAMPTZ (Nullable)
+- `revocation_reason`: VARCHAR(255) (Nullable)
+- `created_at`, `updated_at`: TIMESTAMPTZ
+
+### 4. `evidence_custody_events`
+Immutable, chronological chain-of-custody audit ledger.
+- `id`: UUID (PK, UUIDv7)
+- `evidence_id`: UUID (FK evidence.id, ON DELETE CASCADE)
+- `version_id`: UUID (FK evidence_versions.id, ON DELETE SET NULL)
+- `actor_user_id`: UUID (FK users.id)
+- `action`: Enum (UPLOADED, SCAN_PASSED, SCAN_FAILED, SHARED, ACCESS_REVOKED, VIEWED, DOWNLOADED, INTEGRITY_VERIFIED, INTEGRITY_FAILED, VERSION_CREATED, LEGAL_HOLD_APPLIED, LEGAL_HOLD_REMOVED, DELETION_REQUESTED, DELETED)
+- `previous_event_id`: UUID (FK evidence_custody_events.id, Nullable - chronological backward reference)
+- `timestamp`: TIMESTAMPTZ (Server-side default NOW())
+- `metadata`: JSON (Nullable)
+

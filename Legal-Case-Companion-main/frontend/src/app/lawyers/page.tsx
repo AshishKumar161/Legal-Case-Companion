@@ -7,6 +7,7 @@ import { LawyerProfileItem } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { useAuth, UserRole } from "@/providers/AuthProvider";
 
 interface SlotItem {
   start_time: string;
@@ -16,8 +17,11 @@ interface SlotItem {
 }
 
 export default function LawyerDiscovery() {
+  const { user, login } = useAuth();
   const [lawyers, setLawyers] = useState<LawyerProfileItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authPromptLawyer, setAuthPromptLawyer] = useState<LawyerProfileItem | null>(null);
+  const [quickLoginLoading, setQuickLoginLoading] = useState(false);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -77,6 +81,37 @@ export default function LawyerDiscovery() {
   const [bookingError, setBookingError] = useState("");
   const [bookedConsultationId, setBookedConsultationId] = useState<string | null>(null);
 
+  const handleQuickClientLogin = async () => {
+    setQuickLoginLoading(true);
+    try {
+      const res = await apiClient.post('/api/v1/auth/login', {
+        email: 'client@lcc.test',
+        password: 'Password123!',
+      });
+      const payload = JSON.parse(atob(res.access_token.split('.')[1]));
+      login(
+        res.access_token,
+        {
+          id: payload.sub,
+          email: 'client@lcc.test',
+          role: (payload.role || 'CLIENT') as UserRole,
+          account_status: "ACTIVE",
+          full_name: "Vikram Sharma",
+        },
+        res.refresh_token
+      );
+      const targetLawyer = authPromptLawyer;
+      setAuthPromptLawyer(null);
+      if (targetLawyer) {
+        setBookingLawyer(targetLawyer);
+      }
+    } catch (err) {
+      console.error("Quick client login failed", err);
+    } finally {
+      setQuickLoginLoading(false);
+    }
+  };
+
   const fetchLawyers = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true);
     try {
@@ -92,7 +127,7 @@ export default function LawyerDiscovery() {
       if (onlineOnly) params.set("online_only", "true");
 
       const url = `/api/v1/lawyers?${params.toString()}`;
-      const res = await apiClient.get(url);
+      const res = await apiClient.get(url, { requireAuth: false });
       setLawyers(res.items || (Array.isArray(res) ? res : []));
     } catch (err) {
       console.error("Failed to fetch lawyers", err);
@@ -122,7 +157,7 @@ export default function LawyerDiscovery() {
       setSelectedSlot(null);
       try {
         const lawyerId = bookingLawyer.user_id || bookingLawyer.id;
-        const res = await apiClient.get(`/api/v1/lawyers/${lawyerId}/slots?date=${selectedDate}&duration_minutes=30`);
+        const res = await apiClient.get(`/api/v1/lawyers/${lawyerId}/slots?date=${selectedDate}&duration_minutes=30`, { requireAuth: false });
         setSlots(Array.isArray(res) ? res : res?.items || []);
       } catch {
         setSlots([]);
@@ -528,6 +563,10 @@ export default function LawyerDiscovery() {
                       {lawyer.is_online ? (
                         <button
                           onClick={() => {
+                            if (!user) {
+                              setAuthPromptLawyer(lawyer);
+                              return;
+                            }
                             setInstantCallLawyer(lawyer);
                             setInstantError("");
                           }}
@@ -547,6 +586,10 @@ export default function LawyerDiscovery() {
                       ) : (
                         <button
                           onClick={() => {
+                            if (!user) {
+                              setAuthPromptLawyer(lawyer);
+                              return;
+                            }
                             setBookingLawyer(lawyer);
                             setBookingError("");
                             setBookingSuccess("");
@@ -865,6 +908,92 @@ export default function LawyerDiscovery() {
                   </form>
                 </>
               )}
+            </div>
+          </div>
+        )}
+        {/* Unauthenticated User Prompt Modal */}
+        {authPromptLawyer && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.85)",
+              backdropFilter: "blur(10px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1100,
+              padding: "20px",
+            }}
+          >
+            <div
+              style={{
+                background: "var(--surface-card)",
+                border: "1px solid var(--border-subtle)",
+                borderRadius: "var(--radius-lg)",
+                padding: "36px 32px",
+                maxWidth: "460px",
+                width: "100%",
+                textAlign: "center",
+                boxShadow: "0 24px 48px rgba(0,0,0,0.7)",
+              }}
+            >
+              <div style={{ fontSize: "42px", marginBottom: "14px" }}>⚖</div>
+              <h3 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px", color: "var(--text-primary)" }}>
+                Sign In to Consult Counsel
+              </h3>
+              <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "24px", lineHeight: "1.5" }}>
+                To schedule or start a video consultation with <strong>{authPromptLawyer.full_name}</strong>, please log in or open a free legal account.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <button
+                  type="button"
+                  id="quick-demo-client-modal-btn"
+                  onClick={handleQuickClientLogin}
+                  disabled={quickLoginLoading}
+                  className="btn btn-primary"
+                  style={{
+                    padding: "12px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                    border: "none",
+                  }}
+                >
+                  ⚡ {quickLoginLoading ? "Logging in..." : "1-Click Client Login (Vikram Sharma)"}
+                </button>
+                <Link
+                  href={`/login?redirect=/lawyers`}
+                  className="btn btn-secondary"
+                  style={{ padding: "12px", fontSize: "14px", fontWeight: 600 }}
+                >
+                  Log In with Email
+                </Link>
+                <Link
+                  href={`/register?redirect=/lawyers`}
+                  style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "4px" }}
+                >
+                  Create New Client Account
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setAuthPromptLawyer(null)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--text-muted)",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    marginTop: "6px",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}

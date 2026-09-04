@@ -1,7 +1,5 @@
 """Strict content signature, magic byte, and filename validation for secure document ingestion."""
 
-import os
-import re
 from typing import Final
 
 from app.core.exceptions import ValidationError
@@ -127,3 +125,67 @@ def validate_file_magic_bytes(file_bytes: bytes, declared_mime_type: str) -> Non
                 file_bytes.decode("latin-1")
             except Exception as e:
                 raise ValidationError(f"Plain text file cannot be decoded: {e}") from e
+
+    # 4. Comprehensive Archive & Zip-Bomb safety validation (Phase 16)
+    if file_bytes.startswith(b"PK\x03\x04"):
+        validate_archive_safety(file_bytes)
+
+
+def validate_archive_safety(
+    file_bytes: bytes,
+    max_uncompressed_bytes: int = 200 * 1024 * 1024,  # 200 MB max uncompressed size
+    max_compression_ratio: float = 100.0,              # 100:1 max compression ratio (zip bomb defense)
+    max_file_count: int = 1000,                        # Max 1000 items inside container
+) -> None:
+    """Protects against zip bombs, path traversal, nested archives, and decompression attacks.
+
+    Applicable to ZIP files, DOCX/XLSX containers, and archive uploads.
+    """
+    import io
+    import zipfile
+
+    if not file_bytes.startswith(b"PK\x03\x04"):
+        return
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as zf:
+            infolist = zf.infolist()
+            if len(infolist) > max_file_count:
+                raise ValidationError(
+                    f"Archive contains {len(infolist)} files, exceeding maximum permitted limit of {max_file_count}."
+                )
+
+            total_uncompressed_bytes = 0
+            compressed_bytes = len(file_bytes)
+
+            for info in infolist:
+                # 1. Path traversal defense
+                name = info.filename
+                if ".." in name or name.startswith("/") or name.startswith("\\") or ":" in name:
+                    raise ValidationError(
+                        f"Archive contains dangerous path traversal pattern: '{name}'"
+                    )
+
+                # 2. Nested archive defense
+                lower_name = name.lower()
+                if any(lower_name.endswith(ext) for ext in [".zip", ".tar", ".gz", ".bz2", ".7z", ".rar"]):
+                    raise ValidationError(
+                        f"Nested archive detected ('{name}'). Nested archives are strictly prohibited."
+                    )
+
+                total_uncompressed_bytes += info.file_size
+                if total_uncompressed_bytes > max_uncompressed_bytes:
+                    raise ValidationError(
+                        f"Archive uncompressed size exceeds maximum allowable limit of {max_uncompressed_bytes // (1024 * 1024)}MB."
+                    )
+
+            # 3. Compression ratio check (zip bomb defense)
+            if compressed_bytes > 0:
+                ratio = total_uncompressed_bytes / compressed_bytes
+                if ratio > max_compression_ratio:
+                    raise ValidationError(
+                        f"Excessive archive compression ratio ({ratio:.1f}:1). Potential decompression bomb detected."
+                    )
+
+    except zipfile.BadZipFile as e:
+        raise ValidationError(f"Malformed or corrupted archive container: {e}") from e

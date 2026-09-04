@@ -38,6 +38,11 @@ class StubAIProvider:
         self, system_prompt: str, user_query: str, chunks: list[RetrievedChunk]
     ) -> AIResearchResponse:
         if not chunks:
+            try:
+                from app.core.metrics import metrics_collector
+                metrics_collector.record_ai_safety_event("EMPTY_RETRIEVAL_REFUSAL", "0_chunks")
+            except Exception:
+                pass
             return AIResearchResponse(
                 answer="Evidence insufficient. The system cannot reliably answer this point from the available sources.",
                 citations=[],
@@ -54,6 +59,57 @@ class StubAIProvider:
         )
 
         return AIResearchResponse(answer=answer, citations=[cit], warnings=[])
+
+
+def sanitize_untrusted_prompt_text(text: str) -> str:
+    """Sanitizes untrusted text to prevent prompt injection and delimiter breakout (Phase 16)."""
+    if not text:
+        return ""
+    # Defang XML tags that could break out of <evidence> blocks
+    sanitized = text.replace("</evidence>", "&lt;/evidence&gt;").replace("<evidence", "&lt;evidence")
+    # Neutralize direct instruction overrides (English, Devanagari Hindi, and Transliterated Hindi - Phase XX)
+    injection_patterns = [
+        # English patterns
+        "ignore all previous instructions",
+        "ignore previous instructions",
+        "disregard all prior instructions",
+        "system prompt override",
+        # Devanagari Hindi patterns
+        "पिछले सभी निर्देश भूल जाओ",
+        "पिछले सभी निर्देश भूल जाएं",
+        "निर्देश भूल जाएं",
+        "निर्देश भूल जाओ",
+        "पिछले निर्देश अनदेखा करो",
+        "पिछले निर्देश अनदेखा करें",
+        "सिस्टम निर्देश ओवरराइड",
+        "सिस्टम प्रॉम्प्ट अनदेखा करें",
+        "पुराने निर्देश रद्द करें",
+        # Transliterated Hindi patterns
+        "pichle sabhi nirdesh bhool jao",
+        "pichle nirdesh andekha karo",
+        "pichle nirdesh radd karo",
+        "system prompt override karo",
+        "purv nirdesh bhul jao",
+        "nirdesh bhul jao",
+        "nirdesh bhool jao",
+    ]
+    lower = sanitized.lower()
+    for pattern in injection_patterns:
+        pat_lower = pattern.lower()
+        if pat_lower in lower:
+            try:
+                from app.core.metrics import metrics_collector
+                metrics_collector.record_ai_safety_event("PROMPT_INJECTION", pattern)
+            except Exception:
+                pass
+            idx = lower.find(pat_lower)
+            sanitized = (
+                sanitized[:idx]
+                + "[DEFANGED_INSTRUCTION]"
+                + sanitized[idx + len(pattern):]
+            )
+            lower = sanitized.lower()
+    return sanitized
 
 
 class ProductionOpenAIProvider:
@@ -82,6 +138,11 @@ class ProductionOpenAIProvider:
         self, system_prompt: str, user_query: str, chunks: list[RetrievedChunk]
     ) -> AIResearchResponse:
         if not chunks:
+            try:
+                from app.core.metrics import metrics_collector
+                metrics_collector.record_ai_safety_event("EMPTY_RETRIEVAL_REFUSAL", "0_chunks")
+            except Exception:
+                pass
             return AIResearchResponse(
                 answer="Evidence insufficient. The system cannot reliably answer this point from the available sources.",
                 citations=[],
@@ -90,15 +151,16 @@ class ProductionOpenAIProvider:
 
         valid_chunk_map = {str(c.chunk_id): c for c in chunks}
 
-        # Build evidence context with strict XML encapsulation
+        # Build evidence context with strict XML encapsulation and prompt injection sanitization
         evidence_blocks = []
         for idx, c in enumerate(chunks):
-            snippet = c.content.strip()
+            snippet = sanitize_untrusted_prompt_text(c.content.strip())
             evidence_blocks.append(
                 f'<evidence index="{idx}" chunk_id="{c.chunk_id}" document_id="{c.document_id}">\n{snippet}\n</evidence>'
             )
 
         formatted_evidence = "\n\n".join(evidence_blocks)
+        sanitized_query = sanitize_untrusted_prompt_text(user_query)
 
         strict_system_directive = (
             f"{system_prompt}\n\n"
@@ -121,7 +183,7 @@ class ProductionOpenAIProvider:
 
         user_content = (
             f"AVAILABLE EVIDENCE:\n{formatted_evidence}\n\n"
-            f"USER QUERY:\n{user_query}"
+            f"USER QUERY:\n{sanitized_query}"
         )
 
         attempts = 0

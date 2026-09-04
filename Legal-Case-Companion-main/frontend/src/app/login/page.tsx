@@ -7,6 +7,16 @@ import styles from './auth.module.css';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+function getSafeRedirectUrl(url: string | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  // Must be an internal relative path, preventing open redirects
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.includes('://')) {
+    return trimmed;
+  }
+  return null;
+}
+
 function LoginForm() {
   const { login } = useAuth();
   const router = useRouter();
@@ -17,87 +27,66 @@ function LoginForm() {
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [demoLoadingRole, setDemoLoadingRole] = useState<string | null>(null);
 
   useEffect(() => {
     if (searchParams.get('expired') === '1') {
       setInfo('Your session has expired. Please log in again to continue.');
     }
 
-    const autoEmail = searchParams.get('email');
-    const autoPass = searchParams.get('pass');
-    const autoRedirect = searchParams.get('redirect');
-
-    if (autoEmail && autoPass) {
-      setLoading(true);
-      apiClient.post('/api/v1/auth/login', {
-        email: autoEmail.trim(),
-        password: autoPass,
-      })
-        .then((res) => {
-          let userId = "temp";
-          let userRole: UserRole = "CLIENT";
-          try {
-            const payload = JSON.parse(atob(res.access_token.split('.')[1]));
-            if (payload.sub) userId = payload.sub;
-            if (payload.role) userRole = payload.role as UserRole;
-          } catch (decodeErr) {
-            console.warn("Could not decode JWT payload directly:", decodeErr);
-          }
-          login(res.access_token, {
-            id: userId,
-            email: autoEmail.trim().toLowerCase(),
-            role: userRole,
-            account_status: "ACTIVE",
-          });
-          if (autoRedirect) {
-            router.push(autoRedirect);
-          } else if (userRole === 'ADMIN') {
-            router.push('/admin/dashboard');
-          } else if (userRole === 'LAWYER') {
-            router.push('/lawyer/dashboard');
-          } else {
-            router.push('/dashboard');
-          }
-        })
-        .catch((err) => {
-          console.warn("Auto-login failed:", err);
-          setError("Auto-login failed");
-          setLoading(false);
-        });
+    // Safe pre-fill for email input only (no plaintext password handling)
+    const initialEmail = searchParams.get('email');
+    if (initialEmail) {
+      setEmail(initialEmail.trim());
     }
-  }, [searchParams, login, router]);
+  }, [searchParams]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeLogin = async (targetEmail: string, targetPassword: string) => {
     setError('');
     setInfo('');
-    setLoading(true);
 
     try {
       const res = await apiClient.post('/api/v1/auth/login', {
-        email: email.trim(),
-        password: password,
+        email: targetEmail.trim(),
+        password: targetPassword,
       });
 
-      let userId = "temp";
-      let userRole: UserRole = "CLIENT";
+      let userId = "";
+      let userRole: UserRole | null = null;
 
       try {
         const payload = JSON.parse(atob(res.access_token.split('.')[1]));
         if (payload.sub) userId = payload.sub;
-        if (payload.role) userRole = payload.role as UserRole;
+        if (
+          payload.role &&
+          (payload.role === 'CLIENT' || payload.role === 'LAWYER' || payload.role === 'ADMIN')
+        ) {
+          userRole = payload.role as UserRole;
+        }
       } catch (decodeErr) {
         console.warn("Could not decode JWT payload directly:", decodeErr);
       }
 
-      login(res.access_token, {
-        id: userId,
-        email: email.trim().toLowerCase(),
-        role: userRole,
-        account_status: "ACTIVE",
-      });
+      if (!userRole || !userId) {
+        throw new Error("Login failed: Authentication token contains missing or invalid role credentials.");
+      }
 
-      if (userRole === 'ADMIN') {
+      // Establish isolated session strictly in current tab
+      login(
+        res.access_token,
+        {
+          id: userId,
+          email: targetEmail.trim().toLowerCase(),
+          role: userRole,
+          account_status: "ACTIVE",
+        },
+        res.refresh_token
+      );
+
+      const safeRedirect = getSafeRedirectUrl(searchParams.get('redirect'));
+      if (safeRedirect) {
+        router.push(safeRedirect);
+      } else if (userRole === 'ADMIN') {
         router.push("/admin/dashboard");
       } else if (userRole === 'LAWYER') {
         router.push("/lawyer/dashboard");
@@ -110,8 +99,32 @@ function LoginForm() {
       } else {
         setError('Login failed');
       }
+      throw err;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await executeLogin(email, password);
+    } catch {
+      // Error is set in executeLogin
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async (demoEmail: string, roleName: string) => {
+    setEmail(demoEmail);
+    setPassword('Password123!');
+    setDemoLoadingRole(roleName);
+    try {
+      await executeLogin(demoEmail, 'Password123!');
+    } catch {
+      // Error handled in executeLogin
+    } finally {
+      setDemoLoadingRole(null);
     }
   };
 
@@ -152,10 +165,85 @@ function LoginForm() {
         {info && <div className={styles.infoAlert}>{info}</div>}
         {error && <div className={styles.errorAlert}>{error}</div>}
 
+        {/* 1-Click Demo Persona Access Panel */}
+        <div className={styles.demoSection}>
+          <div className={styles.demoHeader}>
+            <span className={styles.demoBadge}>⚡ 1-Click Demo Personas</span>
+            <span className={styles.demoSubtext}>Immediate test access</span>
+          </div>
+          <div className={styles.demoGrid}>
+            <button
+              type="button"
+              id="demo-client-btn"
+              onClick={() => handleDemoLogin('client@lcc.test', 'client')}
+              disabled={loading || !!demoLoadingRole || googleLoading}
+              className={`${styles.demoBtn} ${styles.demoClient}`}
+            >
+              <div className={styles.demoBtnContent}>
+                <div className={styles.demoRoleIcon}>👤</div>
+                <div className={styles.demoRoleInfo}>
+                  <div className={styles.demoRoleTitle}>
+                    <strong>Vikram Sharma</strong>
+                    <span className={styles.demoTagClient}>Client</span>
+                  </div>
+                  <div className={styles.demoRoleDesc}>Client Dashboard & Cases</div>
+                </div>
+              </div>
+              <div className={styles.demoAction}>
+                {demoLoadingRole === 'client' ? 'Authenticating...' : 'Instant Login →'}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              id="demo-lawyer-btn"
+              onClick={() => handleDemoLogin('advocate@lcc.test', 'lawyer')}
+              disabled={loading || !!demoLoadingRole || googleLoading}
+              className={`${styles.demoBtn} ${styles.demoLawyer}`}
+            >
+              <div className={styles.demoBtnContent}>
+                <div className={styles.demoRoleIcon}>⚖</div>
+                <div className={styles.demoRoleInfo}>
+                  <div className={styles.demoRoleTitle}>
+                    <strong>Adv. Ananya Roy</strong>
+                    <span className={styles.demoTagLawyer}>Advocate</span>
+                  </div>
+                  <div className={styles.demoRoleDesc}>Verified Bar Counsel Portal</div>
+                </div>
+              </div>
+              <div className={styles.demoAction}>
+                {demoLoadingRole === 'lawyer' ? 'Authenticating...' : 'Instant Login →'}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              id="demo-admin-btn"
+              onClick={() => handleDemoLogin('admin@lcc.test', 'admin')}
+              disabled={loading || !!demoLoadingRole || googleLoading}
+              className={`${styles.demoBtn} ${styles.demoAdmin}`}
+            >
+              <div className={styles.demoBtnContent}>
+                <div className={styles.demoRoleIcon}>🛡</div>
+                <div className={styles.demoRoleInfo}>
+                  <div className={styles.demoRoleTitle}>
+                    <strong>Platform Admin</strong>
+                    <span className={styles.demoTagAdmin}>Admin</span>
+                  </div>
+                  <div className={styles.demoRoleDesc}>Verifications & System Control</div>
+                </div>
+              </div>
+              <div className={styles.demoAction}>
+                {demoLoadingRole === 'admin' ? 'Authenticating...' : 'Instant Login →'}
+              </div>
+            </button>
+          </div>
+        </div>
+
         <button
           type="button"
           onClick={handleGoogleLogin}
-          disabled={googleLoading || loading}
+          disabled={googleLoading || loading || !!demoLoadingRole}
           className={styles.googleBtn}
         >
           <svg width="18" height="18" viewBox="0 0 24 24">

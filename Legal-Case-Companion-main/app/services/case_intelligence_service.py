@@ -6,7 +6,10 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.authorization import authorize_case_access
+from app.core.authorization import (
+    authorize_case_access,
+    authorize_case_modification,
+)
 from app.core.exceptions import ResourceNotFoundError
 from app.core.identifiers import generate_uuid7
 from app.models.ai import AIConversation, AIMessage, AIMessageRole, DocumentChunk
@@ -181,7 +184,7 @@ class CaseIntelligenceService:
 
         stale version checks, and user conversation findings.
         """
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         req = req or RefreshIntelligenceRequest()
 
         # 1. Fetch all SAFE & READY documents for this case
@@ -495,7 +498,7 @@ class CaseIntelligenceService:
 
     # Mutation & Human Review Methods
     def create_fact(self, user: User, case_id: UUID, req: CaseFactCreate) -> CaseFact:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         fact = CaseFact(
             id=generate_uuid7(),
             case_id=case_id,
@@ -511,7 +514,7 @@ class CaseIntelligenceService:
         return fact
 
     def update_fact(self, user: User, case_id: UUID, fact_id: UUID, req: CaseFactUpdate) -> CaseFact:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         fact = (
             self.db.query(CaseFact)
             .filter(CaseFact.id == fact_id, CaseFact.case_id == case_id, CaseFact.deleted_at.is_(None))
@@ -532,7 +535,7 @@ class CaseIntelligenceService:
         return fact
 
     def create_issue(self, user: User, case_id: UUID, req: LegalIssueCreate) -> LegalIssue:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         issue = LegalIssue(
             id=generate_uuid7(),
             case_id=case_id,
@@ -549,7 +552,7 @@ class CaseIntelligenceService:
         return issue
 
     def update_issue(self, user: User, case_id: UUID, issue_id: UUID, req: LegalIssueUpdate) -> LegalIssue:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         issue = (
             self.db.query(LegalIssue)
             .filter(LegalIssue.id == issue_id, LegalIssue.case_id == case_id, LegalIssue.deleted_at.is_(None))
@@ -576,7 +579,7 @@ class CaseIntelligenceService:
         return issue
 
     def create_claim(self, user: User, case_id: UUID, req: CaseClaimDefenseCreate) -> CaseClaimDefense:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         claim = CaseClaimDefense(
             id=generate_uuid7(),
             case_id=case_id,
@@ -592,7 +595,7 @@ class CaseIntelligenceService:
         return claim
 
     def update_claim(self, user: User, case_id: UUID, claim_id: UUID, req: CaseClaimDefenseUpdate) -> CaseClaimDefense:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         claim = (
             self.db.query(CaseClaimDefense)
             .filter(CaseClaimDefense.id == claim_id, CaseClaimDefense.case_id == case_id, CaseClaimDefense.deleted_at.is_(None))
@@ -613,7 +616,7 @@ class CaseIntelligenceService:
         return claim
 
     def create_timeline_event(self, user: User, case_id: UUID, req: CaseChronologyEventCreate) -> CaseChronologyEvent:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         event = CaseChronologyEvent(
             id=generate_uuid7(),
             case_id=case_id,
@@ -630,7 +633,7 @@ class CaseIntelligenceService:
         return event
 
     def update_timeline_event(self, user: User, case_id: UUID, event_id: UUID, req: CaseChronologyEventUpdate) -> CaseChronologyEvent:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         event = (
             self.db.query(CaseChronologyEvent)
             .filter(CaseChronologyEvent.id == event_id, CaseChronologyEvent.case_id == case_id, CaseChronologyEvent.deleted_at.is_(None))
@@ -657,7 +660,7 @@ class CaseIntelligenceService:
         return event
 
     def create_evidence_gap(self, user: User, case_id: UUID, req: CaseEvidenceGapCreate) -> CaseEvidenceGap:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         gap = CaseEvidenceGap(
             id=generate_uuid7(),
             case_id=case_id,
@@ -672,7 +675,7 @@ class CaseIntelligenceService:
         return gap
 
     def update_evidence_gap(self, user: User, case_id: UUID, gap_id: UUID, req: CaseEvidenceGapUpdate) -> CaseEvidenceGap:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         gap = (
             self.db.query(CaseEvidenceGap)
             .filter(CaseEvidenceGap.id == gap_id, CaseEvidenceGap.case_id == case_id, CaseEvidenceGap.deleted_at.is_(None))
@@ -693,7 +696,7 @@ class CaseIntelligenceService:
         return gap
 
     def create_risk(self, user: User, case_id: UUID, req: CaseRiskIndicatorCreate) -> CaseRiskIndicator:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         risk = CaseRiskIndicator(
             id=generate_uuid7(),
             case_id=case_id,
@@ -709,7 +712,7 @@ class CaseIntelligenceService:
         return risk
 
     def update_risk(self, user: User, case_id: UUID, risk_id: UUID, req: CaseRiskIndicatorUpdate) -> CaseRiskIndicator:
-        authorize_case_access(self.db, user, case_id)
+        authorize_case_modification(self.db, user, case_id)
         risk = (
             self.db.query(CaseRiskIndicator)
             .filter(CaseRiskIndicator.id == risk_id, CaseRiskIndicator.case_id == case_id, CaseRiskIndicator.deleted_at.is_(None))

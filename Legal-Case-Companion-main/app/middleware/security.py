@@ -8,9 +8,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
 
-        # Enforce HTTPS connections (HSTS - 1 year with subdomains)
+        # Enforce HTTPS connections (HSTS - 1 year with subdomains and preload)
         response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains"
+            "max-age=31536000; includeSubDomains; preload"
         )
 
         # Prevent MIME type sniffing
@@ -21,11 +21,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Strict CSP for pure JSON REST APIs
         response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; frame-ancestors 'none'"
+            "default-src 'none'; frame-ancestors 'none'; sandbox"
         )
 
         # Privacy and Referrer protection
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # Cross-Origin isolation
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-site"
 
         # Restrict dangerous browser features / hardware APIs
         response.headers["Permissions-Policy"] = (

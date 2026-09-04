@@ -242,3 +242,48 @@ def test_lawyer_selection_bola(client: TestClient):
         headers=headersA,
     )
     assert addB.status_code == 404
+
+
+def test_lawyer_discovery_unauthenticated_public(client: TestClient, db: Session):
+    """Verify that unauthenticated visitors can browse verified lawyers without 401."""
+    # Setup a verified lawyer
+    l_id, _ = _setup_user(client, "LAWYER", "unauth_discovery_lawyer@test.com", "Public Advocate")
+    from app.models.user import LawyerProfile, LawyerVerification, VerificationStatus
+
+    lp = db.query(LawyerProfile).filter(LawyerProfile.user_id == uuid.UUID(l_id)).first()
+    assert lp is not None
+    db.add(
+        LawyerVerification(
+            lawyer_profile_id=lp.id,
+            enrollment_number=f"ENR/{l_id[:6]}",
+            state_bar_council="Delhi Bar",
+            status=VerificationStatus.APPROVED,
+        )
+    )
+    db.commit()
+
+    # 1. Unauthenticated GET /api/v1/lawyers must succeed with 200
+    res = client.get("/api/v1/lawyers")
+    assert res.status_code == 200
+    data = res.json()
+    assert "items" in data
+    uids = [item["user_id"] for item in data["items"]]
+    assert l_id in uids
+
+    # 2. Unauthenticated GET /api/v1/lawyers/{id} must succeed with 200
+    res_detail = client.get(f"/api/v1/lawyers/{l_id}")
+    assert res_detail.status_code == 200
+    assert res_detail.json()["full_name"] == "Public Advocate"
+
+    # 3. Unauthenticated GET /api/v1/lawyers/{id}/availability must succeed with 200
+    res_avail = client.get(f"/api/v1/lawyers/{lp.id}/availability")
+    assert res_avail.status_code == 200
+
+    # 4. Unauthenticated GET /api/v1/lawyers/{id}/slots must succeed with 200
+    res_slots = client.get(f"/api/v1/lawyers/{lp.id}/slots?duration_minutes=30")
+    assert res_slots.status_code == 200
+
+    # 5. Unauthenticated GET /api/v1/lawyers/{id}/presence must succeed with 200
+    res_presence = client.get(f"/api/v1/lawyers/{lp.id}/presence")
+    assert res_presence.status_code == 200
+

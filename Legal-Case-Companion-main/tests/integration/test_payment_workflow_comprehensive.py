@@ -273,7 +273,7 @@ def test_terminal_state_protection_on_out_of_order_failure(client: TestClient, d
     db.add(ver)
     db.commit()
 
-    fut = (datetime.now(UTC) + timedelta(days=5)).replace(hour=16, minute=0, second=0, microsecond=0).isoformat()
+    fut = (datetime.now(UTC) + timedelta(days=5)).replace(hour=10, minute=0, second=0, microsecond=0).isoformat()
     res_c = client.post(
         "/api/v1/consultations",
         json={"lawyer_id": lawyer_id, "scheduled_at": fut, "duration_minutes": 30},

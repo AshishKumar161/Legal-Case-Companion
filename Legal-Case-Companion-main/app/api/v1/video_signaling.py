@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import ValidationError
 from app.db.database import get_db
-from app.models.consultation import Consultation
 from app.models.video_meeting import VideoMeeting
 from app.services.video_meeting_service import get_video_provider
 
@@ -51,6 +50,18 @@ class VideoSignalingManager:
                 await client["ws"].send_text(json.dumps(join_notification))
             except Exception as e:
                 logger.warning(f"Failed to notify peer {client['user_id']} of join: {e}")
+
+        # Notify the newly connected peer about all existing peers already in the room
+        for client in self.rooms[room_id]:
+            try:
+                await websocket.send_text(json.dumps({
+                    "type": "existing-peer",
+                    "user_id": client["user_id"],
+                    "role": client["role"],
+                    "peer_count": len(self.rooms[room_id]) + 1,
+                }))
+            except Exception as e:
+                logger.warning(f"Failed to notify new peer of existing peer: {e}")
 
         self.rooms[room_id].append({
             "ws": websocket,
@@ -119,7 +130,6 @@ async def video_signaling_websocket(
     Validates cryptographic join token, enforces consultation and room context binding,
     and relays WebRTC peer negotiation messages (offer, answer, ICE candidate).
     """
-    from fastapi import Depends
     from app.main import app
 
     # Respect dependency overrides (e.g. test fixtures)
@@ -191,6 +201,7 @@ async def video_signaling_websocket(
                     "chat",
                     "media-status",
                     "recording-status",
+                    "request-media-status",
                 ):
                     continue
 

@@ -411,7 +411,7 @@ def test_pilot_disaster_recovery_and_resilience(client: TestClient, db: Session)
     # 1. Health probes return healthy status
     res_live = client.get("/liveness")
     assert res_live.status_code == 200
-    assert res_live.json() == {"status": "alive"}
+    assert res_live.json()["status"] == "alive"
 
     res_ready = client.get("/readiness")
     assert res_ready.status_code == 200

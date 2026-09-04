@@ -19,14 +19,14 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   // Active matter context detection
   const isInsideCase = pathname.startsWith("/cases/") && pathname !== "/cases/new";
   const caseIdMatch = pathname.match(/^\/cases\/([^/]+)/);
   const activeCaseId = caseIdMatch ? caseIdMatch[1] : null;
 
-  const role = user?.role || "CLIENT";
+  const role = user?.role;
 
   // Navigation Items per Role
   const clientNav = [
@@ -58,7 +58,15 @@ export function Sidebar({
   ];
 
   const navItems =
-    role === "LAWYER" ? lawyerNav : role === "ADMIN" ? adminNav : clientNav;
+    loading && !role
+      ? []
+      : role === "LAWYER"
+      ? lawyerNav
+      : role === "ADMIN"
+      ? adminNav
+      : role === "CLIENT"
+      ? clientNav
+      : [];
 
   return (
     <>

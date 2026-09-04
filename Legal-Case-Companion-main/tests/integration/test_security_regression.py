@@ -40,8 +40,9 @@ def test_production_config_debug_is_forced_false():
         STRIPE_WEBHOOK_SECRET="whsec",
         OPENAI_API_KEY="sk-proj",
         EMAIL_PROVIDER="ses",
-        CSRF_SECRET_KEY="real_secret",
-        DATABASE_URL="sqlite:///./test.db",
+        CSRF_SECRET_KEY="real_secret_that_is_at_least_32_chars_long_for_prod",
+        DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/legal_db",
+        REDIS_URL="redis://localhost:6379/0",
         JWT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n" + "-" * 100,
         JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n" + "-" * 50,
     )

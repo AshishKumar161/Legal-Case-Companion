@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -49,6 +50,8 @@ class LawyerPublicResponse(BaseModel):
     languages: list[str] | None = None
     verification_status: str
     is_online: bool = False
+    is_available: bool = False
+    presence_status: str = "OFFLINE"
 
     model_config = {"from_attributes": True}
 
@@ -75,6 +78,14 @@ class LawyerProfileResponse(BaseModel):
 class LawyerVerificationCreate(BaseModel):
     enrollment_number: str
     state_bar_council: str
+    evidence_document_id: UUID | None = None
+    is_reverification: bool = False
+
+
+class LawyerVerificationReviewRequest(BaseModel):
+    approved: bool
+    rejection_category: str | None = None
+    validity_days: int = 365
 
 
 class LawyerVerificationResponse(BaseModel):
@@ -83,5 +94,9 @@ class LawyerVerificationResponse(BaseModel):
     enrollment_number: str
     state_bar_council: str
     status: str
+    evidence_document_id: UUID | None = None
+    expires_at: datetime | None = None
+    rejection_reason_category: str | None = None
+    is_reverification: bool = False
 
     model_config = {"from_attributes": True}

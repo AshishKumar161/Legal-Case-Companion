@@ -116,3 +116,74 @@ Legal consultations between advocates and clients require high confidentiality, 
 7. **Security Headers**: Private, anti-caching headers (`Cache-Control: private, no-cache, no-store, must-revalidate`, `X-Content-Type-Options: nosniff`) are served on media streams.
 8. **In-Meeting Continuous Indicator**: Prominent `🔴 RECORDING` badge continuously visible across all viewport states and controls.
 
+---
+
+## ADR-005: Secure Evidence Locker, Document Custody, Integrity & Controlled Sharing
+
+**Status:** FINAL
+
+### Context
+Legally sensitive exhibits, forensic records, and confidential contracts exchanged between clients and advocates require significantly stronger security guarantees than ordinary case documents. These include non-repudiation, tamper detection, immutable version history, controlled client/lawyer access grants, immediate access revocation, and an unbroken chain of custody.
+
+### Decisions
+1. **Domain Separation**: Ordinary documents (`Document`) and collaborative notes remain distinct from `Evidence`. Normal documents do NOT automatically become Evidence.
+2. **Storage Architecture**: PostgreSQL stores metadata, access grants, versions, cryptographic hashes, and custody events. Private AWS S3 stores raw bytes under non-guessable paths (`cases/{case_id}/evidence/{evidence_id}/versions/{version_id}`). No public S3 URLs or permanent credentials are ever issued.
+3. **Cryptographic SHA-256 Digest**: Every evidence version records a 64-character hex SHA-256 digest at ingestion. The `verify-integrity` API compares actual on-disk bytes against this hash; any discrepancy immediately flags `TAMPER_DETECTED` and records an immutable `INTEGRITY_FAILED` custody event.
+4. **Immutable Versioning**: Modifying an evidence item creates a new `EvidenceVersion` (Version N+1). Previous versions remain permanently immutable and verifiable.
+5. **Chain of Custody Ledger**: An append-only `EvidenceCustodyEvent` ledger links all chronological operations (`UPLOADED`, `SCAN_PASSED`, `SHARED`, `VIEWED`, `DOWNLOADED`, `INTEGRITY_VERIFIED`, `ACCESS_REVOKED`, `LEGAL_HOLD_APPLIED`, `DELETED`) with backward reference (`previous_event_id`).
+6. **Controlled Sharing**: Explicit `EvidenceAccessGrant` entities specify granular permissions (`VIEW`, `DOWNLOAD`, `MANAGE`) and optional expiration dates. Sharing is strictly restricted to active case participants or confirmed consultation lawyers. Revocation is instantaneous.
+7. **Legal Hold & Retention Enforcement**: An evidence item marked with `legal_hold=True` or an active `retention_until` timestamp cannot be deleted (`403 Forbidden`). Soft deletion is used to preserve forensic custody logs permanently.
+
+---
+
+## ADR-006: Controlled Production Pilot Operating Model & Launch Governance
+
+**Status:** FINAL
+
+### Context
+Transitioning Legal Case Companion from a secure and deployable codebase to an operational legal platform in India requires strict onboarding controls, least-privilege administrative permissions, formal incident management, real-time SRE observability, and explicit separation between technical readiness and statutory compliance under the Digital Personal Data Protection (DPDP) Act 2023.
+
+### Decisions
+1. **Explicit Pilot Operating Mode**: Governed by configuration flags (`PILOT_MODE`, `PILOT_ALLOWLIST_ENABLED`, `PILOT_SIGNUP_ENABLED`, `PILOT_MAX_CLIENTS`, `PILOT_MAX_LAWYERS`, `PILOT_GLOBAL_READ_ONLY`). Capacity is hard-capped (100 clients, 50 advocates) and unlisted registrations receive `403 Forbidden` (`PILOT_NOT_ALLOWLISTED`).
+2. **Emergency Global Read-Only Mode**: `PilotControlMiddleware` enforces `503 EMERGENCY_READ_ONLY` on mutating requests during major maintenance or active security investigations, exempting only essential auth logout, incident response, and pilot governance routes.
+3. **Least-Privilege Operator Permission Model**: Decomposes broad "ADMIN" assumptions into granular operational permissions (`USER_SUPPORT`, `USER_MANAGEMENT`, `SEC_OPS`, `INCIDENT_MANAGE`, `COMPLIANCE_OPERATIONS`, `EVIDENCE_OPERATIONS`, `BILLING_OPERATIONS`, `SYSTEM_OPERATIONS`, `PILOT_GOVERNANCE`).
+4. **Support Boundary Isolation**: Support staff holding `USER_SUPPORT` cannot view confidential legal case facts, evidence file contents, or consultation recordings without an explicit, time-limited `EvidenceAccessGrant` issued by the case owner.
+5. **Production Incident State Machine**: Models incidents with severity classes (`SEV-1` to `SEV-4`), rigid state transitions (`DETECTED` $\to$ `ACKNOWLEDGED` $\to$ `INVESTIGATING` $\to$ `MITIGATED` $\to$ `RESOLVED` $\to$ `CLOSED`), and blameless postmortem tracking.
+6. **Machine-Readable SRE Observability & Alerting**: Real-time SLO calculation at `/api/v1/pilot/slos` tracking 99.9% availability, p95 latency $< 500\text{ ms}$, error-budget burn rate, and actionable alert rules (`ALERT-HTTP-5XX-SPIKE`, `ALERT-EVIDENCE-TAMPERING`, `ALERT-AUTH-ATTACK-SPIKE`, `ALERT-DLQ-BACKLOG`, `ALERT-DEPENDENCY-FAILURE`).
+7. **Compliance Separation Policy**: Technical data deletion, log scrubbing, and encryption are formally distinguished from organizational policies and external Indian legal reviews. The pilot launch status is formally designated as `PILOT APPROVED WITH CONDITIONS`.
+
+---
+
+## ADR-007: Controlled Pilot Execution, Product Validation, Reliability Measurement & Public-Launch Readiness
+
+**Status:** FINAL
+
+### Context
+Advancing LCC from pilot authorization to empirical product validation and launch readiness requires measuring real-world advocate and litigant interactions without relaxing security boundaries, accumulating unmonitored data-quality debt, or relying on statistically meaningless sample sizes.
+
+### Decisions
+1. **Pilot Experimentation Architecture**: Formalizes hypothesis testing via `PilotExperiment` with explicit success and failure metrics before feature graduation.
+2. **Privacy-Conscious Workflow & Funnel Telemetry**: Measures conversion across client and lawyer funnels while strictly excluding document contents, private consultation chats, and credentials.
+3. **Statistical Validity in SRE SLO Reporting**: Enforces sample-size minimums ($N \ge 30$) for definitive SLO compliance; flags `INSUFFICIENT_SAMPLE_SIZE` when sample size is low to prevent synthetic skew.
+4. **Zero-Trust Customer Support**: Restricts support personnel holding `USER_SUPPORT` to operational ticket metadata without granting access to confidential case files or evidence items.
+5. **AI Quality Evaluation & Human Review Loop**: Implements automated legal benchmark testing across 20 Indian legal scenarios (including statutory transitions to BNS/BNSS/BSA) and establishes a human review workflow (`AIReviewRecord`) for defect triage.
+6. **Automated Data Quality & Reconciliation**: Establishes auditable, idempotent reconciliation routines for detecting and repairing stale background worker leases, expired consultation bookings, and orphaned references.
+7. **Four-Stage Pilot Expansion Model**: Authorizes progression to **Stage 2 (Expanded Bar Cohort)** with expanded capacity (250 clients, 100 advocates) under continued allowlist enforcement (`EXPAND PILOT WITH CONDITIONS`).
+
+---
+
+## ADR-008: Phase XX Multilingual Localization, Commercial Decoupling, Abuse Defense & Public Launch Governance
+
+**Status:** FINAL
+
+### Context
+Transitioning LCC from an expanded Stage 2 pilot toward general public launch readiness requires solving regional language accessibility, statutory legal transparency, independent financial decoupled state machines, public abuse resilience, database and storage scale verification, and decoupling technical operational readiness from external human legal counsel statutory sign-offs.
+
+### Decisions
+1. **First-Class Regional Localization Architecture**: Implements language-safe locale resolution (`en-IN`, `hi-IN`) without hardcoding translated strings inside UI components. Never uses localized strings as authorization keys, database enums, or state machine tokens. Enforces human translation governance for legal notices.
+2. **Multilingual AI Safety & Devanagari Injection Containment**: Defangs adversarial prompt injection in both Devanagari Hindi and transliterated Hindi scripts. Enforces zero-hallucination empty-retrieval refusals and accurate statutory grounding (IPC $\to$ BNS, CrPC $\to$ BNSS, Evidence Act $\to$ BSA) across languages.
+3. **Legal Transparency & Document Versioning**: Decouples legal information, litigant assistance, machine-assisted research, and advocate representation. Implements non-repudiable versioned consent recording in `user_document_consents` preserving audit history without overwrites.
+4. **Commercial Decoupling & Tax Compliance**: Decouples payment gateway states (`PENDING`, `AUTHORIZED`, `CAPTURED`, `REFUNDED`) from consultation states. Automates 18.0% GST calculation under SAC 9982 on platform facilitation fees, assigns sequential invoices (`INV-YYYYMMDD-XXXX`), and synchronizes entitlement grant/revocation.
+5. **Advocate Professional Verification Maturity**: Implements State Bar Council enrollment validation, annual expiration lifecycle (`expires_at`), structured rejection taxonomy, and explainable deterministic discovery ranking compliant with Bar Council of India Rule 36.
+6. **Public Abuse Defense & Lifecycle Maturity**: Defends against automated abuse with disposable email blocking, consultation booking velocity limits, and multi-tier rate limiting. Models auditable customer lifecycle transitions (`REGISTERED` $\to$ `VERIFIED` $\to$ `ACTIVE` $\to$ `RESTRICTED` $\to$ `SUSPENDED` $\to$ `DEACTIVATED`) with session revocation on restriction.
+7. **Empirical Scale Validation & 14-Category Launch Gate Engine**: Benchmarked database query plans (p95 < 0.20ms) and validated storage growth models for 10,000 active matters. Machine-readable launch gate engine evaluates 14 distinct categories and arrives at **`READY_FOR_COUNSEL_SIGNOFF`**, strictly acknowledging that formal statutory counsel approval on Advocate Terms remains an external human prerequisite before public release.

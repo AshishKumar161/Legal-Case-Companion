@@ -64,13 +64,15 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
   const breadcrumbs = getBreadcrumbs();
 
-  const role = user?.role || "CLIENT";
+  const role = user?.role;
   const roleStyle =
     role === "ADMIN"
       ? { bg: "rgba(239, 68, 68, 0.15)", text: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)" }
       : role === "LAWYER"
       ? { bg: "rgba(109, 124, 255, 0.15)", text: "#8d98ff", border: "1px solid rgba(109, 124, 255, 0.3)" }
-      : { bg: "rgba(59, 130, 246, 0.15)", text: "#60a5fa", border: "1px solid rgba(59, 130, 246, 0.3)" };
+      : role === "CLIENT"
+      ? { bg: "rgba(59, 130, 246, 0.15)", text: "#60a5fa", border: "1px solid rgba(59, 130, 246, 0.3)" }
+      : { bg: "transparent", text: "transparent", border: "none" };
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -139,16 +141,18 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
           <NotificationBell />
 
-          <span
-            className={styles.roleBadge}
-            style={{
-              background: roleStyle.bg,
-              color: roleStyle.text,
-              border: roleStyle.border,
-            }}
-          >
-            {role}
-          </span>
+          {role && (
+            <span
+              className={styles.roleBadge}
+              style={{
+                background: roleStyle.bg,
+                color: roleStyle.text,
+                border: roleStyle.border,
+              }}
+            >
+              {role}
+            </span>
+          )}
 
           <button onClick={handleLogout} className={styles.logoutBtn}>
             Sign Out

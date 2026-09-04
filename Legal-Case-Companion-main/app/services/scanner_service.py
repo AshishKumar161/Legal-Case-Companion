@@ -6,7 +6,11 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.exceptions import ResourceNotFoundError, ScannerUnavailableError, ValidationError
+from app.core.exceptions import (
+    ResourceNotFoundError,
+    ScannerUnavailableError,
+    ValidationError,
+)
 from app.core.file_validation import validate_file_magic_bytes
 from app.core.storage import get_storage_provider
 from app.models.document import Document, DocumentSecurityStatus

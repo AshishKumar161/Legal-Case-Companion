@@ -285,7 +285,7 @@ def test_concurrent_consultation_slot_booking_race_prevention(client: TestClient
     lp.consultation_fee = 0.0
     db.commit()
 
-    slot_time = (datetime.now(UTC) + timedelta(days=7)).replace(hour=16, minute=0, second=0, microsecond=0).isoformat()
+    slot_time = (datetime.now(UTC) + timedelta(days=7)).replace(hour=10, minute=0, second=0, microsecond=0).isoformat()
 
     # Client 1 books slot -> 201 Created
     res1 = client.post(

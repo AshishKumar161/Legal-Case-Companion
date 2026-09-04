@@ -4,15 +4,17 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import RequireRole, get_db
+from app.api.deps import RequireOperatorPermission, RequireRole, get_db
 from app.core.metrics import metrics_collector
 from app.models.case import CaseStatus
 from app.models.consultation import ConsultationStatus
 from app.models.document import DocumentSecurityStatus
 from app.models.job import JobStatus, JobType
 from app.models.legal_authority import LegalAuthorityType, LegalSource
+from app.models.operator import OperationalPermission
 from app.models.payment import PaymentStatus
 from app.models.user import AccountStatus, User, UserRole, VerificationStatus
+from app.services.operator_service import OperatorService
 from app.schemas.admin import (
     AdminCaseResponse,
     AdminConsultationResponse,
@@ -467,3 +469,57 @@ def reindex_legal_source(
         "reindexed_count": count,
         "status": "SUCCESS",
     }
+
+
+# --------------------------------------------------------------------------
+# OPERATOR PERMISSIONS & CONTROL PLANE
+# --------------------------------------------------------------------------
+
+
+class GrantOperatorPermissionRequest(BaseModel):
+    permission: OperationalPermission
+
+
+@router.post("/operators/{user_id}/permissions", status_code=status.HTTP_201_CREATED)
+def grant_operator_permission(
+    user_id: UUID,
+    req: GrantOperatorPermissionRequest,
+    current_user: User = Depends(RequireOperatorPermission(OperationalPermission.SYSTEM_OPERATIONS)),
+    db: Session = Depends(get_db),
+):
+    """Assigns an explicit operational permission to an administrative user."""
+    service = OperatorService(db)
+    grant = service.grant_permission(current_user, user_id, req.permission)
+    return {
+        "id": str(grant.id),
+        "user_id": str(grant.user_id),
+        "permission": grant.permission.value,
+        "granted_by_user_id": str(grant.granted_by_user_id),
+        "created_at": grant.created_at.isoformat(),
+    }
+
+
+@router.delete("/operators/{user_id}/permissions/{permission}", status_code=status.HTTP_200_OK)
+def revoke_operator_permission(
+    user_id: UUID,
+    permission: OperationalPermission,
+    current_user: User = Depends(RequireOperatorPermission(OperationalPermission.SYSTEM_OPERATIONS)),
+    db: Session = Depends(get_db),
+):
+    """Revokes an operational permission from an administrative user."""
+    service = OperatorService(db)
+    service.revoke_permission(current_user, user_id, permission)
+    return {"status": "REVOKED", "user_id": str(user_id), "permission": permission.value}
+
+
+@router.get("/operators/{user_id}/permissions")
+def list_operator_permissions(
+    user_id: UUID,
+    current_user: User = Depends(RequireOperatorPermission(OperationalPermission.SYSTEM_OPERATIONS)),
+    db: Session = Depends(get_db),
+):
+    """Lists all active operational permissions held by an administrator."""
+    service = OperatorService(db)
+    perms = service.list_user_permissions(user_id)
+    return {"user_id": str(user_id), "permissions": [p.value for p in perms]}
+

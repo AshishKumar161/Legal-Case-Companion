@@ -1,8 +1,12 @@
 import logging
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Cookie, Depends, Request, Response, status
+from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -13,10 +17,11 @@ from app.core.csrf import (
     validate_csrf_token,
     validate_origin,
 )
-from app.core.exceptions import AuthenticationError
+from app.core.exceptions import AppException, AuthenticationError, ValidationError
+from app.core.security import verify_password
 from app.core.oauth_security import verify_oauth_state
 from app.db.database import get_db
-from app.models.user import User
+from app.models.user import ClientProfile, LawyerProfile, User, UserRole
 from app.schemas.auth import (
     EmailOTPVerifyRequest,
     EmailVerificationConfirm,
@@ -28,13 +33,15 @@ from app.schemas.auth import (
     GoogleDirectAuthRequest,
     GoogleLinkRequest,
     LoginRequest,
+    LogoutRequest,
     PasswordChangeRequest,
     PasswordResetConfirm,
     PasswordResetRequest,
     PasswordResetResponse,
+    RefreshRequest,
     Token,
 )
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import CurrentUserResponse, UserCreate, UserResponse
 from app.services.auth_service import AuthService
 from app.services.google_oauth_service import GoogleOAuthService
 from app.services.user_service import UserService
@@ -58,11 +65,141 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
     )
 
 
+def _validate_pilot_registration(db: Session, user_in: UserCreate) -> None:
+    # Phase XX: Check if onboarding is restricted to invite-only participants
+    if getattr(settings, "ONBOARDING_MODE", "CONTROLLED") == "INVITE_ONLY":
+        from app.models.pilot import AllowlistStatus, PilotAllowlistEntry
+
+        normalized_email = user_in.email.strip().lower()
+        domain = normalized_email.split("@")[-1] if "@" in normalized_email else ""
+        entry = (
+            db.query(PilotAllowlistEntry)
+            .filter(
+                PilotAllowlistEntry.status == AllowlistStatus.ACTIVE,
+                (
+                    (PilotAllowlistEntry.identifier == normalized_email)
+                    | (PilotAllowlistEntry.identifier == domain)
+                ),
+            )
+            .first()
+        )
+        if not entry:
+            raise AppException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="INVITE_ONLY_REGISTRATION",
+                message="Registration is currently restricted to invited participants.",
+            )
+
+    if not settings.PILOT_MODE:
+        return
+
+    # 1. Signups allowed check
+    if not settings.PILOT_SIGNUP_ENABLED:
+        raise AppException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="PILOT_SIGNUP_DISABLED",
+            message="New user signups are paused during this pilot phase.",
+        )
+
+    # 2. Pilot Timeframe check
+    now = datetime.now(UTC)
+    if settings.PILOT_START_TIME:
+        start_time = settings.PILOT_START_TIME
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=UTC)
+        if now < start_time:
+            raise AppException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="PILOT_NOT_STARTED",
+                message="The pilot phase has not started yet.",
+            )
+    if settings.PILOT_END_TIME:
+        end_time = settings.PILOT_END_TIME
+        if end_time.tzinfo is None:
+            end_time = end_time.replace(tzinfo=UTC)
+        if now > end_time:
+            raise AppException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="PILOT_CONCLUDED",
+                message="The pilot phase has ended.",
+            )
+
+    # 3. Capacity checks
+    if user_in.role == UserRole.CLIENT:
+        active_clients = (
+            db.query(func.count(User.id))
+            .filter(User.role == UserRole.CLIENT, User.deleted_at.is_(None))
+            .scalar()
+            or 0
+        )
+        if active_clients >= settings.PILOT_MAX_CLIENTS:
+            raise AppException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="PILOT_CAPACITY_REACHED",
+                message="Pilot client capacity has been reached.",
+            )
+    elif user_in.role == UserRole.LAWYER:
+        active_lawyers = (
+            db.query(func.count(User.id))
+            .filter(User.role == UserRole.LAWYER, User.deleted_at.is_(None))
+            .scalar()
+            or 0
+        )
+        if active_lawyers >= settings.PILOT_MAX_LAWYERS:
+            raise AppException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="PILOT_CAPACITY_REACHED",
+                message="Pilot lawyer capacity has been reached.",
+            )
+
+    # 4. Allowlist checks
+    if settings.PILOT_ALLOWLIST_ENABLED:
+        from app.models.pilot import AllowlistStatus, PilotAllowlistEntry
+
+        normalized_email = user_in.email.strip().lower()
+        domain = normalized_email.split("@")[-1] if "@" in normalized_email else ""
+
+        entry = (
+            db.query(PilotAllowlistEntry)
+            .filter(
+                PilotAllowlistEntry.status == AllowlistStatus.ACTIVE,
+                (
+                    (PilotAllowlistEntry.identifier == normalized_email)
+                    | (PilotAllowlistEntry.identifier == domain)
+                ),
+            )
+            .first()
+        )
+        if not entry:
+            raise AppException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="PILOT_NOT_ALLOWLISTED",
+                message="This email address is not approved for the production pilot.",
+            )
+        if entry.valid_until:
+            valid_until = entry.valid_until
+            if valid_until.tzinfo is None:
+                valid_until = valid_until.replace(tzinfo=UTC)
+            if now > valid_until:
+                raise AppException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    code="PILOT_ALLOWLIST_EXPIRED",
+                    message="Pilot allowlist approval for this user has expired.",
+                )
+        if entry.role_target and entry.role_target != user_in.role:
+            raise AppException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="PILOT_ROLE_MISMATCH",
+                message=f"Allowlist entry is restricted to role {entry.role_target.value}.",
+            )
+
+
 @router.post(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
 @limiter.limit("5/minute")
 def register(request: Request, user_in: UserCreate, db: Session = Depends(get_db)):
+    _validate_pilot_registration(db, user_in)
     user_service = UserService(db)
     user = user_service.register_user(user_in)
 
@@ -96,7 +233,11 @@ def login(
     csrf_token = generate_csrf_token()
     set_csrf_cookie(response, csrf_token)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token,
+    }
 
 
 @router.post("/refresh", response_model=Token)
@@ -104,10 +245,12 @@ def login(
 def refresh(
     request: Request,
     response: Response,
+    body: RefreshRequest | None = None,
     refresh_token: str = Cookie(None),
     db: Session = Depends(get_db),
 ):
-    if not refresh_token:
+    active_refresh = (body.refresh_token if body and body.refresh_token else None) or refresh_token
+    if not active_refresh:
         raise AuthenticationError("Refresh token missing")
 
     # Phase 6: Validate CSRF token and Origin on the refresh endpoint
@@ -121,7 +264,7 @@ def refresh(
     auth_service = AuthService(db)
     ip_address = request.client.host if request.client else None
 
-    new_access, new_refresh = auth_service.refresh(refresh_token, ip_address)
+    new_access, new_refresh = auth_service.refresh(active_refresh, ip_address)
 
     _set_refresh_cookie(response, new_refresh)
 
@@ -129,24 +272,74 @@ def refresh(
     csrf_token = generate_csrf_token()
     set_csrf_cookie(response, csrf_token)
 
-    return {"access_token": new_access, "token_type": "bearer"}
+    return {
+        "access_token": new_access,
+        "token_type": "bearer",
+        "refresh_token": new_refresh,
+    }
 
 
 @router.post("/logout")
 def logout(
     request: Request,
     response: Response,
+    body: LogoutRequest | None = None,
     refresh_token: str = Cookie(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    active_refresh = (body.refresh_token if body and body.refresh_token else None) or refresh_token
     auth_service = AuthService(db)
-    auth_service.logout(refresh_token, current_user.id)
+    if active_refresh:
+        auth_service.logout(active_refresh, current_user.id)
 
     response.delete_cookie(key="refresh_token", path=f"{settings.API_V1_STR}/auth")
     response.delete_cookie(key="csrf_token", path="/")
     response.delete_cookie(key="csrf_token", path=f"{settings.API_V1_STR}/auth")
     return {"detail": "Logged out successfully"}
+
+
+@router.get("/me", response_model=CurrentUserResponse)
+def get_current_user_identity(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Authoritative current user identity and profile details."""
+    full_name = None
+    location = None
+    if current_user.role == UserRole.CLIENT:
+        client_profile = (
+            db.query(ClientProfile).filter(ClientProfile.user_id == current_user.id).first()
+        )
+        if client_profile:
+            full_name = client_profile.full_name
+            location = client_profile.location
+    elif current_user.role == UserRole.LAWYER:
+        lawyer_profile = (
+            db.query(LawyerProfile).filter(LawyerProfile.user_id == current_user.id).first()
+        )
+        if lawyer_profile:
+            full_name = lawyer_profile.full_name
+            location = lawyer_profile.location
+    elif current_user.role == UserRole.ADMIN:
+        full_name = "System Administrator"
+
+    return CurrentUserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        account_status=(
+            current_user.account_status.value
+            if hasattr(current_user.account_status, "value")
+            else str(current_user.account_status)
+        ),
+        role=(
+            current_user.role.value
+            if hasattr(current_user.role, "value")
+            else str(current_user.role)
+        ),
+        full_name=full_name,
+        location=location,
+    )
 
 
 @router.post("/password/change")
@@ -348,7 +541,10 @@ def _process_google_callback(
     logger.info("google_oauth.success: Google OAuth login completed successfully")
 
     return Token(
-        access_token=access_token, token_type="bearer", return_url=safe_return_url
+        access_token=access_token,
+        token_type="bearer",
+        refresh_token=refresh_token,
+        return_url=safe_return_url,
     )
 
 
@@ -425,7 +621,11 @@ def google_direct_auth(
     csrf_token = generate_csrf_token()
     set_csrf_cookie(response, csrf_token)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token,
+    }
 
 
 @router.post("/google/link", response_model=ExternalIdentityResponse)
@@ -489,4 +689,40 @@ def get_user_identities(
     """Returns all external identities linked to the authenticated user."""
     auth_service = AuthService(db)
     return auth_service.get_user_identities(current_user.id)
+
+
+class AccountDeleteRequest(BaseModel):
+    password: str | None = None
+    reason: str | None = None
+
+
+@router.delete("/account")
+@limiter.limit("5/minute")
+def delete_user_account_endpoint(
+    request: Request,
+    response: Response,
+    req: AccountDeleteRequest | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Safely deletes and anonymizes the authenticated user account with session revocation."""
+    if current_user.password_hash:
+        if not req or not req.password:
+            raise ValidationError("Password confirmation is required to delete account")
+        if not verify_password(req.password, current_user.password_hash):
+            raise AuthenticationError("Invalid password confirmation")
+
+    user_service = UserService(db)
+    ip_address = request.client.host if request.client else None
+    user_service.delete_user_account(
+        user_id=current_user.id,
+        reason=req.reason if req else None,
+        ip_address=ip_address,
+    )
+
+    # Clear cookies
+    response.delete_cookie(key="refresh_token", path=f"{settings.API_V1_STR}/auth")
+    response.delete_cookie(key="csrf_token", path="/")
+    return {"detail": "Account successfully deleted and personal data anonymized"}
+
 

@@ -1,17 +1,37 @@
+import json
+import logging
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    Query,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.api.deps import RequireRole, get_current_user, get_db
 from app.api.v1.auth import limiter
+from app.core.config import settings
+from app.core.exceptions import AuthorizationError
+from app.core.redis import get_redis_client
+from app.core.security import verify_access_token
 from app.models.consultation import Consultation, ConsultationStatus
 from app.models.notification import NotificationType
 from app.models.payment import Payment, PaymentStatus
-from app.models.user import LawyerProfile, User, UserRole
+from app.models.user import AccountStatus, LawyerProfile, User, UserRole
+from app.schemas.auth import WSTicketResponse
+from app.services.lawyer_call_channel import incoming_call_channel_manager
 from app.services.notification_service import NotificationService
+from app.services.presence_service import presence_service
+
+logger = logging.getLogger(__name__)
 from app.schemas.case import CaseResponse
 from app.schemas.consultation import (
     ConsultationCancelRequest,
@@ -99,6 +119,10 @@ def get_incoming_calls_for_lawyer(
     if not lawyer_profile:
         return []
 
+    consultation_service = ConsultationService(db)
+    # Expire stale calls waiting past the ring timeout
+    consultation_service.expire_stale_incoming_calls(lawyer_profile.id)
+
     now_utc = datetime.now(UTC)
     recent_cutoff = now_utc - timedelta(hours=4)
     consultations = (
@@ -127,6 +151,128 @@ def get_incoming_calls_for_lawyer(
             "created_at": c.created_at.isoformat(),
         })
     return items
+
+
+@router.post("/ws-ticket", response_model=WSTicketResponse)
+def create_websocket_ticket(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Generate a short-lived (60s), single-use ticket for authenticating the incoming-calls WebSocket.
+    Restricted to verified lawyers and platform administrators.
+    """
+    if current_user.role not in (UserRole.LAWYER, UserRole.ADMIN):
+        raise AuthorizationError("Only lawyers and admins can acquire an incoming call WebSocket ticket")
+
+    lawyer_profile = (
+        db.query(LawyerProfile)
+        .filter(LawyerProfile.user_id == current_user.id, LawyerProfile.deleted_at.is_(None))
+        .first()
+    )
+    if not lawyer_profile and current_user.role != UserRole.ADMIN:
+        raise AuthorizationError("No active lawyer profile found for this account")
+
+    ticket = secrets.token_urlsafe(32)
+    ticket_payload = {
+        "user_id": str(current_user.id),
+        "lawyer_id": str(lawyer_profile.id) if lawyer_profile else None,
+        "role": current_user.role.value,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+
+    redis_client = get_redis_client()
+    key = f"{settings.REDIS_KEY_PREFIX}:{settings.ENVIRONMENT}:ws_ticket:{ticket}"
+    redis_client.set(key, json.dumps(ticket_payload).encode("utf-8"), ex=60)
+
+    return WSTicketResponse(ticket=ticket, expires_in=60)
+
+
+@router.websocket("/ws/incoming-calls")
+async def websocket_incoming_calls(
+    websocket: WebSocket,
+    ticket: str | None = Query(None, description="Short-lived single-use WebSocket ticket"),
+    token: str | None = Query(None, description="Legacy JWT bearer access token fallback"),
+    db: Session = Depends(get_db),
+):
+    """
+    Real-time WebSocket connection for lawyers to receive instantaneous incoming call alerts.
+    Authenticates via single-use ticket (or legacy bearer token fallback).
+    Supports multi-tab broadcasting and automatic presence heartbeat.
+    """
+    user_id: UUID | None = None
+    if ticket:
+        redis_client = get_redis_client()
+        key = f"{settings.REDIS_KEY_PREFIX}:{settings.ENVIRONMENT}:ws_ticket:{ticket}"
+        raw = redis_client.get(key)
+        if not raw:
+            logger.warning("Incoming call WebSocket auth rejected: ticket invalid or expired")
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+        # Single-use: delete immediately upon consumption
+        redis_client.delete(key)
+        try:
+            t_data = json.loads(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
+            user_id = UUID(t_data["user_id"])
+        except Exception as e:
+            logger.warning("Incoming call WebSocket auth rejected: corrupted ticket payload: %s", e)
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+    elif token:
+        try:
+            payload = verify_access_token(token)
+            user_id = UUID(payload["sub"])
+        except Exception as e:
+            logger.warning("Incoming call WebSocket auth rejected: %s", e)
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+    else:
+        logger.warning("Incoming call WebSocket auth rejected: neither ticket nor token provided")
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    user = (
+        db.query(User)
+        .filter(User.id == user_id, User.deleted_at.is_(None))
+        .first()
+    )
+    if not user or user.account_status != AccountStatus.ACTIVE or user.role not in (UserRole.LAWYER, UserRole.ADMIN):
+        logger.warning("Incoming call WebSocket unauthorized for user %s", user_id)
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    lawyer_profile = (
+        db.query(LawyerProfile)
+        .filter(LawyerProfile.user_id == user.id, LawyerProfile.deleted_at.is_(None))
+        .first()
+    )
+    if not lawyer_profile:
+        logger.warning("Incoming call WebSocket: no lawyer profile for user %s", user_id)
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    lawyer_id = lawyer_profile.id
+    await incoming_call_channel_manager.connect(lawyer_id, websocket)
+
+    # Immediately register lawyer presence
+    presence_service.record_heartbeat(user.id, lawyer_id, available_preference=True)
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+                presence_service.record_heartbeat(user.id, lawyer_id, available_preference=True)
+            elif data == "heartbeat":
+                presence_service.record_heartbeat(user.id, lawyer_id, available_preference=True)
+                await websocket.send_json({"type": "heartbeat_ack", "status": "AVAILABLE"})
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.debug("Incoming call WebSocket disconnected: %s", e)
+    finally:
+        await incoming_call_channel_manager.disconnect(lawyer_id, websocket)
+
 
 
 @router.get("/{consultation_id}", response_model=ConsultationResponse)
@@ -315,8 +461,23 @@ def process_test_payment(
             },
             event_id=f"incoming_call_{consultation.id}",
         )
-    except Exception:
-        pass
+
+        call_data = {
+            "id": str(consultation.id),
+            "client_name": client_name,
+            "fee": float(consultation.fee_amount),
+            "case_id": str(consultation.case_id) if consultation.case_id else None,
+            "scheduled_at": consultation.scheduled_at.isoformat() if consultation.scheduled_at else None,
+            "created_at": consultation.created_at.isoformat() if consultation.created_at else None,
+            "ring_timeout_seconds": settings.INSTANT_CALL_RING_TIMEOUT_SECONDS,
+        }
+        consultation_service._dispatch_async(
+            incoming_call_channel_manager.notify_incoming_call(
+                consultation.lawyer_id, call_data
+            )
+        )
+    except Exception as e:
+        logger.warning("Error notifying lawyer of paid consultation: %s", e)
 
     return consultation
 

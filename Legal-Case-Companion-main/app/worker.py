@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.db.database import SessionLocal
 from app.services.job_scheduler import JobScheduler
+from app.services.outbox_service import OutboxService
 
 setup_logging(settings.LOG_LEVEL)
 logger = logging.getLogger("app.worker")
@@ -33,6 +34,11 @@ def run_worker_loop(poll_interval_seconds: float = 2.0, batch_size: int = 10):
             processed = scheduler.run_worker_batch(db, limit=batch_size)
             if processed > 0:
                 logger.info(f"Processed {processed} background job(s).")
+
+            outbox_svc = OutboxService(db)
+            outbox_count = outbox_svc.process_outbox_batch(limit=batch_size)
+            if outbox_count > 0:
+                logger.info(f"Dispatched {outbox_count} outbox event(s).")
         except Exception as e:  # noqa: BLE001
             logger.error(f"Worker loop encountered an error: {e}")
         finally:

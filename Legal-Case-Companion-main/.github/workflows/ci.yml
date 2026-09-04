@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   backend-ci:
     name: Backend Tests, Migrations & Security
@@ -57,13 +60,13 @@ jobs:
           alembic heads
           alembic upgrade head
 
-      - name: Run Backend Integration & Security Tests
+      - name: Run Backend Integration, Security & E2E Tests
         env:
           DATABASE_URL: postgresql+psycopg://postgres:postgrespassword@localhost:5432/legal_db
           ENVIRONMENT: test
           LOG_LEVEL: WARNING
         run: |
-          pytest tests/integration/ -v --maxfail=5
+          pytest tests/integration/ tests/security/ tests/e2e/ -v --maxfail=5
 
   frontend-ci:
     name: Frontend TypeScript & Production Build

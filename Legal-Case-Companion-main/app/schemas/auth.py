@@ -7,7 +7,22 @@ from pydantic import BaseModel, ConfigDict
 class Token(BaseModel):
     access_token: str
     token_type: str
+    refresh_token: str | None = None
+    session_id: str | None = None
     return_url: str | None = None
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str | None = None
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str | None = None
+
+
+class WSTicketResponse(BaseModel):
+    ticket: str
+    expires_in: int = 60
 
 
 class LoginRequest(BaseModel):

@@ -49,7 +49,6 @@ export default function ConsultationsPage() {
   const [creatingCaseFromCon, setCreatingCaseFromCon] = useState(false);
   const [linkingCase, setLinkingCase] = useState(false);
   const [caseActionMsg, setCaseActionMsg] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState<number | null>(null);
   const [istClock, setIstClock] = useState("");
 
   useEffect(() => {
@@ -70,7 +69,6 @@ export default function ConsultationsPage() {
         year: "numeric",
       });
       setIstClock(`${dateStr} • ${timeStr} IST`);
-      setCurrentTime(Date.now());
     };
     updateClock();
     const interval = setInterval(updateClock, 1000);

@@ -20,15 +20,28 @@ if TYPE_CHECKING:
 
 
 class ConsultationStatus(str, enum.Enum):
-    REQUESTED = "REQUESTED"
-    ACCEPTED = "ACCEPTED"
-    PAID = "PAID"
-    SCHEDULED = "SCHEDULED"
+    # Core Logical Lifecycle States
+    CREATED = "CREATED"
+    PENDING = "PENDING"
+    CLIENT_AUTHORIZED = "CLIENT_AUTHORIZED"
+    LAWYER_ACCEPTED = "LAWYER_ACCEPTED"
+    MUTUAL_CONSENT = "MUTUAL_CONSENT"
     IN_PROGRESS = "IN_PROGRESS"
-    COMPLETED = "COMPLETED"
+    ENDED = "ENDED"
+
+    # Terminal / Error States
     CANCELLED = "CANCELLED"
     REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
+    PAYMENT_FAILED = "PAYMENT_FAILED"
     NO_SHOW = "NO_SHOW"
+
+    # Backward-Compatible Legacy Aliases
+    REQUESTED = "REQUESTED"
+    PAID = "PAID"
+    ACCEPTED = "ACCEPTED"
+    SCHEDULED = "SCHEDULED"
+    COMPLETED = "COMPLETED"
 
 
 class Consultation(Base, TimestampMixin, SoftDeleteMixin):

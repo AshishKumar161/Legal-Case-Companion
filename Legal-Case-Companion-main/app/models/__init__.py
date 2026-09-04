@@ -14,6 +14,25 @@ from app.models.auth import (
     UserExternalIdentity,
 )
 from app.models.base import Base
+from app.models.commercial import (
+    CommercialEntitlement,
+    CommercialTransaction,
+    TransactionStatus,
+    TransactionType,
+)
+from app.models.compliance import (
+    ComplianceItemStatus,
+    ComplianceRegistryItem,
+)
+from app.models.legal_document import (
+    LegalDocumentType,
+    LegalDocumentVersion,
+    UserDocumentConsent,
+)
+from app.models.localization import (
+    TranslationMessage,
+    TranslationStatus,
+)
 from app.models.case import (
     Case,
     CaseParticipant,
@@ -48,12 +67,6 @@ from app.models.case_intelligence import (
 )
 from app.models.consultation import Consultation, ConsultationStatus
 from app.models.consultation_note import ConsultationNote
-from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
-from app.models.video_recording import (
-    VideoRecording,
-    VideoRecordingConsent,
-    VideoRecordingStatus,
-)
 from app.models.document import (
     Document,
     DocumentCategory,
@@ -63,7 +76,38 @@ from app.models.document import (
 )
 from app.models.document_page import DocumentPage
 from app.models.evaluation import AIEvaluation
-from app.models.feedback import Feedback, FeedbackCategory
+from app.models.evidence import (
+    Evidence,
+    EvidenceAccessGrant,
+    EvidenceAccessLevel,
+    EvidenceCategory,
+    EvidenceCustodyAction,
+    EvidenceCustodyEvent,
+    EvidenceIntegrityStatus,
+    EvidenceScanStatus,
+    EvidenceSensitivity,
+    EvidenceStatus,
+    EvidenceVersion,
+)
+from app.models.experiment import ExperimentStatus, PilotExperiment
+from app.models.feedback import Feedback, FeedbackCategory, FeedbackType
+from app.models.ai_review import (
+    AIReviewCategory,
+    AIReviewOutcome,
+    AIReviewRecord,
+    AIReviewSeverity,
+    AIReviewStatus,
+)
+from app.models.data_quality import (
+    DataQualityRun,
+    DataQualityRunStatus,
+    DataQualityRunType,
+)
+from app.models.support import (
+    SupportCase,
+    SupportCaseSeverity,
+    SupportCaseStatus,
+)
 from app.models.job import (
     BackgroundJob,
     JobStatus,
@@ -85,6 +129,7 @@ from app.models.notification import (
     NotificationType,
     UserNotificationPreference,
 )
+from app.models.outbox import OutboxEvent, OutboxStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.task import CaseTask, TaskPriority, TaskSourceType, TaskStatus
 from app.models.user import (
@@ -95,6 +140,26 @@ from app.models.user import (
     User,
     UserRole,
     VerificationStatus,
+)
+from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
+from app.models.video_recording import (
+    VideoRecording,
+    VideoRecordingConsent,
+    VideoRecordingStatus,
+)
+from app.models.incident import (
+    IncidentCategory,
+    IncidentDetector,
+    IncidentSeverity,
+    IncidentStatus,
+    IncidentTimelineEvent,
+    ProductionIncident,
+)
+from app.models.operator import OperationalPermission, UserOperatorPermission
+from app.models.pilot import (
+    AllowlistIdentifierType,
+    AllowlistStatus,
+    PilotAllowlistEntry,
 )
 from app.models.workflow import (
     CaseDeadline,
@@ -116,6 +181,8 @@ __all__ = [
     "AIMessageRole",
     "AIResponseAudit",
     "AccountStatus",
+    "AllowlistIdentifierType",
+    "AllowlistStatus",
     "AuditEvent",
     "AuthorityLevel",
     "BackgroundJob",
@@ -156,14 +223,30 @@ __all__ = [
     "DocumentSecurityStatus",
     "DocumentType",
     "EmailVerificationToken",
+    "Evidence",
+    "EvidenceAccessGrant",
+    "EvidenceAccessLevel",
+    "EvidenceCategory",
+    "EvidenceCustodyAction",
+    "EvidenceCustodyEvent",
     "EvidenceGapStatus",
     "EvidenceGapType",
+    "EvidenceIntegrityStatus",
+    "EvidenceScanStatus",
+    "EvidenceSensitivity",
+    "EvidenceStatus",
+    "EvidenceVersion",
     "FactSourceType",
     "FactVerificationStatus",
     "Feedback",
     "FeedbackCategory",
     "HearingSourceType",
     "HearingStatus",
+    "IncidentCategory",
+    "IncidentDetector",
+    "IncidentSeverity",
+    "IncidentStatus",
+    "IncidentTimelineEvent",
     "IssueStatus",
     "JobStatus",
     "JobType",
@@ -182,13 +265,18 @@ __all__ = [
     "Message",
     "Notification",
     "NotificationType",
+    "OperationalPermission",
+    "OutboxEvent",
+    "OutboxStatus",
     "ParticipantRole",
     "ParticipantStatus",
     "PasswordResetToken",
     "Payment",
     "PaymentStatus",
+    "PilotAllowlistEntry",
     "ProductEvent",
     "ProductEventType",
+    "ProductionIncident",
     "RawLegalSource",
     "RefreshTokenSession",
     "ReminderStatus",
@@ -201,10 +289,36 @@ __all__ = [
     "UserExternalIdentity",
     "UserNotificationPreference",
     "UserRole",
+    "UserOperatorPermission",
     "VerificationStatus",
     "VideoMeeting",
     "VideoMeetingStatus",
     "VideoRecording",
     "VideoRecordingConsent",
     "VideoRecordingStatus",
+    "AIReviewCategory",
+    "AIReviewOutcome",
+    "AIReviewRecord",
+    "AIReviewSeverity",
+    "AIReviewStatus",
+    "DataQualityRun",
+    "DataQualityRunStatus",
+    "DataQualityRunType",
+    "ExperimentStatus",
+    "FeedbackType",
+    "PilotExperiment",
+    "SupportCase",
+    "SupportCaseSeverity",
+    "SupportCaseStatus",
+    "CommercialEntitlement",
+    "CommercialTransaction",
+    "TransactionStatus",
+    "TransactionType",
+    "ComplianceItemStatus",
+    "ComplianceRegistryItem",
+    "LegalDocumentType",
+    "LegalDocumentVersion",
+    "UserDocumentConsent",
+    "TranslationMessage",
+    "TranslationStatus",
 ]

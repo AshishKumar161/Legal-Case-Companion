@@ -370,7 +370,9 @@ def simulate_malware_scan(
     if settings.ENVIRONMENT == "production":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
-    doc = DocumentService(db).get_document_by_id(current_user, document_id)
+    from app.core.authorization import authorize_document_modification
+
+    doc = authorize_document_modification(db, current_user, document_id)
     if doc.security_status == DocumentSecurityStatus.PENDING:
         doc.security_status = DocumentSecurityStatus.QUARANTINED
         db.commit()

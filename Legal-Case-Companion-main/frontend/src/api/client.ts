@@ -1,3 +1,12 @@
+import {
+  getSessionAccessToken,
+  setSessionAccessToken,
+  getSessionRefreshToken,
+  setSessionRefreshToken,
+  clearTabSession,
+  getTabSessionId,
+} from "./session";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 interface RequestOptions extends RequestInit {
@@ -75,7 +84,7 @@ function onRefreshed(token: string | null) {
   refreshSubscribers = [];
 }
 
-async function performTokenRefresh(): Promise<string | null> {
+export async function performTokenRefresh(): Promise<string | null> {
   try {
     const csrfToken = getCookie("csrf_token");
     const headers: Record<string, string> = {
@@ -85,10 +94,14 @@ async function performTokenRefresh(): Promise<string | null> {
       headers["X-CSRF-Token"] = csrfToken;
     }
 
+    const refreshToken = getSessionRefreshToken();
+    const payload = refreshToken ? { refresh_token: refreshToken } : {};
+
     const res = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
       method: "POST",
       credentials: "include",
       headers,
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -97,8 +110,9 @@ async function performTokenRefresh(): Promise<string | null> {
 
     const data = await res.json();
     if (data?.access_token) {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("access_token", data.access_token);
+      setSessionAccessToken(data.access_token);
+      if (data?.refresh_token) {
+        setSessionRefreshToken(data.refresh_token);
       }
       return data.access_token;
     }
@@ -117,7 +131,7 @@ async function fetchWithAuth(url: string, options: RequestOptions = {}): Promise
 
   if (typeof window !== "undefined") {
     if (requireAuth) {
-      const token = localStorage.getItem("access_token");
+      const token = getSessionAccessToken();
       if (token) {
         headers.set("Authorization", `Bearer ${token}`);
       }
@@ -170,8 +184,14 @@ async function fetchWithAuth(url: string, options: RequestOptions = {}): Promise
       if (newToken) {
         return fetchWithAuth(url, { ...options, _retry: true });
       } else {
-        localStorage.removeItem("access_token");
-        window.dispatchEvent(new CustomEvent("lcc:session-expired"));
+        clearTabSession();
+        const sessionId = getTabSessionId();
+        window.dispatchEvent(
+          new CustomEvent(`lcc:session-expired:${sessionId}`, { detail: { sessionId } })
+        );
+        window.dispatchEvent(
+          new CustomEvent("lcc:session-expired", { detail: { sessionId } })
+        );
       }
     } else {
       // Queue concurrent requests while token is actively refreshing

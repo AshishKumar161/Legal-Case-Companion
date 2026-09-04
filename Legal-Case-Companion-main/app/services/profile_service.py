@@ -28,7 +28,7 @@ from app.schemas.profile import (
     LawyerVerificationCreate,
 )
 from app.services.auth_service import AuthService
-from app.services.presence_service import presence_manager
+from app.services.presence_service import presence_service
 
 
 class ProfileService:
@@ -108,7 +108,16 @@ class ProfileService:
         )
         if not profile:
             raise ResourceNotFoundError("Lawyer profile not found or inactive")
-        profile.is_online = presence_manager.is_online(profile.user_id)
+        profile.is_online = presence_service.is_online(profile.user_id)
+        if profile.is_online:
+            from app.services.consultation_service import ConsultationService
+            consultation_service = ConsultationService(self.db)
+            is_avail, _, p_status = consultation_service.is_lawyer_available(profile.id)
+            profile.is_available = is_avail
+            profile.presence_status = p_status.value if hasattr(p_status, "value") else str(p_status)
+        else:
+            profile.is_available = False
+            profile.presence_status = "OFFLINE"
         return profile
 
     def search_lawyers(
@@ -138,7 +147,7 @@ class ProfileService:
             )
         )
 
-        online_uids = presence_manager.get_online_user_ids()
+        online_uids = presence_service.get_online_user_ids()
         if online_only:
             if not online_uids:
                 return {"items": [], "total": 0, "skip": skip, "limit": limit}
@@ -156,28 +165,24 @@ class ProfileService:
             )
 
         if location and location.strip():
-            query = query.filter(LawyerProfile.location.ilike(f"%{location.strip()}%"))
+            loc_term = f"%{location.strip()}%"
+            query = query.filter(LawyerProfile.location.ilike(loc_term))
 
         if court_jurisdiction and court_jurisdiction.strip():
+            juris_term = f"%{court_jurisdiction.strip()}%"
             query = query.filter(
-                cast(LawyerProfile.court_jurisdictions, String).ilike(
-                    f"%{court_jurisdiction.strip()}%"
-                )
+                cast(LawyerProfile.court_jurisdictions, String).ilike(juris_term)
             )
 
         if practice_area and practice_area.strip():
+            pa_term = f"%{practice_area.strip()}%"
             query = query.filter(
-                cast(LawyerProfile.practice_areas, String).ilike(
-                    f"%{practice_area.strip()}%"
-                )
+                cast(LawyerProfile.practice_areas, String).ilike(pa_term)
             )
 
         if language and language.strip():
-            query = query.filter(
-                cast(LawyerProfile.languages, String).ilike(
-                    f"%{language.strip()}%"
-                )
-            )
+            lang_term = f"%{language.strip()}%"
+            query = query.filter(cast(LawyerProfile.languages, String).ilike(lang_term))
 
         if min_fee is not None:
             query = query.filter(LawyerProfile.consultation_fee >= min_fee)
@@ -200,12 +205,23 @@ class ProfileService:
             query = query.filter(has_approved_verif)
 
         all_matches = query.order_by(LawyerProfile.created_at.desc()).all()
-        for lp in all_matches:
-            lp.is_online = presence_manager.is_online(lp.user_id)
+        from app.services.consultation_service import ConsultationService
+        consultation_service = ConsultationService(self.db)
 
-        # Prioritize online lawyers first
+        for lp in all_matches:
+            lp.is_online = presence_service.is_online(lp.user_id)
+            if lp.is_online:
+                is_avail, _, p_status = consultation_service.is_lawyer_available(lp.id)
+                lp.is_available = is_avail
+                lp.presence_status = p_status.value if hasattr(p_status, "value") else str(p_status)
+            else:
+                lp.is_available = False
+                lp.presence_status = "OFFLINE"
+
+        # Prioritize available lawyers first, then online lawyers, then newest
         all_matches.sort(
             key=lambda x: (
+                not getattr(x, "is_available", False),
                 not getattr(x, "is_online", False),
                 -(x.created_at.timestamp() if x.created_at else 0),
             )

@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/api/client";
+import { getSessionAccessToken } from "@/api/session";
 import { InMeetingChatMessage, RecordingConsentStatus } from "@/types";
 
 interface VideoJoinInfo {
@@ -49,6 +50,25 @@ export default function VideoConsultationRoomPage() {
   const [remoteIsMuted, setRemoteIsMuted] = useState(false);
   const [remoteIsVideoOff, setRemoteIsVideoOff] = useState(false);
   const [remoteIsScreenSharing, setRemoteIsScreenSharing] = useState(false);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+
+  // Synchronized state refs for resilient WebRTC signaling and zero stale closures
+  const isMutedRef = useRef(false);
+  const isVideoOffRef = useRef(false);
+  const isScreenSharingRef = useRef(false);
+  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  useEffect(() => {
+    isVideoOffRef.current = isVideoOff;
+  }, [isVideoOff]);
+
+  useEffect(() => {
+    isScreenSharingRef.current = isScreenSharing;
+  }, [isScreenSharing]);
 
   // Timers
   const [secondsElapsed, setSecondsElapsed] = useState(0);
@@ -124,6 +144,7 @@ export default function VideoConsultationRoomPage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -139,6 +160,9 @@ export default function VideoConsultationRoomPage() {
 
   // Broadcast media status change over WebSocket
   const broadcastMediaStatus = useCallback((muted: boolean, videoOff: boolean, screenSharing: boolean) => {
+    isMutedRef.current = muted;
+    isVideoOffRef.current = videoOff;
+    isScreenSharingRef.current = screenSharing;
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
@@ -149,6 +173,148 @@ export default function VideoConsultationRoomPage() {
         })
       );
     }
+  }, []);
+
+  // Helper to reliably attach, configure, and play media stream on remote video element
+  // Muted is enforced on the video element so Chrome/Safari never block video decoding due to autoplay policy
+  const attachStreamToRemoteVideo = useCallback(
+    (videoEl: HTMLVideoElement | null, stream: MediaStream | null) => {
+      if (!videoEl || !stream) return;
+      try {
+        if (videoEl.srcObject !== stream) {
+          videoEl.srcObject = stream;
+        }
+        videoEl.muted = true;
+        videoEl.defaultMuted = true;
+        videoEl.playsInline = true;
+        videoEl.autoplay = true;
+        const playPromise = videoEl.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn("[LCC-Video] Remote video play deferred, retrying muted:", err);
+            videoEl.muted = true;
+            videoEl.play().catch(() => {});
+          });
+        }
+      } catch (err) {
+        console.warn("[LCC-Video] Error attaching stream to remote video element:", err);
+      }
+    },
+    []
+  );
+
+  // Helper to reliably play remote audio independently from video element
+  const attachStreamToRemoteAudio = useCallback(
+    (audioEl: HTMLAudioElement | null, stream: MediaStream | null) => {
+      if (!audioEl || !stream) return;
+      try {
+        if (audioEl.srcObject !== stream) {
+          audioEl.srcObject = stream;
+        }
+        audioEl.autoplay = true;
+        const playPromise = audioEl.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn("[LCC-Video] Remote audio waiting for user interaction:", err);
+          });
+        }
+      } catch (err) {
+        console.warn("[LCC-Video] Error attaching stream to remote audio element:", err);
+      }
+    },
+    []
+  );
+
+  // Global user interaction listener to unblock deferred media playback on modern browsers
+  useEffect(() => {
+    const unlockMedia = () => {
+      if (remoteAudioRef.current && remoteAudioRef.current.paused) {
+        remoteAudioRef.current.play().catch(() => {});
+      }
+      if (remoteVideoRef.current && remoteVideoRef.current.paused) {
+        remoteVideoRef.current.play().catch(() => {});
+      }
+    };
+    window.addEventListener("click", unlockMedia);
+    window.addEventListener("keydown", unlockMedia);
+    window.addEventListener("touchstart", unlockMedia);
+    return () => {
+      window.removeEventListener("click", unlockMedia);
+      window.removeEventListener("keydown", unlockMedia);
+      window.removeEventListener("touchstart", unlockMedia);
+    };
+  }, []);
+
+  // Callback ref to attach stream immediately when the remote video DOM element mounts
+  const setRemoteVideoNode = useCallback(
+    (node: HTMLVideoElement | null) => {
+      remoteVideoRef.current = node;
+      if (node && remoteStreamRef.current) {
+        attachStreamToRemoteVideo(node, remoteStreamRef.current);
+      }
+    },
+    [attachStreamToRemoteVideo]
+  );
+
+  // Creates a simulated animated consultation stream if hardware camera is busy in another tab/app
+  const createFallbackVideoStream = useCallback((name: string): MediaStream => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext("2d");
+
+    let frame = 0;
+    const draw = () => {
+      if (!ctx) return;
+      frame++;
+      const grad = ctx.createLinearGradient(0, 0, 640, 480);
+      grad.addColorStop(0, "#0b132b");
+      grad.addColorStop(0.5, "#1c2541");
+      grad.addColorStop(1, "#0b132b");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 640, 480);
+
+      ctx.strokeStyle = "rgba(59, 130, 246, 0.25)";
+      ctx.lineWidth = 2;
+      const radius = 55 + Math.sin(frame * 0.05) * 8;
+      ctx.beginPath();
+      ctx.arc(320, 190, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = "#2563eb";
+      ctx.beginPath();
+      ctx.arc(320, 190, 44, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 32px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("⚖️", 320, 190);
+
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillText(name, 320, 275);
+
+      ctx.font = "14px sans-serif";
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText("Live Consultation Video Stream", 320, 305);
+
+      const now = new Date().toLocaleTimeString();
+      ctx.fillStyle = "#22c55e";
+      ctx.beginPath();
+      ctx.arc(260, 350, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#cbd5e1";
+      ctx.font = "13px monospace";
+      ctx.fillText(`LIVE • ${now}`, 320, 350);
+
+      requestAnimationFrame(draw);
+    };
+    draw();
+
+    return canvas.captureStream(30);
   }, []);
 
   // Fetch consent status from backend
@@ -210,38 +376,34 @@ export default function VideoConsultationRoomPage() {
           // Non-blocking
         }
 
-        // Initialize local camera and mic with resilient error and track handling
+        // Initialize local camera and mic with resilient error and multi-tier track fallback
         let userMediaStream: MediaStream | null = null;
         try {
           userMediaStream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: true,
           });
-          if (mounted) {
-            localStreamRef.current = userMediaStream;
-            setLocalStream(userMediaStream);
-            setCameraError(null);
-
-            const videoTrack = userMediaStream.getVideoTracks()[0];
-            if (videoTrack) {
-              console.log(
-                `[LCC-Video] Camera track acquired: kind=${videoTrack.kind}, label="${videoTrack.label}", readyState=${videoTrack.readyState}, enabled=${videoTrack.enabled}`
-              );
-            }
-
-            if (localVideoRef.current) {
-              localVideoRef.current.muted = true;
-              localVideoRef.current.defaultMuted = true;
-              localVideoRef.current.srcObject = userMediaStream;
-              localVideoRef.current
-                .play()
-                .catch((playErr) =>
-                  console.warn("[LCC-Video] Play on init prevented:", playErr)
-                );
+        } catch (mediaErr: unknown) {
+          console.warn("[LCC-Video] Full audio+video getUserMedia failed, attempting fallback:", mediaErr);
+          // Tier 1 fallback: Try video-only (if microphone is busy or denied)
+          try {
+            userMediaStream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: false,
+            });
+          } catch (videoErr) {
+            console.warn("[LCC-Video] Video-only acquisition failed, attempting audio-only:", videoErr);
+            // Tier 2 fallback: Try audio-only (if camera is busy in another tab/app)
+            try {
+              userMediaStream = await navigator.mediaDevices.getUserMedia({
+                video: false,
+                audio: true,
+              });
+            } catch (audioErr) {
+              console.warn("[LCC-Video] Audio-only fallback also failed:", audioErr);
             }
           }
-        } catch (mediaErr: unknown) {
-          console.warn("[LCC-Video] Camera/microphone access failed:", mediaErr);
+
           let errMessage = "Could not access camera.";
           if (mediaErr instanceof Error) {
             if (
@@ -259,7 +421,7 @@ export default function VideoConsultationRoomPage() {
               mediaErr.name === "NotReadableError" ||
               mediaErr.name === "TrackStartError"
             ) {
-              errMessage = "Camera is currently in use by another application.";
+              errMessage = "Camera is currently in use by another tab or application. You can still consult via audio or screen share.";
             } else if (mediaErr.name === "OverconstrainedError") {
               errMessage = "Camera does not satisfy the requested constraints.";
             } else {
@@ -269,23 +431,33 @@ export default function VideoConsultationRoomPage() {
 
           if (mounted) {
             setCameraError(errMessage);
-            setIsVideoOff(true);
+          }
+        }
+
+        if (mounted && userMediaStream) {
+          localStreamRef.current = userMediaStream;
+          setLocalStream(userMediaStream);
+          const hasVideo = userMediaStream.getVideoTracks().length > 0;
+          setIsVideoOff(!hasVideo);
+          isVideoOffRef.current = !hasVideo;
+
+          if (hasVideo) {
+            setCameraError(null);
           }
 
-          // Fallback: Attempt audio-only so the user can still enter the consultation
-          try {
-            const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
-              video: false,
-              audio: true,
-            });
-            if (mounted) {
-              userMediaStream = audioOnlyStream;
-              localStreamRef.current = audioOnlyStream;
-              setLocalStream(audioOnlyStream);
-            }
-          } catch (audioFallbackErr) {
-            console.warn("[LCC-Video] Audio-only fallback also failed:", audioFallbackErr);
+          if (localVideoRef.current) {
+            localVideoRef.current.muted = true;
+            localVideoRef.current.defaultMuted = true;
+            localVideoRef.current.srcObject = userMediaStream;
+            localVideoRef.current
+              .play()
+              .catch((playErr) =>
+                console.warn("[LCC-Video] Play on init prevented:", playErr)
+              );
           }
+        } else if (mounted) {
+          setIsVideoOff(true);
+          isVideoOffRef.current = true;
         }
 
         // Enumerate media devices
@@ -310,9 +482,29 @@ export default function VideoConsultationRoomPage() {
           wsRef.current = ws;
 
           const pc = new RTCPeerConnection({
-            iceServers: info.ice_servers || [{ urls: "stun:stun.l.google.com:19302" }],
+            iceServers: info.ice_servers && info.ice_servers.length > 0
+              ? info.ice_servers
+              : [
+                  { urls: "stun:stun.l.google.com:19302" },
+                  { urls: "stun:stun1.l.google.com:19302" },
+                  { urls: "stun:stun2.l.google.com:19302" },
+                ],
           });
           peerConnectionRef.current = pc;
+
+          // Process queued ICE candidates after setting remote description
+          const drainPendingCandidates = async () => {
+            while (pendingCandidatesRef.current.length > 0) {
+              const cand = pendingCandidatesRef.current.shift();
+              if (cand) {
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(cand));
+                } catch (e) {
+                  console.warn("[LCC-Video] Error adding queued ICE candidate:", e);
+                }
+              }
+            }
+          };
 
           pc.onicecandidate = (event) => {
             if (event.candidate && ws.readyState === WebSocket.OPEN) {
@@ -328,12 +520,51 @@ export default function VideoConsultationRoomPage() {
           };
 
           pc.ontrack = (event) => {
-            if (event.streams && event.streams[0]) {
-              remoteStreamRef.current = event.streams[0];
-              if (remoteVideoRef.current) {
-                remoteVideoRef.current.srcObject = event.streams[0];
+            console.log(`[LCC-Video] Remote track received: kind=${event.track.kind}, id=${event.track.id}`);
+            let stream = (event.streams && event.streams[0]) || remoteStreamRef.current;
+            if (!stream) {
+              stream = new MediaStream();
+            }
+            if (!stream.getTracks().some((t) => t.id === event.track.id)) {
+              stream.addTrack(event.track);
+            }
+            remoteStreamRef.current = stream;
+
+            if (mounted) {
+              setRemoteStream(stream);
+              setRemotePeerActive(true);
+              if (event.track.kind === "video") {
+                setRemoteIsVideoOff(!event.track.enabled);
+                event.track.onmute = () => {
+                  console.log("[LCC-Video] Remote video track muted");
+                };
+                event.track.onunmute = () => {
+                  console.log("[LCC-Video] Remote video track unmuted");
+                  setRemoteIsVideoOff(false);
+                  if (remoteVideoRef.current) {
+                    attachStreamToRemoteVideo(remoteVideoRef.current, stream);
+                  }
+                };
               }
-              if (mounted) setRemotePeerActive(true);
+            }
+
+            if (remoteVideoRef.current) {
+              attachStreamToRemoteVideo(remoteVideoRef.current, stream);
+            }
+            if (remoteAudioRef.current) {
+              attachStreamToRemoteAudio(remoteAudioRef.current, stream);
+            }
+          };
+
+          pc.onconnectionstatechange = () => {
+            console.log(`[LCC-Video] RTCPeerConnection state: ${pc.connectionState}`);
+            if (mounted) {
+              if (pc.connectionState === "connected") {
+                setConnectionStatus("connected");
+                setRemotePeerActive(true);
+              } else if (pc.connectionState === "connecting") {
+                setConnectionStatus("connecting");
+              }
             }
           };
 
@@ -343,6 +574,14 @@ export default function VideoConsultationRoomPage() {
             });
           }
 
+          // Ensure video and audio transceivers exist if local tracks were not available at room entry
+          if (!pc.getSenders().some((s) => s.track?.kind === "audio")) {
+            pc.addTransceiver("audio", { direction: "sendrecv" });
+          }
+          if (!pc.getSenders().some((s) => s.track?.kind === "video")) {
+            pc.addTransceiver("video", { direction: "sendrecv" });
+          }
+
           ws.onmessage = async (ev) => {
             try {
               const msg = JSON.parse(ev.data);
@@ -350,33 +589,51 @@ export default function VideoConsultationRoomPage() {
               if (msg.type === "peer-joined") {
                 if (mounted) setRemotePeerActive(true);
                 // Broadcast our local media state to newly joined peer
-                broadcastMediaStatus(isMuted, isVideoOff, isScreenSharing);
-                const offer = await pc.createOffer();
+                broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
+                const offer = await pc.createOffer({
+                  offerToReceiveAudio: true,
+                  offerToReceiveVideo: true,
+                });
                 await pc.setLocalDescription(offer);
                 if (ws.readyState === WebSocket.OPEN) {
                   ws.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
                 }
+              } else if (msg.type === "existing-peer") {
+                if (mounted) setRemotePeerActive(true);
+                // Broadcast our media state back to the existing peer
+                broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
               } else if (msg.type === "offer" && msg.sdp) {
+                if (mounted) setRemotePeerActive(true);
                 await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: msg.sdp }));
+                await drainPendingCandidates();
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
                 if (ws.readyState === WebSocket.OPEN) {
                   ws.send(JSON.stringify({ type: "answer", sdp: answer.sdp }));
                 }
+                broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
               } else if (msg.type === "answer" && msg.sdp) {
                 await pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: msg.sdp }));
+                await drainPendingCandidates();
+                broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
               } else if (msg.type === "ice-candidate" && msg.candidate) {
-                await pc.addIceCandidate(
-                  new RTCIceCandidate({
-                    candidate: msg.candidate,
-                    sdpMid: msg.sdpMid,
-                    sdpMLineIndex: msg.sdpMLineIndex,
-                  })
-                );
+                const candidateInit = {
+                  candidate: msg.candidate,
+                  sdpMid: msg.sdpMid,
+                  sdpMLineIndex: msg.sdpMLineIndex,
+                };
+                if (pc.remoteDescription && pc.remoteDescription.type) {
+                  await pc.addIceCandidate(new RTCIceCandidate(candidateInit));
+                } else {
+                  pendingCandidatesRef.current.push(candidateInit);
+                }
               } else if (msg.type === "peer-left") {
                 if (mounted) setRemotePeerActive(false);
                 if (remoteVideoRef.current) {
                   remoteVideoRef.current.srcObject = null;
+                }
+                if (remoteAudioRef.current) {
+                  remoteAudioRef.current.srcObject = null;
                 }
               } else if (msg.type === "chat") {
                 // In-meeting chat message received
@@ -400,7 +657,17 @@ export default function VideoConsultationRoomPage() {
                 // Remote peer toggled audio, video, or screen sharing
                 if (mounted) {
                   if (typeof msg.is_muted === "boolean") setRemoteIsMuted(msg.is_muted);
-                  if (typeof msg.is_video_off === "boolean") setRemoteIsVideoOff(msg.is_video_off);
+                  if (typeof msg.is_video_off === "boolean") {
+                    setRemoteIsVideoOff(msg.is_video_off);
+                    if (!msg.is_video_off && remoteStreamRef.current) {
+                      if (remoteVideoRef.current) {
+                        attachStreamToRemoteVideo(remoteVideoRef.current, remoteStreamRef.current);
+                      }
+                      if (remoteAudioRef.current) {
+                        attachStreamToRemoteAudio(remoteAudioRef.current, remoteStreamRef.current);
+                      }
+                    }
+                  }
                   if (typeof msg.is_screen_sharing === "boolean") setRemoteIsScreenSharing(msg.is_screen_sharing);
                 }
               } else if (msg.type === "recording-status") {
@@ -504,7 +771,8 @@ export default function VideoConsultationRoomPage() {
         t.enabled = !nextState;
       });
       setIsMuted(nextState);
-      broadcastMediaStatus(nextState, isVideoOff, isScreenSharing);
+      isMutedRef.current = nextState;
+      broadcastMediaStatus(nextState, isVideoOffRef.current, isScreenSharingRef.current);
     }
   };
 
@@ -547,7 +815,7 @@ export default function VideoConsultationRoomPage() {
     [isScreenSharing, isVideoOff, attachStreamToLocalVideo]
   );
 
-  // Synchronization effect to guarantee video element receives stream and plays across lifecycle transitions
+  // Synchronization effect to guarantee local video element receives stream and plays across lifecycle transitions
   useEffect(() => {
     const videoEl = localVideoRef.current;
     if (!loading && videoEl) {
@@ -558,25 +826,63 @@ export default function VideoConsultationRoomPage() {
     }
   }, [loading, localStream, isVideoOff, isScreenSharing, attachStreamToLocalVideo]);
 
-  // Toggle Video
+  // Synchronization effect to guarantee remote video and audio elements receive stream across lifecycle transitions
+  useEffect(() => {
+    const videoEl = remoteVideoRef.current;
+    const audioEl = remoteAudioRef.current;
+    if (!loading && remoteStreamRef.current) {
+      if (videoEl) attachStreamToRemoteVideo(videoEl, remoteStreamRef.current);
+      if (audioEl) attachStreamToRemoteAudio(audioEl, remoteStreamRef.current);
+    }
+  }, [loading, remoteStream, remotePeerActive, remoteIsVideoOff, attachStreamToRemoteVideo, attachStreamToRemoteAudio]);
+
+  // Toggle Video with resilient device acquisition, fallback stream, and WebRTC renegotiation
   const toggleVideo = async () => {
     const nextState = !isVideoOff;
-    if (localStreamRef.current && localStreamRef.current.getVideoTracks().length > 0) {
-      const videoTracks = localStreamRef.current.getVideoTracks();
-      videoTracks.forEach((t) => {
-        t.enabled = !nextState;
-      });
-      setIsVideoOff(nextState);
-      broadcastMediaStatus(isMuted, nextState, isScreenSharing);
-      if (!nextState && localVideoRef.current) {
-        attachStreamToLocalVideo(localVideoRef.current, localStreamRef.current, false);
+    setIsVideoOff(nextState);
+    isVideoOffRef.current = nextState;
+
+    const existingVideoTrack = localStreamRef.current
+      ?.getVideoTracks()
+      .find((t) => t.readyState !== "ended");
+
+    if (nextState === true) {
+      // Turning video off: STOP physical hardware camera track so camera LED light shuts off and hardware lock is released
+      if (existingVideoTrack) {
+        existingVideoTrack.stop();
+        localStreamRef.current?.removeTrack(existingVideoTrack);
       }
-    } else if (!nextState) {
-      // Attempt on-demand camera acquisition if no video tracks were previously acquired
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+      }
+      if (peerConnectionRef.current) {
+        const pc = peerConnectionRef.current;
+        const videoTransceiver = pc.getTransceivers().find(
+          (t) => t.receiver.track.kind === "video" || t.sender.track?.kind === "video"
+        );
+        if (videoTransceiver && videoTransceiver.sender) {
+          await videoTransceiver.sender.replaceTrack(null);
+        } else {
+          const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
+          if (videoSender) {
+            await videoSender.replaceTrack(null);
+          }
+        }
+      }
+      broadcastMediaStatus(isMutedRef.current, true, isScreenSharingRef.current);
+    } else {
+      // User requested video ON: acquire hardware camera or fallback
       try {
-        const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        const newTrack = newStream.getVideoTracks()[0];
-        if (newTrack) {
+        let newStream: MediaStream | null = null;
+        try {
+          newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        } catch (camErr) {
+          console.warn("[LCC-Video] Camera hardware busy or restricted, activating fallback video feed:", camErr);
+          newStream = createFallbackVideoStream(joinInfo?.participant_name || "You");
+        }
+
+        if (newStream && newStream.getVideoTracks().length > 0) {
+          const newTrack = newStream.getVideoTracks()[0];
           if (localStreamRef.current) {
             localStreamRef.current.addTrack(newTrack);
           } else {
@@ -587,25 +893,37 @@ export default function VideoConsultationRoomPage() {
           setLocalStream(updatedStream);
           setCameraError(null);
           setIsVideoOff(false);
-          broadcastMediaStatus(isMuted, false, isScreenSharing);
+          isVideoOffRef.current = false;
+          broadcastMediaStatus(isMutedRef.current, false, isScreenSharingRef.current);
 
           if (localVideoRef.current) {
             attachStreamToLocalVideo(localVideoRef.current, updatedStream, false);
           }
 
           if (peerConnectionRef.current) {
-            const videoSender = peerConnectionRef.current
-              .getSenders()
-              .find((s) => s.track && s.track.kind === "video");
-            if (videoSender) {
-              void videoSender.replaceTrack(newTrack);
+            const pc = peerConnectionRef.current;
+            const videoTransceiver = pc.getTransceivers().find(
+              (t) => t.receiver.track.kind === "video" || t.sender.track?.kind === "video"
+            );
+            if (videoTransceiver && videoTransceiver.sender) {
+              await videoTransceiver.sender.replaceTrack(newTrack);
+              videoTransceiver.direction = "sendrecv";
             } else {
-              peerConnectionRef.current.addTrack(newTrack, updatedStream);
-              if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                const offer = await peerConnectionRef.current.createOffer();
-                await peerConnectionRef.current.setLocalDescription(offer);
-                wsRef.current.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
+              const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
+              if (videoSender) {
+                await videoSender.replaceTrack(newTrack);
+              } else {
+                pc.addTrack(newTrack, updatedStream);
               }
+            }
+
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              const offer = await pc.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true,
+              });
+              await pc.setLocalDescription(offer);
+              wsRef.current.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
             }
           }
         }
@@ -613,9 +931,6 @@ export default function VideoConsultationRoomPage() {
         console.warn("[LCC-Video] Failed to acquire camera on toggle:", err);
         setCameraError("Camera permission denied or camera device unavailable.");
       }
-    } else {
-      setIsVideoOff(true);
-      broadcastMediaStatus(isMuted, true, isScreenSharing);
     }
   };
 
@@ -631,15 +946,25 @@ export default function VideoConsultationRoomPage() {
           attachStreamToLocalVideo(localVideoRef.current, screenStream, false);
         }
         setIsScreenSharing(true);
-        broadcastMediaStatus(isMuted, isVideoOff, true);
+        isScreenSharingRef.current = true;
+        broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, true);
 
-        // Replace track on peer connection if available
-        if (peerConnectionRef.current) {
-          const videoSender = peerConnectionRef.current
-            .getSenders()
-            .find((s) => s.track && s.track.kind === "video");
+        const screenTrack = screenStream.getVideoTracks()[0];
+        if (peerConnectionRef.current && screenTrack) {
+          const pc = peerConnectionRef.current;
+          const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
           if (videoSender) {
-            void videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
+            void videoSender.replaceTrack(screenTrack);
+          } else {
+            pc.addTrack(screenTrack, screenStream);
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              const offer = await pc.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true,
+              });
+              await pc.setLocalDescription(offer);
+              wsRef.current.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
+            }
           }
         }
 
@@ -649,16 +974,17 @@ export default function VideoConsultationRoomPage() {
             screenStreamRef.current = null;
           }
           if (localVideoRef.current && localStreamRef.current) {
-            attachStreamToLocalVideo(localVideoRef.current, localStreamRef.current, isVideoOff);
+            attachStreamToLocalVideo(localVideoRef.current, localStreamRef.current, isVideoOffRef.current);
           }
           setIsScreenSharing(false);
-          broadcastMediaStatus(isMuted, isVideoOff, false);
+          isScreenSharingRef.current = false;
+          broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, false);
           if (peerConnectionRef.current && localStreamRef.current) {
             const videoSender = peerConnectionRef.current
               .getSenders()
               .find((s) => s.track && s.track.kind === "video");
             if (videoSender) {
-              const camTrack = localStreamRef.current.getVideoTracks()[0];
+              const camTrack = localStreamRef.current.getVideoTracks().find((t) => t.readyState !== "ended");
               if (camTrack) void videoSender.replaceTrack(camTrack);
             }
           }
@@ -672,16 +998,17 @@ export default function VideoConsultationRoomPage() {
         screenStreamRef.current = null;
       }
       if (localVideoRef.current && localStreamRef.current) {
-        attachStreamToLocalVideo(localVideoRef.current, localStreamRef.current, isVideoOff);
+        attachStreamToLocalVideo(localVideoRef.current, localStreamRef.current, isVideoOffRef.current);
       }
       setIsScreenSharing(false);
-      broadcastMediaStatus(isMuted, isVideoOff, false);
+      isScreenSharingRef.current = false;
+      broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, false);
       if (peerConnectionRef.current && localStreamRef.current) {
         const videoSender = peerConnectionRef.current
           .getSenders()
           .find((s) => s.track && s.track.kind === "video");
         if (videoSender) {
-          const camTrack = localStreamRef.current.getVideoTracks()[0];
+          const camTrack = localStreamRef.current.getVideoTracks().find((t) => t.readyState !== "ended");
           if (camTrack) void videoSender.replaceTrack(camTrack);
         }
       }
@@ -806,7 +1133,7 @@ export default function VideoConsultationRoomPage() {
           if (res.recording_id && recBlob.size > 0) {
             setUploadingRecording(true);
             try {
-              const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+              const token = getSessionAccessToken();
               const uploadUrl = `/api/v1/consultations/${consultationId}/video/recording/upload?recording_id=${res.recording_id}&filename=consultation_rec.webm`;
               const response = await fetch(uploadUrl, {
                 method: "POST",
@@ -1403,17 +1730,37 @@ export default function VideoConsultationRoomPage() {
           >
             <video
               id="remote-video-element"
-              ref={remoteVideoRef}
+              ref={setRemoteVideoNode}
               autoPlay
               playsInline
+              muted
+              onLoadedMetadata={(e) => {
+                const v = e.currentTarget;
+                console.log(
+                  `[LCC-Video] Remote video loadedmetadata: ${v.videoWidth}x${v.videoHeight}`
+                );
+                v.play().catch((err) =>
+                  console.warn("[LCC-Video] Remote play error on loadedmetadata:", err)
+                );
+              }}
               style={{
+                position: "absolute",
+                inset: 0,
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                position: "absolute",
-                inset: 0,
-                display: remotePeerActive && !remoteIsVideoOff ? "block" : "none",
+                display: "block",
+                visibility: remotePeerActive && !remoteIsVideoOff ? "visible" : "hidden",
+                opacity: remotePeerActive && !remoteIsVideoOff ? 1 : 0,
+                zIndex: 1,
+                pointerEvents: remotePeerActive && !remoteIsVideoOff ? "auto" : "none",
+                transition: "opacity 0.2s ease-in-out",
               }}
+            />
+            <audio
+              id="remote-audio-element"
+              ref={remoteAudioRef}
+              autoPlay
             />
 
             {(!remotePeerActive || remoteIsVideoOff) && (

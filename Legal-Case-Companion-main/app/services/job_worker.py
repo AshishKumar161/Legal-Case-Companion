@@ -11,9 +11,14 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.core.identifiers import generate_uuid7
+from app.core.metrics import metrics_collector
 from app.models.audit import AuditEvent
 from app.models.case import Case, CaseParticipant, ParticipantStatus
 from app.models.document import Document
+from app.models.evidence import (
+    Evidence,
+    EvidenceStatus,
+)
 from app.models.job import BackgroundJob, JobStatus, JobType
 from app.models.notification import NotificationType
 from app.models.task import CaseTask, TaskStatus
@@ -21,9 +26,11 @@ from app.models.workflow import CaseDeadline, DeadlineStatus
 from app.services.case_intelligence_service import CaseIntelligenceService
 from app.services.case_workflow_service import CaseWorkflowService
 from app.services.document_processor import DocumentProcessor
+from app.services.evidence_service import EvidenceService
 from app.services.job_service import JobService
 from app.services.legal_data_pipeline import LegalDataPipeline
 from app.services.notification_service import NotificationService
+from app.services.outbox_service import OutboxService
 
 logger = logging.getLogger(__name__)
 
@@ -102,15 +109,17 @@ class JobWorker:
                 job.locked_until = None
                 job.locked_by = None
                 job.error_category = "TRANSIENT"
+                metrics_collector.record_queue_job(job.job_type.value, "RETRYING")
                 self._log_audit("JOB_RETRYING", job, {"error": str(e), "retry_in_seconds": backoff_seconds})
             else:
-                job.status = JobStatus.FAILED
+                job.status = JobStatus.DEAD_LETTER
                 job.completed_at = now
                 job.locked_until = None
                 job.locked_by = None
                 job.error_category = "TRANSIENT_EXHAUSTED"
+                metrics_collector.record_queue_job(job.job_type.value, "DEAD_LETTER")
                 self._handle_permanent_failure_side_effects(job, str(e))
-                self._log_audit("JOB_FAILED_EXHAUSTED", job, {"error": str(e)})
+                self._log_audit("JOB_DEAD_LETTER", job, {"error": str(e)})
 
             self.db.commit()
             self.db.refresh(job)
@@ -136,6 +145,16 @@ class JobWorker:
             return self._handle_legal_authority_ingestion(job)
         elif job.job_type == JobType.LEGAL_AUTHORITY_REINDEX:
             return self._handle_legal_authority_reindex(job)
+        elif job.job_type == JobType.EVIDENCE_SCAN_AND_ACTIVATE:
+            return self._handle_evidence_scan_and_activate(job)
+        elif job.job_type == JobType.EVIDENCE_INTEGRITY_AUDIT:
+            return self._handle_evidence_integrity_audit(job)
+        elif job.job_type == JobType.EVIDENCE_ORPHAN_RECONCILIATION:
+            return self._handle_evidence_orphan_reconciliation(job)
+        elif job.job_type == JobType.ABANDONED_UPLOAD_CLEANUP:
+            return self._handle_abandoned_upload_cleanup(job)
+        elif job.job_type == JobType.OUTBOX_DISPATCH:
+            return self._handle_outbox_dispatch(job)
         else:
             raise ValidationError(f"Unknown job type {job.job_type}")
 
@@ -412,20 +431,86 @@ class JobWorker:
         count = pipeline.reindex_source(uuid.UUID(source_id_str))
         return {"source_id": source_id_str, "reindexed_count": count, "status": "SUCCESS"}
 
+    def _handle_evidence_scan_and_activate(self, job: BackgroundJob) -> dict[str, Any]:
+        evidence_id_str = job.payload.get("evidence_id")
+        version_id_str = job.payload.get("version_id")
+        if not evidence_id_str or not version_id_str:
+            raise ValidationError("Missing evidence_id or version_id in payload")
+
+        evidence_id = uuid.UUID(evidence_id_str)
+        version_id = uuid.UUID(version_id_str)
+
+        evidence = self.db.query(Evidence).filter(Evidence.id == evidence_id).first()
+        if not evidence:
+            raise ResourceNotFoundError(f"Evidence {evidence_id} not found")
+
+        from app.models.user import User
+
+        user = self.db.query(User).filter(User.id == evidence.created_by_user_id).first()
+        if not user:
+            raise ResourceNotFoundError("Evidence creator user not found")
+
+        evidence_svc = EvidenceService(self.db)
+        activated_evidence = evidence_svc.complete_upload(
+            user=user,
+            case_id=evidence.case_id,
+            evidence_id=evidence_id,
+            version_id=version_id,
+        )
+        return {
+            "status": activated_evidence.status.value,
+            "evidence_id": str(activated_evidence.id),
+            "current_version_id": str(activated_evidence.current_version_id),
+        }
+
+    def _handle_evidence_integrity_audit(self, job: BackgroundJob) -> dict[str, Any]:
+        evidence_svc = EvidenceService(self.db)
+        results = evidence_svc.reconcile_orphaned_evidence()
+        return {"status": "SUCCESS", **results}
+
+    def _handle_evidence_orphan_reconciliation(self, job: BackgroundJob) -> dict[str, Any]:
+        evidence_svc = EvidenceService(self.db)
+        results = evidence_svc.reconcile_orphaned_evidence()
+        return {"status": "SUCCESS", **results}
+
+    def _handle_abandoned_upload_cleanup(self, job: BackgroundJob) -> dict[str, Any]:
+        evidence_svc = EvidenceService(self.db)
+        count = evidence_svc.reconcile_abandoned_uploads(hours_threshold=2)
+        return {"status": "SUCCESS", "reconciled_count": count}
+
+    def _handle_outbox_dispatch(self, job: BackgroundJob) -> dict[str, Any]:
+        limit = job.payload.get("limit", 25)
+        outbox_svc = OutboxService(self.db)
+        dispatched_count = outbox_svc.process_outbox_batch(limit=limit)
+        return {"status": "SUCCESS", "dispatched_count": dispatched_count}
+
     def _handle_permanent_failure_side_effects(self, job: BackgroundJob, error_msg: str) -> None:
         """Notifies users if a critical job like document processing fails permanently."""
         if job.job_type == JobType.DOCUMENT_PROCESSING:
             doc_id_str = job.payload.get("document_id")
             if doc_id_str:
-                doc = self.db.query(Document).filter(Document.id == uuid.UUID(doc_id_str)).first()
-                if doc:
-                    notif_svc = NotificationService(self.db)
-                    notif_svc.create_notification(
-                        user_id=doc.uploaded_by,
-                        type=NotificationType.DOCUMENT_PROCESSING_FAILED,
-                        title="Document Processing Failed",
-                        message=f"Processing for document '{doc.filename}' failed: {error_msg[:100]}",
-                        case_id=doc.case_id,
-                        document_id=doc.id,
-                        event_id=f"doc_fail_{doc.id}_{doc.version}",
-                    )
+                try:
+                    doc = self.db.query(Document).filter(Document.id == uuid.UUID(doc_id_str)).first()
+                    if doc:
+                        notif_svc = NotificationService(self.db)
+                        notif_svc.create_notification(
+                            user_id=doc.uploaded_by,
+                            type=NotificationType.DOCUMENT_PROCESSING_FAILED,
+                            title="Document Processing Failed",
+                            message=f"Processing for document '{doc.filename}' failed: {error_msg[:100]}",
+                            case_id=doc.case_id,
+                            document_id=doc.id,
+                            event_id=f"doc_fail_{doc.id}_{doc.version}",
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
+        elif job.job_type == JobType.EVIDENCE_SCAN_AND_ACTIVATE:
+            evidence_id_str = job.payload.get("evidence_id")
+            if evidence_id_str:
+                try:
+                    ev = self.db.query(Evidence).filter(Evidence.id == uuid.UUID(evidence_id_str)).first()
+                    if ev:
+                        ev.status = EvidenceStatus.QUARANTINED
+                        self.db.commit()
+                except Exception:  # noqa: BLE001
+                    pass

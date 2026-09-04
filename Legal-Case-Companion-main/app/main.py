@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1.admin import router as admin_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.ai_conversations import router as ai_conversations_router
+from app.api.v1.ai_review import router as ai_review_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.assistant import router as assistant_router
 from app.api.v1.audit import router as audit_router
@@ -20,18 +21,31 @@ from app.api.v1.auth import limiter
 from app.api.v1.auth import router as auth_router
 from app.api.v1.case_intelligence import router as case_intelligence_router
 from app.api.v1.cases import router as cases_router
+from app.api.v1.commercial import router as commercial_router
+from app.api.v1.compliance import router as compliance_router
 from app.api.v1.consultations import router as consultations_router
+from app.api.v1.data_quality import router as data_quality_router
 from app.api.v1.documents import router as documents_router
+from app.api.v1.evidence import router as evidence_router
+from app.api.v1.experiments import router as experiments_router
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.health import root_router as root_health_router
 from app.api.v1.health import router as health_router
+from app.api.v1.incidents import router as incidents_router
+from app.api.v1.launch_gates import router as launch_gates_router
 from app.api.v1.lawyers import router as lawyers_router
 from app.api.v1.legal_authority import router as legal_authority_router
+from app.api.v1.legal_documents import router as legal_documents_router
+from app.api.v1.localization import router as localization_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.payments import router as payments_router
+from app.api.v1.pilot import router as pilot_router
 from app.api.v1.profiles import router as profiles_router
 from app.api.v1.recordings import router as recordings_router
 from app.api.v1.search import router as search_router
+from app.api.v1.support import router as support_router
+from app.api.v1.trust import router as trust_router
+from app.api.v1.verification import router as verification_router
 from app.api.v1.video_signaling import router as video_signaling_router
 from app.api.v1.webhooks import router as webhooks_router
 from app.api.v1.workflow import router as workflow_router
@@ -41,6 +55,7 @@ from app.core.logging import correlation_id_ctx, setup_logging
 from app.middleware.correlation_id import CorrelationIdMiddleware
 from app.middleware.metrics import MetricsMiddleware
 from app.middleware.payload import RequestSizeLimitMiddleware
+from app.middleware.pilot import PilotControlMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
 
 # Initialize logging
@@ -50,8 +65,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
-    """Lifespan handler to ensure database tables are created in development/local runtimes."""
-    if settings.ENVIRONMENT != "production" or settings.DATABASE_URL.startswith("sqlite"):
+    """Lifespan handler to ensure database tables are created only in development/test runtimes."""
+    if settings.ENVIRONMENT in ("development", "test") and settings.DATABASE_URL.startswith("sqlite"):
         import app.models  # noqa: F401
         from app.db.database import engine
         from app.models.base import Base
@@ -71,8 +86,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Middleware stack (executed in reverse registration order: Security -> Metrics -> PayloadLimit -> CorrelationId)
+# Middleware stack (executed in reverse registration order: Security -> PilotControl -> Metrics -> PayloadLimit -> CorrelationId)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(PilotControlMiddleware)
 app.add_middleware(MetricsMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware, max_upload_size=5_242_880)  # 5MB limit
 app.add_middleware(CorrelationIdMiddleware)
@@ -187,6 +203,7 @@ app.include_router(case_intelligence_router, prefix=settings.API_V1_STR)
 app.include_router(workflow_router, prefix=settings.API_V1_STR)
 app.include_router(consultations_router, prefix=settings.API_V1_STR)
 app.include_router(documents_router, prefix=settings.API_V1_STR)
+app.include_router(evidence_router, prefix=settings.API_V1_STR)
 app.include_router(search_router, prefix=settings.API_V1_STR)
 app.include_router(legal_authority_router, prefix=settings.API_V1_STR)
 app.include_router(payments_router, prefix=settings.API_V1_STR)
@@ -203,3 +220,16 @@ app.include_router(recordings_router, prefix=settings.API_V1_STR)
 app.include_router(health_router, prefix=settings.API_V1_STR)
 app.include_router(webhooks_router, prefix=settings.API_V1_STR)
 app.include_router(video_signaling_router, prefix=settings.API_V1_STR)
+app.include_router(incidents_router, prefix=settings.API_V1_STR)
+app.include_router(pilot_router, prefix=settings.API_V1_STR)
+app.include_router(experiments_router, prefix=settings.API_V1_STR)
+app.include_router(support_router, prefix=settings.API_V1_STR)
+app.include_router(ai_review_router, prefix=settings.API_V1_STR)
+app.include_router(data_quality_router, prefix=settings.API_V1_STR)
+app.include_router(localization_router, prefix=settings.API_V1_STR)
+app.include_router(compliance_router, prefix=settings.API_V1_STR)
+app.include_router(legal_documents_router, prefix=settings.API_V1_STR)
+app.include_router(trust_router, prefix=settings.API_V1_STR)
+app.include_router(commercial_router, prefix=settings.API_V1_STR)
+app.include_router(verification_router, prefix=settings.API_V1_STR)
+app.include_router(launch_gates_router, prefix=settings.API_V1_STR)

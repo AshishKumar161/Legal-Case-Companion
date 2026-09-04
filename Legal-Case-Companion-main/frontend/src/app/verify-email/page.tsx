@@ -39,18 +39,29 @@ function VerifyEmailContent() {
           );
           if (res?.access_token) {
             let userId = "";
+            let userRole: any = "CLIENT";
             try {
               const payload = JSON.parse(atob(res.access_token.split(".")[1]));
-              userId = payload.sub || "";
+              if (payload.sub) userId = payload.sub;
+              if (
+                payload.role &&
+                (payload.role === "CLIENT" || payload.role === "LAWYER" || payload.role === "ADMIN")
+              ) {
+                userRole = payload.role;
+              }
             } catch {
               // ignore
             }
-            login(res.access_token, {
-              id: userId,
-              email: emailToVerify.trim().toLowerCase(),
-              role: "CLIENT",
-              account_status: "ACTIVE",
-            });
+            login(
+              res.access_token,
+              {
+                id: userId,
+                email: emailToVerify.trim().toLowerCase(),
+                role: userRole,
+                account_status: "ACTIVE",
+              },
+              res.refresh_token
+            );
           }
         } else {
           await apiClient.post(

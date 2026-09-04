@@ -43,6 +43,11 @@ def log_product_event(
     Ingests non-confidential lifecycle milestone events to measure activation and workflow velocity.
     Never collects raw case facts, evidence content, or client PII.
     """
+    if payload.case_id:
+        from app.core.authorization import authorize_case_access
+
+        authorize_case_access(db, current_user, payload.case_id)
+
     evt = ProductEvent(
         id=generate_uuid7(),
         event_type=payload.event_type,

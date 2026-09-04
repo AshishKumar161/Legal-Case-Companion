@@ -1,0 +1,47 @@
+{
+  "common": {
+    "appName": "Legal Case Companion",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "language": "Language"
+  },
+  "auth": {
+    "loginTitle": "Sign In to Your Account",
+    "registerTitle": "Create Your Account",
+    "emailLabel": "Email Address",
+    "passwordLabel": "Password",
+    "loginBtn": "Sign In",
+    "registerBtn": "Register"
+  },
+  "cases": {
+    "title": "Legal Matters & Cases",
+    "createMatter": "Create New Matter",
+    "caseNumber": "Case Number",
+    "courtName": "Court / Forum",
+    "matterType": "Matter Category"
+  },
+  "consultations": {
+    "title": "Advocate Consultations",
+    "bookSlot": "Book Consultation Slot",
+    "advocate": "Verified Advocate",
+    "joinCall": "Join Video Consultation Room",
+    "disclaimer": "Consultation advice is provided solely by verified legal practitioners."
+  },
+  "evidence": {
+    "title": "Evidence Locker",
+    "uploadExhibit": "Upload Evidence Exhibit",
+    "quarantinedNotice": "Evidence in Quarantine - Scanning for Malware",
+    "verifiedDigest": "Cryptographic SHA-256 Digest Verified"
+  },
+  "ai": {
+    "copilotTitle": "Legal AI Research Companion",
+    "disclaimer": "AI provides legal information and research assistance only, not guaranteed legal advice. Professional advice requires a verified advocate.",
+    "inputPlaceholder": "Ask a legal research query or analyze case evidence..."
+  },
+  "trust": {
+    "legalTransparency": "Advocate advice is provided solely by Bar Council of India verified advocates. AI assists with statutory research and document analysis."
+  }
+}

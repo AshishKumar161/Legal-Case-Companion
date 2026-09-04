@@ -44,13 +44,16 @@ class AuthenticationError(AppException):
 
 
 class ValidationError(AppException):
-    def __init__(self, message: str = "Validation failed"):
-        super().__init__(status_code=422, code="VALIDATION_ERROR", message=message)
+    def __init__(self, message: str = "Validation failed", details: dict[str, Any] | None = None):
+        super().__init__(status_code=422, code="VALIDATION_ERROR", message=message, details=details)
 
 
 class ResourceNotFoundError(AppException):
     def __init__(self, message: str = "Resource not found"):
         super().__init__(status_code=404, code="NOT_FOUND", message=message)
+
+
+NotFoundError = ResourceNotFoundError
 
 
 class AuthorizationError(AppException):
@@ -80,6 +83,42 @@ class ScannerUnavailableError(AppException):
         super().__init__(status_code=503, code=code, message=message)
 
 
+class DependencyUnavailableError(AppException):
+    def __init__(
+        self,
+        message: str = "Underlying dependency is temporarily unavailable",
+        code: str = "DEPENDENCY_UNAVAILABLE",
+    ):
+        super().__init__(status_code=503, code=code, message=message)
+
+
+class StorageError(AppException):
+    def __init__(
+        self,
+        message: str = "Storage service operation failed",
+        code: str = "STORAGE_ERROR",
+    ):
+        super().__init__(status_code=502, code=code, message=message)
+
+
+class IntegrityError(AppException):
+    def __init__(
+        self,
+        message: str = "Cryptographic integrity verification failed",
+        code: str = "INTEGRITY_ERROR",
+    ):
+        super().__init__(status_code=422, code=code, message=message)
+
+
+class RateLimitExceededError(AppException):
+    def __init__(
+        self,
+        message: str = "Rate limit exceeded. Please retry later.",
+        code: str = "RATE_LIMITED",
+    ):
+        super().__init__(status_code=429, code=code, message=message)
+
+
 class ConfigurationError(AppException):
     def __init__(
         self,
@@ -87,4 +126,3 @@ class ConfigurationError(AppException):
         code: str = "CONFIGURATION_ERROR",
     ):
         super().__init__(status_code=500, code=code, message=message)
-

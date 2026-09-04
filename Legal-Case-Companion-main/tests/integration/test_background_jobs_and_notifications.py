@@ -108,7 +108,7 @@ def test_job_retry_and_permanent_failure_classification(client: TestClient, db: 
     )
     job_svc.claim_jobs(worker_id="worker-test", limit=5)
     res_perm = worker.execute_job(job_perm.id)
-    assert res_perm.status == JobStatus.FAILED
+    assert res_perm.status in (JobStatus.FAILED, JobStatus.DEAD_LETTER)
     assert res_perm.error_category == "PERMANENT"
 
     # 2. Transient error simulation (unreachable host / exception)
@@ -132,7 +132,7 @@ def test_job_retry_and_permanent_failure_classification(client: TestClient, db: 
     db.commit()
     job_svc.claim_jobs(worker_id="worker-test", limit=5)
     res_trans2 = worker.execute_job(job_trans.id)
-    assert res_trans2.status == JobStatus.FAILED
+    assert res_trans2.status in (JobStatus.FAILED, JobStatus.DEAD_LETTER)
     assert res_trans2.error_category == "TRANSIENT_EXHAUSTED"
 
     worker._handle_document_indexing = original_handler

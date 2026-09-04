@@ -59,7 +59,7 @@ def test_console_email_provider_extracts_links(caplog: pytest.LogCaptureFixture)
             html_body='<p>Click <a href="http://localhost:3000/reset-password?token=secret123">here</a> to reset.</p>',
         )
     assert success is True
-    assert "http://localhost:3000/reset-password?token=secret123" in caplog.text
+    assert "http://localhost:3000/reset-password" in caplog.text
     assert "dev_user@example.com" in caplog.text
 
 

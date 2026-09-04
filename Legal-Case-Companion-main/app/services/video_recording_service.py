@@ -13,11 +13,11 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.exceptions import (
     AuthorizationError,
+    ConfigurationError,
     ResourceNotFoundError,
     ValidationError,
 )
 from app.core.identifiers import generate_uuid7
-from app.models.case import CaseParticipant, ParticipantStatus
 from app.models.consultation import Consultation, ConsultationStatus
 from app.models.user import AccountStatus, User, UserRole
 from app.models.video_recording import (
@@ -85,31 +85,9 @@ class VideoRecordingService:
 
     def _authorize_playback(self, user: User, recording: VideoRecording) -> None:
         """Verify user is authorized to stream/play back this recording."""
-        if user.role == UserRole.ADMIN:
-            return
+        from app.core.authorization import authorize_recording_access
 
-        con = recording.consultation
-        if con:
-            if con.client and con.client.user_id == user.id:
-                return
-            if con.lawyer and con.lawyer.user_id == user.id:
-                return
-
-        # Check linked case authorization
-        if recording.case_id:
-            part = (
-                self.db.query(CaseParticipant)
-                .filter(
-                    CaseParticipant.case_id == recording.case_id,
-                    CaseParticipant.user_id == user.id,
-                    CaseParticipant.status == ParticipantStatus.ACTIVE,
-                )
-                .first()
-            )
-            if part:
-                return
-
-        raise ResourceNotFoundError("Recording not found")
+        authorize_recording_access(self.db, user, recording.id)
 
     def grant_consent(
         self,
@@ -506,6 +484,19 @@ class VideoRecordingService:
             .all()
         )
 
+    @staticmethod
+    def _get_signing_secret() -> str:
+        secret = (
+            getattr(settings, "CSRF_SECRET_KEY", None)
+            or getattr(settings, "JWT_PRIVATE_KEY", None)
+            or getattr(settings, "SECRET_KEY", None)
+        )
+        if not secret or secret == "mock-secret-for-dev":
+            if settings.ENVIRONMENT == "production":
+                raise ConfigurationError("Missing production cryptographic secret for playback ticket signing")
+            secret = "lcc-dev-ephemeral-playback-secret"
+        return secret
+
     def generate_playback_ticket(
         self,
         user: User,
@@ -543,11 +534,7 @@ class VideoRecordingService:
             "exp": exp_ts,
         }
 
-        secret = (
-            getattr(settings, "SECRET_KEY", None)
-            or getattr(settings, "JWT_PRIVATE_KEY", None)
-            or "lcc-playback-ticket-secret"
-        )
+        secret = self._get_signing_secret()
         encoded_payload = json.dumps(payload, sort_keys=True).encode("utf-8")
         signature = hmac.new(secret.encode("utf-8"), encoded_payload, hashlib.sha256).hexdigest()
         return f"mpt_{signature}.{encoded_payload.hex()}"
@@ -571,16 +558,12 @@ class VideoRecordingService:
             raise ValidationError("Invalid playback ticket format")
 
         signature, payload_hex = parts[0], parts[1]
-        secret = (
-            getattr(settings, "SECRET_KEY", None)
-            or getattr(settings, "JWT_PRIVATE_KEY", None)
-            or "lcc-playback-ticket-secret"
-        )
+        secret = self._get_signing_secret()
 
         try:
             raw_payload = bytes.fromhex(payload_hex)
-        except ValueError:
-            raise ValidationError("Malformed playback ticket hex payload")
+        except ValueError as e:
+            raise ValidationError("Malformed playback ticket hex payload") from e
 
         expected_sig = hmac.new(secret.encode("utf-8"), raw_payload, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(signature, expected_sig):
@@ -607,8 +590,8 @@ class VideoRecordingService:
 
         try:
             user_id = UUID(user_id_str)
-        except ValueError:
-            raise ValidationError("Invalid user ID in playback ticket")
+        except ValueError as e:
+            raise ValidationError("Invalid user ID in playback ticket") from e
 
         user = UserService(self.db).get_user_by_id(user_id)
         if not user or user.account_status != AccountStatus.ACTIVE:

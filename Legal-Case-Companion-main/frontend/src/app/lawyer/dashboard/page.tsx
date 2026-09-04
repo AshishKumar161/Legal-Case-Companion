@@ -43,10 +43,16 @@ export default function LawyerDashboard() {
     return () => clearInterval(hbInterval);
   }, [user]);
 
-  // Periodic polling for incoming instant video consultation calls
+  // Real-time WebSocket incoming call alerts + reconnection resynchronization
   useEffect(() => {
     if (!user || (user.role !== "LAWYER" && user.role !== "ADMIN")) return;
-    const checkCalls = async () => {
+
+    let ws: WebSocket | null = null;
+    let pingInterval: NodeJS.Timeout | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let isSubscribed = true;
+
+    const reconcileActiveCalls = async () => {
       try {
         const calls: any = await apiClient.get("/api/v1/consultations/incoming-calls");
         if (Array.isArray(calls) && calls.length > 0) {
@@ -61,9 +67,94 @@ export default function LawyerDashboard() {
         // ignore
       }
     };
-    void checkCalls();
-    const callInterval = setInterval(checkCalls, 4000);
-    return () => clearInterval(callInterval);
+
+    const connectWebSocket = async () => {
+      if (!isSubscribed) return;
+
+      // Reconcile active state on connect/reconnect
+      await reconcileActiveCalls();
+
+      try {
+        const ticketRes: any = await apiClient.post("/api/v1/consultations/ws-ticket", {});
+        if (!ticketRes?.ticket || !isSubscribed) return;
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        const wsProto = apiUrl.startsWith("https") ? "wss" : "ws";
+        const host = apiUrl.replace(/^https?:\/\//, "");
+        const wsUrl = `${wsProto}://${host}/api/v1/consultations/ws/incoming-calls?ticket=${ticketRes.ticket}`;
+
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          setIsOnline(true);
+          pingInterval = setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send("ping");
+            }
+          }, 15000);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "incoming_consultation") {
+              if (data.consultation_id !== dismissedCallId) {
+                setIncomingCall({
+                  id: data.consultation_id,
+                  client_name: data.client_name,
+                  fee: data.fee,
+                  case_id: data.case_id,
+                  created_at: data.created_at,
+                  ring_timeout_seconds: data.ring_timeout_seconds,
+                });
+              }
+            } else if (
+              data.type === "consultation_accepted" ||
+              data.type === "consultation_cancelled" ||
+              data.type === "consultation_expired"
+            ) {
+              setIncomingCall((prev: any) =>
+                prev && prev.id === data.consultation_id ? null : prev
+              );
+            }
+          } catch {
+            // raw message e.g. pong
+          }
+        };
+
+        ws.onclose = () => {
+          if (pingInterval) clearInterval(pingInterval);
+          if (isSubscribed) {
+            reconnectTimeout = setTimeout(() => {
+              void connectWebSocket();
+            }, 3000);
+          }
+        };
+
+        ws.onerror = () => {
+          if (ws) ws.close();
+        };
+      } catch {
+        if (isSubscribed) {
+          reconnectTimeout = setTimeout(() => {
+            void connectWebSocket();
+          }, 5000);
+        }
+      }
+    };
+
+    void connectWebSocket();
+
+    // Secondary safety poll (15s interval)
+    const backupInterval = setInterval(reconcileActiveCalls, 15000);
+
+    return () => {
+      isSubscribed = false;
+      if (pingInterval) clearInterval(pingInterval);
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      clearInterval(backupInterval);
+      if (ws) ws.close();
+    };
   }, [user, dismissedCallId]);
 
   const handleAcceptIncomingCall = async (callId: string) => {

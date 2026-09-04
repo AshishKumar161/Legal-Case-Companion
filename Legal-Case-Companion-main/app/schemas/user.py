@@ -31,3 +31,15 @@ class UserResponse(BaseModel):
     role: str
 
     model_config = {"from_attributes": True}
+
+
+class CurrentUserResponse(BaseModel):
+    id: UUID
+    email: str
+    account_status: str
+    role: str
+    full_name: str | None = None
+    location: str | None = None
+
+    model_config = {"from_attributes": True}
+

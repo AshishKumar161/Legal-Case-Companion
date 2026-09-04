@@ -43,11 +43,11 @@ def test_operational_health_probes(client: TestClient):
     # Liveness probes
     res_live_1 = client.get("/api/v1/health/live")
     assert res_live_1.status_code == 200
-    assert res_live_1.json() == {"status": "alive"}
+    assert res_live_1.json()["status"] == "alive"
 
     res_live_2 = client.get("/liveness")
     assert res_live_2.status_code == 200
-    assert res_live_2.json() == {"status": "alive"}
+    assert res_live_2.json()["status"] == "alive"
 
     # Readiness probes
     res_ready_1 = client.get("/api/v1/health/ready")

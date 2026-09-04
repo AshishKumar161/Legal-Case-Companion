@@ -43,7 +43,7 @@ def main():
     parser = argparse.ArgumentParser(description="LCC Production Readiness Diagnostics")
     parser.add_argument(
         "--env",
-        choices=["development", "test", "production"],
+        choices=["development", "test", "staging", "production"],
         help="Target environment to validate against",
     )
     args = parser.parse_args()

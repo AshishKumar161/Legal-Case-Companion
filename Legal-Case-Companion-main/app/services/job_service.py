@@ -170,3 +170,33 @@ class JobService:
             failed_jobs=counts.get(JobStatus.FAILED, 0),
             retrying_jobs=counts.get(JobStatus.RETRYING, 0),
         )
+
+    def reclaim_stale_jobs(self) -> int:
+        """Finds jobs in RUNNING state with expired leases and resets them to RETRYING or DEAD_LETTER."""
+        now = datetime.now(UTC)
+        stale_jobs = (
+            self.db.query(BackgroundJob)
+            .filter(
+                BackgroundJob.status == JobStatus.RUNNING,
+                BackgroundJob.locked_until < now,
+                BackgroundJob.deleted_at.is_(None),
+            )
+            .all()
+        )
+        recovered = 0
+        for stale in stale_jobs:
+            if stale.attempt_count < stale.max_attempts:
+                stale.status = JobStatus.RETRYING
+                stale.scheduled_at = now + timedelta(seconds=5)
+                stale.locked_until = None
+                stale.locked_by = None
+                stale.error_category = "STALE_LEASE_RECOVERED"
+                recovered += 1
+            else:
+                stale.status = JobStatus.DEAD_LETTER
+                stale.locked_until = None
+                stale.locked_by = None
+                stale.error_category = "STALE_LEASE_EXHAUSTED"
+        if stale_jobs:
+            self.db.commit()
+        return recovered

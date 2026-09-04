@@ -49,8 +49,8 @@ export default function LawyerPublicProfilePage({
       setFetching(true);
       setError(null);
       const [lawyerRes, availRes] = await Promise.all([
-        apiClient.get(`/api/v1/lawyers/${lawyerId}`),
-        apiClient.get(`/api/v1/lawyers/${lawyerId}/availability`).catch(() => []),
+        apiClient.get(`/api/v1/lawyers/${lawyerId}`, { requireAuth: false }),
+        apiClient.get(`/api/v1/lawyers/${lawyerId}/availability`, { requireAuth: false }).catch(() => []),
       ]);
       setLawyer(lawyerRes);
       setAvailabilities(Array.isArray(availRes) ? availRes : []);
@@ -73,7 +73,8 @@ export default function LawyerPublicProfilePage({
       setLoadingSlots(true);
       setSelectedSlot(null);
       const res = await apiClient.get(
-        `/api/v1/lawyers/${lawyerId}/slots?date=${selectedDate}&duration_minutes=30`
+        `/api/v1/lawyers/${lawyerId}/slots?date=${selectedDate}&duration_minutes=30`,
+        { requireAuth: false }
       );
       setSlots(Array.isArray(res) ? res : []);
     } catch (err) {

@@ -52,31 +52,55 @@ function AuthCallbackContent() {
         );
 
         if (res?.access_token) {
-          let userId = "google-user";
-          let userRole: UserRole = "CLIENT";
+          let userId = "";
+          let userRole: UserRole | null = null;
           let email = "";
 
           try {
             const payload = JSON.parse(atob(res.access_token.split(".")[1]));
             if (payload.sub) userId = payload.sub;
-            if (payload.role) userRole = payload.role as UserRole;
+            if (
+              payload.role &&
+              (payload.role === "CLIENT" || payload.role === "LAWYER" || payload.role === "ADMIN")
+            ) {
+              userRole = payload.role as UserRole;
+            }
             if (payload.email) email = payload.email;
           } catch (e) {
             console.warn("Could not parse JWT token payload:", e);
           }
 
-          login(res.access_token, {
-            id: userId,
-            email,
-            role: userRole,
-            account_status: "ACTIVE",
-          });
+          if (!userRole || !userId) {
+            setStatus("error");
+            setErrorMessage("Identity verification succeeded, but credentials lack authoritative role information.");
+            return;
+          }
+
+          // Authorize session strictly in current tab
+          login(
+            res.access_token,
+            {
+              id: userId,
+              email,
+              role: userRole,
+              account_status: "ACTIVE",
+            },
+            res.refresh_token
+          );
 
           setStatus("success");
 
-          // Navigate based on verified role or safe return_url
-          if (res.return_url && res.return_url !== "/dashboard" && res.return_url.startsWith("/")) {
-            router.push(res.return_url);
+          // Validate internal redirect destination against open redirect
+          const safeReturnUrl =
+            res.return_url &&
+            res.return_url.startsWith("/") &&
+            !res.return_url.startsWith("//") &&
+            !res.return_url.includes("://")
+              ? res.return_url
+              : null;
+
+          if (safeReturnUrl && safeReturnUrl !== "/dashboard") {
+            router.push(safeReturnUrl);
           } else if (userRole === "ADMIN") {
             router.push("/admin/dashboard");
           } else if (userRole === "LAWYER") {

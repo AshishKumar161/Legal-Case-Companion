@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -91,6 +92,64 @@ class UserService:
             action="register",
             timestamp=datetime.now(UTC),
             metadata_={},
+        )
+        self.db.add(audit)
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
+    def delete_user_account(
+        self,
+        user_id: Any,
+        reason: str | None = None,
+        ip_address: str | None = None,
+    ) -> User:
+        """Safely soft-deletes and anonymizes user account while preserving custody and audit integrity."""
+        from app.models.auth import RefreshTokenSession
+
+        user = self.get_user_by_id(user_id)
+        if not user:
+            raise AppException(
+                status_code=404,
+                code="USER_NOT_FOUND",
+                message="User not found",
+            )
+
+        now = datetime.now(UTC)
+
+        # 1. Revoke all active sessions
+        self.db.query(RefreshTokenSession).filter(
+            RefreshTokenSession.user_id == user.id,
+            RefreshTokenSession.revoked_at.is_(None),
+        ).update({"revoked_at": now})
+
+        # 2. Anonymize PII in User model
+        user.email = f"deleted_{user.id}@anonymized.local"
+        user.account_status = AccountStatus.DEACTIVATED
+        user.deleted_at = now
+
+        # 3. Anonymize PII in associated profiles
+        if user.role == UserRole.CLIENT:
+            client_prof = self.db.query(ClientProfile).filter(ClientProfile.user_id == user.id).first()
+            if client_prof:
+                client_prof.full_name = "Anonymized Client"
+                client_prof.location = None
+        elif user.role == UserRole.LAWYER:
+            lawyer_prof = self.db.query(LawyerProfile).filter(LawyerProfile.user_id == user.id).first()
+            if lawyer_prof:
+                lawyer_prof.full_name = "Anonymized Lawyer"
+                lawyer_prof.location = None
+
+        # 4. Record audit event
+        audit = AuditEvent(
+            id=generate_uuid7(),
+            actor_user_id=user.id,
+            event_type="ACCOUNT_DELETED",
+            entity_type="user",
+            entity_id=user.id,
+            action="delete_account",
+            timestamp=now,
+            metadata_={"reason": reason or "User requested deletion", "ip": ip_address},
         )
         self.db.add(audit)
 

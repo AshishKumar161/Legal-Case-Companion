@@ -54,20 +54,49 @@ def create_access_token(subject: str, role: str) -> str:
 
 
 def verify_access_token(token: str) -> dict[str, Any]:
-    """Verifies an access JWT using the Ed25519 public key.
+    """Verifies an access JWT using the active Ed25519 public key (or prior key during rotation).
 
-    Validates issuer, audience, and that the token type is ``"access"``.
+    Validates issuer, audience, pinned algorithm, and that the token type is ``"access"``.
     """
-    public_key = serialization.load_pem_public_key(settings.JWT_PUBLIC_KEY.encode())
-    payload = jwt.decode(
-        token,
-        public_key,  # type: ignore[arg-type]
-        algorithms=[settings.ALGORITHM],
-        audience="legal-case-companion",
-        issuer="legal-case-companion",
-    )
+    # 1. Inspect unverified header to reject alg=none or wrong algorithms explicitly
+    try:
+        unverified_header = jwt.get_unverified_header(token)
+    except Exception as e:
+        raise jwt.InvalidTokenError(f"Malformed token header: {e}") from e
 
-    # Phase 4: Validate token type to prevent confusion attacks
+    token_alg = unverified_header.get("alg")
+    if token_alg != settings.ALGORITHM:
+        raise jwt.InvalidTokenError(
+            f"Invalid JWT algorithm '{token_alg}'. Only '{settings.ALGORITHM}' is permitted."
+        )
+
+    # 2. Verify with primary active public key
+    public_key = serialization.load_pem_public_key(settings.JWT_PUBLIC_KEY.encode())
+    try:
+        payload = jwt.decode(
+            token,
+            public_key,  # type: ignore[arg-type]
+            algorithms=[settings.ALGORITHM],
+            audience="legal-case-companion",
+            issuer="legal-case-companion",
+        )
+    except (jwt.InvalidSignatureError, jwt.DecodeError) as sig_err:
+        # 3. If signature verification failed, check against JWT_PREVIOUS_PUBLIC_KEY for zero-downtime rotation
+        if settings.JWT_PREVIOUS_PUBLIC_KEY:
+            prev_key = serialization.load_pem_public_key(
+                settings.JWT_PREVIOUS_PUBLIC_KEY.encode()
+            )
+            payload = jwt.decode(
+                token,
+                prev_key,  # type: ignore[arg-type]
+                algorithms=[settings.ALGORITHM],
+                audience="legal-case-companion",
+                issuer="legal-case-companion",
+            )
+        else:
+            raise sig_err
+
+    # 4. Validate token type to prevent confusion attacks
     token_type = payload.get("type")
     if token_type != "access":
         raise jwt.InvalidTokenError("Invalid token type")

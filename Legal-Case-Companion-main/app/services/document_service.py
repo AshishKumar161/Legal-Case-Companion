@@ -17,7 +17,10 @@ from app.core.exceptions import (
     AuthorizationError,
     ValidationError,
 )
-from app.core.file_validation import validate_file_magic_bytes, validate_filename_security
+from app.core.file_validation import (
+    validate_file_magic_bytes,
+    validate_filename_security,
+)
 from app.core.identifiers import generate_uuid7
 from app.core.storage import get_storage_provider
 from app.models.ai import DocumentChunk

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.identifiers import generate_uuid7
@@ -21,8 +21,12 @@ class UserRole(str, enum.Enum):
 
 
 class AccountStatus(str, enum.Enum):
+    REGISTERED = "REGISTERED"
+    VERIFIED = "VERIFIED"
     ACTIVE = "ACTIVE"
+    RESTRICTED = "RESTRICTED"
     SUSPENDED = "SUSPENDED"
+    DEACTIVATED = "DEACTIVATED"
 
 
 class VerificationStatus(str, enum.Enum):
@@ -49,6 +53,9 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
         default=AccountStatus.ACTIVE,
         nullable=False,
     )
+    account_locale: Mapped[str] = mapped_column(String(20), default="en-IN", nullable=False)
+    preferred_language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
+    fallback_language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
 
     # Relationships
     client_profile: Mapped["ClientProfile | None"] = relationship(
@@ -179,6 +186,10 @@ class LawyerVerification(Base, TimestampMixin):
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
     )
     reviewed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    evidence_document_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_reverification: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
     lawyer_profile: Mapped["LawyerProfile"] = relationship(

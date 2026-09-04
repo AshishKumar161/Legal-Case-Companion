@@ -275,4 +275,4 @@ def test_alembic_migration_head_consistency():
     heads = script.get_heads()
 
     assert len(heads) == 1, f"Expected 1 migration head, found {len(heads)}: {heads}"
-    assert heads[0] == "g1a2b3c4d5e6"
+    assert heads[0] == "m1a2b3c4d5e6"
