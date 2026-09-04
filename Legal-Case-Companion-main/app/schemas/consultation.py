@@ -73,6 +73,7 @@ class ConsultationResponse(BaseModel):
     case_id: UUID | None
     scheduled_at: datetime
     duration_minutes: int
+    is_instant: bool = False
     fee_amount: float
     currency: str
     status: str
