@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useEffect, useState } from "react";
+import React, { use, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/api/client";
@@ -102,7 +102,7 @@ export default function EvidenceDetailPage({
   const [shareExpires, setShareExpires] = useState("");
   const [shareError, setShareError] = useState("");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -120,11 +120,11 @@ export default function EvidenceDetailPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [caseId, evidenceId]);
 
   useEffect(() => {
     loadData();
-  }, [caseId, evidenceId]);
+  }, [loadData]);
 
   const handleVerifyIntegrity = async () => {
     try {

@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import RequireRole, get_current_user, get_db
 from app.api.v1.auth import limiter
 from app.core.config import settings
-from app.core.exceptions import AuthorizationError
+from app.core.exceptions import AuthorizationError, ResourceNotFoundError
 from app.core.redis import get_redis_client
 from app.core.security import verify_access_token
 from app.models.consultation import Consultation, ConsultationStatus
@@ -39,6 +39,8 @@ from app.schemas.consultation import (
     ConsultationCreateCaseRequest,
     ConsultationLinkCaseRequest,
     ConsultationNoShowRequest,
+    ConsultationPricingBreakdown,
+    ConsultationPricingResponse,
     ConsultationRejectRequest,
     ConsultationRescheduleRequest,
     ConsultationResponse,
@@ -100,6 +102,55 @@ def get_consultations(
     consultation_service = ConsultationService(db)
     return consultation_service.get_consultations(
         current_user, case_id=case_id, status=consultation_status, skip=skip, limit=limit
+    )
+
+
+@router.get("/pricing-preview", response_model=ConsultationPricingResponse)
+def get_consultation_pricing_preview(
+    lawyer_id: UUID = Query(..., description="ID of the advocate"),
+    duration_minutes: int = Query(30, ge=15, le=240),
+    db: Session = Depends(get_db),
+):
+    """
+    Authoritative pricing preview calculating advocate consultation fee,
+    statutory 18% GST (9% CGST + 9% SGST), and total payable amount.
+    """
+    lawyer = (
+        db.query(LawyerProfile)
+        .filter(
+            (LawyerProfile.id == lawyer_id) | (LawyerProfile.user_id == lawyer_id),
+            LawyerProfile.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not lawyer:
+        raise ResourceNotFoundError("Lawyer profile not found")
+
+    base_fee = float(lawyer.consultation_fee) if lawyer.consultation_fee is not None else 2500.0
+    ratio = max(1, duration_minutes // 30)
+    fee_amount = round(base_fee * ratio, 2)
+    gst_rate = 0.18
+    gst_amount = round(fee_amount * gst_rate, 2)
+    platform_fee = 0.0
+    total_amount = round(fee_amount + gst_amount + platform_fee, 2)
+
+    cgst = round(gst_amount / 2, 2)
+    sgst = round(gst_amount - cgst, 2)
+
+    return ConsultationPricingResponse(
+        lawyer_id=lawyer.id,
+        duration_minutes=duration_minutes,
+        fee_amount=fee_amount,
+        gst_rate=gst_rate,
+        gst_amount=gst_amount,
+        platform_fee=platform_fee,
+        total_amount=total_amount,
+        currency="INR",
+        breakdown=ConsultationPricingBreakdown(
+            cgst=cgst,
+            sgst=sgst,
+            description="18% GST (9% Central GST + 9% State GST)",
+        ),
     )
 
 
@@ -648,7 +699,7 @@ def start_recording(
         recording_id=rec.id,
         consultation_id=rec.consultation_id,
         status=rec.status,
-        started_at=rec.started_at,
+        started_at=rec.started_at or datetime.now(UTC),
     )
 
 

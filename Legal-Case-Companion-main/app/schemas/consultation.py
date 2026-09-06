@@ -84,3 +84,25 @@ class ConsultationResponse(BaseModel):
     video_meeting: VideoMeetingResponse | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ConsultationPricingBreakdown(BaseModel):
+    cgst: float
+    sgst: float
+    description: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ConsultationPricingResponse(BaseModel):
+    lawyer_id: UUID
+    duration_minutes: int
+    fee_amount: float
+    gst_rate: float
+    gst_amount: float
+    platform_fee: float
+    total_amount: float
+    currency: str
+    breakdown: ConsultationPricingBreakdown
+
+    model_config = ConfigDict(extra="forbid")

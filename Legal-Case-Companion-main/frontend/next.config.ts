@@ -87,10 +87,10 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https:",
-              "font-src 'self' data: https:",
-              "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000 wss: https:",
+              "font-src 'self' data: https: https://fonts.gstatic.com",
+              `connect-src 'self' wss: https:${process.env.NODE_ENV !== "production" ? " http://localhost:8000 http://127.0.0.1:8000 ws://localhost:8000 ws://127.0.0.1:8000" : ""}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -104,7 +104,8 @@ const nextConfig: NextConfig = {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      "http://127.0.0.1:8000";
+      (process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:8000");
+    if (!backendUrl) return [];
     return [
       {
         source: "/api/v1/:path*",

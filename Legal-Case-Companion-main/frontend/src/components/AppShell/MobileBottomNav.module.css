@@ -1,0 +1,50 @@
+.mobileBottomNav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobileBottomNav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    min-height: 60px;
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
+    background: rgba(7, 9, 14, 0.96);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    z-index: var(--z-sticky, 1100);
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 8px env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+  }
+
+  .navItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 500;
+    gap: 3px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    min-height: 44px;
+    min-width: 44px;
+    transition: all 0.15s ease;
+  }
+
+  .navItemActive {
+    color: #ffffff;
+    background: rgba(99, 102, 241, 0.16);
+  }
+
+  .navIcon {
+    font-size: 18px;
+    line-height: 1;
+  }
+}

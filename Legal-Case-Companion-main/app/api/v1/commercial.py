@@ -121,3 +121,150 @@ def get_my_entitlements(
         }
         for e in items
     ]
+
+
+# =============================================================================
+# PHASE 10: RECONCILIATION, PAYOUTS, REFUNDS & UNIT ECONOMICS
+# =============================================================================
+
+from app.models.commercial import CommercialBillingStrategy, RefundReason
+from app.services.unit_economics_service import UnitEconomicsService
+from app.core.exceptions import AppException, ResourceNotFoundError
+
+
+class PayoutRequest(BaseModel):
+    advocate_user_id: UUID
+    commercial_transaction_id: UUID | None = None
+    amount: float | None = None
+    provider: str = "RAZORPAYX"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class RefundExecutionRequest(BaseModel):
+    transaction_identifier: str
+    reason: RefundReason
+    refund_amount: float | None = None
+    audit_notes: str | None = None
+
+
+class StrategyUpdateRequest(BaseModel):
+    strategy: CommercialBillingStrategy
+
+
+@router.get("/settlements/reconciliation")
+def get_settlement_reconciliation(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Returns authoritative financial reconciliation across gross, tax, platform fees, payouts, and refunds."""
+    if current_user.role.value != "ADMIN":
+        from app.core.exceptions import AuthorizationError
+        raise AuthorizationError("Admin authorization required.")
+    service = CommercialService(db)
+    return service.get_settlement_reconciliation()
+
+
+@router.get("/invoices/{transaction_identifier}/receipt")
+def get_invoice_receipt(
+    transaction_identifier: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Generates formal tax invoice and receipt for a given transaction."""
+    service = CommercialService(db)
+    try:
+        return service.generate_receipt(transaction_identifier)
+    except ResourceNotFoundError as e:
+        from app.core.exceptions import NotFoundError
+        raise NotFoundError(str(e))
+
+
+@router.post("/payouts/process")
+def process_payout(
+    req: PayoutRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Creates and immediately settles an advocate payout with double-payout guards."""
+    if current_user.role.value != "ADMIN":
+        from app.core.exceptions import AuthorizationError
+        raise AuthorizationError("Admin authorization required.")
+    service = CommercialService(db)
+    payout = service.create_advocate_payout(
+        advocate_user_id=req.advocate_user_id,
+        commercial_transaction_id=req.commercial_transaction_id,
+        amount=req.amount,
+        provider=req.provider,
+        metadata_=req.metadata,
+    )
+    settled = service.settle_advocate_payout(payout.id, actor=current_user)
+    return {
+        "status": "SUCCESS",
+        "payout_id": settled.payout_id,
+        "amount": float(settled.amount),
+        "currency": settled.currency,
+        "settled_at": settled.settled_at.isoformat() if settled.settled_at else None,
+    }
+
+
+@router.post("/refunds/request")
+def request_deterministic_refund(
+    req: RefundExecutionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Executes a deterministic refund enforcing defined cancellation rules."""
+    if current_user.role.value != "ADMIN":
+        from app.core.exceptions import AuthorizationError
+        raise AuthorizationError("Admin authorization required.")
+    service = CommercialService(db)
+    record = service.execute_deterministic_refund(
+        transaction_identifier=req.transaction_identifier,
+        reason=req.reason,
+        refund_amount=req.refund_amount,
+        audit_notes=req.audit_notes,
+        actor=current_user,
+    )
+    return {
+        "status": "SUCCESS",
+        "refund_id": record.refund_id,
+        "amount": float(record.amount),
+        "reason": record.reason.value,
+        "created_at": record.created_at.isoformat(),
+    }
+
+
+@router.get("/unit-economics")
+def get_unit_economics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Returns commercial unit economics and cost breakdown."""
+    if current_user.role.value != "ADMIN":
+        from app.core.exceptions import AuthorizationError
+        raise AuthorizationError("Admin authorization required.")
+    service = UnitEconomicsService(db)
+    return service.calculate_unit_economics()
+
+
+@router.get("/strategy")
+def get_billing_strategy(
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    service = CommercialService(db)
+    return {"billing_strategy": service.get_billing_strategy().value}
+
+
+@router.post("/strategy")
+def update_billing_strategy(
+    req: StrategyUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    if current_user.role.value != "ADMIN":
+        from app.core.exceptions import AuthorizationError
+        raise AuthorizationError("Admin authorization required.")
+    service = CommercialService(db)
+    service.set_billing_strategy(req.strategy)
+    return {"billing_strategy": service.get_billing_strategy().value}
+

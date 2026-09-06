@@ -101,7 +101,7 @@ class VideoSignalingManager:
                 except Exception as e:
                     logger.warning(f"Failed to notify peer {client['user_id']} of leave: {e}")
 
-    async def broadcast_to_room(self, room_id: str, sender_ws: WebSocket, message: dict[str, Any]):
+    async def broadcast_to_room(self, room_id: str, sender_ws: WebSocket | None, message: dict[str, Any]):
         """Relays a validated WebRTC signaling message to all other peers in the room."""
         if room_id not in self.rooms:
             return

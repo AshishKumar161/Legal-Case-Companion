@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useEffect, useState } from "react";
+import React, { use, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { apiClient } from "@/api/client";
 import styles from "./evidence.module.css";
@@ -48,7 +48,7 @@ export default function EvidenceLockerPage({
   const [newRetention, setNewRetention] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const fetchEvidence = async () => {
+  const fetchEvidence = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -67,11 +67,11 @@ export default function EvidenceLockerPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [caseId, categoryFilter, sensitivityFilter]);
 
   useEffect(() => {
     fetchEvidence();
-  }, [caseId, categoryFilter, sensitivityFilter]);
+  }, [fetchEvidence]);
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();

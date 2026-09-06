@@ -79,7 +79,7 @@ class ReconciliationService:
                     for j in stale_jobs:
                         j.status = JobStatus.PENDING
                         j.attempt_count += 1
-                        j.error_message = "Reconciled by automated data quality job (stale worker lease)"
+                        j.last_error = "Reconciled by automated data quality job (stale worker lease)"
                         repairs_executed += 1
                     repair_summary["stale_jobs_reset"] = len(stale_jobs)
 

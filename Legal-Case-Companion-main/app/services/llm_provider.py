@@ -299,7 +299,8 @@ class OpenAILLMProvider:
 def get_llm_provider() -> LLMProvider:
     """Factory returning the appropriate LLM provider based on environment and configuration."""
     if (
-        not settings.OPENAI_API_KEY
+        not getattr(settings, "AI_INTEGRATION_ENABLED", True)
+        or not settings.OPENAI_API_KEY
         or settings.OPENAI_API_KEY in ("dummy-test-key", "test-key", "<set-in-environment>", "dummy-key")
         or settings.OPENAI_API_KEY.startswith("dummy")
         or settings.ENVIRONMENT in ("test", "testing")

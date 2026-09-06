@@ -71,6 +71,7 @@ class LawyerProfileResponse(BaseModel):
     languages: list[str] | None = None
     verification_status: str
     is_online: bool = False
+    match_reasons: list[str] = []
 
     model_config = {"from_attributes": True}
 

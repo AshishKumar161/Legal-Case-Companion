@@ -396,6 +396,8 @@ class EvidenceService:
         """Validates, scans, hashes, and promotes a new immutable version to current."""
         evidence = self.complete_upload(user, case_id, evidence_id, version_id)
         version = self.db.query(EvidenceVersion).filter(EvidenceVersion.id == version_id).first()
+        if not version:
+            raise ResourceNotFoundError("Evidence version not found")
 
         self._record_custody_event(
             evidence_id=evidence_id,

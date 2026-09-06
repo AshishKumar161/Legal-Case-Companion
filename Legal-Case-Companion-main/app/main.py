@@ -27,6 +27,10 @@ from app.api.v1.consultations import router as consultations_router
 from app.api.v1.data_quality import router as data_quality_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.evidence import router as evidence_router
+from app.api.v1.attention import router as attention_router
+from app.api.v1.calendar import router as calendar_router
+from app.api.v1.change_feed import router as change_feed_router
+from app.api.v1.court_cases import router as court_cases_router
 from app.api.v1.experiments import router as experiments_router
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.health import root_router as root_health_router
@@ -233,3 +237,7 @@ app.include_router(trust_router, prefix=settings.API_V1_STR)
 app.include_router(commercial_router, prefix=settings.API_V1_STR)
 app.include_router(verification_router, prefix=settings.API_V1_STR)
 app.include_router(launch_gates_router, prefix=settings.API_V1_STR)
+app.include_router(court_cases_router, prefix=settings.API_V1_STR)
+app.include_router(calendar_router, prefix=settings.API_V1_STR)
+app.include_router(attention_router, prefix=settings.API_V1_STR)
+app.include_router(change_feed_router, prefix=settings.API_V1_STR)

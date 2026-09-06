@@ -155,6 +155,7 @@ class Settings(BaseSettings):
     ]
 
     # External AI / Embedding Configuration
+    AI_INTEGRATION_ENABLED: bool = True
     OPENAI_API_KEY: str | None = None
     OPENAI_MAX_RETRIES: int = 3
 
@@ -304,9 +305,8 @@ class Settings(BaseSettings):
                     f"REDIS_URL is required in {self.ENVIRONMENT} for shared presence and real-time state"
                 )
 
-            # Require OpenAI configuration
-            if not self.OPENAI_API_KEY:
-                raise ValueError(f"OPENAI_API_KEY is required in {self.ENVIRONMENT}")
+            # AI integration is optional. The core platform operates cleanly without any AI credentials.
+            # If OPENAI_API_KEY is provided, AI features will be active; otherwise stubs/fallbacks will be used.
 
             # Require valid Email provider
             if self.EMAIL_PROVIDER == "console":

@@ -98,6 +98,11 @@
   border-color: var(--border-subtle);
 }
 
+.resultItemActive {
+  background: var(--surface-hover);
+  border-color: var(--accent-primary, #6366f1);
+}
+
 .resultMain {
   display: flex;
   flex-direction: column;

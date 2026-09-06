@@ -1,48 +1,146 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/api/client";
 import Link from "next/link";
 
-export default function NewCase() {
-  const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+const DISPUTE_CATEGORIES = [
+  { id: "property", label: "Property & Land", icon: "🏡", hint: "Ownership, tenant eviction, partition, builder delay" },
+  { id: "business", label: "Business & Contract", icon: "🏢", hint: "Commercial agreements, unpaid invoices, partnership" },
+  { id: "money", label: "Money & Cheque Bounce", icon: "💰", hint: "Loan recovery, Sec. 138 NI Act, debt disputes" },
+  { id: "family", label: "Family & Matrimonial", icon: "👨‍👩‍👧", hint: "Maintenance, custody, inheritance, succession" },
+  { id: "employment", label: "Employment & Labour", icon: "💼", hint: "Wrongful termination, unpaid salary, PF disputes" },
+  { id: "consumer", label: "Consumer Complaints", icon: "🛍️", hint: "Defective goods, unfair trade, insurance repudiation" },
+  { id: "notice", label: "Legal Notice Received", icon: "📬", hint: "Urgent demand notice, court summons, show cause" },
+  { id: "criminal", label: "Police & Criminal", icon: "⚖️", hint: "Bail, FIR quashing, cyber complaints, police inquiries" },
+  { id: "other", label: "Other Legal Problem", icon: "📝", hint: "General advisory, document verification, RTI" },
+];
+
+function NewCaseIntakeContent() {
+  const searchParams = useSearchParams();
+  const initialIntent = searchParams?.get("intent");
+
+  const [step, setStep] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState(initialIntent === "notice" ? "notice" : "property");
+  const [whatHappened, setWhatHappened] = useState("");
+  const [locationCity, setLocationCity] = useState("Delhi NCR");
+  const [oppositeParty, setOppositeParty] = useState("");
+  const [existingCourtCase, setExistingCourtCase] = useState(false);
+  const [cnrOrCaseNo, setCnrOrCaseNo] = useState("");
+  const [goal, setGoal] = useState("defend");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [savedDraftNotice, setSavedDraftNotice] = useState(false);
+
+  const [createdCaseId, setCreatedCaseId] = useState<string | null>(null);
+
+  // Safe UI preferences auto-save (Section 16: Never store sensitive legal text in browser storage)
+  useEffect(() => {
+    const saved = localStorage.getItem("lcc_intake_safe_pref");
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.selectedCategory) setSelectedCategory(data.selectedCategory);
+        if (data.locationCity) setLocationCity(data.locationCity);
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  const saveDraft = () => {
+    // Only safe non-sensitive preferences are persisted
+    localStorage.setItem(
+      "lcc_intake_safe_pref",
+      JSON.stringify({ selectedCategory, locationCity })
+    );
+    setSavedDraftNotice(true);
+    setTimeout(() => setSavedDraftNotice(false), 2500);
+  };
+
+  const handleNext = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveDraft();
+    setStep((prev) => Math.min(prev + 1, 4));
+  };
+
+  const handleBack = () => {
+    setStep((prev) => Math.max(prev - 1, 1));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
-
     setLoading(true);
     setError("");
 
     try {
-      const res = await apiClient.post("/api/v1/cases", {
-        title: title.trim(),
-        description: description.trim(),
-      });
-      router.push(`/cases/${res.id}`);
+      // Create concise title and rich plain-language description
+      const catObj = DISPUTE_CATEGORIES.find((c) => c.id === selectedCategory);
+      const title = oppositeParty.trim()
+        ? `${catObj?.label || "Legal Matter"}: Against ${oppositeParty.trim()}`
+        : `${catObj?.label || "Legal Matter"} (${locationCity})`;
+
+      const structuredDescription = [
+        `Category: ${catObj?.label || selectedCategory}`,
+        `Location / Jurisdiction: ${locationCity}`,
+        oppositeParty ? `Opposite Party: ${oppositeParty}` : null,
+        existingCourtCase && cnrOrCaseNo ? `Existing Court Case / CNR: ${cnrOrCaseNo}` : null,
+        `Primary Objective: ${goal}`,
+        "",
+        "--- Factual Background (Human Intake) ---",
+        whatHappened.trim(),
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const res = (await apiClient.post("/api/v1/cases", {
+        title,
+        description: structuredDescription,
+      })) as { id: string };
+
+      localStorage.removeItem("lcc_intake_safe_pref");
+      setCreatedCaseId(res.id);
+      setStep(5);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Failed to provision case workspace. Please try again.");
+        setError("Failed to create matter. Please check your network connection and retry.");
       }
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: "32px 0 80px" }}>
-      <div className="container" style={{ maxWidth: "760px" }}>
-        {/* Navigation Breadcrumb */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-muted)", marginBottom: "20px" }}>
-          <Link href="/dashboard" style={{ color: "var(--text-secondary)" }}>Matters</Link>
-          <span>/</span>
-          <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>Open New Case</span>
+    <div style={{ padding: "32px 16px 80px" }}>
+      <div style={{ maxWidth: "760px", margin: "0 auto" }}>
+        {/* Navigation Breadcrumbs */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
+            <Link href="/dashboard" style={{ color: "var(--text-secondary)" }}>
+              My Cases
+            </Link>
+            <span>/</span>
+            <span style={{ color: "#fff", fontWeight: 600 }}>Guided Legal Intake</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={saveDraft}
+            style={{
+              background: "transparent",
+              border: "1px solid var(--border-subtle)",
+              color: "var(--text-secondary)",
+              padding: "4px 12px",
+              borderRadius: "6px",
+              fontSize: "11px",
+              cursor: "pointer",
+            }}
+          >
+            {savedDraftNotice ? "✓ Draft Saved" : "Save Draft"}
+          </button>
         </div>
 
         {/* Header */}
@@ -51,107 +149,536 @@ export default function NewCase() {
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "8px",
+              gap: "6px",
               fontSize: "11px",
               fontWeight: 700,
-              letterSpacing: "0.1em",
               textTransform: "uppercase",
-              color: "var(--accent-secondary)",
+              letterSpacing: "0.1em",
+              color: "var(--accent-secondary, #818cf8)",
               marginBottom: "8px",
             }}
           >
-            <span>●</span> Matter Provisioning Intake
+            <span>●</span> Plain-Language Case Setup
           </div>
-          <h1 style={{ fontSize: "28px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.03em" }}>
-            Open a New Case File
+          <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", margin: "0 0 6px 0" }}>
+            Let&apos;s understand your situation.
           </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginTop: "6px", lineHeight: 1.5 }}>
-            Establish a secure legal workspace to organize dispute documentation, track statutory limitation deadlines, and access evidence-grounded AI analysis.
+          <p style={{ color: "var(--text-secondary, #94a3b8)", fontSize: "14px", lineHeight: 1.5, margin: 0 }}>
+            No legal terms needed. Answer a few simple questions and we&apos;ll organize your case file, identify deadlines, and prepare for your lawyer.
           </p>
         </div>
 
-        {/* Card Form */}
-        <div
-          style={{
-            background: "var(--surface-card)",
-            border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--radius-md)",
-            padding: "32px",
-            boxShadow: "var(--shadow-md)",
-          }}
-        >
-          {error && (
-            <div
-              style={{
-                color: "var(--error)",
-                background: "rgba(239, 68, 68, 0.12)",
-                border: "1px solid rgba(239, 68, 68, 0.3)",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                fontSize: "13px",
-                marginBottom: "20px",
-              }}
-            >
-              {error}
-            </div>
-          )}
+        {/* Step Progress Bar */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "28px" }}>
+          {[
+            ["1", "Type of Problem"],
+            ["2", "What Happened"],
+            ["3", "Parties & Place"],
+            ["4", "Review & Open"],
+          ].map(([stepNum, label], idx) => {
+            const num = idx + 1;
+            const isActive = step === num;
+            const isDone = step > num;
+            return (
+              <div key={stepNum} style={{ flex: 1 }}>
+                <div
+                  style={{
+                    height: "4px",
+                    borderRadius: "2px",
+                    background: isDone ? "#10b981" : isActive ? "var(--accent-primary, #6366f1)" : "rgba(255,255,255,0.08)",
+                    marginBottom: "6px",
+                    transition: "all 0.3s ease",
+                  }}
+                />
+                <div style={{ fontSize: "11px", color: isActive ? "#fff" : isDone ? "#34d399" : "var(--text-muted)", fontWeight: isActive ? 700 : 500 }}>
+                  {stepNum}. {label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <label className="input-label">Matter Caption / Title</label>
-              <input
-                type="text"
-                className="input-field"
-                placeholder="e.g. Commercial Lease Dispute with Alpha Corp"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                autoFocus
-              />
-              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                Provide a descriptive reference for the dispute, contract, or advisory matter.
-              </span>
+        {error && (
+          <div
+            style={{
+              color: "#fca5a5",
+              background: "rgba(239, 68, 68, 0.12)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              padding: "12px 16px",
+              borderRadius: "8px",
+              fontSize: "13px",
+              marginBottom: "20px",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Step 1: Category Selection */}
+        {step === 1 && (
+          <div
+            style={{
+              background: "var(--surface-card, #0e121a)",
+              border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+              borderRadius: "12px",
+              padding: "28px",
+            }}
+          >
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#fff", margin: "0 0 8px 0" }}>
+              What kind of problem are you facing?
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "0 0 20px 0" }}>
+              Choose the category that best matches your situation:
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px", marginBottom: "24px" }}>
+              {DISPUTE_CATEGORIES.map((cat) => {
+                const isSelected = selectedCategory === cat.id;
+                return (
+                  <div
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    style={{
+                      background: isSelected ? "rgba(99, 102, 241, 0.15)" : "rgba(255,255,255,0.02)",
+                      border: isSelected ? "2px solid #6366f1" : "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: "10px",
+                      padding: "16px",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <div style={{ fontSize: "24px", marginBottom: "6px" }}>{cat.icon}</div>
+                    <strong style={{ display: "block", fontSize: "14px", color: isSelected ? "#fff" : "#e2e8f0" }}>
+                      {cat.label}
+                    </strong>
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+                      {cat.hint}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="input-group" style={{ marginTop: "18px" }}>
-              <label className="input-label">Summary & Factual Background</label>
-              <textarea
-                className="input-field"
-                placeholder="Detail the dispute history, involved parties, key dates, or specific relief sought..."
-                rows={6}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                style={{ resize: "vertical", lineHeight: 1.5 }}
-              />
-              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                This summary initializes the matter intelligence graph and helps counsel quickly assess the brief.
-              </span>
-            </div>
-
-            <div
-              style={{
-                marginTop: "32px",
-                paddingTop: "20px",
-                borderTop: "1px solid var(--border-subtle)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Link href="/dashboard" className="btn btn-secondary">
-                ← Return to Matters
-              </Link>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
-                type="submit"
-                className={`btn btn-primary ${loading ? "btn-disabled" : ""}`}
-                disabled={loading || !title.trim()}
+                type="button"
+                onClick={handleNext}
+                style={{
+                  background: "var(--accent-gradient, linear-gradient(135deg, #6366f1, #8b5cf6))",
+                  color: "#fff",
+                  border: "none",
+                  padding: "12px 28px",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
               >
-                {loading ? "Provisioning..." : "Establish Matter Workspace →"}
+                Continue → What Happened
               </button>
             </div>
-          </form>
-        </div>
+          </div>
+        )}
+
+        {/* Step 2: Factual Narrative in Plain Language */}
+        {step === 2 && (
+          <div
+            style={{
+              background: "var(--surface-card, #0e121a)",
+              border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+              borderRadius: "12px",
+              padding: "28px",
+            }}
+          >
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#fff", margin: "0 0 8px 0" }}>
+              What happened? Tell us in your own words.
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "0 0 20px 0" }}>
+              Describe the situation simply. Include roughly when it started, what the other party did or failed to do, and if any money or property is involved.
+            </p>
+
+            <textarea
+              rows={6}
+              value={whatHappened}
+              onChange={(e) => setWhatHappened(e.target.value)}
+              placeholder="e.g. In January 2025, I signed a commercial lease agreement for my retail shop in Saket, New Delhi. The landlord has refused to hand over possession despite taking ₹5,00,000 security deposit. Last week I received a legal notice demanding more rent..."
+              style={{
+                width: "100%",
+                background: "rgba(10, 13, 20, 0.9)",
+                border: "1px solid var(--border-subtle, rgba(255,255,255,0.12))",
+                borderRadius: "8px",
+                color: "#fff",
+                padding: "14px",
+                fontSize: "14px",
+                lineHeight: 1.6,
+                fontFamily: "inherit",
+                outline: "none",
+                marginBottom: "20px",
+              }}
+              required
+            />
+
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button
+                type="button"
+                onClick={handleBack}
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#cbd5e1",
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={!whatHappened.trim()}
+                style={{
+                  background: whatHappened.trim() ? "var(--accent-gradient)" : "rgba(255,255,255,0.1)",
+                  color: "#fff",
+                  border: "none",
+                  padding: "12px 28px",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: whatHappened.trim() ? "pointer" : "not-allowed",
+                }}
+              >
+                Continue → Location & Parties
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Location, Parties, and Court Details */}
+        {step === 3 && (
+          <div
+            style={{
+              background: "var(--surface-card, #0e121a)",
+              border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+              borderRadius: "12px",
+              padding: "28px",
+            }}
+          >
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#fff", margin: "0 0 8px 0" }}>
+              Where did this happen & who is the other side?
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "0 0 20px 0" }}>
+              This helps your lawyer understand jurisdiction and court rules.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "24px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#cbd5e1", marginBottom: "6px" }}>
+                  City or State where this happened
+                </label>
+                <input
+                  type="text"
+                  value={locationCity}
+                  onChange={(e) => setLocationCity(e.target.value)}
+                  placeholder="e.g. New Delhi, Mumbai, Bengaluru, Lucknow"
+                  style={{
+                    width: "100%",
+                    background: "rgba(10, 13, 20, 0.9)",
+                    border: "1px solid var(--border-subtle, rgba(255,255,255,0.12))",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    padding: "10px 14px",
+                    fontSize: "14px",
+                    outline: "none",
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#cbd5e1", marginBottom: "6px" }}>
+                  Name of the Opposite Party (Person or Company)
+                </label>
+                <input
+                  type="text"
+                  value={oppositeParty}
+                  onChange={(e) => setOppositeParty(e.target.value)}
+                  placeholder="e.g. Mehta Trading Corporation / Ramesh Kumar"
+                  style={{
+                    width: "100%",
+                    background: "rgba(10, 13, 20, 0.9)",
+                    border: "1px solid var(--border-subtle, rgba(255,255,255,0.12))",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    padding: "10px 14px",
+                    fontSize: "14px",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <div style={{ background: "rgba(255,255,255,0.02)", padding: "14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#e2e8f0" }}>
+                  <input
+                    type="checkbox"
+                    checked={existingCourtCase}
+                    onChange={(e) => setExistingCourtCase(e.target.checked)}
+                    style={{ width: "16px", height: "16px", accentColor: "#6366f1" }}
+                  />
+                  <span>Is there already a court case, FIR, or legal notice number?</span>
+                </label>
+
+                {existingCourtCase && (
+                  <div style={{ marginTop: "12px" }}>
+                    <input
+                      type="text"
+                      value={cnrOrCaseNo}
+                      onChange={(e) => setCnrOrCaseNo(e.target.value)}
+                      placeholder="Enter CNR number, Case number, or Notice reference..."
+                      style={{
+                        width: "100%",
+                        background: "rgba(10, 13, 20, 0.9)",
+                        border: "1px solid var(--border-subtle, rgba(255,255,255,0.12))",
+                        borderRadius: "8px",
+                        color: "#fff",
+                        padding: "10px 14px",
+                        fontSize: "13px",
+                        fontFamily: "var(--font-mono, monospace)",
+                        outline: "none",
+                      }}
+                    />
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+                      Tip: We can automatically pull details and daily cause lists using your 16-digit CNR.
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#cbd5e1", marginBottom: "6px" }}>
+                  What do you want to achieve?
+                </label>
+                <select
+                  value={goal}
+                  onChange={(e) => setGoal(e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: "rgba(10, 13, 20, 0.9)",
+                    border: "1px solid var(--border-subtle, rgba(255,255,255,0.12))",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    padding: "10px 14px",
+                    fontSize: "14px",
+                    outline: "none",
+                  }}
+                >
+                  <option value="defend">Defend against a claim / Respond to notice</option>
+                  <option value="recover">Recover money / Damages owed to me</option>
+                  <option value="stay">Get an immediate stay order or injunction</option>
+                  <option value="settle">Negotiate a mutual settlement</option>
+                  <option value="advice">Get professional legal advice on my rights</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button
+                type="button"
+                onClick={handleBack}
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#cbd5e1",
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                style={{
+                  background: "var(--accent-gradient)",
+                  color: "#fff",
+                  border: "none",
+                  padding: "12px 28px",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Review Summary →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Summary and Confirmation */}
+        {step === 4 && (
+          <div
+            style={{
+              background: "var(--surface-card, #0e121a)",
+              border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+              borderRadius: "12px",
+              padding: "28px",
+            }}
+          >
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#fff", margin: "0 0 8px 0" }}>
+              Review your case summary
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "0 0 20px 0" }}>
+              We will set up your secure matter workspace with these details:
+            </p>
+
+            <div style={{ background: "rgba(15, 23, 42, 0.8)", borderRadius: "8px", padding: "18px", marginBottom: "24px", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+                <div>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Dispute Type</span>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#fff" }}>
+                    {DISPUTE_CATEGORIES.find((c) => c.id === selectedCategory)?.label}
+                  </div>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Location</span>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#fff" }}>{locationCity}</div>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Opposite Party</span>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#fff" }}>{oppositeParty || "Not specified yet"}</div>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Primary Goal</span>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#818cf8" }}>{goal}</div>
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Your Description</span>
+                <p style={{ fontSize: "13px", color: "#cbd5e1", lineHeight: 1.6, margin: "4px 0 0 0" }}>
+                  {whatHappened}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={handleBack}
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#cbd5e1",
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                ← Edit Details
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading}
+                style={{
+                  background: "var(--accent-gradient, linear-gradient(135deg, #6366f1, #8b5cf6))",
+                  color: "#fff",
+                  border: "none",
+                  padding: "14px 32px",
+                  borderRadius: "8px",
+                  fontSize: "15px",
+                  fontWeight: 700,
+                  cursor: loading ? "wait" : "pointer",
+                  boxShadow: "0 4px 14px rgba(99, 102, 241, 0.4)",
+                }}
+              >
+                {loading ? "Opening Your Workspace..." : "Establish Case Workspace →"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Case Established & Optional Advocate Connection (Sections 15 & 17) */}
+        {step === 5 && createdCaseId && (
+          <div
+            style={{
+              background: "var(--surface-card, #0e121a)",
+              border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+              borderRadius: "12px",
+              padding: "36px 28px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: "40px", marginBottom: "12px" }}>🎉</div>
+            <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#fff", margin: "0 0 8px 0" }}>
+              Your case workspace is ready
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "14px", maxWidth: "520px", margin: "0 auto 24px", lineHeight: 1.6 }}>
+              We have organized your facts, created your case file, and set up your private document vault. What would you like to do next?
+            </p>
+
+            <div
+              style={{
+                background: "rgba(99, 102, 241, 0.08)",
+                border: "1px solid rgba(99, 102, 241, 0.25)",
+                borderRadius: "10px",
+                padding: "20px",
+                maxWidth: "560px",
+                margin: "0 auto 28px",
+                textAlign: "left",
+              }}
+            >
+              <div style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#818cf8", fontWeight: 700, marginBottom: "6px" }}>
+                Recommended Next Step
+              </div>
+              <h3 style={{ fontSize: "16px", color: "#fff", margin: "0 0 6px 0", fontWeight: 700 }}>
+                Connect with an Advocate for this matter
+              </h3>
+              <p style={{ fontSize: "13px", color: "#cbd5e1", margin: "0 0 16px 0", lineHeight: 1.5 }}>
+                Find verified High Court and District advocates specializing in{" "}
+                <strong>{DISPUTE_CATEGORIES.find((c) => c.id === selectedCategory)?.label || "your legal issue"}</strong>{" "}
+                in <strong>{locationCity}</strong>.
+              </p>
+
+              <Link
+                href={`/lawyers?practice_area=${encodeURIComponent(
+                  DISPUTE_CATEGORIES.find((c) => c.id === selectedCategory)?.label || ""
+                )}&location=${encodeURIComponent(locationCity)}`}
+                className="btn btn-primary"
+                style={{ display: "inline-block", padding: "10px 20px", fontSize: "13px", fontWeight: 700 }}
+              >
+                Browse Matching Advocates →
+              </Link>
+            </div>
+
+            <div>
+              <Link
+                href={`/cases/${createdCaseId}`}
+                style={{ color: "#94a3b8", fontSize: "13px", textDecoration: "underline" }}
+              >
+                Skip advocate search and go directly to Case Workspace →
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function NewCaseIntake() {
+  return (
+    <Suspense fallback={<div style={{ padding: "80px 20px", textAlign: "center", color: "#94a3b8" }}>Loading case intake wizard...</div>}>
+      <NewCaseIntakeContent />
+    </Suspense>
   );
 }

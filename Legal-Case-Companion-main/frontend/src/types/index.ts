@@ -152,7 +152,7 @@ export interface CaseFactItem {
   fact_text?: string;
   fact_statement?: string;
   category?: string;
-  verification_status: "AI_SUGGESTED" | "AI_VERIFIED" | "HUMAN_CONFIRMED" | "USER_REPORTED" | "CONTESTED";
+  verification_status: "AI_SUGGESTED" | "AI_VERIFIED" | "AI_GENERATED" | "SYSTEM_RULE" | "SYSTEM_GENERATED" | "USER_PROVIDED" | "LAWYER_VERIFIED" | "OFFICIAL_SOURCE" | "HUMAN_CONFIRMED" | "USER_REPORTED" | "CONTESTED" | "UNVERIFIED";
   source_type: "CASE_EVIDENCE" | "LEGAL_AUTHORITY" | "USER_REPORTED" | "CONVERSATION_EXTRACTION" | string;
   source_chunk_id?: string | null;
   source_document_id?: string | null;
@@ -535,6 +535,7 @@ export interface LawyerProfileItem {
   bio?: string;
   verification_status?: "PENDING" | "VERIFIED" | "REJECTED" | "APPROVED" | "UNDER_REVIEW";
   is_online?: boolean;
+  match_reasons?: string[];
 }
 
 export interface NotificationPreferenceItem {
@@ -1088,6 +1089,125 @@ export interface InMeetingChatMessage {
   sender_role: string;
   content: string;
   timestamp: string;
+}
+
+export interface ConsultationPricingResponse {
+  lawyer_id: string;
+  duration_minutes: number;
+  fee_amount: number;
+  gst_rate: number;
+  gst_amount: number;
+  platform_fee: number;
+  total_amount: number;
+  currency: string;
+  breakdown: {
+    cgst: number;
+    sgst: number;
+    description: string;
+  };
+}
+
+// ----------------------------------------------------------------------------
+// Phase 7.4 Court Tracking & Calendar Types
+// ----------------------------------------------------------------------------
+
+export interface CourtHearingHistoryItem {
+  date: string;
+  judge: string;
+  business: string;
+  next_date?: string | null;
+  hearing_id?: string | null;
+}
+
+export interface CourtCauseListItem {
+  court_room: string;
+  item_number: string;
+  cause_list_date: string;
+  bench: string;
+  board_status: string;
+}
+
+export interface CourtOrderItem {
+  title: string;
+  order_date: string;
+  pages: number;
+  sha256: string;
+  document_id?: string | null;
+}
+
+export interface CourtCaseSummary {
+  id: string;
+  cnr: string;
+  case_number: string;
+  case_type: string;
+  court_name: string;
+  bench?: string | null;
+  petitioner: string;
+  respondent: string;
+  petitioner_advocate?: string | null;
+  respondent_advocate?: string | null;
+  technical_status: string;
+  human_status: string;
+  next_hearing_date?: string | null;
+  next_hearing_purpose?: string | null;
+  source_provenance: string;
+  last_synchronized_at: string;
+  sync_status: string;
+  case_id?: string | null;
+  is_followed: boolean;
+}
+
+export interface CourtCaseDetail extends CourtCaseSummary {
+  filing_number?: string | null;
+  filing_date?: string | null;
+  registration_date?: string | null;
+  court_room?: string | null;
+  item_number?: string | null;
+  acts_and_sections?: string | null;
+  history: CourtHearingHistoryItem[];
+  cause_list?: CourtCauseListItem | null;
+  orders: CourtOrderItem[];
+}
+
+export interface CalendarEventItem {
+  id: string;
+  type: "hearing" | "limitation" | "consultation" | "task";
+  type_label: string;
+  scheduled_at: string;
+  month: string;
+  day: string;
+  time_display: string;
+  title: string;
+  case_id?: string | null;
+  case_name: string;
+  case_ref: string;
+  forum: string;
+  action_tip: string;
+  technical_term?: string | null;
+  source: string;
+  action_label: string;
+  action_href: string;
+  is_urgent: boolean;
+  lawyer_details?: {
+    court?: string;
+    court_room?: string;
+    item_number?: string;
+    bench?: string;
+    status?: string;
+    petitioner_advocate?: string | null;
+    respondent_advocate?: string | null;
+    deadline_type?: string;
+    duration_minutes?: number;
+    fee?: number;
+    priority?: string;
+    is_confirmed?: boolean;
+  } | null;
+}
+
+export interface CalendarEventsResponse {
+  events: CalendarEventItem[];
+  total: number;
+  next_attention_event?: CalendarEventItem | null;
 }
 
 

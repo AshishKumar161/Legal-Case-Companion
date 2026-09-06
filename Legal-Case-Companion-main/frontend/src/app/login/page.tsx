@@ -55,7 +55,11 @@ function LoginForm() {
       let userRole: UserRole | null = null;
 
       try {
-        const payload = JSON.parse(atob(res.access_token.split('.')[1]));
+        const base64Url = res.access_token.split('.')[1] || '';
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const padLen = (4 - (base64.length % 4)) % 4;
+        const paddedBase64 = base64 + '='.repeat(padLen);
+        const payload = JSON.parse(atob(paddedBase64));
         if (payload.sub) userId = payload.sub;
         if (
           payload.role &&

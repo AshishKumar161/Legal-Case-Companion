@@ -20,7 +20,7 @@ LCC utilizes a 14-category machine-readable launch evaluation engine (`app/servi
 | **GATE-11-FIN** | Finance | Commercial billing, GST 18% SAC 9982 invoice generation, refunds | PASSED | None |
 | **GATE-12-VER** | Professional Verification | Bar Council enrollment verification, rejection taxonomy, renewals | PASSED | None |
 | **GATE-13-ABU** | Abuse Prevention | Public onboarding gating (CONTROLLED mode), disposable mail block | PASSED | None |
-| **GATE-14-REL** | Release Engineering | Linear migration head `m1a2b3c4d5e6`, signed release manifest | PASSED | None |
+| **GATE-14-REL** | Release Engineering | Linear migration head `25500e9a54c3`, signed release manifest | PASSED | None |
 
 ## Decision States
 - `BLOCKED`: Technical or operational failure prevents safe operation.

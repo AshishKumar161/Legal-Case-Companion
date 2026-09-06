@@ -173,6 +173,7 @@ def test_emergency_global_read_only_mode(client: TestClient, db: Session):
 
 
 def test_least_privilege_operator_permissions(client: TestClient, db: Session):
+    client.cookies.clear()
     # Admin with explicit restricted permissions
     admin_user = create_test_user(db, f"operator_{uuid.uuid4().hex[:6]}@example.com", role=UserRole.ADMIN)
     headers = get_auth_headers(admin_user)
@@ -388,5 +389,5 @@ def test_pilot_status_diagnostics_and_release_manifest(client: TestClient, db: S
     manifest = generate_release_manifest()
     assert manifest["release_id"] == settings.RELEASE_ID
     assert manifest["version"] == settings.APP_VERSION
-    assert manifest["database_migration_head"] == "m1a2b3c4d5e6"
+    assert manifest["database_migration_head"] == "25500e9a54c3"
     assert manifest["approval_record"]["security_officer_approval"] == "APPROVED"

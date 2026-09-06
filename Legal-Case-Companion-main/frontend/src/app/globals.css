@@ -1,93 +1,179 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
   /* ==========================================================================
-     SURFACES & CANVAS
+     SURFACES & CANVAS - Canonical LCC Design System
      ========================================================================== */
-  --surface-base: #08090c;
-  --surface-card: #101218;
-  --surface-subtle: #141721;
-  --surface-elevated: #191d2a;
-  --surface-hover: #1b202e;
-  --surface-active: #22283a;
+  --surface-base: #07090E;
+  --surface-card: #0E121A;
+  --surface-elevated: #151A24;
+  --surface-subtle: #141824;
+  --surface-hover: #1f273b;
+  --surface-active: #252f47;
 
   /* Backward compatible tokens */
-  --bg-primary: #08090c;
-  --bg-secondary: #101218;
-  --bg-glass: rgba(16, 18, 24, 0.85);
-  --bg-glass-hover: rgba(22, 25, 34, 0.95);
+  --bg-primary: #07090E;
+  --bg-secondary: #0E121A;
+  --bg-glass: rgba(14, 18, 26, 0.85);
+  --bg-glass-hover: rgba(26, 32, 48, 0.9);
 
   /* ==========================================================================
      TYPOGRAPHY & CONTRAST
      ========================================================================== */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
   --text-primary: #f8fafc;
-  --text-secondary: #9aa5b8;
-  --text-muted: #626e82;
-  --text-subtle: #414a5a;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-subtle: #475569;
+
+  --font-size-2xs: 0.6875rem; /* 11px */
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 1.875rem;  /* 30px */
+  --font-size-4xl: 2.25rem;   /* 36px */
+
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
 
   /* ==========================================================================
-     PRIMARY & BRAND ACCENTS
+     SPACING SYSTEM
      ========================================================================== */
-  --accent-primary: #4f5bf7;
-  --accent-secondary: #6d7cff;
-  --accent-glow: rgba(79, 91, 247, 0.25);
-  --accent-soft: rgba(79, 91, 247, 0.12);
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 20px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --space-3xl: 40px;
+  --space-4xl: 48px;
+  --space-5xl: 64px;
 
   /* ==========================================================================
-     LEGAL SEMANTIC STATUS TOKENS
+     PRIMARY & BRAND ACCENTS (Indigo / Violet)
      ========================================================================== */
+  --accent-primary: #6366f1;
+  --accent-secondary: #8b5cf6;
+  --accent-tertiary: #a855f7;
+  --brand-primary: #6366f1;
+  --brand-secondary: #8b5cf6;
+  --brand-hover: #4f46e5;
+  --accent-glow: rgba(99, 102, 241, 0.25);
+  --accent-soft: rgba(99, 102, 241, 0.12);
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+
+  /* ==========================================================================
+     SEMANTIC STATUS TOKENS
+     ========================================================================== */
+  --urgent: #EF4444;
+  --warning: #F59E0B;
+  --success: #10B981;
+  --info: #06B6D4;
+  --error: #EF4444;
+
+  --status-urgent: #EF4444;
+  --status-warning: #F59E0B;
+  --status-success: #10B981;
+  --status-info: #06B6D4;
+
   --status-safe-bg: rgba(16, 185, 129, 0.12);
-  --status-safe-text: #10b981;
-  --status-safe-border: rgba(16, 185, 129, 0.28);
+  --status-safe-text: #10B981;
+  --status-safe-border: rgba(16, 185, 129, 0.32);
 
-  --status-info-bg: rgba(59, 130, 246, 0.12);
-  --status-info-text: #60a5fa;
-  --status-info-border: rgba(59, 130, 246, 0.28);
+  --status-info-bg: rgba(6, 182, 212, 0.12);
+  --status-info-text: #06B6D4;
+  --status-info-border: rgba(6, 182, 212, 0.32);
 
-  --status-warning-bg: rgba(245, 158, 11, 0.12);
-  --status-warning-text: #f59e0b;
-  --status-warning-border: rgba(245, 158, 11, 0.28);
+  --status-warning-bg: rgba(245, 158, 11, 0.14);
+  --status-warning-text: #F59E0B;
+  --status-warning-border: rgba(245, 158, 11, 0.35);
 
-  --status-urgent-bg: rgba(239, 68, 68, 0.12);
-  --status-urgent-text: #ef4444;
-  --status-urgent-border: rgba(239, 68, 68, 0.28);
+  --status-urgent-bg: rgba(239, 68, 68, 0.14);
+  --status-urgent-text: #EF4444;
+  --status-urgent-border: rgba(239, 68, 68, 0.38);
 
-  --status-statutory-bg: rgba(220, 38, 38, 0.16);
-  --status-statutory-text: #f87171;
-  --status-statutory-border: rgba(220, 38, 38, 0.4);
+  --status-statutory-bg: rgba(239, 68, 68, 0.18);
+  --status-statutory-text: #fca5a5;
+  --status-statutory-border: rgba(239, 68, 68, 0.45);
 
-  --success: #10b981;
-  --warning: #f59e0b;
-  --error: #ef4444;
+  --status-judicial-bg: rgba(6, 182, 212, 0.12);
+  --status-judicial-text: #38bdf8;
+  --status-judicial-border: rgba(6, 182, 212, 0.32);
 
   /* ==========================================================================
      BORDERS & DIVIDERS
      ========================================================================== */
-  --border-subtle: #202534;
-  --border-hover: #31394e;
-  --border-focus: #4f5bf7;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.18);
+  --border-focus: #6366f1;
+  --border-glass: rgba(255, 255, 255, 0.12);
 
   /* ==========================================================================
      SHADOWS & ELEVATION
      ========================================================================== */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.75);
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 24px rgba(79, 91, 247, 0.25);
+  --shadow-glow: 0 0 24px rgba(99, 102, 241, 0.2);
 
   /* ==========================================================================
      RADII & TRANSITIONS
      ========================================================================== */
+  --radius-none: 0px;
   --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
   --radius-full: 9999px;
 
-  --transition-fast: 0.15s ease;
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ==========================================================================
+     Z-INDEX STACK
+     ========================================================================== */
+  --z-hide: -1;
+  --z-base: 0;
+  --z-elevated: 10;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-banner: 1200;
+  --z-overlay: 1300;
+  --z-modal: 1400;
+  --z-popover: 1500;
+  --z-toast: 1600;
+  --z-tooltip: 1700;
+
+  /* ==========================================================================
+     FOCUS RING TOKENS
+     ========================================================================== */
+  --focus-ring-color: #6366f1;
+  --focus-ring-offset: 2px;
+  --focus-ring: 0 0 0 2px var(--surface-base), 0 0 0 4px var(--focus-ring-color);
+
+  /* ==========================================================================
+     RESPONSIVE BREAKPOINTS (CSS properties for JS/calc consumption)
+     ========================================================================== */
+  --bp-mobile: 640px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1024px;
+  --bp-wide: 1280px;
 }
 
 * {
@@ -104,18 +190,19 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background-image: 
-    radial-gradient(circle at 10% 20%, rgba(79, 91, 247, 0.04), transparent 25%),
-    radial-gradient(circle at 90% 10%, rgba(109, 124, 255, 0.03), transparent 25%);
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.12), transparent 70%),
+    radial-gradient(circle at 10% 25%, rgba(139, 92, 246, 0.05), transparent 30%),
+    radial-gradient(circle at 90% 15%, rgba(6, 182, 212, 0.04), transparent 30%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Outfit', sans-serif;
-  font-weight: 600;
-  line-height: 1.25;
+  font-weight: 700;
+  line-height: 1.2;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 
 a {
@@ -140,14 +227,45 @@ button {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 24px;
+  width: 100%;
 }
 
-/* Panels */
+@media (max-width: 640px) {
+  .container {
+    padding: 0 16px;
+  }
+}
+
+/* Responsive Navigation Utilities */
+@media (max-width: 768px) {
+  .desktop-nav {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-desktop-only {
+    display: none !important;
+  }
+}
+
+/* Glassmorphic Panels */
 .glass-panel {
   background: var(--surface-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+}
+
+.glass-panel-elevated {
+  background: rgba(18, 23, 34, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-glass);
 }
 
 .glass-panel-interactive {
@@ -157,8 +275,8 @@ button {
 .glass-panel-interactive:hover {
   background: var(--surface-hover);
   border-color: var(--border-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), 0 0 16px rgba(99, 102, 241, 0.15);
 }
 
 /* Form Controls */
@@ -178,10 +296,10 @@ button {
 }
 
 .input-field {
-  background: var(--surface-base);
+  background: rgba(7, 9, 14, 0.8);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  padding: 10px 14px;
+  padding: 11px 15px;
   color: var(--text-primary);
   font-size: 0.9375rem;
   transition: all var(--transition-fast);
@@ -191,6 +309,7 @@ button {
   outline: none;
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 2px var(--accent-glow);
+  background: rgba(14, 18, 26, 0.95);
 }
 
 .input-field::placeholder {
@@ -203,24 +322,25 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 18px;
+  padding: 10px 20px;
   border-radius: var(--radius-sm);
   font-weight: 600;
   font-size: 0.875rem;
   transition: all var(--transition-normal);
+  white-space: nowrap;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  background: var(--accent-gradient);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 4px 14px rgba(79, 91, 247, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.4);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(79, 91, 247, 0.5);
-  filter: brightness(1.08);
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.55);
+  filter: brightness(1.1);
 }
 
 .btn-primary:active {
@@ -228,37 +348,149 @@ button {
 }
 
 .btn-secondary {
-  background: var(--surface-card);
+  background: rgba(22, 28, 42, 0.8);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
+  backdrop-filter: blur(8px);
 }
 
 .btn-secondary:hover {
   background: var(--surface-hover);
   border-color: var(--border-hover);
   color: #fff;
+  transform: translateY(-1px);
 }
 
 .btn-disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
   pointer-events: none;
 }
 
-/* Micro Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Legal Semantic Badges */
+.badge-statutory {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--status-statutory-bg);
+  color: var(--status-statutory-text);
+  border: 1px solid var(--status-statutory-border);
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+.badge-jurisdiction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--status-judicial-bg);
+  color: var(--status-judicial-text);
+  border: 1px solid var(--status-judicial-border);
+}
+
+.badge-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--status-safe-bg);
+  color: var(--status-safe-text);
+  border: 1px solid var(--status-safe-border);
 }
 
 /* Gradients Text */
 .text-gradient {
-  background: linear-gradient(135deg, #7c88ff, #a5b4fc);
+  background: linear-gradient(135deg, #ffffff 0%, #c7d2fe 45%, #818cf8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.text-gradient-accent {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Micro Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.95); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+/* Styled Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #07090e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e2538;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2e3852;
+}
+
+/* ==========================================================================
+   WCAG 2.2 AA ACCESSIBILITY & MOBILE TOUCH TARGETS
+   ========================================================================== */
+:focus-visible {
+  outline: 2px solid var(--accent-primary, #6366f1) !important;
+  outline-offset: 2px !important;
+}
+
+/* Minimum 44x44px touch targets on touch devices */
+@media (pointer: coarse) {
+  button, 
+  a.btn, 
+  input[type="button"], 
+  input[type="submit"], 
+  select, 
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

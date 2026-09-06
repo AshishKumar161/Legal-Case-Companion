@@ -155,9 +155,9 @@ export default function Register() {
 
         setStep("success");
 
-        // Redirect user straight into their dashboard
+        // Redirect user into their lightweight tailored onboarding
         setTimeout(() => {
-          router.push("/dashboard");
+          router.push("/onboarding");
         }, 1200);
       } else {
         setError("Verification succeeded. Please proceed to log in.");

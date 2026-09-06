@@ -29,8 +29,9 @@ export function NotificationBell() {
 
   useEffect(() => {
     void fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000); // 15s refresh
-    return () => clearInterval(interval);
+    const handleFocus = () => void fetchNotifications();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [fetchNotifications]);
 
   // Click outside to close
@@ -84,14 +85,11 @@ export function NotificationBell() {
     if (type.includes("DEADLINE") || type.includes("OVERDUE") || type.includes("LIMITATION")) {
       return { bg: "rgba(239, 68, 68, 0.15)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)", label: "Limitation / Deadline" };
     }
-    if (type.includes("HEARING")) {
+    if (type.includes("HEARING") || type.includes("COURT")) {
       return { bg: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.3)", label: "Court Listing" };
     }
     if (type.includes("DOCUMENT")) {
       return { bg: "rgba(59, 130, 246, 0.15)", color: "#60a5fa", border: "1px solid rgba(59, 130, 246, 0.3)", label: "Evidence Vault" };
-    }
-    if (type.includes("AI")) {
-      return { bg: "rgba(109, 124, 255, 0.15)", color: "#8d98ff", border: "1px solid rgba(109, 124, 255, 0.3)", label: "Case Copilot" };
     }
     if (type.includes("CONSULTATION")) {
       return { bg: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", label: "Consultation" };
@@ -106,6 +104,12 @@ export function NotificationBell() {
 
   // Calculate deep link target based on item metadata
   const getNotificationLink = (n: NotificationItem) => {
+    if (n.type.includes("COURT") || n.type.includes("CAUSE_LIST")) {
+      return "/court-tracking";
+    }
+    if (n.type.includes("CONSULTATION")) {
+      return "/consultations";
+    }
     if (n.case_id) {
       if (n.type.includes("HEARING") || n.type.includes("DEADLINE") || n.type.includes("TASK")) {
         return `/cases/${n.case_id}?tab=workflow`;
@@ -113,15 +117,9 @@ export function NotificationBell() {
       if (n.type.includes("DOCUMENT")) {
         return `/cases/${n.case_id}?tab=documents`;
       }
-      if (n.type.includes("AI")) {
-        return `/cases/${n.case_id}?tab=copilot`;
-      }
       return `/cases/${n.case_id}`;
     }
-    if (n.type.includes("CONSULTATION")) {
-      return "/dashboard";
-    }
-    return null;
+    return "/dashboard";
   };
 
   return (

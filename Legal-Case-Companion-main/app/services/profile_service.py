@@ -218,9 +218,32 @@ class ProfileService:
                 lp.is_available = False
                 lp.presence_status = "OFFLINE"
 
-        # Prioritize available lawyers first, then online lawyers, then newest
+            # Phase 9: Explainable Discovery Match Criteria
+            reasons: list[str] = []
+            if court_jurisdiction and lp.court_jurisdictions:
+                if any(court_jurisdiction.lower() in str(cj).lower() for cj in lp.court_jurisdictions):
+                    reasons.append(f"Jurisdiction: {court_jurisdiction}")
+            if practice_area and lp.practice_areas:
+                if any(practice_area.lower() in str(pa).lower() for pa in lp.practice_areas):
+                    reasons.append(f"Practice Area: {practice_area}")
+            if language and lp.languages:
+                if any(language.lower() in str(lang).lower() for lang in lp.languages):
+                    reasons.append(f"Language: {language}")
+            if getattr(lp, "is_available", False):
+                reasons.append("Available for Consultation")
+            elif getattr(lp, "is_online", False):
+                reasons.append("Currently Online")
+            if lp.verification_status == "APPROVED":
+                reasons.append("Verified Bar Council Advocate")
+            if lp.consultation_fee is not None:
+                reasons.append(f"Transparent Fee: ₹{int(lp.consultation_fee)}")
+
+            lp.match_reasons = reasons
+
+        # Deterministic explainable sort: highest match count first, then availability, then recency
         all_matches.sort(
             key=lambda x: (
+                -len(getattr(x, "match_reasons", [])),
                 not getattr(x, "is_available", False),
                 not getattr(x, "is_online", False),
                 -(x.created_at.timestamp() if x.created_at else 0),

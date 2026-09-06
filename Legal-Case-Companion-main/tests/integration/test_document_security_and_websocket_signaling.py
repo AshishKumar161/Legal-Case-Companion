@@ -289,6 +289,12 @@ def test_websocket_signaling_authentication_and_peer_exchange(client: TestClient
             assert joined_msg["user_id"] == lawyer_id
             assert joined_msg["role"] == "LAWYER"
 
+            # Lawyer receives 'existing-peer' notification for already connected Client
+            existing_peer_msg = json.loads(ws_lawyer.receive_text())
+            assert existing_peer_msg["type"] == "existing-peer"
+            assert existing_peer_msg["user_id"] == client_id
+            assert existing_peer_msg["role"] == "CLIENT"
+
             # Client sends WebRTC SDP Offer
             offer_payload = {
                 "type": "offer",
@@ -326,11 +332,11 @@ def test_websocket_signaling_authentication_and_peer_exchange(client: TestClient
             assert lawyer_ice["type"] == "ice-candidate"
             assert lawyer_ice["candidate"] == ice_payload["candidate"]
 
-            # Explicitly close lawyer socket so disconnect event is processed cleanly in TestClient
-            ws_lawyer.close()
-            leave_msg = json.loads(ws_client.receive_text())
-            assert leave_msg["type"] == "peer-left"
-            assert leave_msg["user_id"] == lawyer_id
+        # Upon ws_lawyer context exit, the server processes disconnect and broadcasts peer-left
+        leave_msg = json.loads(ws_client.receive_text())
+        assert leave_msg["type"] == "peer-left"
+        assert leave_msg["user_id"] == lawyer_id
+
 
 
 

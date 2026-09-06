@@ -119,3 +119,73 @@ def get_support_analytics(
     """Retrieves operational support metrics, resolution times, and recurring friction hotspots."""
     service = SupportService(db)
     return service.get_support_analytics()
+
+
+@router.get("/enhanced-analytics")
+def get_enhanced_support_analytics(
+    current_user: User = Depends(RequireOperatorPermission(OperationalPermission.USER_SUPPORT)),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Retrieves advanced Phase 10 support metrics including response times, reopen rate, and ratios."""
+    service = SupportService(db)
+    return service.get_enhanced_support_analytics()
+
+
+@router.get("/cases/{case_id}/messages")
+def get_support_case_messages(
+    case_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+    """Retrieves communication thread on a support ticket under zero-trust note isolation."""
+    service = SupportService(db)
+    case = service.get_case(case_id)
+    if current_user.role.value != "ADMIN" and case.user_id != current_user.id:
+        from app.core.exceptions import AuthorizationError
+        raise AuthorizationError("Not authorized to view messages on this support ticket.")
+
+    msgs = service.get_case_messages(case_id, current_user)
+    return [
+        {
+            "id": str(m.id),
+            "sender_role": m.sender_role,
+            "sender_name": m.sender.full_name if m.sender else ("Support Operator" if m.sender_role == "OPERATOR" else "User"),
+            "message_text": m.message_text,
+            "is_internal_note": m.is_internal_note,
+            "created_at": m.created_at.isoformat(),
+        }
+        for m in msgs
+    ]
+
+
+@router.post("/cases/{case_id}/messages", status_code=status.HTTP_201_CREATED)
+def add_support_case_message(
+    case_id: str,
+    message_text: str = Query(..., min_length=1),
+    is_internal_note: bool = Query(False),
+    new_status: SupportCaseStatus | None = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Adds a customer-operator communication entry or internal note to a support ticket."""
+    service = SupportService(db)
+    case = service.get_case(case_id)
+    if current_user.role.value != "ADMIN" and case.user_id != current_user.id:
+        from app.core.exceptions import AuthorizationError
+        raise AuthorizationError("Not authorized to post messages on this support ticket.")
+
+    # Only admins can create internal notes
+    internal = is_internal_note if current_user.role.value == "ADMIN" else False
+    msg = service.add_case_message(
+        identifier=case_id,
+        message_text=message_text,
+        sender=current_user,
+        is_internal_note=internal,
+        new_status=new_status,
+    )
+    return {
+        "status": "CREATED",
+        "message_id": str(msg.id),
+        "sender_role": msg.sender_role,
+        "created_at": msg.created_at.isoformat(),
+    }

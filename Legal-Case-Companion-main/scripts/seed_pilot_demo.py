@@ -21,8 +21,13 @@ from app.models.user import (
 )
 
 
-def seed_demo_users():
-    db = SessionLocal()
+def seed_demo_users(db_session=None):
+    close_db = False
+    if db_session is not None:
+        db = db_session
+    else:
+        db = SessionLocal()
+        close_db = True
     try:
         common_password = hash_password("Password123!")
 
@@ -127,7 +132,8 @@ def seed_demo_users():
         print(f"Error seeding demo users: {e}")
         raise
     finally:
-        db.close()
+        if close_db:
+            db.close()
 
 
 if __name__ == "__main__":

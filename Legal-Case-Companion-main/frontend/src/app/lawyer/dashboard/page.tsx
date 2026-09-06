@@ -10,6 +10,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConsultationActionModal } from "@/components/Consultation/ConsultationActionModal";
+import LegalTerm from "@/components/LegalTerm";
+import { WhatChangedBanner } from "@/components/WhatChangedBanner";
 
 export default function LawyerDashboard() {
   const { user, loading } = useAuth();
@@ -382,6 +384,9 @@ export default function LawyerDashboard() {
           </div>
         )}
 
+        {/* Phase 9: What Changed Since Your Last Visit */}
+        <WhatChangedBanner />
+
         {/* Operational Metrics Row */}
         <div
           style={{
@@ -449,6 +454,65 @@ export default function LawyerDashboard() {
           </div>
         </div>
 
+        {/* Chambers Today's Cause List & Urgent Limitation Command (Section 24) */}
+        <div
+          style={{
+            background: "linear-gradient(135deg, rgba(14, 18, 26, 0.95), rgba(21, 26, 36, 0.95))",
+            border: "1px solid rgba(99, 102, 241, 0.3)",
+            borderRadius: "var(--radius-md)",
+            padding: "20px 24px",
+            marginBottom: "28px",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: "20px",
+          }}
+        >
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 800, color: "#f87171", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                🏛 Today&apos;s Cause List Listing
+              </span>
+              <span style={{ fontSize: "11px", color: "#34d399", background: "rgba(16, 185, 129, 0.12)", padding: "2px 8px", borderRadius: "4px" }}>
+                eCourts Sync Online
+              </span>
+            </div>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#fff", margin: "0 0 4px 0" }}>
+              Delhi High Court · Court Room 4 (Item 14)
+            </h3>
+            <p style={{ fontSize: "13px", color: "#cbd5e1", margin: "0 0 10px 0" }}>
+              Sharma Estates v. Mehta Trading Corp · CS(COMM) 412/2025 · 10:30 AM IST · Pronouncement of Judgment
+            </p>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <Link href="/court-tracking" className="btn btn-secondary" style={{ padding: "6px 14px", fontSize: "12px" }}>
+                Track Cause List →
+              </Link>
+              <Link href="/calendar" className="btn btn-secondary" style={{ padding: "6px 14px", fontSize: "12px" }}>
+                Hearing Calendar →
+              </Link>
+            </div>
+          </div>
+
+          <div style={{ borderLeft: "1px solid rgba(255,255,255,0.08)", paddingLeft: "20px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 800, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                ⏱ Statutory Limitation Radar
+              </span>
+              <span style={{ fontSize: "11px", color: "#fbbf24", background: "rgba(245, 158, 11, 0.12)", padding: "2px 8px", borderRadius: "4px" }}>
+                10 Days Left
+              </span>
+            </div>
+            <h4 style={{ fontSize: "14px", fontWeight: 700, color: "#fff", margin: "0 0 4px 0" }}>
+              Section 34(3) Arbitration Objection Cutoff
+            </h4>
+            <p style={{ fontSize: "12px", color: "#94a3b8", margin: "0 0 10px 0" }}>
+              M/s Apex Infrastructure v. Union of India · Mandatory 90-day statutory limitation window expires 15 Sep 2026.
+            </p>
+            <Link href="/calendar" style={{ fontSize: "12px", color: "var(--accent-secondary)", fontWeight: 600 }}>
+              Inspect Limitation Filing Radar →
+            </Link>
+          </div>
+        </div>
+
         {/* Main Grid: Cases & Consultations */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "24px", alignItems: "flex-start" }}>
           {/* Matters Section */}
@@ -489,7 +553,10 @@ export default function LawyerDashboard() {
                           #{c.id.slice(0, 8).toUpperCase()}
                         </span>
                       </div>
-                      <StatusBadge status={c.status} />
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <StatusBadge status={c.status} />
+                        <LegalTerm term={c.status} showBadge={true} />
+                      </div>
                     </div>
 
                     <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "12px" }}>

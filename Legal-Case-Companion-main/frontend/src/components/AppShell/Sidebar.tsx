@@ -28,33 +28,44 @@ export function Sidebar({
 
   const role = user?.role;
 
-  // Navigation Items per Role
+  // Navigation Items per Role (Section 8: Role-Aware Navigation)
   const clientNav = [
-    { label: "Overview", href: "/dashboard", icon: "📊" },
+    { label: "Home", href: "/dashboard", icon: "📊" },
     { label: "My Cases", href: "/cases", icon: "⚖" },
-    { label: "Consultations", href: "/consultations", icon: "📅" },
+    { label: "Court Tracking", href: "/court-tracking", icon: "🏛" },
+    { label: "Hearings", href: "/calendar", icon: "📅" },
+    { label: "Documents", href: "/documents", icon: "📁" },
     { label: "Find Lawyers", href: "/lawyers", icon: "🔍" },
-    { label: "Notifications", href: "/notifications", icon: "🔔" },
-    { label: "Account & Settings", href: "/settings", icon: "⚙" },
+    { label: "Messages", href: "/messages", icon: "💬" },
+    { label: "Payments", href: "/payments", icon: "💳" },
+    { label: "Support", href: "/support", icon: "🎧" },
+    { label: "Trust Center", href: "/trust", icon: "🛡️" },
   ];
 
   const lawyerNav = [
     { label: "Practice Overview", href: "/lawyer/dashboard", icon: "📈" },
-    { label: "Consultations", href: "/consultations", icon: "📅" },
-    { label: "My Cases", href: "/cases", icon: "⚖" },
-    { label: "Profile & Availability", href: "/lawyer/profile", icon: "👤" },
-    { label: "Lawyer Directory", href: "/lawyers", icon: "👥" },
-    { label: "Notifications", href: "/notifications", icon: "🔔" },
-    { label: "Account & Settings", href: "/settings", icon: "⚙" },
+    { label: "Cases", href: "/cases", icon: "⚖" },
+    { label: "Court Tracking", href: "/court-tracking", icon: "🏛" },
+    { label: "Calendar & Hearings", href: "/calendar", icon: "📅" },
+    { label: "Clients", href: "/clients", icon: "👥" },
+    { label: "Documents", href: "/documents", icon: "📁" },
+    { label: "Consultations", href: "/consultations", icon: "📹" },
+    { label: "Billing", href: "/payments", icon: "💳" },
+    { label: "Support", href: "/support", icon: "🎧" },
+    { label: "Trust Center", href: "/trust", icon: "🛡️" },
   ];
 
   const adminNav = [
-    { label: "Console Overview", href: "/admin/dashboard", icon: "🛡" },
-    { label: "Consultations", href: "/consultations", icon: "📅" },
-    { label: "Cases", href: "/cases", icon: "⚖" },
-    { label: "Lawyer Directory", href: "/lawyers", icon: "👥" },
-    { label: "Notifications", href: "/notifications", icon: "🔔" },
-    { label: "Account & Settings", href: "/settings", icon: "⚙" },
+    { label: "Dashboard", href: "/admin/dashboard", icon: "🛡" },
+    { label: "Matters", href: "/cases", icon: "⚖" },
+    { label: "Team", href: "/admin/users", icon: "👥" },
+    { label: "Calendar", href: "/calendar", icon: "📅" },
+    { label: "Documents", href: "/documents", icon: "📁" },
+    { label: "Billing", href: "/payments", icon: "💳" },
+    { label: "Reports", href: "/admin/reports", icon: "📊" },
+    { label: "Settings", href: "/settings", icon: "⚙" },
+    { label: "Support", href: "/support", icon: "🎧" },
+    { label: "Trust Center", href: "/trust", icon: "🛡️" },
   ];
 
   const navItems =

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { NotificationBell } from "@/components/NotificationBell";
 import { GlobalSearchModal } from "@/components/GlobalSearchModal";
 import { PilotFeedbackModal } from "@/components/PilotFeedbackModal";
+import { useI18n, SUPPORTED_LOCALES, SupportedLocale } from "@/providers/I18nProvider";
 import styles from "./TopBar.module.css";
 
 interface TopBarProps {
@@ -16,7 +17,26 @@ interface TopBarProps {
 export function TopBar({ onOpenMobile }: TopBarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { locale, setLocale } = useI18n();
   const router = useRouter();
+
+  const [istTime, setIstTime] = useState("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+      setIstTime(timeString);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -40,6 +60,15 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
         { label: "Matters", href: "/dashboard" },
         { label: `Case #${parts[2].slice(0, 8).toUpperCase()}`, href: `/cases/${parts[2]}` },
       ];
+    }
+    if (pathname.startsWith("/court-tracking")) {
+      return [{ label: "Court Case Tracking", href: "/court-tracking" }];
+    }
+    if (pathname.startsWith("/calendar")) {
+      return [{ label: "Hearing Calendar", href: "/calendar" }];
+    }
+    if (pathname.startsWith("/documents")) {
+      return [{ label: "Evidence & Documents", href: "/documents" }];
     }
     if (pathname.startsWith("/lawyer/dashboard")) {
       return [{ label: "Lawyer Practice Hub", href: "/lawyer/dashboard" }];
@@ -108,6 +137,51 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
         </div>
 
         <div className={styles.rightSection}>
+          {istTime && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "var(--text-secondary, #94a3b8)",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "6px",
+                padding: "3px 8px",
+              }}
+              className={styles.desktopOnly}
+              title="Indian Standard Time (IST) - Court sessions typically active 10:30 AM to 4:30 PM"
+            >
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }} />
+              <span>{istTime} IST</span>
+            </div>
+          )}
+
+          {/* Language Selector */}
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as SupportedLocale)}
+            style={{
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "6px",
+              color: "var(--text-secondary, #cbd5e1)",
+              fontSize: "12px",
+              fontWeight: 500,
+              padding: "4px 8px",
+              cursor: "pointer",
+            }}
+            aria-label="Select platform language"
+          >
+            {SUPPORTED_LOCALES.map((l) => (
+              <option key={l.code} value={l.code} style={{ background: "#0e121a", color: "#ffffff" }}>
+                {l.nativeName} ({l.name})
+              </option>
+            ))}
+          </select>
+
           <button
             onClick={() => setSearchOpen(true)}
             className={styles.searchTriggerBtn}

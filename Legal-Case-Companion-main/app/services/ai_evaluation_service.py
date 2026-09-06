@@ -8,7 +8,7 @@ from app.services.ai_provider import AIProvider, StubAIProvider, sanitize_untrus
 class AIEvaluationService:
     """Production evaluation benchmark harness testing grounding, temporal validity, and safety."""
 
-    BENCHMARK_SCENARIOS = [
+    BENCHMARK_SCENARIOS: list[dict[str, Any]] = [
         {
             "id": "SCEN-001-GROUNDING-BASIC",
             "description": "Basic evidence grounding under Section 138 Negotiable Instruments Act",

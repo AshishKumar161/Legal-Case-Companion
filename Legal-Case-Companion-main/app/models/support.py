@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, JSON, DateTime, Enum, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.identifiers import generate_uuid7
@@ -23,6 +23,8 @@ class SupportCaseSeverity(str, enum.Enum):
 
 class SupportCaseStatus(str, enum.Enum):
     OPEN = "OPEN"
+    INVESTIGATING = "INVESTIGATING"
+    WAITING_FOR_USER = "WAITING_FOR_USER"
     PENDING_USER = "PENDING_USER"
     IN_PROGRESS = "IN_PROGRESS"
     RESOLVED = "RESOLVED"
@@ -80,7 +82,35 @@ class SupportCase(Base, TimestampMixin, SoftDeleteMixin):
     user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
     assigned_to: Mapped["User | None"] = relationship("User", foreign_keys=[assigned_to_user_id])
     linked_incident: Mapped["ProductionIncident | None"] = relationship("ProductionIncident")
+    messages: Mapped[list["SupportCaseMessage"]] = relationship(
+        "SupportCaseMessage",
+        back_populates="support_case",
+        cascade="all, delete-orphan",
+        order_by="SupportCaseMessage.created_at.asc()",
+    )
 
     __table_args__ = (
         Index("ix_support_cases_status_severity", "status", "severity"),
     )
+
+
+class SupportCaseMessage(Base, TimestampMixin):
+    """Represents a customer-operator communication entry or internal note on a support ticket."""
+
+    __tablename__ = "support_case_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=generate_uuid7)
+    support_case_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("support_cases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    sender_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    sender_role: Mapped[str] = mapped_column(String(50), nullable=False)  # CLIENT, LAWYER, OPERATOR, SYSTEM
+    message_text: Mapped[str] = mapped_column(Text, nullable=False)
+    is_internal_note: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
+
+    # Relationships
+    support_case: Mapped["SupportCase"] = relationship("SupportCase", back_populates="messages")
+    sender: Mapped["User | None"] = relationship("User", foreign_keys=[sender_user_id])

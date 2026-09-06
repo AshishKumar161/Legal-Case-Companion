@@ -129,6 +129,20 @@ class DefaultMalwareScanner:
 
         return True, None
 
+    def is_clamav_available(self) -> bool:
+        """Returns True if ClamAV daemon is configured and reachable."""
+        if not self.clamav_scanner.host:
+            return False
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(2.0)
+                sock.connect((self.clamav_scanner.host, self.clamav_scanner.port))
+                sock.sendall(b"zPING\0")
+                resp = sock.recv(16)
+                return b"PONG" in resp
+        except Exception:
+            return False
+
 
 class ScannerService:
     """Production-grade document validation and malware scanning service."""

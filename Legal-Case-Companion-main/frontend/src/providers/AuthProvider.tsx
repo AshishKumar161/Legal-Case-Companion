@@ -64,7 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let decodedEmail: string | null = null;
 
         try {
-          const payload = JSON.parse(atob(token.split(".")[1]));
+          const base64Url = token.split(".")[1] || "";
+          const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+          const padLen = (4 - (base64.length % 4)) % 4;
+          const paddedBase64 = base64 + "=".repeat(padLen);
+          const payload = JSON.parse(atob(paddedBase64));
           if (
             payload.role &&
             (payload.role === "CLIENT" || payload.role === "LAWYER" || payload.role === "ADMIN")

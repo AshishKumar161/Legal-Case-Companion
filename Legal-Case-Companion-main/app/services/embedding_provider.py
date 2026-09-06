@@ -153,6 +153,11 @@ class DeterministicMockEmbeddingProvider:
 
 def get_embedding_provider() -> EmbeddingProvider:
     """Factory creating the appropriate EmbeddingProvider based on application configuration."""
-    if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY == "dummy-test-key":
+    if (
+        not getattr(settings, "AI_INTEGRATION_ENABLED", True)
+        or not settings.OPENAI_API_KEY
+        or settings.OPENAI_API_KEY in ("dummy-test-key", "<set-in-environment>", "dummy-key")
+        or settings.OPENAI_API_KEY.startswith("dummy")
+    ):
         return DeterministicMockEmbeddingProvider()
     return OpenAIEmbeddingProvider()

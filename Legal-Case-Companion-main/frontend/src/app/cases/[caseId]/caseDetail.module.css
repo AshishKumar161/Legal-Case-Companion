@@ -667,3 +667,182 @@
     flex-direction: column;
   }
 }
+
+/* ==========================================================================
+   Human-Centered Case Workspace & 8-Tab Navigation Styles
+   ========================================================================== */
+
+/* 4-Item Attention Summary Grid */
+.attentionSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.attentionSummaryCard {
+  background: var(--surface-card, #0e121a);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.attentionSummaryLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.attentionSummaryValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+}
+
+.attentionSummarySub {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Document Requests Card */
+.docRequestBanner {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(14, 18, 26, 0.9) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.docRequestHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.docRequestTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.docRequestMeta {
+  font-size: 13px;
+  color: #cbd5e1;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.docRequestActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Document Categories */
+.docCategoriesRow {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+  scrollbar-width: thin;
+}
+
+.docCategoryBtn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: #141722;
+  border: 1px solid #272f42;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.docCategoryBtnActive {
+  background: #4f5bf7;
+  border-color: #4f5bf7;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Security Badge */
+.securityBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* Hearing Card */
+.hearingCard {
+  background: var(--surface-card, #0e121a);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hearingPrepBox {
+  background: rgba(7, 9, 14, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+/* Task Item Card */
+.taskItemCard {
+  background: var(--surface-card, #0e121a);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.taskItemCompleted {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+@media (max-width: 900px) {
+  .attentionSummaryGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .attentionSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+}

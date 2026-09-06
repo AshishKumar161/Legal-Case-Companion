@@ -49,7 +49,12 @@ from app.services.user_service import UserService
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address)
+_rate_limit_storage_uri = (
+    settings.REDIS_URL
+    if settings.REDIS_URL and settings.ENVIRONMENT.lower() == "production"
+    else "memory://"
+)
+limiter = Limiter(key_func=get_remote_address, storage_uri=_rate_limit_storage_uri)
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:

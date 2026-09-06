@@ -5,16 +5,18 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/api/client";
-import { CaseItem } from "@/types";
+import { CaseItem, MatterBriefItem } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { EmptyState } from "@/components/EmptyState";
+import LegalTerm from "@/components/LegalTerm";
 
 export default function CasesPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   const [cases, setCases] = useState<CaseItem[]>([]);
+  const [briefsByCaseId, setBriefsByCaseId] = useState<Record<string, MatterBriefItem>>({});
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +39,21 @@ export default function CasesPage() {
       const res = await apiClient.get("/api/v1/cases");
       const items: CaseItem[] = Array.isArray(res) ? res : res?.items || [];
       setCases(items);
+
+      if (items.length > 0) {
+        const topCases = items.slice(0, 12);
+        const briefs = await Promise.all(
+          topCases.map(async (c) => {
+            const brief = await apiClient.get(`/api/v1/cases/${c.id}/collaboration/brief`).catch(() => null);
+            return { caseId: c.id, brief };
+          })
+        );
+        const newBriefs: Record<string, MatterBriefItem> = {};
+        for (const b of briefs) {
+          if (b.brief) newBriefs[b.caseId] = b.brief;
+        }
+        setBriefsByCaseId(newBriefs);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load matters";
       setError(msg);
@@ -278,79 +295,177 @@ export default function CasesPage() {
 
         {/* Matters Grid */}
         {filteredCases.length === 0 ? (
-          <EmptyState
-            title="No Legal Matters Found"
-            description={
-              searchQuery || statusFilter !== "ALL"
-                ? "No matters match the current filter criteria. Try resetting your search."
-                : "You have no active legal matters. Create a new matter or schedule a consultation with verified counsel."
-            }
-            actionLabel={!searchQuery && statusFilter === "ALL" ? "+ Create First Matter" : undefined}
-            onAction={!searchQuery && statusFilter === "ALL" ? () => setCreateModalOpen(true) : undefined}
-          />
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "20px" }}>
-            {filteredCases.map((c) => (
+          cases.length === 0 ? (
+            <div
+              style={{
+                background: "var(--surface-card, #0e121a)",
+                border: "1px dashed var(--border-subtle, rgba(255, 255, 255, 0.15))",
+                borderRadius: "16px",
+                padding: "48px 24px",
+                textAlign: "center",
+                maxWidth: "600px",
+                margin: "40px auto",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
               <div
-                key={c.id}
                 style={{
-                  background: "var(--surface-card)",
-                  border: "1px solid var(--border-subtle)",
-                  borderRadius: "var(--radius-md)",
-                  padding: "24px",
+                  width: "56px",
+                  height: "56px",
+                  borderRadius: "50%",
+                  background: "rgba(99, 102, 241, 0.12)",
+                  border: "1px solid rgba(99, 102, 241, 0.25)",
                   display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  transition: "border-color 0.2s, transform 0.2s",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "24px",
+                  color: "var(--brand-primary, #818cf8)",
+                  marginBottom: "16px",
                 }}
               >
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", marginBottom: "12px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      MATTER #{c.id.slice(0, 8).toUpperCase()}
-                    </span>
-                    <StatusBadge status={c.status} />
-                  </div>
+                ⚖
+              </div>
+              <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#fff", marginBottom: "8px" }}>
+                You don&apos;t have a case yet.
+              </h2>
+              <p style={{ fontSize: "14px", color: "var(--text-secondary, #94a3b8)", lineHeight: "1.6", maxWidth: "440px", marginBottom: "24px" }}>
+                Create a case to keep your documents, hearings, lawyer and important updates together.
+              </p>
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
+                <button
+                  onClick={() => setCreateModalOpen(true)}
+                  className="btn btn-primary"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
+                >
+                  <span>+</span> Create a case
+                </button>
+                <Link
+                  href="/lawyers"
+                  className="btn btn-secondary"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
+                >
+                  <span>⚖</span> Find a lawyer
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              title="No Legal Matters Found"
+              description="No matters match the current filter criteria. Try resetting your search."
+            />
+          )
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "20px" }}>
+            {filteredCases.map((c) => {
+              const brief = briefsByCaseId[c.id];
+              const courtDisplay = brief?.next_hearing_court || "Official Court Record";
+              const nextEventDisplay = brief?.next_hearing_date
+                ? `Next hearing: ${new Date(brief.next_hearing_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
+                : "Waiting for next hearing";
+              const lawyerDisplay = brief?.lead_counsel_name
+                ? `Adv. ${brief.lead_counsel_name}`
+                : "Not assigned yet";
 
-                  <h3 style={{ fontSize: "18px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "8px" }}>
-                    {c.title}
-                  </h3>
-
-                  <p
-                    style={{
-                      fontSize: "13px",
-                      color: "var(--text-secondary)",
-                      lineHeight: 1.5,
-                      marginBottom: "16px",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {c.description || "No matter synopsis recorded. Access workspace to attach evidence documents and timelines."}
-                  </p>
-                </div>
-
+              return (
                 <div
+                  key={c.id}
                   style={{
-                    borderTop: "1px solid var(--border-subtle)",
-                    paddingTop: "14px",
+                    background: "var(--surface-card)",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "24px",
                     display: "flex",
+                    flexDirection: "column",
                     justifyContent: "space-between",
-                    alignItems: "center",
+                    gap: "16px",
+                    transition: "border-color 0.2s, transform 0.2s",
                   }}
                 >
-                  <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                    Opened {new Date(c.created_at).toLocaleDateString()}
-                  </span>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        MATTER #{c.id.slice(0, 8).toUpperCase()}
+                      </span>
+                      <StatusBadge status={c.status} />
+                    </div>
 
-                  <Link href={`/cases/${c.id}`} className="btn btn-secondary" style={{ fontSize: "12px", padding: "6px 14px" }}>
-                    Open Workspace →
-                  </Link>
+                    <div style={{ fontSize: "12px", color: "#38bdf8", fontWeight: 500, marginBottom: "4px" }}>
+                      🏛 {courtDisplay}
+                    </div>
+
+                    <h3 style={{ fontSize: "18px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "8px" }}>
+                      {c.title}
+                    </h3>
+
+                    <div style={{ marginBottom: "12px" }}>
+                      <LegalTerm term={c.status} layout="stacked" showBadge={false} />
+                    </div>
+
+                    <div
+                      style={{
+                        background: "rgba(7, 9, 14, 0.6)",
+                        border: "1px solid rgba(255, 255, 255, 0.06)",
+                        borderRadius: "8px",
+                        padding: "8px 12px",
+                        fontSize: "12px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "2px",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      <span style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--brand-primary, #818cf8)", fontWeight: 700 }}>
+                        Next Event
+                      </span>
+                      <span style={{ color: "#f1f5f9", fontWeight: 500 }}>
+                        {nextEventDisplay}
+                      </span>
+                    </div>
+
+                    <p
+                      style={{
+                        fontSize: "13px",
+                        color: "var(--text-secondary)",
+                        lineHeight: 1.5,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {c.description || "No matter synopsis recorded."}
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      borderTop: "1px solid var(--border-subtle)",
+                      paddingTop: "14px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "10px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                      <div><strong>Lawyer:</strong> {lawyerDisplay}</div>
+                      <div>Updated: {new Date(c.updated_at || c.created_at).toLocaleDateString("en-IN")}</div>
+                    </div>
+
+                    <Link
+                      href={`/cases/${c.id}`}
+                      className="btn btn-secondary"
+                      style={{ fontSize: "12px", padding: "6px 14px", whiteSpace: "nowrap" }}
+                    >
+                      Open case →
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

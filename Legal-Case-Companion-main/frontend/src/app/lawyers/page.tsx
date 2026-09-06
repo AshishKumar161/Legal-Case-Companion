@@ -1,1003 +1,843 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/api/client";
 import { LawyerProfileItem } from "@/types";
-import { StatusBadge } from "@/components/StatusBadge";
-import { EmptyState } from "@/components/EmptyState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { useAuth, UserRole } from "@/providers/AuthProvider";
+import { trackFunnelEvent } from "@/lib/analytics";
+import styles from "./discovery.module.css";
 
-interface SlotItem {
-  start_time: string;
-  end_time: string;
-  duration_minutes: number;
-  is_available: boolean;
+// ----------------------------------------------------------------------------
+// 1. Plain-Language Intent Definitions (Section 2)
+// ----------------------------------------------------------------------------
+
+interface LegalIntentOption {
+  id: string;
+  label: string;
+  icon: string;
+  practiceArea: string;
+  explanation: string;
 }
 
-export default function LawyerDiscovery() {
-  const { user, login } = useAuth();
-  const [lawyers, setLawyers] = useState<LawyerProfileItem[]>([]);
+const INTENT_OPTIONS: LegalIntentOption[] = [
+  {
+    id: "property",
+    label: "Property problem",
+    icon: "🏡",
+    practiceArea: "Property",
+    explanation: "Disagreement about land, house, rent, ownership, or property documents.",
+  },
+  {
+    id: "family",
+    label: "Family problem",
+    icon: "👨‍👩‍👧",
+    practiceArea: "Family",
+    explanation: "Divorce, maintenance, child custody, domestic issues, or family property.",
+  },
+  {
+    id: "money",
+    label: "Money / payment problem",
+    icon: "💰",
+    practiceArea: "Commercial",
+    explanation: "Unpaid salary, loan recovery, bounced cheques, or financial disputes.",
+  },
+  {
+    id: "employment",
+    label: "Employment problem",
+    icon: "💼",
+    practiceArea: "Labor",
+    explanation: "Wrongful termination, workplace issues, gratuity, or PF disputes.",
+  },
+  {
+    id: "criminal",
+    label: "Criminal matter",
+    icon: "⚖️",
+    practiceArea: "Criminal",
+    explanation: "Police complaints, FIR, bail, summons, or criminal defense.",
+  },
+  {
+    id: "consumer",
+    label: "Consumer problem",
+    icon: "🛍️",
+    practiceArea: "Consumer",
+    explanation: "Defective goods, service deficiency, insurance claims, or refund issues.",
+  },
+  {
+    id: "business",
+    label: "Business problem",
+    icon: "🏢",
+    practiceArea: "Corporate",
+    explanation: "Commercial agreements, partnership disputes, unpaid invoices, or vendor issues.",
+  },
+  {
+    id: "court",
+    label: "Court case",
+    icon: "🏛️",
+    practiceArea: "Civil",
+    explanation: "Already listed in court, need an advocate to represent or appear.",
+  },
+  {
+    id: "notice",
+    label: "Legal notice",
+    icon: "📬",
+    practiceArea: "Litigation",
+    explanation: "Received a legal notice or need to send a formal legal demand.",
+  },
+  {
+    id: "other",
+    label: "Something else",
+    icon: "📝",
+    practiceArea: "",
+    explanation: "General legal advice, document drafting, or regulatory guidance.",
+  },
+];
+
+const POPULAR_LOCATIONS = [
+  "All Locations",
+  "Delhi NCR",
+  "Mumbai",
+  "Bengaluru",
+  "Chennai",
+  "Kolkata",
+  "Hyderabad",
+  "Pune",
+  "Ahmedabad",
+];
+
+const LANGUAGE_OPTIONS = [
+  "Any Language",
+  "Hindi",
+  "English",
+  "Tamil",
+  "Telugu",
+  "Marathi",
+  "Bengali",
+  "Gujarati",
+  "Kannada",
+];
+
+const BUDGET_OPTIONS = [
+  { id: "all", label: "Any budget", maxFee: "" },
+  { id: "1000", label: "Under ₹1,000", maxFee: "1000" },
+  { id: "3000", label: "₹1,000 - ₹3,000", maxFee: "3000" },
+  { id: "5000", label: "₹3,000 - ₹5,000", maxFee: "5000" },
+];
+
+export default function LawyerDiscoveryPage() {
+  const searchParams = useSearchParams();
+
+  // URL Query Sync
+  const initialPracticeArea = searchParams?.get("practice_area") || "";
+  const initialLocation = searchParams?.get("location") || "";
+
+  const [rawLawyers, setRawLawyers] = useState<LawyerProfileItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [authPromptLawyer, setAuthPromptLawyer] = useState<LawyerProfileItem | null>(null);
-  const [quickLoginLoading, setQuickLoginLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Filter states
+  // Progressive Wizard State (Section 3)
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+
+  // Wizard selections
+  const [selectedIntentId, setSelectedIntentId] = useState<string>(() => {
+    if (initialPracticeArea) {
+      const match = INTENT_OPTIONS.find((i) => i.practiceArea.toLowerCase() === initialPracticeArea.toLowerCase());
+      return match ? match.id : "other";
+    }
+    return "";
+  });
+  const [hasCourtCase, setHasCourtCase] = useState<"yes" | "no" | "">("");
+  const [knownCourt, setKnownCourt] = useState("");
+  const [urgencyPreference, setUrgencyPreference] = useState<"not_urgent" | "few_days" | "this_week" | "urgent" | "">("");
+
+  // Filter States (Section 6)
   const [searchTerm, setSearchTerm] = useState("");
-  const [location, setLocation] = useState("");
-  const [practiceArea, setPracticeArea] = useState("");
-  const [jurisdiction, setJurisdiction] = useState("");
-  const [minExp, setMinExp] = useState("");
-  const [maxFee, setMaxFee] = useState("");
-  const [language, setLanguage] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState(initialLocation || "All Locations");
+  const [selectedLanguage, setSelectedLanguage] = useState("Any Language");
+  const [selectedBudget, setSelectedBudget] = useState("all");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
-  const [onlineOnly, setOnlineOnly] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [minExp, setMinExp] = useState("");
+  const [courtJurisdiction, setCourtJurisdiction] = useState("");
 
-  // Live IST Clock
-  const [istClock, setIstClock] = useState("");
-
+  // Telemetry on mount
   useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-      const dateStr = now.toLocaleDateString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-      setIstClock(`${dateStr} • ${timeStr} IST`);
-    };
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
+    trackFunnelEvent("discovery_started", {
+      intent: selectedIntentId || undefined,
+      location: selectedLocation !== "All Locations" ? selectedLocation : undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Instant Consultation Modal state
-  const [instantCallLawyer, setInstantCallLawyer] = useState<LawyerProfileItem | null>(null);
-  const [instantSubmitting, setInstantSubmitting] = useState(false);
-  const [instantError, setInstantError] = useState("");
-
-  // Booking modal state
-  const [bookingLawyer, setBookingLawyer] = useState<LawyerProfileItem | null>(null);
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split("T")[0];
-  });
-  const [slots, setSlots] = useState<SlotItem[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<SlotItem | null>(null);
-  const [fetchingSlots, setFetchingSlots] = useState(false);
-  const [bookingSubmitting, setBookingSubmitting] = useState(false);
-  const [bookingSuccess, setBookingSuccess] = useState("");
-  const [bookingError, setBookingError] = useState("");
-  const [bookedConsultationId, setBookedConsultationId] = useState<string | null>(null);
-
-  const handleQuickClientLogin = async () => {
-    setQuickLoginLoading(true);
-    try {
-      const res = await apiClient.post('/api/v1/auth/login', {
-        email: 'client@lcc.test',
-        password: 'Password123!',
-      });
-      const payload = JSON.parse(atob(res.access_token.split('.')[1]));
-      login(
-        res.access_token,
-        {
-          id: payload.sub,
-          email: 'client@lcc.test',
-          role: (payload.role || 'CLIENT') as UserRole,
-          account_status: "ACTIVE",
-          full_name: "Vikram Sharma",
-        },
-        res.refresh_token
-      );
-      const targetLawyer = authPromptLawyer;
-      setAuthPromptLawyer(null);
-      if (targetLawyer) {
-        setBookingLawyer(targetLawyer);
-      }
-    } catch (err) {
-      console.error("Quick client login failed", err);
-    } finally {
-      setQuickLoginLoading(false);
-    }
-  };
-
-  const fetchLawyers = useCallback(async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
+  // Fetch lawyers from real backend API (bounded, unauthenticated public view supported)
+  const fetchLawyers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams();
       if (searchTerm.trim()) params.set("search", searchTerm.trim());
-      if (location.trim()) params.set("location", location.trim());
-      if (practiceArea.trim()) params.set("practice_area", practiceArea.trim());
-      if (jurisdiction.trim()) params.set("court_jurisdiction", jurisdiction.trim());
-      if (language.trim()) params.set("language", language.trim());
-      if (minExp) params.set("min_experience", minExp);
-      if (maxFee) params.set("max_fee", maxFee);
-      params.set("verified_only", verifiedOnly ? "true" : "false");
-      if (onlineOnly) params.set("online_only", "true");
 
-      const url = `/api/v1/lawyers?${params.toString()}`;
-      const res = await apiClient.get(url, { requireAuth: false });
-      setLawyers(res.items || (Array.isArray(res) ? res : []));
-    } catch (err) {
-      console.error("Failed to fetch lawyers", err);
-      if (!isBackground) setLawyers([]);
-    } finally {
-      if (!isBackground) setLoading(false);
-    }
-  }, [searchTerm, location, practiceArea, jurisdiction, language, minExp, maxFee, verifiedOnly, onlineOnly]);
-
-  useEffect(() => {
-    void fetchLawyers(false);
-  }, [fetchLawyers]);
-
-  // Periodic background refresh (every 6 seconds) to detect lawyer presence changes live
-  useEffect(() => {
-    const pollInterval = setInterval(() => {
-      void fetchLawyers(true);
-    }, 6000);
-    return () => clearInterval(pollInterval);
-  }, [fetchLawyers]);
-
-  // Fetch slots when booking lawyer or date changes
-  useEffect(() => {
-    if (!bookingLawyer) return;
-    const fetchSlots = async () => {
-      setFetchingSlots(true);
-      setSelectedSlot(null);
-      try {
-        const lawyerId = bookingLawyer.user_id || bookingLawyer.id;
-        const res = await apiClient.get(`/api/v1/lawyers/${lawyerId}/slots?date=${selectedDate}&duration_minutes=30`, { requireAuth: false });
-        setSlots(Array.isArray(res) ? res : res?.items || []);
-      } catch {
-        setSlots([]);
-      } finally {
-        setFetchingSlots(false);
+      if (selectedLocation !== "All Locations") {
+        params.set("location", selectedLocation);
       }
-    };
-    void fetchSlots();
-  }, [bookingLawyer, selectedDate]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    void fetchLawyers();
-  };
+      // Map chosen intent to backend practice area
+      const activeIntent = INTENT_OPTIONS.find((i) => i.id === selectedIntentId);
+      if (activeIntent?.practiceArea) {
+        params.set("practice_area", activeIntent.practiceArea);
+      }
 
-  const handleConfirmInstantCall = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!instantCallLawyer) return;
-    setInstantSubmitting(true);
-    setInstantError("");
+      if (selectedLanguage !== "Any Language") {
+        params.set("language", selectedLanguage);
+      }
 
-    try {
-      const lawyerId = instantCallLawyer.user_id || instantCallLawyer.id;
-      // 1. Create immediate consultation at current time
-      const conRes: any = await apiClient.post("/api/v1/consultations", {
-        lawyer_id: lawyerId,
-        scheduled_at: new Date().toISOString(),
-        duration_minutes: 30,
-        is_instant: true,
+      const activeBudget = BUDGET_OPTIONS.find((b) => b.id === selectedBudget);
+      if (activeBudget?.maxFee) {
+        params.set("max_fee", activeBudget.maxFee);
+      }
+
+      if (minExp) params.set("min_experience", minExp);
+      if (courtJurisdiction) params.set("court_jurisdiction", courtJurisdiction);
+      if (verifiedOnly) params.set("verified_only", "true");
+
+      params.set("limit", "50");
+
+      const res = await apiClient.get(`/api/v1/lawyers?${params.toString()}`, { requireAuth: false });
+      const items: LawyerProfileItem[] = Array.isArray(res) ? res : res?.items || [];
+      setRawLawyers(items);
+
+      trackFunnelEvent("results_shown", {
+        results_count: items.length,
+        intent: selectedIntentId,
+        location: selectedLocation,
       });
-
-      // 2. Authoritatively settle simulated test payment
-      await apiClient.post(`/api/v1/consultations/${conRes.id}/pay-test`, {});
-
-      // 3. Immediately redirect to video room
-      window.location.href = `/consultations/${conRes.id}/room`;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to initiate instant video call.";
-      setInstantError(msg);
-      setInstantSubmitting(false);
-    }
-  };
-
-  const handleBookConsultation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bookingLawyer || !selectedSlot) return;
-    setBookingSubmitting(true);
-    setBookingError("");
-    setBookingSuccess("");
-
-    try {
-      const lawyerId = bookingLawyer.user_id || bookingLawyer.id;
-      const res: any = await apiClient.post("/api/v1/consultations", {
-        lawyer_id: lawyerId,
-        scheduled_at: selectedSlot.start_time,
-        duration_minutes: 30,
-      });
-      setBookedConsultationId(res.id);
-      setBookingSuccess(
-        `Consultation slot reserved successfully with ${bookingLawyer.full_name} for ${new Date(
-          selectedSlot.start_time
-        ).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}!`
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Selected slot is no longer available.";
-      setBookingError(msg);
+      const msg = err instanceof Error ? err.message : "Failed to load advocates.";
+      setError(msg);
+      setRawLawyers([]);
     } finally {
-      setBookingSubmitting(false);
+      setLoading(false);
     }
+  }, [
+    searchTerm,
+    selectedLocation,
+    selectedIntentId,
+    selectedLanguage,
+    selectedBudget,
+    minExp,
+    courtJurisdiction,
+    verifiedOnly,
+  ]);
+
+  // Debounced fetch on filter change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void fetchLawyers();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [fetchLawyers]);
+
+  // Deterministic Explainable Ranking (Section 5)
+  const rankedLawyers = useMemo(() => {
+    const activeIntent = INTENT_OPTIONS.find((i) => i.id === selectedIntentId);
+
+    return rawLawyers
+      .map((lawyer) => {
+        let score = 0;
+        const matchReasons: string[] = [];
+
+        // 1. Practice area match
+        if (activeIntent?.practiceArea && lawyer.practice_areas) {
+          const areas = Array.isArray(lawyer.practice_areas) ? lawyer.practice_areas : [lawyer.practice_areas];
+          const hasArea = areas.some((pa) =>
+            pa.toLowerCase().includes(activeIntent.practiceArea.toLowerCase())
+          );
+          if (hasArea) {
+            score += 4;
+            matchReasons.push(`Practice area (${activeIntent.label})`);
+          }
+        }
+
+        // 2. Location match
+        if (selectedLocation !== "All Locations" && lawyer.location) {
+          if (lawyer.location.toLowerCase().includes(selectedLocation.toLowerCase())) {
+            score += 3;
+            matchReasons.push(`Location (${selectedLocation})`);
+          }
+        }
+
+        // 3. Language match
+        if (selectedLanguage !== "Any Language" && lawyer.languages) {
+          const langs = Array.isArray(lawyer.languages) ? lawyer.languages : [lawyer.languages];
+          if (langs.some((l) => l.toLowerCase().includes(selectedLanguage.toLowerCase()))) {
+            score += 2;
+            matchReasons.push(`Language (${selectedLanguage})`);
+          }
+        }
+
+        // 4. Budget match
+        const budgetObj = BUDGET_OPTIONS.find((b) => b.id === selectedBudget);
+        if (budgetObj?.maxFee && lawyer.consultation_fee) {
+          if (lawyer.consultation_fee <= parseFloat(budgetObj.maxFee)) {
+            score += 2;
+            matchReasons.push(`Within budget`);
+          }
+        }
+
+        // 5. Verification status
+        if (lawyer.verification_status === "VERIFIED") {
+          score += 2;
+        }
+
+        return {
+          lawyer,
+          score,
+          matchExplanation:
+            matchReasons.length > 0 ? `Matches your ${matchReasons.join(" and ")}` : null,
+        };
+      })
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return (b.lawyer.experience_years || 0) - (a.lawyer.experience_years || 0);
+      });
+  }, [rawLawyers, selectedIntentId, selectedLocation, selectedLanguage, selectedBudget]);
+
+  // Handle Intent Selection
+  const handleSelectIntent = (intent: LegalIntentOption) => {
+    if (selectedIntentId === intent.id) {
+      setSelectedIntentId("");
+    } else {
+      setSelectedIntentId(intent.id);
+      trackFunnelEvent("intent_selected", { intent: intent.id });
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSelectedIntentId("");
+    setSelectedLocation("All Locations");
+    setSelectedLanguage("Any Language");
+    setSelectedBudget("all");
+    setSearchTerm("");
+    setMinExp("");
+    setCourtJurisdiction("");
+    setVerifiedOnly(false);
+    setHasCourtCase("");
+    setKnownCourt("");
+    setUrgencyPreference("");
+    setWizardOpen(false);
   };
 
   return (
-    <div style={{ padding: "36px 0 80px" }}>
-      <div className="container">
-        {/* Header */}
-        <div style={{ marginBottom: "32px", maxWidth: "820px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "8px" }}>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                color: "var(--accent-secondary)",
-              }}
-            >
-              <span>●</span> Verified Indian Bar Directory
-            </div>
-            {istClock && (
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "4px 12px",
-                  borderRadius: "16px",
-                  background: "rgba(79, 91, 247, 0.12)",
-                  border: "1px solid rgba(79, 91, 247, 0.3)",
-                  color: "#a5b4fc",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                }}
-              >
-                <span>🕒</span> Indian Standard Time: <strong>{istClock}</strong>
-              </div>
-            )}
+    <div className={styles.pageContainer}>
+      {/* Header */}
+      <header className={styles.discoveryHeader}>
+        <div className={styles.eyebrow}>
+          <span>⚖️</span>
+          <span>Verified Advocate Directory</span>
+        </div>
+        <h1 className={styles.title}>Find Legal Help in India</h1>
+        <p className={styles.subtitle}>
+          Connect directly with verified High Court and District advocates. Choose your issue in plain language, compare transparent consultation fees, and schedule an appointment securely.
+        </p>
+      </header>
+
+      {/* Primary Intent Entry: "How can we help you?" (Section 2) */}
+      <section className={styles.intentSection} aria-label="Select legal issue">
+        <div className={styles.intentSectionHeader}>
+          <div>
+            <h2 className={styles.intentSectionTitle}>
+              <span>🎯</span> What kind of legal help do you need?
+            </h2>
+            <span className={styles.intentSectionHint}>
+              Select the option closest to your situation. No legal background needed.
+            </span>
           </div>
-          <h1 style={{ fontSize: "32px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.03em" }}>
-            Retain Verified Indian Legal Counsel
-          </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginTop: "8px", lineHeight: 1.5 }}>
-            Discover verified advocates across High Courts, Supreme Court, and specialized National Tribunals. Review verified enrollment credentials, transparent fee schedules, and schedule or conduct instant video consultation sessions.
-          </p>
+
+          <button
+            type="button"
+            className={styles.advancedToggleBtn}
+            onClick={() => setWizardOpen(!wizardOpen)}
+          >
+            {wizardOpen ? "Close Guided Questions ▲" : "✨ Answer 3 Quick Questions →"}
+          </button>
         </div>
 
-        {/* Filter Bar */}
-        <form
-          onSubmit={handleSearch}
-          style={{
-            background: "var(--surface-card)",
-            border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--radius-md)",
-            padding: "20px 24px",
-            marginBottom: "32px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "14px",
-            boxShadow: "var(--shadow-sm)",
-          }}
-        >
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "12px" }}>
-            <input
-              type="text"
-              placeholder="Search advocate name or legal specialty..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field"
-            />
-            <input
-              type="text"
-              placeholder="Location (e.g. New Delhi, Mumbai)"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="input-field"
-            />
-            <input
-              type="text"
-              placeholder="Practice Area (e.g. Arbitration, Commercial)"
-              value={practiceArea}
-              onChange={(e) => setPracticeArea(e.target.value)}
-              className="input-field"
-            />
+        <div className={styles.intentGrid}>
+          {INTENT_OPTIONS.map((intent) => {
+            const isSelected = selectedIntentId === intent.id;
+            return (
+              <button
+                key={intent.id}
+                type="button"
+                className={`${styles.intentCard} ${isSelected ? styles.intentCardActive : ""}`}
+                onClick={() => handleSelectIntent(intent)}
+              >
+                <div className={styles.intentCardTop}>
+                  <span className={styles.intentIcon}>{intent.icon}</span>
+                  <span className={styles.intentLabel}>{intent.label}</span>
+                </div>
+                <p className={styles.intentDesc}>{intent.explanation}</p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Progressive Guided Wizard (Section 3) */}
+      {wizardOpen && (
+        <section className={styles.wizardBox} aria-label="Guided discovery wizard">
+          <div className={styles.wizardHeader}>
+            <div className={styles.wizardStepTitle}>
+              Step {wizardStep} of 4: Guided Advocate Matching
+            </div>
+            <span className={styles.wizardStepCounter}>
+              {wizardStep === 1
+                ? "Location & Court"
+                : wizardStep === 2
+                ? "Preferred Language"
+                : wizardStep === 3
+                ? "Budget"
+                : "Timeline / Urgency"}
+            </span>
           </div>
 
-          <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-            <input
-              type="text"
-              placeholder="Court Jurisdiction (e.g. Supreme Court, Delhi HC)"
-              value={jurisdiction}
-              onChange={(e) => setJurisdiction(e.target.value)}
-              className="input-field"
-              style={{ flex: 1 }}
-            />
-            <input
-              type="number"
-              placeholder="Min Exp (Years)"
-              value={minExp}
-              onChange={(e) => setMinExp(e.target.value)}
-              className="input-field"
-              style={{ width: "150px" }}
-            />
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="input-field"
-              style={{ width: "160px" }}
-            >
-              <option value="">All Languages</option>
-              <option value="English">English</option>
-              <option value="Hindi">Hindi (हिंदी)</option>
-              <option value="Bengali">Bengali (বাংলা)</option>
-              <option value="Tamil">Tamil (தமிழ்)</option>
-              <option value="Telugu">Telugu (తెలుగు)</option>
-              <option value="Marathi">Marathi (मराठी)</option>
-              <option value="Gujarati">Gujarati (ગુજરાતી)</option>
-              <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
-              <option value="Malayalam">Malayalam (മലയാളം)</option>
-              <option value="Punjabi">Punjabi (ਪੰਜਾਬੀ)</option>
-            </select>
-            <input
-              type="number"
-              placeholder="Max Fee (₹)"
-              value={maxFee}
-              onChange={(e) => setMaxFee(e.target.value)}
-              className="input-field"
-              style={{ width: "150px" }}
-            />
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "13px",
-                fontWeight: 600,
-                color: onlineOnly ? "#10b981" : "var(--text-secondary)",
-                cursor: "pointer",
-                padding: "6px 12px",
-                borderRadius: "6px",
-                background: onlineOnly ? "rgba(16, 185, 129, 0.15)" : "rgba(255,255,255,0.04)",
-                border: onlineOnly ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid var(--border-subtle)",
-              }}
-            >
+          {/* Wizard Step 1: Location & Court */}
+          {wizardStep === 1 && (
+            <div>
+              <h3 className={styles.questionTitle}>Where is your matter located?</h3>
+              <p className={styles.questionSubtitle}>
+                Advocates practice in specific state high courts and district jurisdictions.
+              </p>
+
+              <div className={styles.pillGroup}>
+                {POPULAR_LOCATIONS.map((loc) => (
+                  <button
+                    key={loc}
+                    type="button"
+                    className={`${styles.choicePill} ${selectedLocation === loc ? styles.choicePillActive : ""}`}
+                    onClick={() => setSelectedLocation(loc)}
+                  >
+                    📍 {loc}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ marginTop: "16px" }}>
+                <label style={{ fontSize: "13px", color: "#cbd5e1", display: "block", marginBottom: "8px" }}>
+                  Do you already have an ongoing court case?
+                </label>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    type="button"
+                    className={`${styles.choicePill} ${hasCourtCase === "yes" ? styles.choicePillActive : ""}`}
+                    onClick={() => setHasCourtCase("yes")}
+                  >
+                    Yes, already in court
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.choicePill} ${hasCourtCase === "no" ? styles.choicePillActive : ""}`}
+                    onClick={() => setHasCourtCase("no")}
+                  >
+                    No, not filed yet / Pre-litigation
+                  </button>
+                </div>
+              </div>
+
+              {hasCourtCase === "yes" && (
+                <div style={{ marginTop: "12px" }}>
+                  <input
+                    className={styles.searchInput}
+                    placeholder="Which court? (e.g., Delhi High Court, Saket District Court)"
+                    value={knownCourt}
+                    onChange={(e) => setKnownCourt(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Wizard Step 2: Language Preference */}
+          {wizardStep === 2 && (
+            <div>
+              <h3 className={styles.questionTitle}>What language would you prefer to speak in?</h3>
+              <p className={styles.questionSubtitle}>
+                Choose the language you feel most comfortable discussing your situation in.
+              </p>
+
+              <div className={styles.pillGroup}>
+                {LANGUAGE_OPTIONS.map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    className={`${styles.choicePill} ${selectedLanguage === lang ? styles.choicePillActive : ""}`}
+                    onClick={() => setSelectedLanguage(lang)}
+                  >
+                    🗣️ {lang}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Wizard Step 3: Budget Preference */}
+          {wizardStep === 3 && (
+            <div>
+              <h3 className={styles.questionTitle}>What is your approximate budget for initial consultation?</h3>
+              <p className={styles.questionSubtitle}>
+                Advocates list their transparent consultation fees with zero hidden charges.
+              </p>
+
+              <div className={styles.pillGroup}>
+                {BUDGET_OPTIONS.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    className={`${styles.choicePill} ${selectedBudget === b.id ? styles.choicePillActive : ""}`}
+                    onClick={() => setSelectedBudget(b.id)}
+                  >
+                    💳 {b.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Wizard Step 4: Urgency Preference */}
+          {wizardStep === 4 && (
+            <div>
+              <h3 className={styles.questionTitle}>How soon do you need to speak with an advocate?</h3>
+              <p className={styles.questionSubtitle}>
+                This indicates your stated preference for scheduling. (Does not constitute legal advice).
+              </p>
+
+              <div className={styles.pillGroup}>
+                {[
+                  ["not_urgent", "Not urgent (just exploring)"],
+                  ["few_days", "Within a few days"],
+                  ["this_week", "This week"],
+                  ["urgent", "Urgent / Immediate notice deadline"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`${styles.choicePill} ${urgencyPreference === key ? styles.choicePillActive : ""}`}
+                    onClick={() => setUrgencyPreference(key as any)}
+                  >
+                    ⏱️ {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Wizard Navigation */}
+          <div className={styles.wizardNav}>
+            {wizardStep > 1 ? (
+              <button
+                type="button"
+                className={styles.secondaryActionBtn}
+                onClick={() => setWizardStep((prev) => prev - 1)}
+              >
+                ← Back
+              </button>
+            ) : (
+              <div />
+            )}
+
+            {wizardStep < 4 ? (
+              <button
+                type="button"
+                className={styles.primaryActionBtn}
+                style={{ maxWidth: "160px" }}
+                onClick={() => setWizardStep((prev) => prev + 1)}
+              >
+                Next Step →
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.primaryActionBtn}
+                style={{ maxWidth: "200px" }}
+                onClick={() => setWizardOpen(false)}
+              >
+                Show Matching Advocates ({rankedLawyers.length}) ✓
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Simplified Filter Experience (Section 6) */}
+      <section className={styles.filterContainer} aria-label="Lawyer search filters">
+        <div className={styles.mainFiltersRow}>
+          <input
+            className={styles.searchInput}
+            placeholder="Search by advocate name, court, or city..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+
+          <select
+            className={styles.filterSelect}
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+          >
+            {POPULAR_LOCATIONS.map((loc) => (
+              <option key={loc} value={loc}>
+                {loc}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className={styles.filterSelect}
+            value={selectedLanguage}
+            onChange={(e) => setSelectedLanguage(e.target.value)}
+          >
+            {LANGUAGE_OPTIONS.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className={styles.filterSelect}
+            value={selectedBudget}
+            onChange={(e) => setSelectedBudget(e.target.value)}
+          >
+            {BUDGET_OPTIONS.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            className={styles.advancedToggleBtn}
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          >
+            {showAdvancedFilters ? "Less Filters ▲" : "More Filters ▼"}
+          </button>
+        </div>
+
+        {/* Collapsible Advanced Filters Drawer */}
+        {showAdvancedFilters && (
+          <div className={styles.advancedDrawer}>
+            <div>
+              <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>
+                Court Jurisdiction
+              </label>
               <input
-                type="checkbox"
-                checked={onlineOnly}
-                onChange={(e) => setOnlineOnly(e.target.checked)}
+                className={styles.searchInput}
+                placeholder="e.g. High Court of Delhi"
+                value={courtJurisdiction}
+                onChange={(e) => setCourtJurisdiction(e.target.value)}
               />
-              🟢 Online Advocates Only
-            </label>
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "13px",
-                color: "var(--text-secondary)",
-                cursor: "pointer",
-                padding: "0 8px",
-              }}
-            >
+            </div>
+
+            <div>
+              <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>
+                Minimum Experience (Years)
+              </label>
+              <select
+                className={styles.filterSelect}
+                style={{ width: "100%" }}
+                value={minExp}
+                onChange={(e) => setMinExp(e.target.value)}
+              >
+                <option value="">Any Experience</option>
+                <option value="3">3+ Years</option>
+                <option value="5">5+ Years</option>
+                <option value="10">10+ Years</option>
+                <option value="15">15+ Years</option>
+              </select>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingTop: "20px" }}>
               <input
                 type="checkbox"
+                id="verifiedOnlyCb"
                 checked={verifiedOnly}
                 onChange={(e) => setVerifiedOnly(e.target.checked)}
+                style={{ width: "16px", height: "16px", accentColor: "#6366f1" }}
               />
-              Verified Only
-            </label>
-            <button type="submit" className="btn btn-primary" style={{ padding: "9px 20px" }}>
-              Filter Counsel
-            </button>
-          </div>
-        </form>
-
-        {/* Directory Grid */}
-        {loading ? (
-          <LoadingSkeleton type="card" count={4} />
-        ) : lawyers.length === 0 ? (
-          <EmptyState
-            icon="⚖"
-            title="No Matching Advocates Found"
-            description="No legal counsel currently matches your search filters. Try broadening your keywords, clearing court jurisdiction, or resetting practice area filters."
-            actionLabel="Reset Search Filters"
-            onAction={() => {
-              setSearchTerm("");
-              setLocation("");
-              setPracticeArea("");
-              setJurisdiction("");
-              setLanguage("");
-              setMinExp("");
-              setMaxFee("");
-              setVerifiedOnly(false);
-              void fetchLawyers();
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-              gap: "20px",
-            }}
-          >
-            {lawyers.map((lawyer) => {
-              const isVer = lawyer.verification_status === "VERIFIED";
-              return (
-                <div
-                  key={lawyer.id}
-                  style={{
-                    background: "var(--surface-card)",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "24px",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    gap: "16px",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                      <div>
-                        <h3 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-primary)" }}>
-                          {lawyer.full_name}
-                        </h3>
-                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
-                          📍 {lawyer.location || "India"} • {lawyer.experience_years ? `${lawyer.experience_years}+ Yrs at Bar` : "Advocate"}
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
-                        <StatusBadge
-                          status={isVer ? "VERIFIED" : "PENDING"}
-                          label={isVer ? "Verified Bar" : "Enrolled"}
-                        />
-                        {lawyer.is_online ? (
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "5px",
-                              fontSize: "11px",
-                              fontWeight: 700,
-                              color: "#10b981",
-                              backgroundColor: "rgba(16, 185, 129, 0.15)",
-                              border: "1px solid rgba(16, 185, 129, 0.35)",
-                              padding: "2px 8px",
-                              borderRadius: "12px",
-                            }}
-                          >
-                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#10b981" }}></span>
-                            ONLINE NOW
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>⚪ Offline</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "14px" }}>
-                      {lawyer.bio ? lawyer.bio.slice(0, 140) + (lawyer.bio.length > 140 ? "..." : "") : "Specialized legal practitioner representing clients in commercial and civil matters."}
-                    </p>
-
-                    {/* Practice Areas Badges */}
-                    {lawyer.practice_areas && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                        {(Array.isArray(lawyer.practice_areas) ? lawyer.practice_areas : [lawyer.practice_areas]).map((pa, idx) => (
-                          <span
-                            key={idx}
-                            style={{
-                              fontSize: "11px",
-                              padding: "2px 8px",
-                              borderRadius: "4px",
-                              background: "rgba(79, 91, 247, 0.12)",
-                              color: "#8d98ff",
-                              border: "1px solid rgba(79, 91, 247, 0.25)",
-                            }}
-                          >
-                            {pa}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Languages Spoken */}
-                    {lawyer.languages && (
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", marginTop: "10px" }}>
-                        <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>🗣️ Speaks:</span>
-                        {(Array.isArray(lawyer.languages) ? lawyer.languages : [lawyer.languages]).map((lang, idx) => (
-                          <span
-                            key={idx}
-                            style={{
-                              fontSize: "11px",
-                              padding: "2px 8px",
-                              borderRadius: "4px",
-                              background: "rgba(16, 185, 129, 0.12)",
-                              color: "#34d399",
-                              border: "1px solid rgba(16, 185, 129, 0.25)",
-                            }}
-                          >
-                            {lang}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      borderTop: "1px solid var(--border-subtle)",
-                      paddingTop: "14px",
-                    }}
-                  >
-                    <div>
-                      <span style={{ fontSize: "16px", fontWeight: 700, color: "#fff" }}>
-                        ₹{lawyer.consultation_fee || 2500}
-                      </span>
-                      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}> / 30 min</span>
-                    </div>
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      <Link
-                        href={`/lawyers/${lawyer.id}`}
-                        className="btn btn-secondary"
-                        style={{ padding: "7px 12px", fontSize: "12px" }}
-                      >
-                        Profile
-                      </Link>
-                      {lawyer.is_online ? (
-                        <button
-                          onClick={() => {
-                            if (!user) {
-                              setAuthPromptLawyer(lawyer);
-                              return;
-                            }
-                            setInstantCallLawyer(lawyer);
-                            setInstantError("");
-                          }}
-                          className="btn btn-primary"
-                          style={{
-                            padding: "7px 14px",
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            background: "linear-gradient(135deg, #10b981, #059669)",
-                            border: "none",
-                            boxShadow: "0 2px 10px rgba(16, 185, 129, 0.35)",
-                            cursor: "pointer",
-                          }}
-                        >
-                          ⚡ Instant Video Call
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            if (!user) {
-                              setAuthPromptLawyer(lawyer);
-                              return;
-                            }
-                            setBookingLawyer(lawyer);
-                            setBookingError("");
-                            setBookingSuccess("");
-                          }}
-                          className="btn btn-primary"
-                          style={{ padding: "7px 14px", fontSize: "12px" }}
-                        >
-                          Book Session →
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Instant Video Call & Simulated Test Payment Modal */}
-        {instantCallLawyer && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.85)",
-              backdropFilter: "blur(10px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: "20px",
-            }}
-            onClick={() => setInstantCallLawyer(null)}
-          >
-            <div
-              style={{
-                background: "var(--surface-elevated)",
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--radius-md)",
-                padding: "28px",
-                width: "100%",
-                maxWidth: "520px",
-                boxShadow: "var(--shadow-lg)",
-                color: "#fff",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" }}>
-                <div>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 700, color: "#10b981", textTransform: "uppercase", marginBottom: "4px" }}>
-                    <span>●</span> Instant Counsel Video Session
-                  </div>
-                  <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#fff", margin: 0 }}>
-                    Connect with {instantCallLawyer.full_name}
-                  </h2>
-                </div>
-                <button
-                  onClick={() => setInstantCallLawyer(null)}
-                  style={{ color: "var(--text-muted)", fontSize: "20px", background: "none", border: "none", cursor: "pointer" }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Session Details Card */}
-              <div
-                style={{
-                  background: "#1a1e2e",
-                  border: "1px solid #282f44",
-                  borderRadius: "8px",
-                  padding: "16px",
-                  marginBottom: "18px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                  <span style={{ color: "#94a3b8" }}>Advocate Status:</span>
-                  <span style={{ color: "#10b981", fontWeight: 700 }}>🟢 Present & Online Now</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                  <span style={{ color: "#94a3b8" }}>Scheduled Start:</span>
-                  <span style={{ fontWeight: 600 }}>Immediately ({istClock ? istClock.split("•")[1]?.trim() : "Current Indian Time"})</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                  <span style={{ color: "#94a3b8" }}>Session Duration:</span>
-                  <span>30 Minutes Video Room</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", borderTop: "1px solid #282f44", paddingTop: "8px" }}>
-                  <span style={{ color: "#94a3b8" }}>Consultation Fee:</span>
-                  <span style={{ fontSize: "18px", fontWeight: 700, color: "#60a5fa" }}>₹{instantCallLawyer.consultation_fee || 2500}</span>
-                </div>
-              </div>
-
-              {/* Temporary Payment Box */}
-              <div
-                style={{
-                  padding: "14px 16px",
-                  borderRadius: "8px",
-                  background: "rgba(16, 185, 129, 0.08)",
-                  border: "1px solid rgba(16, 185, 129, 0.25)",
-                  marginBottom: "20px",
-                  fontSize: "12px",
-                  color: "#a7f3d0",
-                  lineHeight: 1.5,
-                }}
-              >
-                <strong style={{ display: "block", marginBottom: "4px", color: "#34d399" }}>💳 Simulated Test Payment Gateway:</strong>
-                This is a temporary test transaction. No real credit card charge will occur. Clicking below authoritatively marks the session as paid and initiates the video consultation with permission of both parties.
-              </div>
-
-              {instantError && (
-                <div style={{ padding: "12px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", fontSize: "13px", marginBottom: "16px" }}>
-                  {instantError}
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  onClick={() => setInstantCallLawyer(null)}
-                  className="btn btn-secondary"
-                  disabled={instantSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmInstantCall}
-                  disabled={instantSubmitting}
-                  className="btn btn-primary"
-                  style={{
-                    padding: "10px 22px",
-                    background: "linear-gradient(135deg, #10b981, #059669)",
-                    border: "none",
-                    fontWeight: 700,
-                    fontSize: "14px",
-                    boxShadow: "0 4px 14px rgba(16, 185, 129, 0.4)",
-                    cursor: "pointer",
-                  }}
-                >
-                  {instantSubmitting ? "Starting Video Call..." : "Confirm Test Payment & Join Call 🎥"}
-                </button>
-              </div>
+              <label htmlFor="verifiedOnlyCb" style={{ fontSize: "13px", color: "#fff", cursor: "pointer" }}>
+                Verified Bar Counsel only
+              </label>
             </div>
           </div>
         )}
+      </section>
 
-        {/* Booking Modal */}
-        {bookingLawyer && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.8)",
-              backdropFilter: "blur(10px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: "20px",
-            }}
-            onClick={() => setBookingLawyer(null)}
+      {/* Results Header */}
+      <div className={styles.resultsHeader}>
+        <div className={styles.resultsCount}>
+          Showing <strong>{rankedLawyers.length}</strong> available advocates
+          {selectedIntentId && (
+            <span> for <strong>{INTENT_OPTIONS.find((i) => i.id === selectedIntentId)?.label}</strong></span>
+          )}
+        </div>
+
+        {(selectedIntentId || selectedLocation !== "All Locations" || selectedLanguage !== "Any Language" || selectedBudget !== "all" || searchTerm) && (
+          <button
+            type="button"
+            className={styles.advancedToggleBtn}
+            style={{ fontSize: "11px", padding: "4px 10px" }}
+            onClick={handleResetFilters}
           >
-            <div
-              style={{
-                background: "var(--surface-elevated)",
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--radius-md)",
-                padding: "28px",
-                width: "100%",
-                maxWidth: "520px",
-                boxShadow: "var(--shadow-lg)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
-                <div>
-                  <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#fff" }}>
-                    Schedule Consultation: {bookingLawyer.full_name}
-                  </h2>
-                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "2px" }}>
-                    Fee: ₹{bookingLawyer.consultation_fee || 2500} for 30 minutes video consultation.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setBookingLawyer(null)}
-                  style={{ color: "var(--text-muted)", fontSize: "18px" }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {bookingSuccess && bookedConsultationId ? (
-                <div style={{ textAlign: "center", padding: "12px 0" }}>
-                  <div
-                    style={{
-                      width: "56px",
-                      height: "56px",
-                      borderRadius: "50%",
-                      backgroundColor: "rgba(16, 185, 129, 0.15)",
-                      color: "#10b981",
-                      fontSize: "28px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      margin: "0 auto 16px",
-                    }}
-                  >
-                    ✓
-                  </div>
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#fff", marginBottom: "8px" }}>
-                    Appointment Confirmed!
-                  </h3>
-                  <p style={{ color: "var(--text-secondary)", fontSize: "14px", lineHeight: 1.5, marginBottom: "20px" }}>
-                    {bookingSuccess}
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    <a
-                      href={`/consultations/${bookedConsultationId}/room`}
-                      className="btn btn-primary"
-                      style={{
-                        padding: "12px",
-                        fontSize: "14px",
-                        textAlign: "center",
-                        textDecoration: "none",
-                        fontWeight: 600,
-                      }}
-                    >
-                      Enter Video Consultation Room 🎥
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBookingLawyer(null);
-                        setBookingSuccess("");
-                        setBookedConsultationId(null);
-                      }}
-                      className="btn btn-secondary"
-                      style={{ padding: "10px" }}
-                    >
-                      Done & Return to Directory
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {bookingError && (
-                    <div style={{ padding: "12px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", fontSize: "13px", marginBottom: "16px" }}>
-                      {bookingError}
-                    </div>
-                  )}
-
-                  <form onSubmit={handleBookConsultation}>
-                    <div className="input-group">
-                      <label className="input-label">Consultation Date</label>
-                      <input
-                        type="date"
-                        value={selectedDate}
-                        min={new Date().toISOString().split("T")[0]}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        required
-                        className="input-field"
-                      />
-                    </div>
-
-                    <div className="input-group">
-                      <label className="input-label">Available Time Slots</label>
-                      {fetchingSlots ? (
-                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Synchronizing advocate calendar...</div>
-                      ) : slots.length === 0 ? (
-                        <div style={{ fontSize: "12px", color: "#f59e0b", padding: "10px", background: "rgba(245, 158, 11, 0.08)", borderRadius: "6px" }}>
-                          No available slots on this date. Please select another date.
-                        </div>
-                      ) : (
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", maxHeight: "150px", overflowY: "auto" }}>
-                          {slots.map((slot, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setSelectedSlot(slot)}
-                              style={{
-                                padding: "8px",
-                                borderRadius: "6px",
-                                fontSize: "12px",
-                                background: selectedSlot?.start_time === slot.start_time ? "var(--accent-primary)" : "var(--surface-subtle)",
-                                color: selectedSlot?.start_time === slot.start_time ? "#fff" : "var(--text-primary)",
-                                border: "1px solid var(--border-subtle)",
-                                fontWeight: 500,
-                              }}
-                            >
-                              {new Date(slot.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px" }}>
-                      <button
-                        type="button"
-                        onClick={() => setBookingLawyer(null)}
-                        className="btn btn-secondary"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={bookingSubmitting || (!selectedSlot && slots.length > 0)}
-                        className="btn btn-primary"
-                      >
-                        {bookingSubmitting ? "Reserving Slot..." : "Confirm & Reserve Slot →"}
-                      </button>
-                    </div>
-                  </form>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-        {/* Unauthenticated User Prompt Modal */}
-        {authPromptLawyer && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.85)",
-              backdropFilter: "blur(10px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1100,
-              padding: "20px",
-            }}
-          >
-            <div
-              style={{
-                background: "var(--surface-card)",
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--radius-lg)",
-                padding: "36px 32px",
-                maxWidth: "460px",
-                width: "100%",
-                textAlign: "center",
-                boxShadow: "0 24px 48px rgba(0,0,0,0.7)",
-              }}
-            >
-              <div style={{ fontSize: "42px", marginBottom: "14px" }}>⚖</div>
-              <h3 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px", color: "var(--text-primary)" }}>
-                Sign In to Consult Counsel
-              </h3>
-              <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "24px", lineHeight: "1.5" }}>
-                To schedule or start a video consultation with <strong>{authPromptLawyer.full_name}</strong>, please log in or open a free legal account.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <button
-                  type="button"
-                  id="quick-demo-client-modal-btn"
-                  onClick={handleQuickClientLogin}
-                  disabled={quickLoginLoading}
-                  className="btn btn-primary"
-                  style={{
-                    padding: "12px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "8px",
-                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-                    border: "none",
-                  }}
-                >
-                  ⚡ {quickLoginLoading ? "Logging in..." : "1-Click Client Login (Vikram Sharma)"}
-                </button>
-                <Link
-                  href={`/login?redirect=/lawyers`}
-                  className="btn btn-secondary"
-                  style={{ padding: "12px", fontSize: "14px", fontWeight: 600 }}
-                >
-                  Log In with Email
-                </Link>
-                <Link
-                  href={`/register?redirect=/lawyers`}
-                  style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "4px" }}
-                >
-                  Create New Client Account
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setAuthPromptLawyer(null)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--text-muted)",
-                    fontSize: "13px",
-                    cursor: "pointer",
-                    marginTop: "6px",
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
+            Reset all choices ✕
+          </button>
         )}
       </div>
+
+      {/* Directory Grid / Empty / Loading */}
+      {loading ? (
+        <div style={{ padding: "40px 0" }}>
+          <LoadingSkeleton type="card" count={3} />
+        </div>
+      ) : error ? (
+        <div style={{ padding: "24px", background: "rgba(239, 68, 68, 0.12)", color: "#f87171", borderRadius: "8px" }}>
+          {error}
+        </div>
+      ) : rankedLawyers.length === 0 ? (
+        /* Empty State (Section 28) */
+        <div className={styles.emptyStateContainer}>
+          <div className={styles.emptyStateIcon}>🔍</div>
+          <h3 className={styles.emptyStateTitle}>We couldn&apos;t find an advocate matching all your choices</h3>
+          <p className={styles.emptyStateDesc}>
+            Try changing your location, preferred language, or budget range to see more advocates.
+          </p>
+          <div className={styles.emptyStateActions}>
+            <button
+              type="button"
+              className={styles.primaryActionBtn}
+              onClick={() => {
+                setSelectedLocation("All Locations");
+                setSelectedBudget("all");
+                setSelectedLanguage("Any Language");
+              }}
+            >
+              Broaden Location & Budget
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryActionBtn}
+              onClick={handleResetFilters}
+            >
+              Reset All Filters
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Advocate Grid */
+        <div className={styles.lawyerGrid}>
+          {rankedLawyers.map(({ lawyer, matchExplanation }) => {
+            const isVerified = lawyer.verification_status === "VERIFIED";
+            const languagesList = Array.isArray(lawyer.languages)
+              ? lawyer.languages.join(", ")
+              : lawyer.languages || "English, Hindi";
+            const practiceAreasList = Array.isArray(lawyer.practice_areas)
+              ? lawyer.practice_areas.join(", ")
+              : lawyer.practice_areas || "General Practice";
+
+            const lawyerId = lawyer.user_id || lawyer.id;
+
+            return (
+              <div key={lawyer.id} className={styles.lawyerCard}>
+                <div className={styles.lawyerTopRow}>
+                  <div>
+                    <h3 className={styles.lawyerName}>Adv. {lawyer.full_name}</h3>
+                    <div style={{ fontSize: "12px", color: "#94a3b8" }}>
+                      {lawyer.experience_years ? `${lawyer.experience_years} Years at Bar` : "Enrolled Counsel"}
+                      {lawyer.location ? ` · ${lawyer.location}` : ""}
+                    </div>
+                  </div>
+
+                  {isVerified && (
+                    <span className={styles.verifiedBadge}>
+                      <span>✓</span> Verified Counsel
+                    </span>
+                  )}
+                </div>
+
+                {/* Deterministic Explainability Tags (Phase 9 Section 10) */}
+                {lawyer.match_reasons && lawyer.match_reasons.length > 0 ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", margin: "8px 0" }}>
+                    {lawyer.match_reasons.map((reason, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          background: "rgba(56, 189, 248, 0.12)",
+                          color: "#38bdf8",
+                          border: "1px solid rgba(56, 189, 248, 0.3)",
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        ✓ {reason}
+                      </span>
+                    ))}
+                  </div>
+                ) : matchExplanation ? (
+                  <div className={styles.explainabilityTag}>
+                    <span>🎯</span> {matchExplanation}
+                  </div>
+                ) : null}
+
+                {/* Practice Areas */}
+                <div className={styles.metaRow}>
+                  <strong style={{ color: "#ffffff" }}>Practice:</strong>
+                  <span>{practiceAreasList}</span>
+                </div>
+
+                {/* Languages */}
+                <div className={styles.metaRow}>
+                  <strong style={{ color: "#ffffff" }}>Languages:</strong>
+                  <span>{languagesList}</span>
+                </div>
+
+                {/* Fee Display */}
+                <div className={styles.feeDisplay}>
+                  <div>
+                    <div className={styles.feeLabel}>Consultation Fee</div>
+                    <div className={styles.feeAmount}>₹{lawyer.consultation_fee || 2500}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div className={styles.feeLabel}>Duration</div>
+                    <div style={{ fontSize: "12px", color: "#cbd5e1", fontWeight: 600 }}>30 Minutes</div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className={styles.cardFooter}>
+                  <Link
+                    href={`/lawyers/${lawyerId}`}
+                    className={styles.secondaryActionBtn}
+                    onClick={() => trackFunnelEvent("profile_opened", { lawyer_id: lawyerId })}
+                  >
+                    View Profile
+                  </Link>
+
+                  <Link
+                    href={`/lawyers/${lawyerId}?action=book`}
+                    className={styles.primaryActionBtn}
+                    onClick={() => trackFunnelEvent("slot_selected", { lawyer_id: lawyerId })}
+                  >
+                    Schedule Session →
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

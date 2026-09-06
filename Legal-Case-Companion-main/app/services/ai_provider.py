@@ -290,14 +290,17 @@ class ProductionOpenAIProvider:
 
 
 def get_ai_provider() -> AIProvider:
-    """Factory returning the AI provider integration boundary."""
-    if settings.ENVIRONMENT == "production":
-        return ProductionOpenAIProvider()
+    """Factory returning the AI provider integration boundary.
 
+    The core platform operates cleanly without any AI credentials.
+    If no valid OpenAI key is supplied or AI integration is disabled,
+    a deterministic StubAIProvider is safely returned in all environments.
+    """
     if (
-        settings.OPENAI_API_KEY
+        getattr(settings, "AI_INTEGRATION_ENABLED", True)
         and settings.OPENAI_API_KEY
-        not in ("<set-in-environment>", "", "dummy-key", "test-key")
+        and settings.OPENAI_API_KEY
+        not in ("<set-in-environment>", "", "dummy-key", "test-key", "dummy-test-key")
         and not settings.OPENAI_API_KEY.startswith("dummy")
     ):
         try:

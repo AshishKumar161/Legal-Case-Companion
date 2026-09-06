@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
@@ -7,6 +8,25 @@ import { useAuth } from "@/providers/AuthProvider";
 export function Navbar() {
   const { user } = useAuth();
   const pathname = usePathname();
+  const [istTime, setIstTime] = useState<string>("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setIstTime(
+        now.toLocaleTimeString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        }) + " IST"
+      );
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // If user is authenticated or on auth forms, Navbar is not rendered.
   // The authenticated experience is managed via AppShell (Sidebar + TopBar).
@@ -20,12 +40,14 @@ export function Navbar() {
         position: "sticky",
         top: 0,
         zIndex: 900,
-        background: "rgba(8, 9, 12, 0.85)",
-        backdropFilter: "blur(16px)",
+        background: "rgba(7, 9, 14, 0.82)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
         borderBottom: "1px solid var(--border-subtle)",
-        height: "64px",
+        height: "68px",
         display: "flex",
         alignItems: "center",
+        transition: "all var(--transition-fast)",
       }}
     >
       <div
@@ -37,14 +59,14 @@ export function Navbar() {
           width: "100%",
         }}
       >
-        {/* Brand */}
+        {/* Brand Logo & Name */}
         <Link
           href="/"
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "10px",
-            fontSize: "18px",
+            gap: "12px",
+            fontSize: "19px",
             fontWeight: 700,
             fontFamily: "Outfit, sans-serif",
             color: "var(--text-primary)",
@@ -53,33 +75,42 @@ export function Navbar() {
         >
           <span
             style={{
-              width: "30px",
-              height: "30px",
-              borderRadius: "8px",
-              background: "linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))",
+              width: "34px",
+              height: "34px",
+              borderRadius: "10px",
+              background: "var(--accent-gradient)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "14px",
+              fontSize: "16px",
               color: "#fff",
+              boxShadow: "0 4px 14px rgba(99, 102, 241, 0.4)",
             }}
           >
             ⚖
           </span>
-          <span>Legal Case Companion</span>
+          <span style={{ fontWeight: 800 }}>Legal Case Companion</span>
         </Link>
 
-        {/* Public Navigation */}
-        <nav style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+        {/* Desktop Navigation */}
+        <nav
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "28px",
+          }}
+          className="desktop-nav"
+        >
           <Link
             href="/lawyers"
             style={{
               fontSize: "14px",
               fontWeight: 500,
               color: "var(--text-secondary)",
+              transition: "color var(--transition-fast)",
             }}
           >
-            Counsel Directory
+            Advocate Directory
           </Link>
           <Link
             href="/#features"
@@ -87,9 +118,10 @@ export function Navbar() {
               fontSize: "14px",
               fontWeight: 500,
               color: "var(--text-secondary)",
+              transition: "color var(--transition-fast)",
             }}
           >
-            Capabilities
+            Platform Capabilities
           </Link>
           <Link
             href="/#security"
@@ -97,33 +129,58 @@ export function Navbar() {
               fontSize: "14px",
               fontWeight: 500,
               color: "var(--text-secondary)",
+              transition: "color var(--transition-fast)",
             }}
           >
-            Security & Architecture
+            Security & DPDP
           </Link>
+
+          {/* Live Indian Standard Time Clock Indicator */}
+          {istTime && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "4px 10px",
+                borderRadius: "var(--radius-full)",
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid var(--border-subtle)",
+                fontSize: "11px",
+                fontFamily: "'JetBrains Mono', monospace",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <span className="pulse-dot" style={{ background: "#10b981" }} />
+              <span>{istTime}</span>
+            </div>
+          )}
         </nav>
 
         {/* Public Auth Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
           <Link
             href="/login"
             style={{
-              fontSize: "14px",
+              fontSize: "13px",
               color: "var(--text-primary)",
-              padding: "7px 16px",
+              padding: "6px 14px",
               borderRadius: "var(--radius-sm)",
               border: "1px solid var(--border-subtle)",
-              fontWeight: 500,
+              background: "rgba(255, 255, 255, 0.03)",
+              fontWeight: 600,
+              transition: "all var(--transition-fast)",
+              whiteSpace: "nowrap",
             }}
           >
-            Log In
+            Sign In
           </Link>
           <Link
             href="/register"
-            className="btn btn-primary"
-            style={{ padding: "7px 18px", fontSize: "14px" }}
+            className="btn btn-primary nav-desktop-only"
+            style={{ padding: "6px 16px", fontSize: "13px", whiteSpace: "nowrap" }}
           >
-            Open Legal Account
+            Launch Workspace →
           </Link>
         </div>
       </div>

@@ -12,9 +12,10 @@ Validates that:
 
 from fastapi.testclient import TestClient
 from app.main import app
+from scripts.seed_pilot_demo import seed_demo_users
 
-def test_multi_tab_session_isolation():
-    client = TestClient(app)
+def test_multi_tab_session_isolation(client, db):
+    seed_demo_users(db)
 
     print("\n--- STEP 1: Independent Login for Tab A (CLIENT), Tab B (LAWYER), Tab C (ADMIN) ---")
     # Tab A: Client Login

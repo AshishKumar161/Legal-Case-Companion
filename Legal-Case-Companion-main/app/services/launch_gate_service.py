@@ -48,7 +48,7 @@ class LaunchGateService:
     def evaluate_all_gates(self) -> dict[str, Any]:
         now = datetime.now(UTC).isoformat()
 
-        gates = [
+        gates: list[dict[str, Any]] = [
             {
                 "gate_id": "GATE-01-SEC",
                 "category": LaunchGateCategory.SECURITY,
@@ -182,8 +182,8 @@ class LaunchGateService:
             {
                 "gate_id": "GATE-14-REL",
                 "category": LaunchGateCategory.RELEASE_ENGINEERING,
-                "requirement": "Linear Alembic migration chain to m1a2b3c4d5e6, signed release manifest, and automated test regression suite",
-                "evidence": "Single linear migration head m1a2b3c4d5e6 verified; release manifest signed; test suite passing.",
+                "requirement": "Linear Alembic migration chain to 25500e9a54c3, signed release manifest, and automated test regression suite",
+                "evidence": "Single linear migration head 25500e9a54c3 verified; release manifest signed; test suite passing.",
                 "owner": "Release Engineering",
                 "status": "PASSED",
                 "blocker": None,

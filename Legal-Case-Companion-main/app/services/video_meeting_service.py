@@ -133,18 +133,18 @@ class InternalWebRTCMeetingProvider:
 
     def generate_access_token(
         self,
-        user_or_room: Any,
-        meeting_or_identity: Any = None,
+        user: Any,
+        meeting: Any = None,
         role: str = "PARTICIPANT",
+        expires_in_seconds: int = 3600,
         consultation_id: uuid.UUID | None = None,
         duration_minutes: int = 120,
-        expires_in_seconds: int | None = None,
     ) -> str:
         """Compatibility wrapper supporting both protocol signatures."""
-        if hasattr(user_or_room, "id") and hasattr(meeting_or_identity, "room_id"):
-            room_name = meeting_or_identity.room_id
-            participant_identity = str(user_or_room.id)
-            con_id = getattr(meeting_or_identity, "consultation_id", None)
+        if hasattr(user, "id") and hasattr(meeting, "room_id"):
+            room_name = meeting.room_id
+            participant_identity = str(user.id)
+            con_id = getattr(meeting, "consultation_id", None)
             dur = (expires_in_seconds // 60) if expires_in_seconds else duration_minutes
             return self.create_access_token(
                 room_name=room_name,
@@ -154,8 +154,8 @@ class InternalWebRTCMeetingProvider:
                 duration_minutes=dur,
             )
         else:
-            room_name = str(user_or_room)
-            participant_identity = str(meeting_or_identity)
+            room_name = str(user)
+            participant_identity = str(meeting)
             dur = (expires_in_seconds // 60) if expires_in_seconds else duration_minutes
             return self.create_access_token(
                 room_name=room_name,
@@ -252,9 +252,9 @@ class LiveKitMeetingProvider:
     """Production SFU meeting provider using LiveKit protocol."""
 
     def __init__(self, livekit_url: str | None = None, api_key: str | None = None, api_secret: str | None = None):
-        self.livekit_url = livekit_url or getattr(settings, "LIVEKIT_URL", "http://localhost:7880")
-        self.api_key = api_key or getattr(settings, "LIVEKIT_API_KEY", "devkey")
-        self.api_secret = api_secret or getattr(settings, "LIVEKIT_API_SECRET", "secret")
+        self.livekit_url: str = str(livekit_url or getattr(settings, "LIVEKIT_URL", "http://localhost:7880") or "")
+        self.api_key: str = str(api_key or getattr(settings, "LIVEKIT_API_KEY", "devkey") or "")
+        self.api_secret: str = str(api_secret or getattr(settings, "LIVEKIT_API_SECRET", "secret") or "")
 
     def create_meeting_room(self, consultation: Consultation) -> dict[str, Any]:
         room_id = f"lcc-sfu-{consultation.id.hex[:12]}-{generate_uuid7().hex[:6]}"
@@ -297,7 +297,7 @@ class LiveKitMeetingProvider:
             "user_id": str(user.id),
             "role": role,
         }
-        return jwt.encode(payload, self.api_secret, algorithm="HS256")
+        return str(jwt.encode(payload, str(self.api_secret), algorithm="HS256"))
 
     def verify_access_token(
         self,
@@ -310,7 +310,7 @@ class LiveKitMeetingProvider:
         import jwt
 
         try:
-            payload = jwt.decode(token, self.api_secret, algorithms=["HS256"])
+            payload = jwt.decode(token, str(self.api_secret), algorithms=["HS256"])
         except jwt.PyJWTError as e:
             raise ValidationError(f"Invalid LiveKit video token: {e}") from e
 

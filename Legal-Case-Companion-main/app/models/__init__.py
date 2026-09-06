@@ -15,10 +15,22 @@ from app.models.auth import (
 )
 from app.models.base import Base
 from app.models.commercial import (
+    AdvocatePayout,
+    AdvocatePayoutStatus,
+    CommercialBillingStrategy,
     CommercialEntitlement,
     CommercialTransaction,
+    RefundReason,
+    RefundRecord,
+    RefundStatus,
     TransactionStatus,
     TransactionType,
+)
+from app.models.support import (
+    SupportCase,
+    SupportCaseMessage,
+    SupportCaseSeverity,
+    SupportCaseStatus,
 )
 from app.models.compliance import (
     ComplianceItemStatus,
@@ -173,6 +185,11 @@ from app.models.workflow import (
     ReminderStatus,
     ReminderTargetType,
 )
+from app.models.court_case import (
+    CourtCase,
+    UserFollowedCase,
+)
+from app.models.user_feed import UserFeedAcknowledgment
 
 __all__ = [
     "AIConversation",
@@ -204,6 +221,8 @@ __all__ = [
     "CaseStatus",
     "CaseTask",
     "CaseTimelineEvent",
+    "CourtCase",
+    "UserFollowedCase",
     "ClaimDefenseStatus",
     "ClaimPositionType",
     "ClientProfile",
@@ -287,6 +306,7 @@ __all__ = [
     "TaskStatus",
     "User",
     "UserExternalIdentity",
+    "UserFeedAcknowledgment",
     "UserNotificationPreference",
     "UserRole",
     "UserOperatorPermission",

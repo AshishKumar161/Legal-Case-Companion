@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { MobileBottomNav } from "./MobileBottomNav";
 import styles from "./AppShell.module.css";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className={styles.mainWrapper}>
         <TopBar onOpenMobile={() => setMobileOpen(true)} />
         <main className={styles.contentCanvas}>{children}</main>
+        <MobileBottomNav />
       </div>
     </div>
   );

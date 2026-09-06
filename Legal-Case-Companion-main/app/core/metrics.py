@@ -34,6 +34,10 @@ class MetricsCollector:
         self.dependency_failures_count = defaultdict(int)
         self.tamper_events_total = 0
         self.outbox_events_count = defaultdict(int)
+        self.registration_events: dict[str, int] = defaultdict(int)
+        self.payment_events: dict[str, int] = defaultdict(int)
+        self.localization_fallbacks: dict[str, int] = defaultdict(int)
+        self.abuse_anomalies: dict[str, int] = defaultdict(int)
         self._initialized = True
 
     def record_http_request(self, method: str, path: str, status_code: int, duration_ms: float) -> None:
@@ -272,27 +276,19 @@ class MetricsCollector:
 
     def record_registration_event(self, outcome: str, role: str) -> None:
         with self._lock:
-            if not hasattr(self, "registration_events"):
-                self.registration_events = defaultdict(int)
             self.registration_events[f"{role}:{outcome}"] += 1
 
     def record_payment_event(self, outcome: str, reason: str | None = None) -> None:
         with self._lock:
-            if not hasattr(self, "payment_events"):
-                self.payment_events = defaultdict(int)
             key = f"{outcome}:{reason}" if reason else outcome
             self.payment_events[key] += 1
 
     def record_localization_fallback(self, source_key: str, locale: str) -> None:
         with self._lock:
-            if not hasattr(self, "localization_fallbacks"):
-                self.localization_fallbacks = defaultdict(int)
             self.localization_fallbacks[f"{locale}:{source_key}"] += 1
 
     def record_abuse_anomaly(self, anomaly_type: str) -> None:
         with self._lock:
-            if not hasattr(self, "abuse_anomalies"):
-                self.abuse_anomalies = defaultdict(int)
             self.abuse_anomalies[anomaly_type] += 1
 
 

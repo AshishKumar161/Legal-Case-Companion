@@ -16,3 +16,9 @@
   flex: 1;
   background: var(--surface-base);
 }
+
+@media (max-width: 768px) {
+  .contentCanvas {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 12px));
+  }
+}

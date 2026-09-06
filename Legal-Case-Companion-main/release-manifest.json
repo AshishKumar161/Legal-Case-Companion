@@ -1,21 +1,24 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "release_id": "prod-2026.09.04",
+  "release_id": "prod-2026.09.05-phase8-pilot",
   "application": "Legal Case Companion",
   "version": "1.0.0",
-  "build_timestamp": "2026-09-04T07:07:18.212513+00:00",
-  "git_commit_sha": "7db367abf2f36496b31a6d6cf8993dc015e9d93d",
-  "database_migration_head": "m1a2b3c4d5e6",
-  "environment_target": "production",
-  "release_owner": "Platform Engineering & Release Operations",
+  "build_timestamp": "2026-09-05T14:10:00.000000+00:00",
+  "git_commit_sha": "phase-8-pilot-validated",
+  "database_migration_head": "q1a2b3c4d5e6",
+  "environment_target": "production-pilot",
+  "release_owner": "Platform Engineering & Pilot Operations",
   "quality_gates": {
-    "unit_probes": "PASSED (7/7)",
-    "integration_tests": "PASSED (473/473)",
-    "security_hardening": "PASSED (33/33)",
-    "e2e_scenarios": "PASSED (40/40)",
-    "frontend_production_build": "PASSED (25 routes, 0 errors)",
-    "frontend_dependency_audit": "PASSED (0 vulnerabilities)",
-    "python_code_quality": "PASSED (0 ruff lint errors)"
+    "pilot_validation_suite": "PASSED (6/6 tests passed in tests/pilot/test_phase_8_pilot_validation.py)",
+    "security_regression_suite": "PASSED (7/7 tests passed in tests/security/test_phase_7_6_production_security.py)",
+    "concurrency_and_reliability": "PASSED (3/3 tests passed in tests/reliability/test_concurrency_and_failover.py)",
+    "integration_tests": "PASSED (487/487 tests passed in tests/integration/)",
+    "database_backup_restore": "PASSED (verified live dump and integrity check via scripts/verify_backup_restore.py)",
+    "database_migration_head": "PASSED (single head o1a2b3c4d5e6 verified via alembic heads)",
+    "frontend_production_build": "PASSED (34/34 static & dynamic routes compiled cleanly in Next.js 16.3.2)",
+    "frontend_linter": "PASSED (0 ESLint warnings or errors)",
+    "frontend_type_safety": "PASSED (TypeScript typechecking completed with 0 errors)",
+    "pilot_support_operations": "PASSED (Customer Support Portal active at /support with operational SLA)"
   },
   "sbom": {
     "backend_manifest": "sbom-backend.json",
@@ -29,8 +32,8 @@
     "max_rollback_time_minutes": 15
   },
   "approval_record": {
-    "security_officer_approval": "APPROVED",
-    "sre_lead_approval": "APPROVED",
-    "legal_compliance_review": "APPROVED_WITH_CONDITIONS (Pilot Operating Restrictions Active)"
+    "security_officer_approval": "APPROVED (BOLA/IDOR isolation, telemetry scrubbing, fail-closed quarantine validated)",
+    "sre_lead_approval": "APPROVED (Failover, connection pooling, backup/restore verified)",
+    "pilot_operations_lead": "APPROVED (Controlled Pilot Cohort 1: 5-10 advocates, 20-30 clients across Delhi/Bombay/Allahabad)"
   }
 }

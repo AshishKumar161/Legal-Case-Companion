@@ -128,6 +128,11 @@ class LawyerProfile(Base, TimestampMixin, SoftDeleteMixin):
     court_jurisdictions: Mapped[list | None] = mapped_column(JSON, nullable=True)
     languages: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
+    # Ephemeral runtime presence attributes (populated by PresenceService / ConsultationService)
+    is_online: bool = False
+    is_available: bool = False
+    presence_status: str = "OFFLINE"
+
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="lawyer_profile")
     verifications: Mapped[list["LawyerVerification"]] = relationship(

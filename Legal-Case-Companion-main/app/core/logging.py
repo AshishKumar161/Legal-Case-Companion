@@ -33,6 +33,14 @@ class SensitiveDataScrubberFilter(logging.Filter):
         (re.compile(r'(?i)(AWSAccessKeyId=[A-Z0-9]+)'), r"AWSAccessKeyId=***REDACTED***"),
         # General secret / private key
         (re.compile(r'(?i)("?(?:secret|api_key|client_secret)"?\s*[:=]\s*)["\']?[^"\'\s,;]+["\']?'), r'\1"***REDACTED***"'),
+        # Payment Card Numbers (16 digits)
+        (re.compile(r'\b(?:\d{4}[ -]?){3}\d{4}\b'), r"***REDACTED-CARD***"),
+        # Indian Aadhaar (12 digits with or without spaces)
+        (re.compile(r'\b\d{4}\s\d{4}\s\d{4}\b'), r"***REDACTED-AADHAAR***"),
+        # Indian PAN (Permanent Account Number)
+        (re.compile(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b'), r"***REDACTED-PAN***"),
+        # Raw eCourts CNR in logs
+        (re.compile(r'\b[A-Z]{4}\d{12}\b'), r"***REDACTED-CNR***"),
     ]
 
     def filter(self, record: logging.LogRecord) -> bool:
