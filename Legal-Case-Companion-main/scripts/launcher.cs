@@ -1,0 +1,488 @@
+using System;
+using System.IO;
+using System.Diagnostics;
+using System.Threading;
+using System.Net;
+
+namespace LegalCaseCompanion
+{
+    class Program
+    {
+        private static Process backendProcess = null;
+        private static Process frontendProcess = null;
+        private static bool isExiting = false;
+        private static readonly object exitLock = new object();
+
+        static void Main(string[] args)
+        {
+            Console.Title = "Legal Case Companion — Full-Stack Server";
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+
+            PrintBanner();
+
+            // Locate project root
+            string projectRoot = FindProjectRoot();
+            if (string.IsNullOrEmpty(projectRoot))
+            {
+                PrintError("Could not locate project root directory (must contain 'app' and 'frontend').");
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey();
+                return;
+            }
+
+            PrintInfo("Project Root: " + projectRoot);
+
+            // Locate Python
+            string pythonExe = FindPython(projectRoot);
+            if (string.IsNullOrEmpty(pythonExe))
+            {
+                PrintError("Python not found. Please install Python 3.11+ or create a .venv.");
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey();
+                return;
+            }
+            PrintSuccess("Python Executable: " + pythonExe);
+
+            // Locate npm
+            string npmExe = FindNpm();
+            if (string.IsNullOrEmpty(npmExe))
+            {
+                PrintError("npm not found. Please install Node.js (which includes npm).");
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey();
+                return;
+            }
+            PrintSuccess("npm Executable: " + npmExe);
+
+            // Hook exit handlers
+            Console.CancelKeyPress += new ConsoleCancelEventHandler(OnCancelKeyPress);
+            AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
+
+            // Start Backend
+            PrintSection("1. Starting Backend (FastAPI on Port 8000)...");
+            StartBackend(pythonExe, projectRoot);
+
+            // Start Frontend
+            PrintSection("2. Starting Frontend (Next.js on Port 3000)...");
+            StartFrontend(npmExe, Path.Combine(projectRoot, "frontend"));
+
+            // Wait for services to be ready
+            PrintSection("3. Waiting for services to become healthy...");
+            bool backendReady = WaitForUrl("http://127.0.0.1:8000/api/v1/health", 30);
+            if (backendReady)
+            {
+                PrintSuccess("Backend API is UP and Healthy (http://127.0.0.1:8000)");
+            }
+            else
+            {
+                PrintWarning("Backend health check timed out. It may still be initializing...");
+            }
+
+            bool frontendReady = WaitForUrl("http://localhost:3000", 45);
+            if (frontendReady)
+            {
+                PrintSuccess("Frontend UI is UP and Ready (http://localhost:3000)");
+            }
+            else
+            {
+                PrintWarning("Frontend server timed out or is still building pages...");
+            }
+
+            // Open browser
+            if (frontendReady || backendReady)
+            {
+                PrintSection("4. Launching Application in Default Browser...");
+                try
+                {
+                    Process.Start("http://localhost:3000");
+                }
+                catch
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo("cmd", "/c start http://localhost:3000") { CreateNoWindow = true });
+                    }
+                    catch { }
+                }
+            }
+
+            PrintDashboard();
+
+            // Interactive loop
+            while (!isExiting)
+            {
+                try
+                {
+                    if (!Console.IsInputRedirected && Console.KeyAvailable)
+                    {
+                        ConsoleKeyInfo key = Console.ReadKey(true);
+                        if (key.Key == ConsoleKey.Q)
+                        {
+                            Console.WriteLine("\n[EXIT] Quit command received. Shutting down...");
+                            Shutdown();
+                            break;
+                        }
+                        else if (key.Key == ConsoleKey.B)
+                        {
+                            Console.WriteLine("\n[NAV] Opening Swagger API Documentation...");
+                            Process.Start("http://127.0.0.1:8000/docs");
+                        }
+                        else if (key.Key == ConsoleKey.F)
+                        {
+                            Console.WriteLine("\n[NAV] Opening Frontend Application...");
+                            Process.Start("http://localhost:3000");
+                        }
+                        else if (key.Key == ConsoleKey.M)
+                        {
+                            Console.WriteLine("\n[NAV] Opening Client & Lawyer Messages Page...");
+                            Process.Start("http://localhost:3000/messages");
+                        }
+                        else if (key.Key == ConsoleKey.C)
+                        {
+                            try { Console.Clear(); } catch { }
+                            PrintBanner();
+                            PrintDashboard();
+                        }
+                    }
+                }
+                catch
+                {
+                    // Headless or redirected input environment
+                }
+                Thread.Sleep(500);
+            }
+        }
+
+        private static void StartBackend(string pythonExe, string workingDir)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = pythonExe;
+                psi.Arguments = "-m uvicorn app.main:app --host 127.0.0.1 --port 8000";
+                psi.WorkingDirectory = workingDir;
+                psi.UseShellExecute = false;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                psi.CreateNoWindow = true;
+
+                backendProcess = new Process();
+                backendProcess.StartInfo = psi;
+                backendProcess.OutputDataReceived += new DataReceivedEventHandler((s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkCyan;
+                        Console.WriteLine("[BACKEND] " + e.Data);
+                        Console.ResetColor();
+                    }
+                });
+                backendProcess.ErrorDataReceived += new DataReceivedEventHandler((s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkGray;
+                        Console.WriteLine("[BACKEND] " + e.Data);
+                        Console.ResetColor();
+                    }
+                });
+
+                backendProcess.Start();
+                backendProcess.BeginOutputReadLine();
+                backendProcess.BeginErrorReadLine();
+                PrintSuccess("Backend process spawned (PID: " + backendProcess.Id + ")");
+            }
+            catch (Exception ex)
+            {
+                PrintError("Failed to start backend: " + ex.Message);
+            }
+        }
+
+        private static void StartFrontend(string npmExe, string workingDir)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = npmExe;
+                psi.Arguments = "run dev";
+                psi.WorkingDirectory = workingDir;
+                psi.UseShellExecute = false;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                psi.CreateNoWindow = true;
+
+                frontendProcess = new Process();
+                frontendProcess.StartInfo = psi;
+                frontendProcess.OutputDataReceived += new DataReceivedEventHandler((s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.WriteLine("[FRONTEND] " + e.Data);
+                        Console.ResetColor();
+                    }
+                });
+                frontendProcess.ErrorDataReceived += new DataReceivedEventHandler((s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkGray;
+                        Console.WriteLine("[FRONTEND] " + e.Data);
+                        Console.ResetColor();
+                    }
+                });
+
+                frontendProcess.Start();
+                frontendProcess.BeginOutputReadLine();
+                frontendProcess.BeginErrorReadLine();
+                PrintSuccess("Frontend process spawned (PID: " + frontendProcess.Id + ")");
+            }
+            catch (Exception ex)
+            {
+                PrintError("Failed to start frontend: " + ex.Message);
+            }
+        }
+
+        private static bool WaitForUrl(string url, int timeoutSeconds)
+        {
+            DateTime start = DateTime.Now;
+            while ((DateTime.Now - start).TotalSeconds < timeoutSeconds)
+            {
+                try
+                {
+                    HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                    request.Timeout = 2000;
+                    request.Method = "GET";
+                    using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                    {
+                        if ((int)response.StatusCode >= 200 && (int)response.StatusCode < 400)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                catch
+                {
+                    // server not responding yet
+                }
+                Thread.Sleep(1000);
+            }
+            return false;
+        }
+
+        private static string FindProjectRoot()
+        {
+            string current = AppDomain.CurrentDomain.BaseDirectory;
+            for (int i = 0; i < 5; i++)
+            {
+                if (Directory.Exists(Path.Combine(current, "app")) && Directory.Exists(Path.Combine(current, "frontend")))
+                {
+                    return Path.GetFullPath(current);
+                }
+                string parent = Path.GetDirectoryName(current);
+                if (string.IsNullOrEmpty(parent) || parent == current) break;
+                current = parent;
+            }
+
+            string cd = Directory.GetCurrentDirectory();
+            if (Directory.Exists(Path.Combine(cd, "app")) && Directory.Exists(Path.Combine(cd, "frontend")))
+            {
+                return Path.GetFullPath(cd);
+            }
+
+            return null;
+        }
+
+        private static string FindPython(string projectRoot)
+        {
+            string[] possiblePaths = new string[]
+            {
+                Path.Combine(projectRoot, ".venv", "Scripts", "python.exe"),
+                Path.Combine(projectRoot, "venv", "Scripts", "python.exe"),
+                @"C:\Users\akuma\AppData\Local\Programs\Python\Python312\python.exe",
+                "python.exe",
+                "python"
+            };
+
+            foreach (string p in possiblePaths)
+            {
+                try
+                {
+                    if (File.Exists(p)) return Path.GetFullPath(p);
+                    if (p.StartsWith("python"))
+                    {
+                        ProcessStartInfo psi = new ProcessStartInfo("cmd", "/c where python")
+                        {
+                            RedirectStandardOutput = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        };
+                        using (Process proc = Process.Start(psi))
+                        {
+                            string outStr = proc.StandardOutput.ReadLine();
+                            proc.WaitForExit(1000);
+                            if (!string.IsNullOrEmpty(outStr) && File.Exists(outStr.Trim()))
+                            {
+                                return outStr.Trim();
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+            return null;
+        }
+
+        private static string FindNpm()
+        {
+            string[] possiblePaths = new string[]
+            {
+                @"C:\Program Files\nodejs\npm.cmd",
+                @"C:\Program Files (x86)\nodejs\npm.cmd",
+                Environment.ExpandEnvironmentVariables(@"%APPDATA%\npm\npm.cmd"),
+                "npm.cmd"
+            };
+
+            foreach (string p in possiblePaths)
+            {
+                if (File.Exists(p)) return p;
+            }
+
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("cmd", "/c where npm.cmd")
+                {
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using (Process proc = Process.Start(psi))
+                {
+                    string outStr = proc.StandardOutput.ReadLine();
+                    proc.WaitForExit(1000);
+                    if (!string.IsNullOrEmpty(outStr) && File.Exists(outStr.Trim()))
+                    {
+                        return outStr.Trim();
+                    }
+                }
+            }
+            catch { }
+
+            return "npm.cmd";
+        }
+
+        private static void Shutdown()
+        {
+            lock (exitLock)
+            {
+                if (isExiting) return;
+                isExiting = true;
+
+                PrintSection("Shutting down processes gracefully...");
+
+                KillProcessTree(backendProcess);
+                KillProcessTree(frontendProcess);
+
+                PrintSuccess("All server processes stopped cleanly.");
+            }
+        }
+
+        private static void KillProcessTree(Process proc)
+        {
+            if (proc == null) return;
+            try
+            {
+                if (!proc.HasExited)
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo("taskkill", "/F /T /PID " + proc.Id)
+                    {
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    };
+                    Process.Start(psi).WaitForExit(3000);
+                }
+            }
+            catch { }
+        }
+
+        private static void OnCancelKeyPress(object sender, ConsoleCancelEventArgs e)
+        {
+            e.Cancel = true;
+            Console.WriteLine("\n[INTERRUPT] Received Ctrl+C. Shutting down servers...");
+            Shutdown();
+            Environment.Exit(0);
+        }
+
+        private static void OnProcessExit(object sender, EventArgs e)
+        {
+            Shutdown();
+        }
+
+        private static void PrintBanner()
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("===============================================================================");
+            Console.WriteLine("           LEGAL CASE COMPANION (LCC) — FULL-STACK SYSTEM LAUNCHER            ");
+            Console.WriteLine("        B2B Legal SaaS Platform for Commercial Litigation & Arbitration        ");
+            Console.WriteLine("===============================================================================");
+            Console.ResetColor();
+        }
+
+        private static void PrintDashboard()
+        {
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("===============================================================================");
+            Console.WriteLine(" [ONLINE] FULL-STACK SYSTEM READY & OPERATIONAL");
+            Console.WriteLine("===============================================================================");
+            Console.ResetColor();
+            Console.WriteLine("  • Frontend Web Application : http://localhost:3000");
+            Console.WriteLine("  • Lawyer / Client Messages : http://localhost:3000/messages");
+            Console.WriteLine("  • Backend REST API         : http://127.0.0.1:8000");
+            Console.WriteLine("  • OpenAPI Swagger Docs     : http://127.0.0.1:8000/docs");
+            Console.WriteLine("-------------------------------------------------------------------------------");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine(" Hotkeys:");
+            Console.WriteLine("  [F] Open Frontend    [M] Open Messages    [B] Open Backend Docs");
+            Console.WriteLine("  [C] Clear Console    [Q] Stop & Exit");
+            Console.WriteLine("===============================================================================");
+            Console.ResetColor();
+            Console.WriteLine();
+        }
+
+        private static void PrintSection(string text)
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("\n--> " + text);
+            Console.ResetColor();
+        }
+
+        private static void PrintSuccess(string text)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("  [OK] " + text);
+            Console.ResetColor();
+        }
+
+        private static void PrintWarning(string text)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("  [WARN] " + text);
+            Console.ResetColor();
+        }
+
+        private static void PrintError(string text)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("  [ERROR] " + text);
+            Console.ResetColor();
+        }
+
+        private static void PrintInfo(string text)
+        {
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("  [INFO] " + text);
+            Console.ResetColor();
+        }
+    }
+}

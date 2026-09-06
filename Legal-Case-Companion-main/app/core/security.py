@@ -114,8 +114,6 @@ def hash_refresh_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-import sys
-
 DISPOSABLE_EMAIL_DOMAINS = {
     "mailinator.com",
     "tempmail.com",
@@ -175,7 +173,7 @@ def normalize_email(email: str, check_deliverability: bool | None = None) -> str
 
     # 3. Deliverability lookup
     if check_deliverability is None:
-        if domain in ("example.com", "example.org", "test.com", "localhost") or "pytest" in sys.modules:
+        if domain in ("example.com", "example.org", "test.com", "localhost") or not settings.EMAIL_CHECK_DELIVERABILITY:
             check_deliverability = False
         else:
             check_deliverability = True

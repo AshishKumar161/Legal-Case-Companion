@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import LegalTerm from "@/components/LegalTerm";
+import { CourthouseIcon, ScalesIcon, PlusIcon } from "@/components/ui/Icons";
 
 export default function CasesPage() {
   const { user, loading } = useAuth();
@@ -143,26 +144,27 @@ export default function CasesPage() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "8px",
-                fontSize: "11px",
+                fontSize: "12px",
                 fontWeight: 700,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                color: "var(--accent-secondary)",
+                letterSpacing: "0.05em",
+                color: "var(--navy-secondary)",
                 marginBottom: "8px",
               }}
             >
-              <span>●</span> Active Legal Portfolio
+              <ScalesIcon size={16} color="var(--gold-accent)" />
+              <span>Legal Help</span>
             </div>
-            <h1 style={{ fontSize: "28px", fontWeight: 700, color: "var(--text-primary)" }}>
-              {user?.role === "LAWYER" ? "Counsel Matter Roster" : "Legal Matters & Cases"}
+            <h1 style={{ fontSize: "28px", fontWeight: 800, color: "var(--navy-primary)", margin: "0 0 6px 0" }}>
+              {user?.role === "LAWYER" ? "Client Cases Roster" : "My Cases"}
             </h1>
-            <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginTop: "6px" }}>
-              Secure collaborative workspaces, evidence repositories, and litigation timelines.
+            <p style={{ color: "var(--text-secondary)", fontSize: "14px", margin: 0 }}>
+              All your ongoing cases, hearings, documents, and updates in one place.
             </p>
           </div>
 
-          <button onClick={() => setCreateModalOpen(true)} className="btn btn-primary">
-            + Create New Matter
+          <button onClick={() => setCreateModalOpen(true)} className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <PlusIcon size={16} color="#FFFFFF" />
+            <span>Start a New Case</span>
           </button>
         </div>
 
@@ -177,48 +179,51 @@ export default function CasesPage() {
         >
           <div
             style={{
-              background: "var(--surface-card)",
+              background: "#FFFFFF",
               border: "1px solid var(--border-subtle)",
-              borderRadius: "var(--radius-md)",
+              borderRadius: "var(--radius-lg)",
               padding: "16px 20px",
+              boxShadow: "var(--shadow-sm)",
             }}
           >
-            <div style={{ fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600 }}>
-              Total Matters
+            <div style={{ fontSize: "12px", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>
+              Total Cases
             </div>
-            <div style={{ fontSize: "26px", fontWeight: 700, color: "var(--text-primary)", marginTop: "4px" }}>
+            <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--navy-primary)", marginTop: "4px" }}>
               {cases.length}
             </div>
           </div>
 
           <div
             style={{
-              background: "var(--surface-card)",
+              background: "#FFFFFF",
               border: "1px solid var(--border-subtle)",
-              borderRadius: "var(--radius-md)",
+              borderRadius: "var(--radius-lg)",
               padding: "16px 20px",
+              boxShadow: "var(--shadow-sm)",
             }}
           >
-            <div style={{ fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600 }}>
-              Active / In Progress
+            <div style={{ fontSize: "12px", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>
+              Active Cases
             </div>
-            <div style={{ fontSize: "26px", fontWeight: 700, color: "var(--accent-secondary)", marginTop: "4px" }}>
+            <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--navy-secondary)", marginTop: "4px" }}>
               {openCount}
             </div>
           </div>
 
           <div
             style={{
-              background: "var(--surface-card)",
+              background: "#FFFFFF",
               border: "1px solid var(--border-subtle)",
-              borderRadius: "var(--radius-md)",
+              borderRadius: "var(--radius-lg)",
               padding: "16px 20px",
+              boxShadow: "var(--shadow-sm)",
             }}
           >
-            <div style={{ fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600 }}>
-              Closed / Resolved
+            <div style={{ fontSize: "12px", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700 }}>
+              Resolved Cases
             </div>
-            <div style={{ fontSize: "26px", fontWeight: 700, color: "#94a3b8", marginTop: "4px" }}>
+            <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--text-muted)", marginTop: "4px" }}>
               {closedCount}
             </div>
           </div>
@@ -298,16 +303,17 @@ export default function CasesPage() {
           cases.length === 0 ? (
             <div
               style={{
-                background: "var(--surface-card, #0e121a)",
-                border: "1px dashed var(--border-subtle, rgba(255, 255, 255, 0.15))",
+                background: "#FFFFFF",
+                border: "1px dashed var(--border-subtle)",
                 borderRadius: "16px",
                 padding: "48px 24px",
                 textAlign: "center",
-                maxWidth: "600px",
+                maxWidth: "520px",
                 margin: "40px auto",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
+                boxShadow: "var(--shadow-sm)",
               }}
             >
               <div
@@ -315,22 +321,21 @@ export default function CasesPage() {
                   width: "56px",
                   height: "56px",
                   borderRadius: "50%",
-                  background: "rgba(99, 102, 241, 0.12)",
-                  border: "1px solid rgba(99, 102, 241, 0.25)",
+                  background: "#EFF6FF",
+                  border: "1px solid #DBEAFE",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "24px",
-                  color: "var(--brand-primary, #818cf8)",
+                  color: "var(--navy-primary)",
                   marginBottom: "16px",
                 }}
               >
-                ⚖
+                <ScalesIcon size={24} color="var(--navy-primary)" />
               </div>
-              <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#fff", marginBottom: "8px" }}>
+              <h2 style={{ fontSize: "20px", fontWeight: 700, color: "var(--navy-primary)", marginBottom: "8px" }}>
                 You don&apos;t have a case yet.
               </h2>
-              <p style={{ fontSize: "14px", color: "var(--text-secondary, #94a3b8)", lineHeight: "1.6", maxWidth: "440px", marginBottom: "24px" }}>
+              <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.6", maxWidth: "440px", marginBottom: "24px" }}>
                 Create a case to keep your documents, hearings, lawyer and important updates together.
               </p>
               <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
@@ -339,31 +344,33 @@ export default function CasesPage() {
                   className="btn btn-primary"
                   style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
                 >
-                  <span>+</span> Create a case
+                  <PlusIcon size={16} color="#FFFFFF" />
+                  <span>Create a case</span>
                 </button>
                 <Link
                   href="/lawyers"
                   className="btn btn-secondary"
                   style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
                 >
-                  <span>⚖</span> Find a lawyer
+                  <ScalesIcon size={16} color="var(--navy-primary)" />
+                  <span>Find a lawyer</span>
                 </Link>
               </div>
             </div>
           ) : (
             <EmptyState
-              title="No Legal Matters Found"
-              description="No matters match the current filter criteria. Try resetting your search."
+              title="No Cases Found"
+              description="No cases match the current filter criteria. Try resetting your search."
             />
           )
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "20px" }}>
             {filteredCases.map((c) => {
               const brief = briefsByCaseId[c.id];
-              const courtDisplay = brief?.next_hearing_court || "Official Court Record";
+              const courtDisplay = brief?.next_hearing_court || "District Court Complex";
               const nextEventDisplay = brief?.next_hearing_date
                 ? `Next hearing: ${new Date(brief.next_hearing_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
-                : "Waiting for next hearing";
+                : "Waiting for next court listing";
               const lawyerDisplay = brief?.lead_counsel_name
                 ? `Adv. ${brief.lead_counsel_name}`
                 : "Not assigned yet";
@@ -372,30 +379,32 @@ export default function CasesPage() {
                 <div
                   key={c.id}
                   style={{
-                    background: "var(--surface-card)",
+                    background: "#FFFFFF",
                     border: "1px solid var(--border-subtle)",
-                    borderRadius: "var(--radius-md)",
+                    borderRadius: "var(--radius-xl)",
                     padding: "24px",
                     display: "flex",
                     flexDirection: "column",
                     justifyContent: "space-between",
                     gap: "16px",
+                    boxShadow: "var(--shadow-sm)",
                     transition: "border-color 0.2s, transform 0.2s",
                   }}
                 >
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", marginBottom: "8px" }}>
                       <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                        MATTER #{c.id.slice(0, 8).toUpperCase()}
+                        CASE #{c.id.slice(0, 8).toUpperCase()}
                       </span>
                       <StatusBadge status={c.status} />
                     </div>
 
-                    <div style={{ fontSize: "12px", color: "#38bdf8", fontWeight: 500, marginBottom: "4px" }}>
-                      🏛 {courtDisplay}
+                    <div style={{ fontSize: "12px", color: "var(--navy-secondary)", fontWeight: 600, marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <CourthouseIcon size={13} color="var(--navy-secondary)" />
+                      <span>{courtDisplay}</span>
                     </div>
 
-                    <h3 style={{ fontSize: "18px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "8px" }}>
+                    <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-primary)", marginBottom: "8px" }}>
                       {c.title}
                     </h3>
 
@@ -405,8 +414,8 @@ export default function CasesPage() {
 
                     <div
                       style={{
-                        background: "rgba(7, 9, 14, 0.6)",
-                        border: "1px solid rgba(255, 255, 255, 0.06)",
+                        background: "#F8FAFC",
+                        border: "1px solid var(--border-subtle)",
                         borderRadius: "8px",
                         padding: "8px 12px",
                         fontSize: "12px",
@@ -416,10 +425,10 @@ export default function CasesPage() {
                         marginBottom: "12px",
                       }}
                     >
-                      <span style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--brand-primary, #818cf8)", fontWeight: 700 }}>
-                        Next Event
+                      <span style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--navy-secondary)", fontWeight: 700 }}>
+                        Next Important Event
                       </span>
-                      <span style={{ color: "#f1f5f9", fontWeight: 500 }}>
+                      <span style={{ color: "var(--navy-primary)", fontWeight: 600 }}>
                         {nextEventDisplay}
                       </span>
                     </div>
@@ -435,7 +444,7 @@ export default function CasesPage() {
                         overflow: "hidden",
                       }}
                     >
-                      {c.description || "No matter synopsis recorded."}
+                      {c.description || "No case summary recorded."}
                     </p>
                   </div>
 
@@ -457,10 +466,10 @@ export default function CasesPage() {
 
                     <Link
                       href={`/cases/${c.id}`}
-                      className="btn btn-secondary"
-                      style={{ fontSize: "12px", padding: "6px 14px", whiteSpace: "nowrap" }}
+                      className="btn btn-primary"
+                      style={{ fontSize: "13px", padding: "8px 16px", whiteSpace: "nowrap" }}
                     >
-                      Open case →
+                      View My Case →
                     </Link>
                   </div>
                 </div>
@@ -475,8 +484,8 @@ export default function CasesPage() {
             style={{
               position: "fixed",
               inset: 0,
-              background: "rgba(0,0,0,0.75)",
-              backdropFilter: "blur(8px)",
+              background: "rgba(15, 30, 54, 0.4)",
+              backdropFilter: "blur(4px)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -487,9 +496,9 @@ export default function CasesPage() {
           >
             <div
               style={{
-                background: "var(--surface-elevated)",
+                background: "#FFFFFF",
                 border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--radius-md)",
+                borderRadius: "var(--radius-xl)",
                 padding: "28px",
                 width: "100%",
                 maxWidth: "520px",
@@ -498,12 +507,12 @@ export default function CasesPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                <h2 style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)" }}>
-                  Initiate New Legal Matter
+                <h2 style={{ fontSize: "20px", fontWeight: 800, color: "var(--navy-primary)", margin: 0 }}>
+                  Start a New Case
                 </h2>
                 <button
                   onClick={() => setCreateModalOpen(false)}
-                  style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "18px", cursor: "pointer" }}
+                  style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "20px", cursor: "pointer" }}
                 >
                   ✕
                 </button>
@@ -514,8 +523,8 @@ export default function CasesPage() {
                   style={{
                     padding: "10px 14px",
                     borderRadius: "6px",
-                    background: "rgba(239, 68, 68, 0.12)",
-                    color: "#ef4444",
+                    background: "rgba(239, 68, 68, 0.08)",
+                    color: "var(--status-urgent)",
                     border: "1px solid rgba(239, 68, 68, 0.25)",
                     fontSize: "13px",
                     marginBottom: "16px",
@@ -527,11 +536,11 @@ export default function CasesPage() {
 
               <form onSubmit={handleCreateCase}>
                 <div className="input-group">
-                  <label className="input-label">Matter / Case Title *</label>
+                  <label className="input-label" style={{ fontWeight: 600, color: "var(--navy-primary)" }}>Case Title *</label>
                   <input
                     type="text"
                     className="input-field"
-                    placeholder="e.g. Commercial Lease Dispute - Phase 2"
+                    placeholder="e.g. Property Dispute or Cheque Bounce Issue"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     required
@@ -539,11 +548,11 @@ export default function CasesPage() {
                 </div>
 
                 <div className="input-group">
-                  <label className="input-label">Matter Brief & Description</label>
+                  <label className="input-label" style={{ fontWeight: 600, color: "var(--navy-primary)" }}>What is this case about?</label>
                   <textarea
                     className="input-field"
                     rows={4}
-                    placeholder="Provide overview of claims, involved entities, and key factual background..."
+                    placeholder="Briefly explain what happened, who is involved, and what you need help with..."
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
                   />
@@ -562,7 +571,7 @@ export default function CasesPage() {
                     className={`btn btn-primary ${creating ? "btn-disabled" : ""}`}
                     disabled={creating || !newTitle.trim()}
                   >
-                    {creating ? "Creating Workspace..." : "Create Case Workspace →"}
+                    {creating ? "Creating Case..." : "Create My Case →"}
                   </button>
                 </div>
               </form>

@@ -1025,16 +1025,29 @@ class CaseService:
         TaskStatus.PENDING: {
             TaskStatus.PENDING,
             TaskStatus.IN_PROGRESS,
+            TaskStatus.BLOCKED,
             TaskStatus.COMPLETED,
             TaskStatus.CANCELLED,
         },
         TaskStatus.IN_PROGRESS: {
             TaskStatus.IN_PROGRESS,
+            TaskStatus.BLOCKED,
             TaskStatus.COMPLETED,
             TaskStatus.CANCELLED,
         },
-        TaskStatus.COMPLETED: {TaskStatus.COMPLETED},
-        TaskStatus.CANCELLED: {TaskStatus.CANCELLED},
+        TaskStatus.BLOCKED: {
+            TaskStatus.BLOCKED,
+            TaskStatus.PENDING,
+            TaskStatus.IN_PROGRESS,
+            TaskStatus.COMPLETED,
+            TaskStatus.CANCELLED,
+        },
+        TaskStatus.COMPLETED: {
+            TaskStatus.COMPLETED,
+        },
+        TaskStatus.CANCELLED: {
+            TaskStatus.CANCELLED,
+        },
     }
 
     def create_task(
@@ -1096,6 +1109,9 @@ class CaseService:
             source_type=getattr(req, "source_type", TaskSourceType.MANUAL),
             source_reference=getattr(req, "source_reference", None),
             is_confirmed=getattr(req, "is_confirmed", True),
+            linked_evidence_id=getattr(req, "linked_evidence_id", None),
+            linked_hearing_id=getattr(req, "linked_hearing_id", None),
+            linked_deadline_id=getattr(req, "linked_deadline_id", None),
         )
         self.db.add(task)
         self.db.commit()
@@ -1249,6 +1265,11 @@ class CaseService:
             if field in dump:
                 setattr(task, field, dump[field])
                 updated[field] = dump[field]
+
+        for field in ("linked_evidence_id", "linked_hearing_id", "linked_deadline_id"):
+            if field in dump:
+                setattr(task, field, dump[field])
+                updated[field] = str(dump[field]) if dump[field] else None
 
         if "due_date" in dump:
             new_due = dump["due_date"]

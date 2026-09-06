@@ -43,11 +43,56 @@ class SensitiveDataScrubberFilter(logging.Filter):
         (re.compile(r'\b[A-Z]{4}\d{12}\b'), r"***REDACTED-CNR***"),
     ]
 
+    @classmethod
+    def scrub_text(cls, text: str) -> str:
+        if not isinstance(text, str):
+            return text
+        for pattern, replacement in cls.PATTERNS:
+            text = pattern.sub(replacement, text)
+        return text
+
     def filter(self, record: logging.LogRecord) -> bool:
+        if record.args and not record.name.startswith("uvicorn"):
+            try:
+                record.msg = record.getMessage()
+                record.args = None
+            except Exception:
+                pass
         if isinstance(record.msg, str):
-            for pattern, replacement in self.PATTERNS:
-                record.msg = pattern.sub(replacement, record.msg)
+            record.msg = self.scrub_text(record.msg)
         return True
+
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        from app.core.config import settings
+
+        log_obj = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "logger": record.name,
+            "service": "lcc-backend",
+            "environment": getattr(settings, "ENVIRONMENT", "development"),
+            "correlation_id": getattr(record, "correlation_id", "-"),
+            "message": record.getMessage(),
+        }
+        if hasattr(record, "user_id"):
+            log_obj["user_id"] = record.user_id
+        if hasattr(record, "duration_ms"):
+            log_obj["duration_ms"] = record.duration_ms
+        if hasattr(record, "error_code"):
+            log_obj["error_code"] = record.error_code
+        if record.exc_info:
+            log_obj["exception"] = SensitiveDataScrubberFilter.scrub_text(
+                self.formatException(record.exc_info)
+            )
+        return json.dumps(log_obj)
+
+
+class ScrubbingStandardFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        rendered = super().format(record)
+        return SensitiveDataScrubberFilter.scrub_text(rendered)
 
 
 def setup_logging(log_level: str = "INFO") -> None:
@@ -64,31 +109,10 @@ def setup_logging(log_level: str = "INFO") -> None:
 
     from app.core.config import settings
 
-    class JsonFormatter(logging.Formatter):
-        def format(self, record: logging.LogRecord) -> str:
-            log_obj = {
-                "timestamp": self.formatTime(record, self.datefmt),
-                "level": record.levelname,
-                "logger": record.name,
-                "service": "lcc-backend",
-                "environment": settings.ENVIRONMENT,
-                "correlation_id": getattr(record, "correlation_id", "-"),
-                "message": record.getMessage(),
-            }
-            if hasattr(record, "user_id"):
-                log_obj["user_id"] = record.user_id
-            if hasattr(record, "duration_ms"):
-                log_obj["duration_ms"] = record.duration_ms
-            if hasattr(record, "error_code"):
-                log_obj["error_code"] = record.error_code
-            if record.exc_info:
-                log_obj["exception"] = self.formatException(record.exc_info)
-            return json.dumps(log_obj)
-
     if settings.ENVIRONMENT == "production":
         formatter: logging.Formatter = JsonFormatter(datefmt="%Y-%m-%dT%H:%M:%SZ")
     else:
-        formatter = logging.Formatter(
+        formatter = ScrubbingStandardFormatter(
             fmt="%(asctime)s | %(levelname)s | %(name)s | [req_id: %(correlation_id)s] | %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )

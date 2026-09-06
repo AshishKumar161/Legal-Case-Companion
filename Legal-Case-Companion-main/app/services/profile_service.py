@@ -262,8 +262,21 @@ class ProfileService:
 
         profile = self.get_lawyer_profile(user.id)
 
+        dump = update_data.model_dump(exclude_unset=True)
+        new_enrollment = dump.get("enrollment_number", profile.enrollment_number)
+        new_bar = dump.get("state_bar_council", profile.state_bar_council)
+
+        if ("enrollment_number" in dump or "state_bar_council" in dump) and (new_enrollment or new_bar):
+            from app.services.lawyer_verification_service import LawyerVerificationService
+            verif_svc = LawyerVerificationService(self.db)
+            verif_svc.invalidate_on_credential_change(
+                profile_id=profile.id,
+                new_enrollment=new_enrollment or "",
+                new_state_bar=new_bar or "",
+            )
+
         updated_fields = {}
-        for field, value in update_data.model_dump(exclude_unset=True).items():
+        for field, value in dump.items():
             if field == "phone":
                 user.phone = value
                 updated_fields["phone"] = value

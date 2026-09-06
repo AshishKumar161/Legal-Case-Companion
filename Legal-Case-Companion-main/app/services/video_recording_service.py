@@ -32,6 +32,11 @@ from app.services.recording_storage import (
     get_recording_storage_provider,
 )
 from app.services.user_service import UserService
+from app.services.video_telemetry_service import (
+    VideoTelemetryEvent,
+    VideoTelemetryService,
+    metrics_registry,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -261,6 +266,13 @@ class VideoRecordingService:
         self.db.commit()
         self.db.refresh(recording)
 
+        VideoTelemetryService.record_event(
+            event=VideoTelemetryEvent.RECORDING_STARTED,
+            consultation_id=consultation_id,
+            recording_id=recording.id,
+            user_id=user.id,
+        )
+
         self._log_audit(
             event_type="RECORDING_STARTED",
             user_id=user.id,
@@ -318,6 +330,14 @@ class VideoRecordingService:
         self.db.commit()
         self.db.refresh(recording)
 
+        VideoTelemetryService.record_event(
+            event=VideoTelemetryEvent.RECORDING_STOPPED,
+            consultation_id=consultation_id,
+            recording_id=recording.id,
+            user_id=user.id,
+            duration_seconds=recording.duration_seconds,
+        )
+
         self._log_audit(
             event_type="RECORDING_STOPPED",
             user_id=user.id,
@@ -361,10 +381,27 @@ class VideoRecordingService:
         if not recording:
             raise ResourceNotFoundError("Recording not found")
 
-        if recording.status not in (VideoRecordingStatus.RECORDING, VideoRecordingStatus.UPLOADING):
+        # Duplicate upload prevention: once AVAILABLE, re-upload is forbidden
+        if recording.status == VideoRecordingStatus.AVAILABLE:
+            raise ValidationError("Recording has already been uploaded and finalized")
+
+        # Allow upload from RECORDING, UPLOADING, PROCESSING, or retry from FAILED
+        if recording.status not in (
+            VideoRecordingStatus.RECORDING,
+            VideoRecordingStatus.UPLOADING,
+            VideoRecordingStatus.PROCESSING,
+            VideoRecordingStatus.FAILED,
+        ):
             raise ValidationError(
                 f"Cannot finalize recording in status '{recording.status.value}'"
             )
+
+        VideoTelemetryService.record_event(
+            event=VideoTelemetryEvent.RECORDING_UPLOAD_STARTED,
+            consultation_id=consultation_id,
+            recording_id=recording.id,
+            user_id=user.id,
+        )
 
         # Transition to PROCESSING
         recording.status = VideoRecordingStatus.PROCESSING
@@ -405,6 +442,22 @@ class VideoRecordingService:
             self.db.commit()
             self.db.refresh(recording)
 
+            VideoTelemetryService.record_event(
+                event=VideoTelemetryEvent.RECORDING_UPLOAD_COMPLETED,
+                consultation_id=consultation_id,
+                recording_id=recording.id,
+                user_id=user.id,
+                file_size_bytes=file_size,
+                duration_seconds=recording.duration_seconds,
+            )
+            VideoTelemetryService.record_event(
+                event=VideoTelemetryEvent.RECORDING_AVAILABLE,
+                consultation_id=consultation_id,
+                recording_id=recording.id,
+                user_id=user.id,
+                file_size_bytes=file_size,
+            )
+
             self._log_audit(
                 event_type="RECORDING_FINALIZED",
                 user_id=user.id,
@@ -422,6 +475,15 @@ class VideoRecordingService:
             logger.error(f"Error finalizing recording {recording_id}: {e}")
             recording.status = VideoRecordingStatus.FAILED
             self.db.commit()
+
+            VideoTelemetryService.record_event(
+                event=VideoTelemetryEvent.RECORDING_UPLOAD_FAILED,
+                consultation_id=consultation_id,
+                recording_id=recording.id,
+                user_id=user.id,
+                result="FAILURE",
+                failure_code=type(e).__name__,
+            )
 
             self._log_audit(
                 event_type="RECORDING_FAILED",
@@ -652,3 +714,86 @@ class VideoRecordingService:
             entity_id=recording.id,
         )
         return recording, file_path
+
+    def retry_pending_and_failed_recordings(
+        self,
+        max_age_minutes: int = 60,
+        grace_period_minutes: int = 5,
+    ) -> dict[str, Any]:
+        """
+        Background maintenance job: identifies recordings stuck in PROCESSING, UPLOADING,
+        or FAILED states past the grace period, attempts safe integrity restoration if the
+        underlying storage file exists, or marks permanently FAILED if missing past max_age.
+        """
+        now = datetime.now(UTC)
+        grace_cutoff = now - timedelta(minutes=grace_period_minutes)
+        max_age_cutoff = now - timedelta(minutes=max_age_minutes)
+
+        candidates = (
+            self.db.query(VideoRecording)
+            .filter(
+                VideoRecording.status.in_([
+                    VideoRecordingStatus.PROCESSING,
+                    VideoRecordingStatus.UPLOADING,
+                    VideoRecordingStatus.FAILED,
+                ]),
+                VideoRecording.updated_at <= grace_cutoff,
+                VideoRecording.deleted_at.is_(None),
+            )
+            .limit(25)
+            .all()
+        )
+
+        recovered_count = 0
+        exhausted_count = 0
+
+        for rec in candidates:
+            try:
+                # Check if physical file exists at storage_path
+                file_path = self.storage_provider.get_recording_path(rec.storage_path)
+                if file_path.exists() and file_path.is_file():
+                    size = file_path.stat().st_size
+                    if size > 0:
+                        # Recompute checksum and finalize
+                        hasher = hashlib.sha256()
+                        with open(file_path, "rb") as f:
+                            while chunk := f.read(65536):
+                                hasher.update(chunk)
+                        checksum = hasher.hexdigest()
+
+                        rec.file_size_bytes = size
+                        rec.checksum_sha256 = checksum
+                        rec.status = VideoRecordingStatus.AVAILABLE
+                        rec.ended_at = rec.ended_at or now
+                        recovered_count += 1
+                        VideoTelemetryService.record_event(
+                            event=VideoTelemetryEvent.RECORDING_AVAILABLE,
+                            consultation_id=rec.consultation_id,
+                            recording_id=rec.id,
+                            file_size_bytes=size,
+                            result="RECOVERED_BY_BACKGROUND_JOB",
+                        )
+                        continue
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Error checking recording storage for %s: %s", rec.id, e)
+
+            # If file does not exist and exceeds max age cutoff -> mark permanently FAILED
+            rec_created_at = rec.created_at.replace(tzinfo=UTC) if rec.created_at.tzinfo is None else rec.created_at
+            if rec_created_at <= max_age_cutoff:
+                rec.status = VideoRecordingStatus.FAILED
+                exhausted_count += 1
+                VideoTelemetryService.record_event(
+                    event=VideoTelemetryEvent.RECORDING_UPLOAD_FAILED,
+                    consultation_id=rec.consultation_id,
+                    recording_id=rec.id,
+                    result="EXHAUSTED_BACKGROUND_RETRY",
+                )
+
+        if recovered_count or exhausted_count:
+            self.db.commit()
+
+        return {
+            "evaluated_count": len(candidates),
+            "recovered_count": recovered_count,
+            "exhausted_count": exhausted_count,
+        }

@@ -1,394 +1,299 @@
 .container {
-  max-width: 1280px;
+  max-width: 1240px;
   margin: 0 auto;
   padding: 32px 24px 80px;
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   margin-bottom: 28px;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--accent-secondary, #818cf8);
-  margin-bottom: 8px;
 }
 
 .title {
-  font-size: clamp(26px, 3.5vw, 36px);
+  font-size: clamp(1.8rem, 3.5vw, 2.4rem);
   font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text-primary, #ffffff);
-  margin: 0 0 10px 0;
+  letter-spacing: -0.025em;
+  color: var(--navy-primary);
+  margin: 0 0 6px 0;
 }
 
 .subtitle {
-  color: var(--text-secondary, #94a3b8);
-  font-size: 15px;
-  max-width: 680px;
-  line-height: 1.6;
+  color: var(--text-secondary);
+  font-size: 1.05rem;
   margin: 0;
 }
 
-.nextAttentionBanner {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: var(--radius-md, 12px);
-  padding: 20px 24px;
-  margin-bottom: 32px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-}
-
-.bannerKicker {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #f87171;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.bannerTitle {
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffffff;
-  margin: 0 0 4px 0;
-}
-
-.bannerDesc {
-  font-size: 13px;
-  color: #cbd5e1;
-  margin: 0;
-}
-
-.bannerActionBtn {
-  background: #ef4444;
-  color: #ffffff;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.15s ease;
-}
-
-.bannerActionBtn:hover {
-  background: #dc2626;
-  transform: translateY(-1px);
-}
-
-/* Controls */
-.controlsRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-  padding-bottom: 16px;
-}
-
-.viewTabs {
-  display: flex;
-  gap: 6px;
-}
-
-.tabBtn {
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary, #94a3b8);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.tabBtn:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.tabBtnActive {
-  color: #fff;
-  background: rgba(99, 102, 241, 0.18);
-  border-color: rgba(99, 102, 241, 0.35);
-}
-
-.filterGroup {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.filterSelect {
-  background: rgba(14, 18, 26, 0.9);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
-  color: var(--text-primary, #ffffff);
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  outline: none;
-}
-
-/* Timeline Feed */
-.eventList {
+/* Action Oriented Hearings List (Section 10) */
+.hearingList {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
-.eventCard {
-  background: var(--surface-card, #0e121a);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-  border-radius: var(--radius-md, 12px);
-  padding: 20px 24px;
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  transition: all 0.15s ease;
+.hearingCard {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 28px 32px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  border-left: 5px solid var(--navy-primary);
 }
 
-.eventCard:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  background: rgba(18, 23, 33, 0.95);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+.hearingCardUrgent {
+  border-left-color: var(--status-urgent);
 }
 
-.dateBadge {
-  width: 70px;
-  flex: 0 0 70px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  padding: 10px 6px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.dateMonth {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #818cf8;
-  letter-spacing: 0.06em;
-}
-
-.dateDay {
-  font-size: 22px;
-  font-weight: 800;
-  color: #ffffff;
-  line-height: 1.1;
-  margin: 2px 0;
-}
-
-.dateTime {
-  font-size: 10px;
-  color: var(--text-muted, #64748b);
-  white-space: nowrap;
-}
-
-.eventBody {
-  flex: 1;
-  min-width: 0;
-}
-
-.eventTopRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-}
-
-.typeBadge {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 3px 8px;
-  border-radius: 4px;
-}
-
-.typeHearing {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.typeLimitation {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fcd34d;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-.typeConsultation {
-  background: rgba(99, 102, 241, 0.15);
-  color: #c7d2fe;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-}
-
-.typeTask {
-  background: rgba(16, 185, 129, 0.15);
-  color: #6ee7b7;
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.eventTitle {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-  margin: 0 0 4px 0;
-}
-
-.caseName {
-  font-size: 13px;
-  color: #94a3b8;
-  margin-bottom: 8px;
-}
-
-.actionTipBox {
-  background: rgba(255, 255, 255, 0.03);
-  border-left: 3px solid #818cf8;
-  padding: 8px 12px;
-  border-radius: 0 6px 6px 0;
-  font-size: 12px;
-  color: #e2e8f0;
-  margin-bottom: 10px;
-}
-
-.provenanceLine {
-  font-size: 11px;
-  color: var(--text-muted, #64748b);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.actionBtn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
-  color: #ffffff;
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.actionBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
+.hearingCard:hover {
   border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+  border-left-width: 5px;
 }
 
-.viewToggle {
-  display: inline-flex;
-  background: rgba(14, 18, 26, 0.9);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
-  border-radius: 8px;
-  padding: 3px;
-  gap: 4px;
-}
-
-.viewToggleBtn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary, #94a3b8);
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.viewToggleBtnActive {
-  background: rgba(99, 102, 241, 0.2);
-  color: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.lawyerDetailsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+.cardTopRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  background: rgba(10, 13, 20, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-top: 10px;
-  font-size: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
-.lawyerDetailItem strong {
-  display: block;
-  color: #f8fafc;
-  font-size: 13px;
-  margin-top: 2px;
-}
-
-.emptyCalendar {
-  background: var(--surface-card, #0e121a);
-  border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.15));
-  border-radius: var(--radius-md, 12px);
-  padding: 48px 24px;
-  text-align: center;
-  margin-top: 20px;
-}
-
-.emptyCalendarIcon {
-  font-size: 36px;
-  margin-bottom: 12px;
-}
-
-.emptyCalendarTitle {
-  font-size: 18px;
+.badge {
+  font-size: 11px;
   font-weight: 700;
-  color: #f8fafc;
-  margin: 0 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
 }
 
-.emptyCalendarDesc {
+.badgeUrgent {
+  background: var(--status-urgent-bg);
+  color: var(--status-urgent-text);
+  border: 1px solid var(--status-urgent-border);
+}
+
+.badgeNormal {
+  background: var(--surface-subtle);
+  color: var(--navy-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.cardMainGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 28px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .cardMainGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .hearingCard {
+    padding: 22px;
+  }
+}
+
+.dateTimeLocation {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dateRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--navy-primary);
+}
+
+.timeRow {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--navy-secondary);
+}
+
+.locationRow {
   font-size: 14px;
-  color: #94a3b8;
-  max-width: 460px;
-  margin: 0 auto 20px;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
+.caseTitleTag {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy-primary);
+  margin-top: 4px;
+}
+
+/* "What you need to know" (Section 10) */
+.checklistCard {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+}
+
+.checklistHeading {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--navy-primary);
+  margin-bottom: 12px;
+}
+
+.checkItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+.checkIcon {
+  color: var(--status-success);
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+/* Card Actions */
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 18px;
+  flex-wrap: wrap;
+}
+
+.actionBtnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  background: var(--navy-primary);
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  text-decoration: none;
+}
+
+.actionBtnPrimary:hover {
+  background: var(--navy-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.actionBtnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+}
+
+.actionBtnSecondary:hover {
+  background: var(--surface-subtle);
+  color: var(--navy-primary);
+}
+
+/* Empty State */
+.emptyContainer {
+  background: #FFFFFF;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 48px 24px;
+  text-align: center;
+  max-width: 520px;
+  margin: 40px auto;
+}
+
+.emptyIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--surface-subtle);
+  color: var(--navy-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.emptyTitle {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--navy-primary);
+  margin-bottom: 8px;
+}
+
+.emptyDesc {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin-bottom: 24px;
+}
+
+/* Ask LCC Guidance Drawer / Modal */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modalBox {
+  background: #FFFFFF;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  max-width: 540px;
+  width: 100%;
+  padding: 28px;
+  border: 1px solid var(--border-subtle);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 14px;
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--navy-primary);
+}
+
+.closeBtn {
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+}

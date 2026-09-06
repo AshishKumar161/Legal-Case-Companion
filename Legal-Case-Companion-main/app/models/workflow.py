@@ -20,6 +20,7 @@ from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.case import Case
+    from app.models.evidence import CaseExhibit
     from app.models.user import User
 
 
@@ -61,6 +62,8 @@ class HearingStatus(str, enum.Enum):
     SCHEDULED = "SCHEDULED"
     ADJOURNED = "ADJOURNED"
     CONCLUDED = "CONCLUDED"
+    COMPLETED = "COMPLETED"
+    RESCHEDULED = "RESCHEDULED"
     CANCELLED = "CANCELLED"
 
 
@@ -122,11 +125,21 @@ class CaseDeadline(Base, TimestampMixin, SoftDeleteMixin):
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    linked_hearing_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("case_hearings.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    retrieval_method: Mapped[str | None] = mapped_column(String(50), default="MANUAL", nullable=True)
+    retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
 
     # Relationships
     case: Mapped["Case"] = relationship("Case")
     created_by: Mapped["User | None"] = relationship("User", foreign_keys=[created_by_user_id])
+    linked_hearing: Mapped["CaseHearing | None"] = relationship("CaseHearing", foreign_keys=[linked_hearing_id])
+    confirmed_by: Mapped["User | None"] = relationship("User", foreign_keys=[confirmed_by_user_id])
 
 
 class CaseHearing(Base, TimestampMixin, SoftDeleteMixin):
@@ -159,11 +172,17 @@ class CaseHearing(Base, TimestampMixin, SoftDeleteMixin):
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    court_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    hearing_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    next_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
 
     # Relationships
     case: Mapped["Case"] = relationship("Case")
     created_by: Mapped["User | None"] = relationship("User", foreign_keys=[created_by_user_id])
+    exhibits: Mapped[list["CaseExhibit"]] = relationship("CaseExhibit", back_populates="hearing")
 
 
 class CaseReminder(Base, TimestampMixin, SoftDeleteMixin):

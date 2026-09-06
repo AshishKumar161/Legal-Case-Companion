@@ -47,6 +47,15 @@ export function getSessionAccessToken(): string | null {
   }
 }
 
+function _purgeLegacyLocalStorageKeys(): void {
+  try {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("token");
+  } catch {
+    // Ignore storage access errors in restricted iframe/sandbox contexts
+  }
+}
+
 /**
  * Stores the access token in the current browser tab's sessionStorage.
  * Also purges any legacy browser-wide tokens from localStorage to prevent cross-contamination.
@@ -56,10 +65,7 @@ export function setSessionAccessToken(token: string): void {
   try {
     getTabSessionId(); // Ensure tab session id is initialized
     sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
-
-    // Explicitly purge legacy browser-wide localStorage keys
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("token");
+    _purgeLegacyLocalStorageKeys();
   } catch (err) {
     console.warn("[LCC-Session] Unable to save access token to sessionStorage:", err);
   }
@@ -98,10 +104,7 @@ export function clearSessionAccessToken(): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-
-    // Clean up any lingering legacy storage
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("token");
+    _purgeLegacyLocalStorageKeys();
   } catch (err) {
     console.warn("[LCC-Session] Unable to clear access token from sessionStorage:", err);
   }
@@ -132,10 +135,6 @@ export function clearTabSession(): void {
  */
 export function purgeLegacyGlobalStorage(): void {
   if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("token");
-  } catch {
-    // ignore
-  }
+  _purgeLegacyLocalStorageKeys();
 }
+

@@ -2,7 +2,7 @@ import hashlib
 import logging
 import os
 from pathlib import Path
-from typing import BinaryIO, Protocol
+from typing import Any, BinaryIO, Protocol
 from uuid import UUID
 
 from app.core.config import settings
@@ -152,11 +152,137 @@ class LocalRecordingStorageProvider:
         return target.stat().st_size
 
 
+class S3RecordingStorageProvider:
+    """Production private S3 storage provider for consultation video recordings."""
+
+    def __init__(self, s3_client: Any = None, bucket_name: str | None = None):
+        self.bucket_name = bucket_name or getattr(settings, "AWS_S3_BUCKET_NAME", "lcc-recordings-private")
+        if s3_client:
+            self.client = s3_client
+        else:
+            import boto3
+            from botocore.config import Config
+
+            client_kwargs: dict[str, Any] = {"region_name": getattr(settings, "AWS_REGION", "ap-south-1")}
+            if getattr(settings, "AWS_ACCESS_KEY_ID", None) and getattr(settings, "AWS_SECRET_ACCESS_KEY", None):
+                client_kwargs["aws_access_key_id"] = settings.AWS_ACCESS_KEY_ID
+                client_kwargs["aws_secret_access_key"] = settings.AWS_SECRET_ACCESS_KEY
+
+            boto_config = Config(
+                connect_timeout=5, read_timeout=30, retries={"max_attempts": 3}
+            )
+            self.client = boto3.client("s3", config=boto_config, **client_kwargs)
+
+    def _sanitize_extension(self, extension: str) -> str:
+        ext = extension.lower().strip().lstrip(".")
+        allowed = {"webm", "mp4", "mkv", "mov"}
+        return ext if ext in allowed else "webm"
+
+    def _validate_safe_object_key(self, object_key: str) -> str:
+        clean = os.path.normpath(object_key).replace("\\", "/").lstrip("/")
+        if clean.startswith("..") or "/../" in clean:
+            raise ValidationError("Invalid storage path: directory traversal attempt")
+        if not clean.startswith("consultations/"):
+            raise ValidationError("Invalid recording storage path namespace")
+        return clean
+
+    def save_recording(
+        self,
+        consultation_id: UUID,
+        recording_id: UUID,
+        file_source: BinaryIO | bytes,
+        extension: str = "webm",
+    ) -> tuple[str, int, str]:
+        clean_ext = self._sanitize_extension(extension)
+        object_key = f"consultations/{consultation_id}/{recording_id}.{clean_ext}"
+        self._validate_safe_object_key(object_key)
+
+        sha256 = hashlib.sha256()
+        bytes_written = 0
+
+        if isinstance(file_source, (bytes, bytearray)):
+            sha256.update(file_source)
+            bytes_written = len(file_source)
+            body = bytes(file_source)
+        elif hasattr(file_source, "read"):
+            chunks = []
+            while True:
+                chunk = file_source.read(65536)
+                if not chunk:
+                    break
+                sha256.update(chunk)
+                bytes_written += len(chunk)
+                chunks.append(chunk)
+            body = b"".join(chunks)
+        else:
+            chunks = []
+            for chunk in file_source:
+                if chunk:
+                    sha256.update(chunk)
+                    bytes_written += len(chunk)
+                    chunks.append(chunk)
+            body = b"".join(chunks)
+
+        mime = f"video/{clean_ext}"
+        self.client.put_object(
+            Bucket=self.bucket_name,
+            Key=object_key,
+            Body=body,
+            ContentType=mime,
+            ServerSideEncryption="AES256",
+        )
+        checksum = sha256.hexdigest()
+        logger.info(
+            f"Successfully saved S3 recording {recording_id}: "
+            f"{bytes_written} bytes, checksum={checksum[:12]}..."
+        )
+        return object_key, bytes_written, checksum
+
+    def get_recording_path(self, storage_path: str) -> Path:
+        raise NotImplementedError("Direct filesystem path not available in S3 storage provider. Use streaming or presigned playback ticket.")
+
+    def recording_exists(self, storage_path: str) -> bool:
+        safe_key = self._validate_safe_object_key(storage_path)
+        try:
+            self.client.head_object(Bucket=self.bucket_name, Key=safe_key)
+            return True
+        except Exception:
+            return False
+
+    def delete_recording(self, storage_path: str) -> bool:
+        safe_key = self._validate_safe_object_key(storage_path)
+        try:
+            self.client.delete_object(Bucket=self.bucket_name, Key=safe_key)
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting S3 recording at {storage_path}: {e}")
+            return False
+
+    def get_file_size(self, storage_path: str) -> int:
+        safe_key = self._validate_safe_object_key(storage_path)
+        resp = self.client.head_object(Bucket=self.bucket_name, Key=safe_key)
+        return int(resp.get("ContentLength", 0))
+
+    def generate_presigned_playback_url(self, storage_path: str, expires_in: int = 60) -> str:
+        safe_key = self._validate_safe_object_key(storage_path)
+        return self.client.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": self.bucket_name, "Key": safe_key},
+            ExpiresIn=expires_in,
+        )
+
+
 _storage_provider_instance: RecordingStorageProvider | None = None
 
 
 def get_recording_storage_provider() -> RecordingStorageProvider:
     global _storage_provider_instance
     if _storage_provider_instance is None:
-        _storage_provider_instance = LocalRecordingStorageProvider()
+        env = getattr(settings, "ENVIRONMENT", "development").lower()
+        has_s3 = bool(getattr(settings, "AWS_S3_BUCKET_NAME", None) and getattr(settings, "AWS_ACCESS_KEY_ID", None))
+        if env == "production" and has_s3:
+            _storage_provider_instance = S3RecordingStorageProvider()
+        else:
+            _storage_provider_instance = LocalRecordingStorageProvider()
     return _storage_provider_instance
+

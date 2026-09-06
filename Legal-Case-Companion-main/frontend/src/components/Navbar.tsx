@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
+import { ScalesIcon } from "@/components/ui/Icons";
 
 export function Navbar() {
   const { user } = useAuth();
@@ -18,13 +19,12 @@ export function Navbar() {
           timeZone: "Asia/Kolkata",
           hour: "2-digit",
           minute: "2-digit",
-          second: "2-digit",
           hour12: true,
         }) + " IST"
       );
     };
     updateTime();
-    const timer = setInterval(updateTime, 1000);
+    const timer = setInterval(updateTime, 30000);
     return () => clearInterval(timer);
   }, []);
 
@@ -40,14 +40,12 @@ export function Navbar() {
         position: "sticky",
         top: 0,
         zIndex: 900,
-        background: "rgba(7, 9, 14, 0.82)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
+        background: "#FFFFFF",
         borderBottom: "1px solid var(--border-subtle)",
-        height: "68px",
+        height: "64px",
         display: "flex",
         alignItems: "center",
-        transition: "all var(--transition-fast)",
+        boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
       }}
     >
       <div
@@ -65,31 +63,35 @@ export function Navbar() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px",
-            fontSize: "19px",
-            fontWeight: 700,
-            fontFamily: "Outfit, sans-serif",
-            color: "var(--text-primary)",
-            letterSpacing: "-0.5px",
+            gap: "10px",
+            fontSize: "18px",
+            fontWeight: 800,
+            fontFamily: "var(--font-display)",
+            color: "var(--navy-primary)",
+            letterSpacing: "-0.02em",
           }}
         >
           <span
             style={{
-              width: "34px",
-              height: "34px",
-              borderRadius: "10px",
-              background: "var(--accent-gradient)",
+              width: "36px",
+              height: "36px",
+              borderRadius: "8px",
+              background: "var(--navy-primary)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "16px",
-              color: "#fff",
-              boxShadow: "0 4px 14px rgba(99, 102, 241, 0.4)",
+              boxShadow: "0 2px 6px rgba(15, 30, 54, 0.15)",
+              overflow: "hidden",
+              padding: "4px",
             }}
           >
-            ⚖
+            <img
+              src="/logo-icon-white.png"
+              alt="LCC Logo"
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
           </span>
-          <span style={{ fontWeight: 800 }}>Legal Case Companion</span>
+          <span>Legal Case Companion</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -110,10 +112,10 @@ export function Navbar() {
               transition: "color var(--transition-fast)",
             }}
           >
-            Advocate Directory
+            Find a Lawyer
           </Link>
           <Link
-            href="/#features"
+            href="/#how-it-works"
             style={{
               fontSize: "14px",
               fontWeight: 500,
@@ -121,7 +123,7 @@ export function Navbar() {
               transition: "color var(--transition-fast)",
             }}
           >
-            Platform Capabilities
+            How It Works
           </Link>
           <Link
             href="/#security"
@@ -132,7 +134,7 @@ export function Navbar() {
               transition: "color var(--transition-fast)",
             }}
           >
-            Security & DPDP
+            Privacy & Security
           </Link>
 
           {/* Live Indian Standard Time Clock Indicator */}
@@ -142,32 +144,32 @@ export function Navbar() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "6px",
-                padding: "4px 10px",
+                padding: "3px 10px",
                 borderRadius: "var(--radius-full)",
-                background: "rgba(255, 255, 255, 0.04)",
+                background: "var(--surface-subtle)",
                 border: "1px solid var(--border-subtle)",
-                fontSize: "11px",
-                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "12px",
                 color: "var(--text-secondary)",
+                fontWeight: 500,
               }}
             >
-              <span className="pulse-dot" style={{ background: "#10b981" }} />
-              <span>{istTime}</span>
+              <span className="pulse-dot" />
+              <span>Court Hours ({istTime})</span>
             </div>
           )}
         </nav>
 
         {/* Public Auth Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
           <Link
             href="/login"
             style={{
               fontSize: "13px",
               color: "var(--text-primary)",
-              padding: "6px 14px",
-              borderRadius: "var(--radius-sm)",
+              padding: "7px 16px",
+              borderRadius: "var(--radius-md)",
               border: "1px solid var(--border-subtle)",
-              background: "rgba(255, 255, 255, 0.03)",
+              background: "#FFFFFF",
               fontWeight: 600,
               transition: "all var(--transition-fast)",
               whiteSpace: "nowrap",
@@ -176,11 +178,11 @@ export function Navbar() {
             Sign In
           </Link>
           <Link
-            href="/register"
+            href="/cases/new"
             className="btn btn-primary nav-desktop-only"
-            style={{ padding: "6px 16px", fontSize: "13px", whiteSpace: "nowrap" }}
+            style={{ padding: "7px 18px", fontSize: "13px", whiteSpace: "nowrap" }}
           >
-            Launch Workspace →
+            Start a Case →
           </Link>
         </div>
       </div>

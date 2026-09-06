@@ -11,6 +11,7 @@ import {
   LawyerAvailabilityItem,
   ConsultationItem,
   ConsultationPricingResponse,
+  PublicVerificationBadge,
 } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -53,19 +54,27 @@ export default function LawyerPublicProfilePage({
   const [bookedConsultation, setBookedConsultation] = useState<ConsultationItem | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
+  // Phase 14 BCI Rule 36 Verification Badge & Transparency Modal
+  const [badge, setBadge] = useState<PublicVerificationBadge | null>(null);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
+
   // 1. Fetch lawyer profile, availability schedule, and authoritative pricing preview
   const fetchLawyerDetails = useCallback(async () => {
     try {
       setFetching(true);
       setError(null);
 
-      const [lawyerRes, availRes] = await Promise.all([
+      const [lawyerRes, availRes, badgeRes] = await Promise.all([
         apiClient.get(`/api/v1/lawyers/${lawyerId}`, { requireAuth: false }),
         apiClient.get(`/api/v1/lawyers/${lawyerId}/availability`, { requireAuth: false }).catch(() => []),
+        apiClient.get<PublicVerificationBadge>(`/api/v1/verification/badge/${lawyerId}`, { requireAuth: false }).catch(() => null),
       ]);
 
       setLawyer(lawyerRes);
       setAvailabilities(Array.isArray(availRes) ? availRes : []);
+      if (badgeRes) {
+        setBadge(badgeRes);
+      }
 
       // Authoritative pricing preview directly from backend pricing system (Section 8)
       const targetId = lawyerRes?.id || lawyerId;
@@ -117,7 +126,7 @@ export default function LawyerPublicProfilePage({
 
   // 3. Initiate Consultation Booking
   const handleProceedToReview = () => {
-    if (!selectedSlot) return;
+    if (!selectedDate) return;
 
     if (!user) {
       router.push(`/login?redirect=/lawyers/${lawyerId}`);
@@ -135,15 +144,16 @@ export default function LawyerPublicProfilePage({
   };
 
   const handleConfirmAndPay = async () => {
-    if (!selectedSlot || !lawyer) return;
+    if (!selectedDate || !lawyer) return;
 
     setBookingSubmitting(true);
     setBookingError(null);
 
     try {
+      const schedDate = new Date(`${selectedDate}T10:00:00+05:30`);
       const res: any = await apiClient.post("/api/v1/consultations", {
         lawyer_id: lawyer.id || lawyerId,
-        scheduled_at: selectedSlot.start_time,
+        scheduled_at: schedDate.toISOString(),
         duration_minutes: 30,
       });
 
@@ -186,10 +196,10 @@ export default function LawyerPublicProfilePage({
     );
   }
 
-  const isVerified = lawyer.verification_status === "VERIFIED";
+  const isVerified = badge?.is_verified ?? (lawyer.verification_status === "VERIFIED");
   const feeAmount = pricing?.fee_amount ?? lawyer.consultation_fee ?? 2500;
-  const gstAmount = pricing?.gst_amount ?? Math.round(feeAmount * 0.18 * 100) / 100;
-  const totalPayable = pricing?.total_amount ?? Math.round((feeAmount + gstAmount) * 100) / 100;
+  const gstAmount = pricing?.gst_amount ?? null;
+  const totalPayable = pricing?.total_amount ?? feeAmount;
 
   return (
     <div style={{ padding: "32px 16px 80px" }}>
@@ -224,7 +234,9 @@ export default function LawyerPublicProfilePage({
                       Adv. {lawyer.full_name}
                     </h1>
                     {isVerified ? (
-                      <span
+                      <button
+                        type="button"
+                        onClick={() => setShowBadgeModal(true)}
                         style={{
                           fontSize: "11px",
                           fontWeight: 700,
@@ -233,10 +245,17 @@ export default function LawyerPublicProfilePage({
                           border: "1px solid rgba(16, 185, 129, 0.25)",
                           padding: "3px 8px",
                           borderRadius: "4px",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
                         }}
+                        title="Click to view verified Bar Council enrollment credentials"
                       >
-                        ✓ Verified Bar Counsel
-                      </span>
+                        <span>✓</span>
+                        <span>{badge?.verification_badge_text || "✓ Professional Enrollment Verified"}</span>
+                        <span style={{ fontSize: "10px", color: "#6ee7b7", background: "rgba(16, 185, 129, 0.2)", padding: "1px 4px", borderRadius: "3px" }}>ℹ details</span>
+                      </button>
                     ) : (
                       <StatusBadge status="PENDING" label="Verification Pending" />
                     )}
@@ -326,7 +345,9 @@ export default function LawyerPublicProfilePage({
 
                 <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8" }}>
                   <span>Statutory 18% GST (9% CGST + 9% SGST)</span>
-                  <span style={{ color: "#ffffff", fontWeight: 600 }}>₹{gstAmount.toFixed(2)}</span>
+                  <span style={{ color: "#ffffff", fontWeight: 600 }}>
+                    {gstAmount !== null ? `₹${gstAmount.toFixed(2)}` : "Itemized at checkout"}
+                  </span>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8" }}>
@@ -406,10 +427,10 @@ export default function LawyerPublicProfilePage({
             {bookingStep === "SELECT_SLOT" && (
               <div>
                 <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#ffffff", margin: "0 0 6px 0" }}>
-                  Schedule Video Consultation
+                  Book Consultation Appointment
                 </h2>
                 <p style={{ fontSize: "13px", color: "#94a3b8", margin: "0 0 20px 0" }}>
-                  Choose your preferred date and time. Consultations take place securely in-browser via encrypted WebRTC.
+                  Select your preferred consultation date. Consultations take place securely in-browser via encrypted WebRTC.
                 </p>
 
                 {bookingError && (
@@ -428,9 +449,9 @@ export default function LawyerPublicProfilePage({
                   </div>
                 )}
 
-                {/* Date Picker */}
-                <div style={{ marginBottom: "18px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: 600, color: "#cbd5e1", display: "block", marginBottom: "6px" }}>
+                {/* Date Picker & Quick Selectors */}
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: 600, color: "#cbd5e1", display: "block", marginBottom: "8px" }}>
                     Select Consultation Date (IST)
                   </label>
                   <input
@@ -440,79 +461,87 @@ export default function LawyerPublicProfilePage({
                     onChange={(e) => setSelectedDate(e.target.value)}
                     style={{
                       width: "100%",
-                      padding: "10px 14px",
+                      padding: "12px 14px",
                       background: "rgba(10, 13, 20, 0.9)",
-                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      border: "1px solid rgba(255, 255, 255, 0.15)",
                       borderRadius: "8px",
                       color: "#ffffff",
                       fontSize: "14px",
                       outline: "none",
+                      marginBottom: "10px",
                     }}
                   />
+                  {/* Quick date buttons */}
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    {[
+                      { label: "Tomorrow", days: 1 },
+                      { label: "In 2 Days", days: 2 },
+                      { label: "In 3 Days", days: 3 },
+                    ].map((btn) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + btn.days);
+                      const iso = d.toISOString().split("T")[0];
+                      const isSelected = selectedDate === iso;
+                      return (
+                        <button
+                          key={btn.label}
+                          type="button"
+                          onClick={() => setSelectedDate(iso)}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            background: isSelected ? "var(--accent-primary, #6366f1)" : "rgba(255, 255, 255, 0.06)",
+                            color: isSelected ? "#ffffff" : "#cbd5e1",
+                            border: isSelected ? "1px solid #818cf8" : "1px solid rgba(255, 255, 255, 0.1)",
+                            fontSize: "12px",
+                            fontWeight: isSelected ? 600 : 400,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {btn.label} ({d.toLocaleDateString("en-IN", { month: "short", day: "numeric" })})
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Slots Grid */}
-                <div style={{ marginBottom: "24px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: 600, color: "#cbd5e1", display: "block", marginBottom: "8px" }}>
-                    Available 30-Minute Slots ({slots.length})
-                  </label>
-
-                  {loadingSlots ? (
-                    <div style={{ padding: "24px 0", textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>
-                      Checking counsel calendar...
-                    </div>
-                  ) : slots.length === 0 ? (
-                    <div style={{ padding: "20px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "8px", textAlign: "center", fontSize: "13px", color: "#94a3b8" }}>
-                      No available consultation slots on this date. Please pick another date.
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", maxHeight: "220px", overflowY: "auto" }}>
-                      {slots.map((slot, idx) => {
-                        const isSelected = selectedSlot?.start_time === slot.start_time;
-                        const startTime = new Date(slot.start_time).toLocaleTimeString("en-IN", {
-                          timeZone: "Asia/Kolkata",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-                        const endTime = new Date(slot.end_time).toLocaleTimeString("en-IN", {
-                          timeZone: "Asia/Kolkata",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => setSelectedSlot(slot)}
-                            style={{
-                              padding: "10px 8px",
-                              borderRadius: "6px",
-                              background: isSelected ? "var(--accent-primary, #6366f1)" : "rgba(255, 255, 255, 0.04)",
-                              color: isSelected ? "#ffffff" : "#cbd5e1",
-                              border: isSelected ? "1px solid #818cf8" : "1px solid rgba(255, 255, 255, 0.08)",
-                              fontSize: "12px",
-                              fontWeight: isSelected ? 700 : 500,
-                              cursor: "pointer",
-                              transition: "all 0.15s ease",
-                            }}
-                          >
-                            {startTime} - {endTime} IST
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                {/* Consultation Details Card */}
+                <div
+                  style={{
+                    background: "rgba(99, 102, 241, 0.06)",
+                    border: "1px solid rgba(99, 102, 241, 0.2)",
+                    borderRadius: "10px",
+                    padding: "14px 16px",
+                    marginBottom: "22px",
+                    fontSize: "13px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", fontWeight: 600, color: "#a5b4fc" }}>
+                    <span>🗓️</span>
+                    <span>Flexible Session Timing</span>
+                  </div>
+                  <p style={{ margin: "0 0 8px 0", color: "#94a3b8", fontSize: "12px", lineHeight: 1.5 }}>
+                    No rigid time slot required. Your consultation is scheduled for{" "}
+                    <strong style={{ color: "#e2e8f0" }}>
+                      {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                    </strong>
+                    . Counsel will coordinate directly with you during standard chamber hours (08:00 AM - 08:00 PM IST).
+                  </p>
+                  <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#cbd5e1" }}>
+                    <span>✓ In-App HD Video</span>
+                    <span>✓ 30-Minute Session</span>
+                    <span>✓ Encrypted WebRTC</span>
+                  </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleProceedToReview}
-                  disabled={!selectedSlot}
+                  disabled={!selectedDate}
                   className="btn btn-primary"
                   style={{ width: "100%", padding: "12px", fontSize: "14px", fontWeight: 700 }}
                 >
-                  {selectedSlot ? `Continue to Price Review (₹${totalPayable.toFixed(2)}) →` : "Select a time slot"}
+                  Continue to Price Review (₹{totalPayable.toFixed(2)}) →
                 </button>
               </div>
             )}
@@ -526,7 +555,7 @@ export default function LawyerPublicProfilePage({
                     onClick={() => setBookingStep("SELECT_SLOT")}
                     style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "13px" }}
                   >
-                    ← Change Slot
+                    ← Change Date
                   </button>
                 </div>
 
@@ -570,27 +599,22 @@ export default function LawyerPublicProfilePage({
                   <div><strong>Advocate:</strong> Adv. {lawyer.full_name}</div>
                   <div><strong>Format:</strong> In-App Video Consultation (30 Minutes)</div>
                   <div>
-                    <strong>Date & Time:</strong>{" "}
-                    {selectedSlot && (
-                      <span>
-                        {new Date(selectedSlot.start_time).toLocaleDateString("en-IN", {
-                          timeZone: "Asia/Kolkata",
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}{" "}
-                        at{" "}
-                        {new Date(selectedSlot.start_time).toLocaleTimeString("en-IN", {
-                          timeZone: "Asia/Kolkata",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}{" "}
-                        IST
-                      </span>
-                    )}
+                    <strong>Consultation Date:</strong>{" "}
+                    <span>
+                      {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  <div>
+                    <strong>Timing:</strong> Flexible Chamber Hours (Coordinated with counsel)
                   </div>
                   <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.06)", paddingTop: "8px" }}>
-                    <strong>Fee:</strong> ₹{feeAmount.toFixed(2)} + ₹{gstAmount.toFixed(2)} (18% GST)
+                    <strong>Fee:</strong> ₹{feeAmount.toFixed(2)}
+                    {gstAmount !== null ? ` + ₹${gstAmount.toFixed(2)} (18% GST)` : ""}
                   </div>
                   <div style={{ fontSize: "15px", fontWeight: 700, color: "#818cf8" }}>
                     Total Payable: ₹{totalPayable.toFixed(2)}
@@ -604,7 +628,7 @@ export default function LawyerPublicProfilePage({
                   className="btn btn-primary"
                   style={{ width: "100%", padding: "12px", fontSize: "14px", fontWeight: 700 }}
                 >
-                  {bookingSubmitting ? "Locking slot & opening gateway..." : `Pay Securely (₹${totalPayable.toFixed(2)}) →`}
+                  {bookingSubmitting ? "Locking session & opening gateway..." : `Pay Securely (₹${totalPayable.toFixed(2)}) →`}
                 </button>
               </div>
             )}
@@ -668,6 +692,85 @@ export default function LawyerPublicProfilePage({
               trackFunnelEvent("booking_completed", { lawyer_id: lawyerId });
             }}
           />
+        )}
+
+        {/* Phase 14 BCI Rule 36 Verification Transparency Modal */}
+        {showBadgeModal && badge && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.75)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "16px",
+            }}
+            onClick={() => setShowBadgeModal(false)}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: "520px",
+                background: "#0f172a",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+                borderRadius: "12px",
+                padding: "24px",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#34d399", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>
+                    Factual Credential Verification
+                  </div>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#ffffff", margin: 0 }}>
+                    {badge.verification_badge_text}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBadgeModal(false)}
+                  style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: "18px", cursor: "pointer" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "13px", marginBottom: "20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: "6px" }}>
+                  <span style={{ color: "#94a3b8" }}>State Bar Council:</span>
+                  <span style={{ color: "#ffffff", fontWeight: 600 }}>{badge.state_bar_council || "Enrolled Bar"}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: "6px" }}>
+                  <span style={{ color: "#94a3b8" }}>Enrollment Number:</span>
+                  <span style={{ color: "#93c5fd", fontWeight: 600, fontFamily: "monospace" }}>{badge.enrollment_number_masked}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: "6px" }}>
+                  <span style={{ color: "#94a3b8" }}>Verification Method:</span>
+                  <span style={{ color: "#ffffff" }}>{badge.verification_method?.replace(/_/g, " ")}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: "6px" }}>
+                  <span style={{ color: "#94a3b8" }}>Verified On:</span>
+                  <span style={{ color: "#ffffff" }}>{badge.verified_at ? new Date(badge.verified_at).toLocaleDateString() : "Verified"}</span>
+                </div>
+              </div>
+
+              <div style={{ padding: "12px", background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", borderRadius: "8px", fontSize: "11px", color: "#bfdbfe", lineHeight: "1.5", marginBottom: "18px" }}>
+                <strong>Statutory Compliance Declaration:</strong> {badge.compliance_declaration}
+              </div>
+
+              <div style={{ fontSize: "11px", color: "#64748b", lineHeight: "1.4", textAlign: "center" }}>
+                Notice: Bar Council of India Rule 36 prohibits advocate advertising and solicitation. This badge factualizes verified enrollment without endorsing professional quality, court victory guarantees, or legal outcome ratings.
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -492,3 +492,31 @@ def test_payment_audit_events_logged(client: TestClient, db: Session):
     )
     assert ev_succeeded is not None
     assert ev_succeeded.metadata_["payment_id"] == payment_id
+
+
+def test_missing_webhook_secret_raises_500_without_static_fallback(client: TestClient, monkeypatch):
+    """
+    Verify that if STRIPE_WEBHOOK_SECRET is unconfigured (None or empty),
+    the webhook handler raises an explicit HTTP 500 configuration error
+    and NEVER silently falls back to a static credential (e.g. whsec_test_secret_123).
+    """
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", None)
+
+    payload = {
+        "id": "evt_no_sec_test",
+        "type": "payment_intent.succeeded",
+        "data": {"object": {"id": "pi_mock_no_secret"}},
+    }
+    raw_payload = json.dumps(payload).encode("utf-8")
+    t = int(datetime.now(UTC).timestamp())
+    sig = f"t={t},v1=mock_signature"
+
+    res = client.post(
+        "/api/v1/webhooks/stripe",
+        headers={"Stripe-Signature": sig, "Content-Type": "application/json"},
+        content=raw_payload,
+    )
+    assert res.status_code == 500
+    assert "STRIPE_WEBHOOK_SECRET not configured" in res.text
+

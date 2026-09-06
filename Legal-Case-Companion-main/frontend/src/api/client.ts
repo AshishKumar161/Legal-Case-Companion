@@ -8,12 +8,11 @@ import {
 } from "./session";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== "undefined"
+  typeof window !== "undefined"
     ? ""
-    : process.env.NODE_ENV === "production"
-    ? ""
-    : "http://127.0.0.1:8000");
+    : process.env.BACKEND_INTERNAL_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://127.0.0.1:8000";
 
 interface RequestOptions extends RequestInit {
   requireAuth?: boolean;
@@ -48,19 +47,19 @@ export class ApiError extends Error {
 
     if (!msg) {
       if (status === 0) {
-        msg = "Unable to reach the Legal Case Companion server. Check that the backend is running.";
+        msg = "Unable to connect to the Legal Case Companion server. Check that the backend is running.";
       } else if (status === 401) {
-        msg = "Invalid email or password.";
+        msg = "Session expired or authentication required. Please sign in.";
       } else if (status === 403) {
         msg = "You do not have permission to perform this action.";
       } else if (status === 404) {
         msg = "The requested resource was not found.";
       } else if (status === 409) {
-        msg = "An account with this information already exists.";
+        msg = "A conflict occurred with existing records.";
       } else if (status === 422) {
-        msg = "Please check the entered information.";
+        msg = "The request contains invalid or incomplete fields.";
       } else if (status === 429) {
-        msg = "Too many attempts. Please wait and try again.";
+        msg = "Too many requests. Please wait a moment before trying again.";
       } else if (status >= 500) {
         msg = "Something went wrong on the server. Please try again.";
       } else {
@@ -74,6 +73,76 @@ export class ApiError extends Error {
     this.code = raw?.error?.code;
     this.details = raw?.error?.details;
   }
+}
+
+export class NetworkError extends ApiError {
+  constructor(message = "Unable to reach the Legal Case Companion server. Please check your network connection.") {
+    super(0, { error: { code: "NETWORK_ERROR", message } });
+    this.name = "NetworkError";
+  }
+}
+
+export class AuthenticationError extends ApiError {
+  constructor(message = "Session expired or authentication required. Please sign in again.") {
+    super(401, { error: { code: "UNAUTHORIZED", message } });
+    this.name = "AuthenticationError";
+  }
+}
+
+export class AuthorizationError extends ApiError {
+  constructor(message = "You do not have permission to perform this action.") {
+    super(403, { error: { code: "FORBIDDEN", message } });
+    this.name = "AuthorizationError";
+  }
+}
+
+export class NotFoundError extends ApiError {
+  constructor(message = "The requested resource could not be found.") {
+    super(404, { error: { code: "NOT_FOUND", message } });
+    this.name = "NotFoundError";
+  }
+}
+
+export class ConflictError extends ApiError {
+  constructor(message = "A conflict occurred with existing records.") {
+    super(409, { error: { code: "CONFLICT", message } });
+    this.name = "ConflictError";
+  }
+}
+
+export class ValidationError extends ApiError {
+  constructor(message = "The request contains invalid or incomplete fields.", details?: unknown) {
+    super(422, { error: { code: "VALIDATION_ERROR", message, details } });
+    this.name = "ValidationError";
+  }
+}
+
+export class RateLimitError extends ApiError {
+  constructor(message = "Too many requests. Please wait a moment before trying again.") {
+    super(429, { error: { code: "RATE_LIMITED", message } });
+    this.name = "RateLimitError";
+  }
+}
+
+export class ServerError extends ApiError {
+  constructor(status = 500, message = "Something went wrong on the server. Please try again.") {
+    super(status, { error: { code: "SERVER_ERROR", message } });
+    this.name = "ServerError";
+  }
+}
+
+export function createSpecificApiError(status: number, data: unknown): ApiError {
+  const raw = data as RawErrorPayload | undefined;
+  const msg = raw?.error?.message || raw?.message;
+  if (status === 0) return new NetworkError(msg);
+  if (status === 401) return new AuthenticationError(msg);
+  if (status === 403) return new AuthorizationError(msg);
+  if (status === 404) return new NotFoundError(msg);
+  if (status === 409) return new ConflictError(msg);
+  if (status === 422) return new ValidationError(msg, raw?.error?.details);
+  if (status === 429) return new RateLimitError(msg);
+  if (status >= 500) return new ServerError(status, msg);
+  return new ApiError(status, data);
 }
 
 function getCookie(name: string): string | null {
@@ -163,13 +232,10 @@ async function fetchWithAuth(url: string, options: RequestOptions = {}): Promise
       headers,
     });
   } catch (err: unknown) {
-    console.error("Fetch network failure:", err);
-    throw new ApiError(0, {
-      error: {
-        code: "NETWORK_ERROR",
-        message: "Unable to reach the Legal Case Companion server. Check that the backend is running.",
-      },
-    });
+    console.warn("Fetch network failure on", targetUrl, err);
+    throw new NetworkError(
+      "Unable to reach the Legal Case Companion service. Please verify your connection or check that the server is running."
+    );
   }
 
   // Handle 401 Automatic Token Refresh and Retry
@@ -206,7 +272,7 @@ async function fetchWithAuth(url: string, options: RequestOptions = {}): Promise
           if (newToken) {
             resolve(fetchWithAuth(url, { ...options, _retry: true }));
           } else {
-            reject(new ApiError(401, { message: "Session expired" }));
+            reject(new AuthenticationError("Session expired. Please sign in again."));
           }
         });
       });
@@ -220,7 +286,7 @@ async function fetchWithAuth(url: string, options: RequestOptions = {}): Promise
     } catch {
       errorData = { message: "An unexpected error occurred" };
     }
-    throw new ApiError(response.status, errorData);
+    throw createSpecificApiError(response.status, errorData);
   }
 
   if (response.status === 204) return null;
@@ -229,27 +295,27 @@ async function fetchWithAuth(url: string, options: RequestOptions = {}): Promise
 }
 
 export const apiClient = {
-  get: (url: string, options?: RequestOptions) =>
-    fetchWithAuth(url, { ...options, method: "GET" }),
-  post: (url: string, body: unknown, options?: RequestOptions) =>
+  get: <T = any>(url: string, options?: RequestOptions): Promise<T> =>
+    fetchWithAuth(url, { ...options, method: "GET" }) as Promise<T>,
+  post: <T = any>(url: string, body?: unknown, options?: RequestOptions): Promise<T> =>
     fetchWithAuth(url, {
       ...options,
       method: "POST",
       body: body instanceof FormData ? body : JSON.stringify(body),
-    }),
-  patch: (url: string, body: unknown, options?: RequestOptions) =>
+    }) as Promise<T>,
+  patch: <T = any>(url: string, body?: unknown, options?: RequestOptions): Promise<T> =>
     fetchWithAuth(url, {
       ...options,
       method: "PATCH",
       body: body instanceof FormData ? body : JSON.stringify(body),
-    }),
-  put: (url: string, body: unknown, options?: RequestOptions) =>
+    }) as Promise<T>,
+  put: <T = any>(url: string, body?: unknown, options?: RequestOptions): Promise<T> =>
     fetchWithAuth(url, {
       ...options,
       method: "PUT",
       body: body instanceof FormData ? body : JSON.stringify(body),
-    }),
-  delete: (url: string, options?: RequestOptions) =>
-    fetchWithAuth(url, { ...options, method: "DELETE" }),
+    }) as Promise<T>,
+  delete: <T = any>(url: string, options?: RequestOptions): Promise<T> =>
+    fetchWithAuth(url, { ...options, method: "DELETE" }) as Promise<T>,
 };
 

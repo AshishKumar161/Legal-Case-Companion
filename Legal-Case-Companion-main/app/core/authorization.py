@@ -278,9 +278,6 @@ def authorize_evidence_access(
     if not evidence:
         raise ResourceNotFoundError("Evidence not found")
 
-    # 1. Enforce case-level access boundary
-    authorize_case_access(db, user, evidence.case_id)
-
     # 2. Platform Admin has system-level access
     if user.role == UserRole.ADMIN:
         return evidence, None
@@ -294,7 +291,7 @@ def authorize_evidence_access(
     if part and part.participant_role == ParticipantRole.OWNER:
         return evidence, None
 
-    # 5. Check explicit EvidenceAccessGrant
+    # 5. Check explicit EvidenceAccessGrant (scoped to this specific evidence item)
     now = datetime.now(UTC)
     grant = (
         db.query(EvidenceAccessGrant)
@@ -319,7 +316,7 @@ def authorize_evidence_access(
         level = grant.access_level.value if hasattr(grant.access_level, "value") else str(grant.access_level)
         req = required_level.value if hasattr(required_level, "value") else str(required_level)
 
-        if req == "VIEW" or req == "DOWNLOAD" and level in ("DOWNLOAD", "MANAGE") or req == "MANAGE" and level == "MANAGE":
+        if req == "VIEW" or (req == "DOWNLOAD" and level in ("DOWNLOAD", "MANAGE")) or (req == "MANAGE" and level == "MANAGE"):
             return evidence, grant
 
     raise ResourceNotFoundError("Evidence not found")

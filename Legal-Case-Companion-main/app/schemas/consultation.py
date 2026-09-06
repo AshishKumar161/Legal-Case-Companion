@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class ConsultationCreate(BaseModel):
     lawyer_id: UUID
     case_id: UUID | None = None
-    scheduled_at: datetime
+    scheduled_at: datetime | None = None
     duration_minutes: int = 30
     is_instant: bool = False
 
@@ -106,3 +106,20 @@ class ConsultationPricingResponse(BaseModel):
     breakdown: ConsultationPricingBreakdown
 
     model_config = ConfigDict(extra="forbid")
+
+
+class ConsultationDocumentResponse(BaseModel):
+    id: UUID
+    consultation_id: UUID
+    uploader_id: UUID
+    uploader_name: str
+    uploader_role: str
+    file_name: str
+    file_size: int
+    mime_type: str
+    description: str | None = None
+    download_url: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+

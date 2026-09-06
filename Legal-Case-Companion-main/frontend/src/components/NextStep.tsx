@@ -2,6 +2,15 @@
 
 import React from "react";
 import Link from "next/link";
+import {
+  CaseIcon,
+  CalendarIcon,
+  LawyerIcon,
+  DocumentIcon,
+  CourthouseIcon,
+  AssistantIcon,
+  ArrowRightIcon,
+} from "@/components/ui/Icons";
 import styles from "./NextStep.module.css";
 
 export type NextStepContext =
@@ -30,24 +39,31 @@ export interface NextStepProps {
   className?: string;
 }
 
-const CONTEXT_ICONS: Record<NextStepContext, string> = {
-  CASE: "⚖",
-  HEARING: "📅",
-  LAWYER_PROFILE: "🧑‍⚖️",
-  PAYMENT: "💳",
-  COURT_TRACKING: "🏛",
-  DASHBOARD: "⚡",
-  DOCUMENT: "📄",
-};
+function getContextIcon(context: NextStepContext) {
+  switch (context) {
+    case "CASE":
+      return <CaseIcon size={20} />;
+    case "HEARING":
+      return <CalendarIcon size={20} />;
+    case "LAWYER_PROFILE":
+      return <LawyerIcon size={20} />;
+    case "COURT_TRACKING":
+      return <CourthouseIcon size={20} />;
+    case "DOCUMENT":
+      return <DocumentIcon size={20} />;
+    default:
+      return <AssistantIcon size={20} />;
+  }
+}
 
 const CONTEXT_TITLES: Record<NextStepContext, string> = {
-  CASE: "Case Action",
+  CASE: "Next Action",
   HEARING: "Upcoming Hearing",
-  LAWYER_PROFILE: "Consultation Booking",
-  PAYMENT: "Payment Action",
+  LAWYER_PROFILE: "Consultation",
+  PAYMENT: "Payment",
   COURT_TRACKING: "Court Update",
-  DASHBOARD: "Immediate Next Action",
-  DOCUMENT: "Evidence Vault",
+  DASHBOARD: "Next Action",
+  DOCUMENT: "Document Needed",
 };
 
 export function NextStep({
@@ -60,13 +76,11 @@ export function NextStep({
   urgency = "MEDIUM",
   className = "",
 }: NextStepProps) {
-  // Map urgency class
   let urgencyClass = styles.urgencyMedium;
   if (urgency === "CRITICAL") urgencyClass = styles.urgencyCritical;
   else if (urgency === "HIGH") urgencyClass = styles.urgencyHigh;
   else if (urgency === "LOW") urgencyClass = styles.urgencyLow;
 
-  const icon = CONTEXT_ICONS[context] || "⚡";
   const kickerTitle = CONTEXT_TITLES[context] || "Next Step";
 
   const renderAction = (act: NextStepActionItem, isPrimary = true) => {
@@ -74,13 +88,15 @@ export function NextStep({
     if (act.href) {
       return (
         <Link href={act.href} className={btnClass}>
-          {act.label}
+          <span>{act.label}</span>
+          {isPrimary && <ArrowRightIcon size={12} />}
         </Link>
       );
     }
     return (
       <button type="button" onClick={act.onClick} className={btnClass}>
-        {act.label}
+        <span>{act.label}</span>
+        {isPrimary && <ArrowRightIcon size={12} />}
       </button>
     );
   };
@@ -93,14 +109,14 @@ export function NextStep({
     >
       <div className={styles.contentWrapper}>
         <div className={styles.contextIcon} aria-hidden="true">
-          {icon}
+          {getContextIcon(context)}
         </div>
         <div className={styles.textBlock}>
           <div className={styles.kickerRow}>
             <span className={styles.kicker}>{kickerTitle}</span>
             {provenance && (
-              <span className={styles.provenanceBadge} title={`Source: ${provenance}`}>
-                {provenance}
+              <span className={styles.provenanceBadge}>
+                {provenance === "OFFICIAL COURT DATA" ? "Court Record" : provenance === "LAWYER ENTERED" ? "From Lawyer" : "Case Guidance"}
               </span>
             )}
           </div>
@@ -109,7 +125,7 @@ export function NextStep({
         </div>
       </div>
 
-      <div className={styles.actionGroup}>
+      <div className={styles.actionsWrapper}>
         {secondaryAction && renderAction(secondaryAction, false)}
         {action && renderAction(action, true)}
       </div>

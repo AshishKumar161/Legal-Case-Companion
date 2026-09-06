@@ -187,7 +187,7 @@ class JobService:
         for stale in stale_jobs:
             if stale.attempt_count < stale.max_attempts:
                 stale.status = JobStatus.RETRYING
-                stale.scheduled_at = now + timedelta(seconds=5)
+                stale.scheduled_at = now
                 stale.locked_until = None
                 stale.locked_by = None
                 stale.error_category = "STALE_LEASE_RECOVERED"

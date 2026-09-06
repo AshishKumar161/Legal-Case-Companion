@@ -154,10 +154,14 @@ class ConsultationService:
         if lawyer_profile.verification_status != "APPROVED":
             return False, "Lawyer is not verified", PresenceStatus.ONLINE
 
-        if not presence_service.is_online(lawyer_profile.user_id):
+        lawyer_online = presence_service.is_online(lawyer_profile.user_id)
+        if not lawyer_online and getattr(settings, "ENVIRONMENT", "").lower() == "development":
+            lawyer_online = True
+
+        if not lawyer_online:
             return False, "Lawyer is currently offline", PresenceStatus.OFFLINE
 
-        if not presence_service.is_available_preference(lawyer_profile.user_id):
+        if not presence_service.is_available_preference(lawyer_profile.user_id) and getattr(settings, "ENVIRONMENT", "").lower() != "development":
             return False, "Lawyer is not accepting instant calls", PresenceStatus.ONLINE
 
         # Check for active in-progress consultation
@@ -242,7 +246,7 @@ class ConsultationService:
             req_start = scheduled_at.astimezone(UTC)
 
         now_utc = datetime.now(UTC)
-        
+
         # If instant consultation, clamp to now or allow within 5-minute past buffer for clock drift
         if is_instant:
             if req_start < now_utc - timedelta(minutes=10):
@@ -503,8 +507,22 @@ class ConsultationService:
                     f"Lawyer is currently unavailable for instant consultation: {reason}"
                 )
 
+        if req.is_instant:
+            scheduled_at_to_use = datetime.now(UTC)
+        elif req.scheduled_at is None:
+            # Default to tomorrow at 10:00 AM IST (or Monday if weekend)
+            now_ist = datetime.now(self.IST_TIMEZONE)
+            sched_date = (now_ist + timedelta(days=1)).date()
+            if sched_date.weekday() == 6:  # Sunday
+                sched_date += timedelta(days=1)
+            scheduled_at_to_use = datetime.combine(
+                sched_date, time(10, 0), tzinfo=self.IST_TIMEZONE
+            ).astimezone(UTC)
+        else:
+            scheduled_at_to_use = req.scheduled_at
+
         req_start, req_end = self._validate_slot_and_business_hours(
-            req.scheduled_at,
+            scheduled_at_to_use,
             req.duration_minutes,
             lawyer_profile_id=lawyer_profile.id,
             is_instant=req.is_instant,
@@ -539,9 +557,10 @@ class ConsultationService:
             case_id=req.case_id,
             scheduled_at=req_start,
             duration_minutes=req.duration_minutes,
+            is_instant=req.is_instant,
             fee_amount=lawyer_profile.consultation_fee or 0.0,
             currency="INR",
-            status=ConsultationStatus.REQUESTED,
+            status=ConsultationStatus.IN_PROGRESS if req.is_instant else ConsultationStatus.REQUESTED,
         )
         try:
             self.db.add(consultation)
@@ -552,6 +571,14 @@ class ConsultationService:
             raise ValidationError(
                 "The requested time slot overlaps with an existing consultation for this lawyer"
             ) from None
+
+        # Automatically provision video meeting room
+        try:
+            from app.services.video_meeting_service import VideoMeetingService
+            vms = VideoMeetingService(self.db)
+            vms.ensure_meeting_provisioned(consultation)
+        except Exception as e:
+            logger.warning("Could not auto-provision meeting: %s", e)
 
         self._log_audit(
             "CONSULTATION_REQUESTED",

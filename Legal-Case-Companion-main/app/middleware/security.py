@@ -19,17 +19,30 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Prevent clickjacking / framing
         response.headers["X-Frame-Options"] = "DENY"
 
-        # Strict CSP for pure JSON REST APIs
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; frame-ancestors 'none'; sandbox"
-        )
+        # Content Security Policy (Strict sandbox for REST APIs, functional CSP for docs)
+        if request.url.path.startswith(("/docs", "/redoc", "/api/v1/docs", "/api/v1/redoc", "/api/v1/openapi.json")):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "img-src 'self' data: https://fastapi.tiangolo.com; frame-ancestors 'none'"
+            )
+        else:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'none'; frame-ancestors 'none'; sandbox"
+            )
 
         # Privacy and Referrer protection
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
         # Cross-Origin isolation
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-        response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+        origin = request.headers.get("origin")
+        from app.core.config import settings
+        allowed_origins = [str(o) for o in (settings.BACKEND_CORS_ORIGINS or [])]
+        if origin and (origin in allowed_origins or "*" in allowed_origins):
+            response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+        else:
+            response.headers["Cross-Origin-Resource-Policy"] = "same-site"
 
         # Restrict dangerous browser features / hardware APIs
         response.headers["Permissions-Policy"] = (

@@ -1,8 +1,18 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
+import {
+  HomeIcon,
+  CaseIcon,
+  CalendarIcon,
+  DocumentIcon,
+  LawyerIcon,
+  CourthouseIcon,
+  ChatIcon,
+} from "@/components/ui/Icons";
 import styles from "./MobileBottomNav.module.css";
 
 export function MobileBottomNav() {
@@ -19,24 +29,27 @@ export function MobileBottomNav() {
 
   const tabs = isLawyer
     ? [
-        { label: "Overview", href: "/lawyer/dashboard", icon: "📈" },
-        { label: "Matters", href: "/cases", icon: "⚖" },
-        { label: "Court", href: "/court-tracking", icon: "🏛" },
-        { label: "Calendar", href: "/calendar", icon: "📅" },
-        { label: "Consults", href: "/consultations", icon: "📹" },
+        { label: "Practice", href: "/lawyer/dashboard", icon: <HomeIcon size={18} /> },
+        { label: "Cases", href: "/cases", icon: <CaseIcon size={18} /> },
+        { label: "Court", href: "/court-tracking", icon: <CourthouseIcon size={18} /> },
+        { label: "Calendar", href: "/calendar", icon: <CalendarIcon size={18} /> },
+        { label: "Consults", href: "/consultations", icon: <ChatIcon size={18} /> },
       ]
     : [
-        { label: "Home", href: "/dashboard", icon: "📊" },
-        { label: "Cases", href: "/cases", icon: "⚖" },
-        { label: "Court", href: "/court-tracking", icon: "🏛" },
-        { label: "Calendar", href: "/calendar", icon: "📅" },
-        { label: "Find Help", href: "/lawyers", icon: "🔍" },
+        { label: "Home", href: "/dashboard", icon: <HomeIcon size={18} /> },
+        { label: "My Case", href: "/cases", icon: <CaseIcon size={18} /> },
+        { label: "Hearings", href: "/calendar", icon: <CalendarIcon size={18} /> },
+        { label: "Documents", href: "/documents", icon: <DocumentIcon size={18} /> },
+        { label: "My Lawyer", href: "/lawyers", icon: <LawyerIcon size={18} /> },
       ];
 
   return (
-    <nav className={styles.mobileBottomNav} aria-label="Mobile Bottom Navigation">
+    <nav className={styles.mobileBottomNav} aria-label="Mobile Navigation">
       {tabs.map((tab) => {
-        const isActive = pathname === tab.href || (tab.href !== "/dashboard" && tab.href !== "/lawyer/dashboard" && pathname.startsWith(tab.href));
+        const isActive =
+          pathname === tab.href ||
+          (tab.href !== "/dashboard" && tab.href !== "/lawyer/dashboard" && pathname.startsWith(tab.href));
+
         return (
           <Link
             key={tab.href}

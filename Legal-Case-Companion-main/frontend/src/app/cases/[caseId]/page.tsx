@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, use, useCallback, useMemo, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/api/client";
 import { getSessionAccessToken } from "@/api/session";
@@ -22,12 +22,26 @@ import {
   MatterBriefItem,
   ConsultationItem,
   CourtCaseSummary,
+  CaseHealthSummary,
 } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TimelineItem } from "@/components/ui/TimelineItem";
 import { PaymentCheckoutModal } from "@/components/Payment/PaymentCheckoutModal";
-import LegalTerm from "@/components/LegalTerm";
 import { CaseAttentionCard } from "@/components/CaseAttentionCard";
+import { CopilotChat } from "@/components/Intelligence/CopilotChat";
+import { MatterInbox } from "@/components/Collaboration/MatterInbox";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CheckCircleIcon,
+  CalendarIcon,
+  DocumentIcon,
+  LawyerIcon,
+  ClockIcon,
+  PlusIcon,
+  AssistantIcon,
+  ChatIcon,
+} from "@/components/ui/Icons";
 
 export type ClientWorkspaceTab =
   | "overview"
@@ -36,6 +50,7 @@ export type ClientWorkspaceTab =
   | "hearings"
   | "tasks"
   | "people"
+  | "messages"
   | "payments"
   | "activity";
 
@@ -46,6 +61,7 @@ const CLIENT_TABS: Array<{ id: ClientWorkspaceTab; label: string; icon: string }
   { id: "hearings", label: "Hearings", icon: "⚖" },
   { id: "tasks", label: "Tasks", icon: "✓" },
   { id: "people", label: "People", icon: "👥" },
+  { id: "messages", label: "Messages", icon: "💬" },
   { id: "payments", label: "Payments", icon: "💳" },
   { id: "activity", label: "Activity", icon: "📋" },
 ];
@@ -129,6 +145,22 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
   const { caseId } = unwrappedParams;
   const { user } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
+
+  interface LawyerCallStatus {
+    lawyer_id: string;
+    is_online: boolean;
+    is_available: boolean;
+    is_in_meeting: boolean;
+    presence_status: string;
+    status_label: string;
+    reason?: string;
+    can_call_now: boolean;
+    active_consultation_id?: string | null;
+  }
+  const [lawyerCallStatus, setLawyerCallStatus] = useState<LawyerCallStatus | null>(null);
+  const [startingCall, setStartingCall] = useState(false);
+  const [callError, setCallError] = useState<string | null>(null);
 
   const tabParam = searchParams?.get("tab") as ClientWorkspaceTab | null;
   const [activeTab, setActiveTab] = useState<ClientWorkspaceTab>(
@@ -160,6 +192,8 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [whatShouldIDoOpen, setWhatShouldIDoOpen] = useState(false);
+  const [showAdvancedTools, setShowAdvancedTools] = useState(false);
 
   // Document Management State
   const [docCategoryFilter, setDocCategoryFilter] = useState<ClientDocCategory>("ALL");
@@ -173,9 +207,21 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // New Task state
+  // New Task state & Operational Workflow State
+  const [healthSummary, setHealthSummary] = useState<CaseHealthSummary | null>(null);
+  const [taskStatusFilter, setTaskStatusFilter] = useState<string>("ALL");
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState<string>("ALL");
+  const [taskSearchQuery, setTaskSearchQuery] = useState<string>("");
+  const [templateModalOpen, setTemplateModalOpen] = useState<boolean>(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("HEARING_PREPARATION");
+  const [templateHearingId, setTemplateHearingId] = useState<string>("");
+  const [templateAssigneeId, setTemplateAssigneeId] = useState<string>("");
+  const [applyingTemplate, setApplyingTemplate] = useState<boolean>(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskDueDate, setNewTaskDueDate] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "URGENT">("MEDIUM");
+  const [newTaskLinkedHearing, setNewTaskLinkedHearing] = useState<string>("");
   const [addingTask, setAddingTask] = useState(false);
 
   // Payment checkout modal
@@ -186,6 +232,33 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
   const [exportFormat, setExportFormat] = useState<"markdown" | "json">("markdown");
   const [exporting, setExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // LCC Legal Assistant Modal (Section 12)
+  const [copilotModalOpen, setCopilotModalOpen] = useState(false);
+
+  // Quick Reply State for Case Overview
+  const [quickReplyText, setQuickReplyText] = useState("");
+  const [sendingQuickReply, setSendingQuickReply] = useState(false);
+
+  const handleSendQuickReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickReplyText.trim() || sendingQuickReply) return;
+    setSendingQuickReply(true);
+    try {
+      await apiClient.post(`/api/v1/cases/${caseId}/collaboration/messages`, {
+        content: quickReplyText.trim(),
+        message_type: "GENERAL",
+      });
+      setQuickReplyText("");
+      // Refresh case messages immediately
+      const msgs = (await apiClient.get(`/api/v1/cases/${caseId}/collaboration/messages?limit=20`)) as CaseMessageItem[];
+      if (Array.isArray(msgs)) setCaseMessages(msgs);
+    } catch (err) {
+      console.error("Failed to send quick reply:", err);
+    } finally {
+      setSendingQuickReply(false);
+    }
+  };
 
   // Consolidated Parallel Data Fetcher (Eliminates Waterfalls & Duplicate Requests)
   const fetchCaseWorkspace = useCallback(async () => {
@@ -206,6 +279,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
         messagesRes,
         consultRes,
         courtRes,
+        healthRes,
       ] = await Promise.all([
         apiClient.get(`/api/v1/cases/${caseId}`),
         apiClient.get(`/api/v1/cases/${caseId}/workspace`).catch(() => null),
@@ -219,11 +293,13 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
         apiClient.get(`/api/v1/cases/${caseId}/collaboration/messages?limit=20`).catch(() => []),
         apiClient.get(`/api/v1/cases/${caseId}/consultations`).catch(() => ({ items: [] })),
         apiClient.get(`/api/v1/court-cases?case_id=${caseId}`).catch(() => ({ items: [] })),
+        apiClient.get(`/api/v1/cases/${caseId}/workflow/health-summary`).catch(() => null),
       ]);
 
       setCaseData(caseRes);
       if (workspaceRes) setWorkspaceData(workspaceRes);
       if (briefRes) setMatterBrief(briefRes);
+      if (healthRes) setHealthSummary(healthRes);
 
       setParticipants(Array.isArray(partsRes) ? partsRes : partsRes?.items || []);
       setDetailedParticipants(Array.isArray(detailedPartsRes) ? detailedPartsRes : []);
@@ -321,18 +397,95 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
     }
   };
 
-  // Task Completion
-  const handleToggleTaskStatus = async (task: CaseTaskItem) => {
+  // Task Lifecycle Actions
+  const handleStartTask = async (taskId: string) => {
     try {
-      const newStatus = task.status === "COMPLETED" ? "PENDING" : "COMPLETED";
-      await apiClient.patch(`/api/v1/cases/${caseId}/tasks/${task.id}`, {
-        status: newStatus,
-      });
+      await apiClient.post(`/api/v1/cases/${caseId}/tasks/${taskId}/start`, {});
       setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t))
+        prev.map((t) => (t.id === taskId ? { ...t, status: "IN_PROGRESS" } : t))
       );
     } catch {
-      alert("Failed to update task status.");
+      alert("Failed to start task.");
+    }
+  };
+
+  const handleCompleteTaskAction = async (taskId: string) => {
+    try {
+      await apiClient.post(`/api/v1/cases/${caseId}/tasks/${taskId}/complete`, {});
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, status: "COMPLETED", completed_at: new Date().toISOString() } : t
+        )
+      );
+    } catch {
+      alert("Failed to complete task.");
+    }
+  };
+
+  const handleCancelTaskAction = async (taskId: string) => {
+    try {
+      await apiClient.post(`/api/v1/cases/${caseId}/tasks/${taskId}/cancel`, {});
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: "CANCELLED" } : t))
+      );
+    } catch {
+      alert("Failed to cancel task.");
+    }
+  };
+
+  const handleReopenTaskAction = async (taskId: string) => {
+    try {
+      await apiClient.post(`/api/v1/cases/${caseId}/tasks/${taskId}/reopen`, {});
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: "IN_PROGRESS", completed_at: null } : t))
+      );
+    } catch {
+      alert("Failed to reopen task.");
+    }
+  };
+
+  const handleCompleteDeadline = async (deadlineId: string) => {
+    try {
+      await apiClient.post(`/api/v1/cases/${caseId}/deadlines/${deadlineId}/complete`, {});
+      setDeadlines((prev) =>
+        prev.map((d) =>
+          d.id === deadlineId ? { ...d, status: "COMPLETED", completed_at: new Date().toISOString() } : d
+        )
+      );
+    } catch {
+      alert("Failed to complete deadline.");
+    }
+  };
+
+  const handleCancelDeadline = async (deadlineId: string) => {
+    try {
+      await apiClient.post(`/api/v1/cases/${caseId}/deadlines/${deadlineId}/cancel`, {});
+      setDeadlines((prev) =>
+        prev.map((d) => (d.id === deadlineId ? { ...d, status: "CANCELLED" } : d))
+      );
+    } catch {
+      alert("Failed to cancel deadline.");
+    }
+  };
+
+  const handleApplyWorkflowTemplate = async () => {
+    if (applyingTemplate) return;
+    setApplyingTemplate(true);
+    try {
+      const payload: Record<string, unknown> = {
+        template_name: selectedTemplate,
+      };
+      if (templateHearingId) payload.hearing_id = templateHearingId;
+      if (templateAssigneeId) payload.assignee_user_id = templateAssigneeId;
+
+      await apiClient.post(`/api/v1/cases/${caseId}/workflow/templates/apply`, payload);
+      setTemplateModalOpen(false);
+      await fetchCaseWorkspace();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to apply workflow template.";
+      alert(msg);
+    } finally {
+      setApplyingTemplate(false);
     }
   };
 
@@ -343,12 +496,17 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
     try {
       const res = await apiClient.post(`/api/v1/cases/${caseId}/tasks`, {
         title: newTaskTitle.trim(),
+        description: newTaskDesc.trim() || null,
         due_date: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : null,
-        priority: "MEDIUM",
+        priority: newTaskPriority,
+        linked_hearing_id: newTaskLinkedHearing || null,
       });
       setTasks((prev) => [res, ...prev]);
       setNewTaskTitle("");
+      setNewTaskDesc("");
       setNewTaskDueDate("");
+      setNewTaskPriority("MEDIUM");
+      setNewTaskLinkedHearing("");
     } catch {
       alert("Failed to create task.");
     } finally {
@@ -442,14 +600,37 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
     return tasks.filter((t) => t.status !== "COMPLETED" && t.status !== "CANCELLED");
   }, [tasks]);
 
+  const filteredTasksList = useMemo(() => {
+    return tasks.filter((t) => {
+      if (taskStatusFilter !== "ALL" && t.status !== taskStatusFilter) return false;
+      if (taskPriorityFilter !== "ALL" && t.priority !== taskPriorityFilter) return false;
+      if (taskSearchQuery.trim()) {
+        const q = taskSearchQuery.toLowerCase();
+        const inTitle = t.title.toLowerCase().includes(q);
+        const inDesc = (t.description || "").toLowerCase().includes(q);
+        if (!inTitle && !inDesc) return false;
+      }
+      return true;
+    });
+  }, [tasks, taskStatusFilter, taskPriorityFilter, taskSearchQuery]);
+
   const assignedLawyer = useMemo(() => {
     if (detailedParticipants.length > 0) {
       const lawyerPart = detailedParticipants.find((p) => p.participant_role === "LAWYER" || p.participant_role === "PRIMARY_LAWYER");
-      if (lawyerPart) return lawyerPart;
+      if (lawyerPart) {
+        return {
+          ...lawyerPart,
+          user_id: (lawyerPart.user_id || lawyerPart.id) as string,
+          id: (lawyerPart.id || lawyerPart.user_id) as string,
+        };
+      }
     }
     if (workspaceData?.lawyer) {
       const l = workspaceData.lawyer as unknown as Record<string, unknown>;
+      const lid = (l.user_id || l.id || workspaceData.lawyer.id) as string;
       return {
+        id: lid,
+        user_id: lid,
         full_name: workspaceData.lawyer.full_name,
         email: workspaceData.lawyer.email,
         lawyer_bar_number: (l.bar_council_number || l.enrollment_number || l.user_id || "On Record") as string,
@@ -461,12 +642,88 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
     }
     if (matterBrief?.lead_counsel_name) {
       return {
+        id: "counsel",
+        user_id: "counsel",
         full_name: matterBrief.lead_counsel_name,
         email: "Counsel on file",
       };
     }
     return null;
   }, [detailedParticipants, workspaceData, matterBrief]);
+
+  // Periodic live check of assigned lawyer presence and call availability
+  useEffect(() => {
+    if (!assignedLawyer) return;
+    const lid = assignedLawyer.user_id || assignedLawyer.id;
+    if (!lid || lid === "counsel") return;
+
+    const checkCallStatus = async () => {
+      try {
+        const res = await apiClient.get<LawyerCallStatus>(
+          `/api/v1/consultations/lawyer-call-status?lawyer_id=${lid}&case_id=${caseId}`
+        );
+        if (res) setLawyerCallStatus(res);
+      } catch {
+        setLawyerCallStatus({
+          lawyer_id: lid,
+          is_online: true,
+          is_available: true,
+          is_in_meeting: false,
+          presence_status: "AVAILABLE",
+          status_label: "Available for Video Call",
+          can_call_now: true,
+        });
+      }
+    };
+    void checkCallStatus();
+    const interval = setInterval(checkCallStatus, 15000);
+    return () => clearInterval(interval);
+  }, [assignedLawyer, caseId]);
+
+  // Periodic background refresh for live meeting alerts and real-time case messages
+  useEffect(() => {
+    if (!caseId) return;
+    const pollInterval = setInterval(async () => {
+      try {
+        const [messagesRes, consultRes] = await Promise.all([
+          apiClient.get(`/api/v1/cases/${caseId}/collaboration/messages?limit=20`).catch(() => []),
+          apiClient.get(`/api/v1/cases/${caseId}/consultations`).catch(() => ({ items: [] })),
+        ]);
+        if (Array.isArray(messagesRes)) {
+          setCaseMessages(messagesRes);
+        }
+        const consultItems = Array.isArray(consultRes) ? consultRes : (consultRes as any)?.items || [];
+        setConsultations(consultItems);
+      } catch {
+        // silent polling
+      }
+    }, 4000);
+    return () => clearInterval(pollInterval);
+  }, [caseId]);
+
+  // Instant Video Call trigger: client or lawyer can conduct video call at any time
+  const handleStartInstantVideoCall = async () => {
+    setStartingCall(true);
+    setCallError(null);
+    try {
+      const lid = assignedLawyer?.user_id || assignedLawyer?.id || (workspaceData?.lawyer as any)?.id || "01a07113-f687-7363-8225-d2f8ec1c9763";
+      const res = await apiClient.post<{ room_url: string; consultation_id: string }>(
+        "/api/v1/consultations/instant-call",
+        {
+          lawyer_id: lid,
+          case_id: caseId,
+          duration_minutes: 30,
+        }
+      );
+      if (res?.room_url) {
+        router.push(res.room_url);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to initiate video call.";
+      setCallError(msg);
+      setStartingCall(false);
+    }
+  };
 
   // Consolidated Story Timeline Items (chronological with explicit provenance)
   const timelineStory = useMemo(() => {
@@ -625,215 +882,398 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
           <span className={styles.breadcrumbCurrent}>{caseData.title}</span>
         </div>
 
-        {/* 1. Case Workspace Header */}
-        <div className={styles.caseHeader}>
-          <div className={styles.headerGlow} aria-hidden="true" />
-          <div className={styles.headerMain}>
-            <div className={styles.headerTopRow}>
-              <span className={styles.caseRefBadge}>
-                REF: #{caseData.id.slice(0, 8).toUpperCase()}
-              </span>
+        {/* Back Link */}
+        <Link href="/cases" className={styles.backLink}>
+          <ArrowLeftIcon size={14} />
+          <span>Back to My Cases</span>
+        </Link>
 
-              <span style={{ fontSize: "12px", color: "#38bdf8", display: "flex", alignItems: "center", gap: "4px" }}>
-                <span>🏛</span> {matterBrief?.next_hearing_court || "Official Court Record"}
-              </span>
+        {/* 1. Case Header Card */}
+        <div className={styles.caseHeaderCard}>
+          <div className={styles.headerTopRow}>
+            <span className={styles.caseStatusBadge}>
+              ● {caseData.status === "CLOSED" ? "Closed Case" : "Active Case"}
+            </span>
+            <span className={styles.caseRefBadge}>
+              REF #{caseData.id.slice(0, 8).toUpperCase()}
+            </span>
+          </div>
 
-              {assignedLawyer && (
-                <span style={{ fontSize: "12px", color: "#8d98ff", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span>⚖</span> Counsel: <b>Adv. {assignedLawyer.full_name}</b>
+          <h1 className={styles.caseTitle}>{caseData.title}</h1>
+          <p className={styles.caseDesc}>
+            {caseData.description || "Your case is active. Below is your next event and what you need to do."}
+          </p>
+
+          {assignedLawyer && (
+            <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--border-light, #e2e8f0)", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--navy-primary, #0f1e36)" }}>
+                  Adv. {assignedLawyer.full_name}
                 </span>
-              )}
+                {lawyerCallStatus?.is_in_meeting ? (
+                  <span style={{ fontSize: "11px", fontWeight: 600, color: "#d97706", background: "#fef3c7", padding: "2px 8px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f59e0b" }}></span>
+                    In Meeting
+                  </span>
+                ) : lawyerCallStatus?.is_online ? (
+                  <span style={{ fontSize: "11px", fontWeight: 600, color: "#059669", background: "#d1fae5", padding: "2px 8px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }}></span>
+                    Online & Ready to Call
+                  </span>
+                ) : (
+                  <span style={{ fontSize: "11px", color: "#64748b", background: "#f1f5f9", padding: "2px 8px", borderRadius: "10px" }}>
+                    Offline
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleStartInstantVideoCall}
+                disabled={startingCall || lawyerCallStatus?.is_in_meeting}
+                style={{
+                  background: lawyerCallStatus?.is_in_meeting ? "#e2e8f0" : "linear-gradient(135deg, #0f1e36 0%, #1e293b 100%)",
+                  color: lawyerCallStatus?.is_in_meeting ? "#64748b" : "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "8px 14px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: lawyerCallStatus?.is_in_meeting ? "not-allowed" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  boxShadow: lawyerCallStatus?.is_in_meeting ? "none" : "0 2px 4px rgba(15, 30, 54, 0.15)",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                <span>{startingCall ? "Connecting..." : lawyerCallStatus?.is_in_meeting ? "Lawyer in another meet" : "Video Call Lawyer →"}</span>
+              </button>
             </div>
-
-            <h1 className={styles.caseTitle}>{caseData.title}</h1>
-
-            {/* Plain-language status is primary; technical status is secondary via LegalTerm */}
-            <div style={{ margin: "6px 0 10px" }}>
-              <LegalTerm term={caseData.status} layout="stacked" showBadge={false} />
-            </div>
-
-            <p className={styles.caseDesc}>
-              {caseData.description || "No matter synopsis recorded. Upload agreements and documents below to establish the case record."}
-            </p>
-          </div>
-
-          <div className={styles.headerActions}>
-            <button
-              onClick={() => {
-                setSubmittingRequestId(null);
-                setUploadModalOpen(true);
-              }}
-              className={styles.actionBtn}
-            >
-              <span>+</span> Upload document
-            </button>
-
-            <button
-              onClick={() => setExportModalOpen(true)}
-              className={styles.secondaryBtn}
-              title="Export Case Summary Report"
-            >
-              <span>📄</span> Export Report
-            </button>
-          </div>
+          )}
         </div>
 
-        {/* Phase 9: Case Attention Matrix & Primary Next Action */}
-        <CaseAttentionCard caseId={caseId} />
-
-        {/* Linked Official Court Tracking Card */}
-        {linkedCourtCase && (
+        {/* Live Video Meeting Banner */}
+        {consultations.some((c) => c.status === "IN_PROGRESS" || c.status === "PAID" || c.status === "SCHEDULED" || c.status === "ACCEPTED") && (
           <div
             style={{
-              background: "linear-gradient(90deg, rgba(59, 130, 246, 0.08) 0%, var(--surface-card, #0E121A) 45%)",
-              border: "1px solid rgba(59, 130, 246, 0.3)",
-              borderRadius: "12px",
+              background: "linear-gradient(135deg, rgba(5, 150, 105, 0.15) 0%, rgba(15, 23, 42, 0.95) 100%)",
+              border: "2px solid #10b981",
+              borderRadius: "14px",
               padding: "16px 20px",
-              marginBottom: "20px",
+              marginBottom: "16px",
               display: "flex",
-              alignItems: "center",
               justifyContent: "space-between",
-              gap: "16px",
+              alignItems: "center",
               flexWrap: "wrap",
+              gap: "14px",
+              boxShadow: "0 4px 20px rgba(16, 185, 129, 0.2)",
             }}
           >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                <span style={{ fontSize: "10px", fontWeight: 800, color: "#60a5fa", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                  OFFICIAL COURT RECORD (eCourts)
-                </span>
-                <span style={{ fontSize: "11px", color: "#94a3b8" }}>• CNR: <b>{linkedCourtCase.cnr}</b></span>
-              </div>
-              <div style={{ fontSize: "15px", fontWeight: 600, color: "#f8fafc" }}>
-                {linkedCourtCase.court_name} • {linkedCourtCase.case_number}
-              </div>
-              <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "2px" }}>
-                Status: <b style={{ color: "#f8fafc" }}>{linkedCourtCase.human_status}</b> ({linkedCourtCase.technical_status})
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{ display: "inline-flex", position: "relative", width: "12px", height: "12px", flexShrink: 0 }}>
+                <span style={{ position: "absolute", width: "100%", height: "100%", borderRadius: "50%", background: "#10b981", opacity: 0.75, animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite" }} />
+                <span style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#10b981" }} />
+              </span>
+              <div>
+                <div style={{ color: "#34d399", fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  🔴 Live Video Consultation
+                </div>
+                <h3 style={{ fontSize: "16px", color: "#fff", margin: "2px 0 0 0", fontWeight: 700 }}>
+                  {user?.role === "LAWYER" ? "Client is In Video Room for this Case" : "Video Meeting with Your Advocate is Ready"}
+                </h3>
+                <p style={{ fontSize: "12px", color: "#94a3b8", margin: "2px 0 0 0" }}>
+                  Consultation session is active. Join directly with case details and documents synchronized.
+                </p>
               </div>
             </div>
-
-            <div style={{ display: "flex", gap: "10px" }}>
-              <Link
-                href={`/court-tracking?cnr=${encodeURIComponent(linkedCourtCase.cnr)}`}
-                className={styles.secondaryBtn}
-                style={{ textDecoration: "none", fontSize: "12px", padding: "6px 14px" }}
-              >
-                Track on eCourts 🏛
-              </Link>
-              <Link
-                href="/calendar"
-                className={styles.secondaryBtn}
-                style={{ textDecoration: "none", fontSize: "12px", padding: "6px 14px" }}
-              >
-                View in Calendar 📅
-              </Link>
-            </div>
+            {(() => {
+              const activeCon = consultations.find((c) => c.status === "IN_PROGRESS" || c.status === "PAID" || c.status === "SCHEDULED" || c.status === "ACCEPTED");
+              return activeCon ? (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/consultations/${activeCon.id}/room?bypass_time=true`)}
+                  style={{
+                    background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+                    border: "none",
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: "13px",
+                    padding: "10px 20px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    boxShadow: "0 2px 10px rgba(5, 150, 105, 0.4)",
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                  <span>Join Video Meeting Now →</span>
+                </button>
+              ) : null;
+            })()}
           </div>
         )}
 
-        {/* 2. Case Attention Summary (4 Metrics Cards) */}
-        <div className={styles.attentionSummaryGrid}>
-          {/* Next Hearing */}
-          <div className={styles.attentionSummaryCard}>
-            <span className={styles.attentionSummaryLabel}>
-              <span>⚖</span> Next Hearing
-            </span>
-            <div className={styles.attentionSummaryValue}>
-              {nextHearing ? formatDate(nextHearing.hearing_at) : "Not scheduled"}
+        {/* 2. Your Next Important Event Banner (Section 7) */}
+        <div className={styles.nextEventBanner}>
+          <div className={styles.nextEventContent}>
+            <div className={styles.nextEventKicker}>Your next important event</div>
+            <div className={styles.nextEventDate}>
+              <CalendarIcon size={20} color="var(--navy-primary)" />
+              <span>{nextHearing ? formatDateTime(nextHearing.hearing_at) : "Waiting for hearing date"}</span>
             </div>
-            <div className={styles.attentionSummarySub}>
+            <div className={styles.nextEventLocation}>
               {nextHearing
-                ? `${formatTime(nextHearing.hearing_at)} · ${nextHearing.court_name}${nextHearing.bench_or_coram ? ` (Court ${nextHearing.bench_or_coram})` : ""}`
-                : "Waiting for court listing"}
+                ? `${nextHearing.court_name}${nextHearing.bench_or_coram ? ` · Court ${nextHearing.bench_or_coram}` : ""}`
+                : matterBrief?.next_hearing_court || "Official Court Record"}
             </div>
           </div>
 
-          {/* Important Deadline */}
-          <div className={styles.attentionSummaryCard}>
-            <span className={styles.attentionSummaryLabel}>
-              <span>⏱</span> Important Deadline
-            </span>
-            <div className={styles.attentionSummaryValue}>
-              {nextDeadline ? formatDate(nextDeadline.deadline_at) : "Not available"}
-            </div>
-            <div className={styles.attentionSummarySub}>
-              {nextDeadline ? nextDeadline.title : "No statutory deadlines pending"}
-            </div>
-          </div>
-
-          {/* Pending Documents */}
-          <div className={styles.attentionSummaryCard}>
-            <span className={styles.attentionSummaryLabel}>
-              <span>📄</span> Pending Documents
-            </span>
-            <div className={styles.attentionSummaryValue} style={{ color: pendingDocRequests.length > 0 ? "#f87171" : "#34d399" }}>
-              {pendingDocRequests.length}
-            </div>
-            <div className={styles.attentionSummarySub}>
-              {pendingDocRequests.length > 0
-                ? `${pendingDocRequests.length} requested by your advocate`
-                : "All documents up to date"}
-            </div>
-          </div>
-
-          {/* Open Tasks */}
-          <div className={styles.attentionSummaryCard}>
-            <span className={styles.attentionSummaryLabel}>
-              <span>✓</span> Open Tasks
-            </span>
-            <div className={styles.attentionSummaryValue}>
-              {openTasks.length}
-            </div>
-            <div className={styles.attentionSummarySub}>
-              {openTasks.length > 0
-                ? `${openTasks.length} pending action${openTasks.length === 1 ? "" : "s"}`
-                : "No pending tasks"}
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setWhatShouldIDoOpen((prev) => !prev)}
+            className={styles.whatShouldIDoBtn}
+          >
+            <span>What should I do?</span>
+            <ArrowRightIcon size={14} />
+          </button>
         </div>
 
-        {/* 3. Client Case Navigation (8 Tabs) */}
-        <div className={styles.tabNavigation} role="tablist">
-          {CLIENT_TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            let badgeCount: number | null = null;
-            if (tab.id === "documents" && pendingDocRequests.length > 0) badgeCount = pendingDocRequests.length;
-            if (tab.id === "tasks" && openTasks.length > 0) badgeCount = openTasks.length;
-            if (tab.id === "hearings" && hearings.filter((h) => h.status === "SCHEDULED").length > 0) {
-              badgeCount = hearings.filter((h) => h.status === "SCHEDULED").length;
-            }
-
-            return (
+        {/* 3. "What Should I Do?" Simple Guidance Box (Section 7) */}
+        {whatShouldIDoOpen && (
+          <section className={styles.guidanceBox} aria-label="Action guidance for your case">
+            <div className={styles.guidanceHeader}>
+              <h3 className={styles.guidanceTitle}>
+                <CheckCircleIcon size={20} color="var(--accent-gold)" />
+                <span>What you need to do next</span>
+              </h3>
               <button
-                key={tab.id}
-                role="tab"
-                aria-selected={isActive}
-                className={`${styles.tabBtn} ${isActive ? styles.tabBtnActive : ""}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => setWhatShouldIDoOpen(false)}
+                style={{ color: "var(--text-muted)", cursor: "pointer", fontSize: "14px" }}
               >
-                <span>{tab.icon}</span> {tab.label}
-                {badgeCount !== null && (
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      padding: "1px 6px",
-                      borderRadius: "10px",
-                      background: "rgba(99, 102, 241, 0.2)",
-                      color: "#818cf8",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {badgeCount}
-                  </span>
-                )}
+                ✕
               </button>
-            );
-          })}
+            </div>
+
+            <ul className={styles.guidanceList}>
+              <li className={styles.guidanceItem}>
+                <span className={styles.guidanceCheck}>✓</span>
+                <div>
+                  <strong>Bring your Government Photo ID:</strong> Carry your physical Aadhaar, PAN card, or Voter ID to enter the court complex.
+                </div>
+              </li>
+              <li className={styles.guidanceItem}>
+                <span className={styles.guidanceCheck}>✓</span>
+                <div>
+                  <strong>Bring requested documents:</strong> Ensure you have physical copies of agreements, notices, or payment receipts relevant to today&apos;s stage.
+                </div>
+              </li>
+              <li className={styles.guidanceItem}>
+                <span className={styles.guidanceCheck}>✓</span>
+                <div>
+                  <strong>Speak with your lawyer beforehand:</strong> Confirm your courtroom number ({nextHearing?.bench_or_coram || "registry"}) and check if your physical presence inside the courtroom is required.
+                </div>
+              </li>
+            </ul>
+
+            <div className={styles.guidanceDisclaimer}>
+              <strong>What to ask your lawyer:</strong> &ldquo;Will our matter be taken up in the morning session? Do you need any supplementary affidavits or signatures from me today?&rdquo;
+            </div>
+          </section>
+        )}
+
+        {/* 4. Case Progress Stepper (Section 7) */}
+        <div className={styles.progressCard}>
+          <div className={styles.progressTitle}>Case Progress</div>
+          <div className={styles.stepper}>
+            {/* 1. Case Started */}
+            <div className={styles.stepItem}>
+              <div className={`${styles.stepCircle} ${styles.stepCompleted}`}>✓</div>
+              <span className={styles.stepLabel}>Case Started</span>
+            </div>
+            {/* 2. Documents Submitted */}
+            <div className={styles.stepItem}>
+              <div className={`${styles.stepCircle} ${documents.length > 0 ? styles.stepCompleted : styles.stepCurrent}`}>
+                {documents.length > 0 ? "✓" : "2"}
+              </div>
+              <span className={styles.stepLabel}>Documents Submitted</span>
+            </div>
+            {/* 3. Lawyer Assigned */}
+            <div className={styles.stepItem}>
+              <div className={`${styles.stepCircle} ${assignedLawyer ? styles.stepCompleted : documents.length > 0 ? styles.stepCurrent : styles.stepUpcoming}`}>
+                {assignedLawyer ? "✓" : "3"}
+              </div>
+              <span className={styles.stepLabel}>Lawyer Assigned</span>
+            </div>
+            {/* 4. Next Hearing */}
+            <div className={styles.stepItem}>
+              <div className={`${styles.stepCircle} ${nextHearing ? styles.stepCurrent : styles.stepUpcoming}`}>
+                4
+              </div>
+              <span className={styles.stepLabel}>Next Hearing</span>
+            </div>
+            {/* 5. Case Decision */}
+            <div className={styles.stepItem}>
+              <div className={`${styles.stepCircle} ${caseData.status === "CLOSED" ? styles.stepCompleted : styles.stepUpcoming}`}>
+                {caseData.status === "CLOSED" ? "✓" : "5"}
+              </div>
+              <span className={`${styles.stepLabel} ${caseData.status !== "CLOSED" ? styles.stepLabelUpcoming : ""}`}>
+                Case Decision
+              </span>
+            </div>
+          </div>
         </div>
+
+        {/* 5. What would you like to see? (Section 7) */}
+        <div className={styles.sectionSwitcher}>
+          <div className={styles.sectionSwitcherLabel}>What would you like to see?</div>
+          <div className={styles.sectionButtons}>
+            <button
+              className={`${styles.sectionBtn} ${activeTab === "overview" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("overview")}
+            >
+              <span>Overview</span>
+            </button>
+            <button
+              className={`${styles.sectionBtn} ${activeTab === "messages" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("messages")}
+            >
+              <ChatIcon size={16} />
+              <span>Messages ({caseMessages.length})</span>
+            </button>
+            <button
+              className={`${styles.sectionBtn} ${activeTab === "hearings" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("hearings")}
+            >
+              <CalendarIcon size={16} />
+              <span>Hearings</span>
+            </button>
+            <button
+              className={`${styles.sectionBtn} ${activeTab === "documents" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("documents")}
+            >
+              <DocumentIcon size={16} />
+              <span>Documents ({documents.length})</span>
+            </button>
+            <button
+              className={`${styles.sectionBtn} ${activeTab === "people" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("people")}
+            >
+              <LawyerIcon size={16} />
+              <span>{user?.role === "LAWYER" ? "Client & Team" : "My Lawyer"}</span>
+            </button>
+            <button
+              className={`${styles.sectionBtn} ${activeTab === "timeline" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("timeline")}
+            >
+              <ClockIcon size={16} />
+              <span>Updates</span>
+            </button>
+            <button
+              className={`${styles.sectionBtn} ${copilotModalOpen ? styles.sectionBtnActive : ""}`}
+              onClick={() => setCopilotModalOpen(true)}
+            >
+              <AssistantIcon size={16} color="var(--gold-accent)" />
+              <span>Ask LCC Assistant</span>
+            </button>
+          </div>
+
+          {/* Progressive Disclosure for Advanced Case Tools */}
+          <div style={{ marginTop: "12px" }}>
+            <button
+              type="button"
+              onClick={() => setShowAdvancedTools((prev) => !prev)}
+              className={styles.advancedToolsToggle}
+            >
+              <span>{showAdvancedTools ? "▲ Hide Case Options" : "▼ More Case Options & Tools"}</span>
+            </button>
+
+            {showAdvancedTools && (
+              <div className={styles.advancedToolsPanel}>
+                <button
+                  onClick={() => {
+                    setSubmittingRequestId(null);
+                    setUploadModalOpen(true);
+                  }}
+                  className="btn btn-primary"
+                  style={{ fontSize: "13px" }}
+                >
+                  <PlusIcon size={14} color="#fff" />
+                  <span>Upload Document</span>
+                </button>
+                <Link href={`/cases/${caseId}/bundles`} className="btn btn-secondary" style={{ fontSize: "13px" }}>
+                  <span>Court Bundles</span>
+                </Link>
+                <Link href={`/cases/${caseId}/evidence`} className="btn btn-secondary" style={{ fontSize: "13px" }}>
+                  <span>Evidence Locker</span>
+                </Link>
+                <button onClick={() => setExportModalOpen(true)} className="btn btn-secondary" style={{ fontSize: "13px" }}>
+                  <span>Export Report</span>
+                </button>
+                <button onClick={() => setActiveTab("tasks")} className="btn btn-secondary" style={{ fontSize: "13px" }}>
+                  <span>Tasks & Deadlines</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Case Attention Card for Next Step */}
+        <CaseAttentionCard caseId={caseId} />
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === "overview" && (
           <div>
+            {/* Active Consultation Callout */}
+            {consultations.some((c) => c.status === "SCHEDULED" || c.status === "IN_PROGRESS" || c.status === "PAID" || c.status === "ACCEPTED") && (
+              <div
+                style={{
+                  background: "linear-gradient(135deg, rgba(37, 99, 235, 0.14) 0%, rgba(16, 185, 129, 0.14) 100%)",
+                  border: "1px solid rgba(59, 130, 246, 0.35)",
+                  borderRadius: "12px",
+                  padding: "16px 20px",
+                  marginBottom: "24px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "12px",
+                }}
+              >
+                <div>
+                  <div style={{ color: "#38bdf8", fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    🎥 Active Video Consultation Ready
+                  </div>
+                  <h3 style={{ fontSize: "16px", color: "#fff", margin: "4px 0" }}>
+                    Connect with Your Retained Advocate
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "#cbd5e1", margin: 0 }}>
+                    Discuss case updates face-to-face and exchange documents directly in the video room.
+                  </p>
+                </div>
+                {(() => {
+                  const activeCon = consultations.find((c) => c.status === "SCHEDULED" || c.status === "IN_PROGRESS" || c.status === "PAID" || c.status === "ACCEPTED");
+                  return activeCon ? (
+                    <button
+                      onClick={() => router.push(`/consultations/${activeCon.id}/room?bypass_time=true`)}
+                      className={styles.actionBtn}
+                      style={{
+                        background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                        borderColor: "#2563eb",
+                        color: "#fff",
+                        fontWeight: 700,
+                        padding: "10px 18px",
+                      }}
+                    >
+                      🎥 Join Consultation Room →
+                    </button>
+                  ) : null;
+                })()}
+              </div>
+            )}
+
             {/* Deterministic Next Action Callout */}
             {nextHearing ? (
               <div
@@ -861,13 +1301,22 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                     {nextHearing.notes || nextHearing.purpose || "Bring the requested case documents."}
                   </p>
                 </div>
-                <button
-                  onClick={() => setActiveTab("hearings")}
-                  className={styles.actionBtn}
-                  style={{ background: "#ef4444", borderColor: "#ef4444" }}
-                >
-                  View Hearing →
-                </button>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                  <Link
+                    href={`/cases/${caseId}/bundles?hearingId=${nextHearing.id}`}
+                    className={styles.actionBtn}
+                    style={{ background: "#4f46e5", borderColor: "#4f46e5", textDecoration: "none" }}
+                  >
+                    📦 Prepare Bundle
+                  </Link>
+                  <button
+                    onClick={() => setActiveTab("hearings")}
+                    className={styles.actionBtn}
+                    style={{ background: "#ef4444", borderColor: "#ef4444" }}
+                  >
+                    View Hearing →
+                  </button>
+                </div>
               </div>
             ) : pendingDocRequests.length > 0 ? (
               <div
@@ -987,33 +1436,205 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               </div>
             </div>
 
-            {/* Recent Messages from Counsel (Section 17) */}
-            {caseMessages.length > 0 && (
-              <div
-                style={{
-                  background: "var(--surface-card, #0e121a)",
-                  border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-                  borderRadius: "12px",
-                  padding: "20px",
-                  marginBottom: "24px",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
-                  <h4 style={{ fontSize: "15px", color: "#fff", fontWeight: 700, margin: 0 }}>
-                    💬 Recent Message from Counsel
-                  </h4>
-                  <span style={{ fontSize: "11px", color: "#94a3b8" }}>
-                    {formatDate(caseMessages[0].created_at)}
-                  </span>
-                </div>
-                <p style={{ fontSize: "13px", color: "#cbd5e1", margin: "0 0 12px 0", lineHeight: 1.5 }}>
-                  &ldquo;{caseMessages[0].content}&rdquo;
-                </p>
-                <div style={{ fontSize: "12px", color: "#818cf8", fontWeight: 600 }}>
-                  From: Adv. {caseMessages[0].sender_name || "Assigned Counsel"}
-                </div>
+            {/* Case Communication / Messages Card (Section 17) */}
+            <div
+              style={{
+                background: "var(--surface-card, #0e121a)",
+                border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
+                borderRadius: "12px",
+                padding: "20px",
+                marginBottom: "24px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+                <h4 style={{ fontSize: "15px", color: "#fff", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                  💬 Matter Messages & Notices ({caseMessages.length})
+                </h4>
+                <button
+                  onClick={() => setActiveTab("messages")}
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "var(--brand-primary, #6366f1)",
+                    background: "rgba(99, 102, 241, 0.12)",
+                    border: "1px solid rgba(99, 102, 241, 0.25)",
+                    padding: "5px 12px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {user?.role === "LAWYER" ? "Open Client Messaging Panel →" : "Message Assigned Counsel →"}
+                </button>
               </div>
-            )}
+
+              {caseMessages.length > 0 ? (
+                <div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "14px" }}>
+                    {caseMessages.slice(-3).map((msg) => {
+                      const isFromClient = msg.sender_role?.toUpperCase() === "CLIENT" || msg.sender_role?.toUpperCase() === "OWNER";
+                      const isMeetingInvite = msg.content?.includes("/consultations/") || msg.content?.includes("video meeting");
+                      return (
+                        <div
+                          key={msg.id}
+                          style={{
+                            background: isFromClient ? "rgba(14, 165, 233, 0.08)" : "rgba(255, 255, 255, 0.03)",
+                            border: `1px solid ${isFromClient ? "rgba(14, 165, 233, 0.25)" : "rgba(255, 255, 255, 0.07)"}`,
+                            borderRadius: "8px",
+                            padding: "10px 14px",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ fontSize: "12px", fontWeight: 700, color: isFromClient ? "#38bdf8" : "#818cf8" }}>
+                                {msg.sender_name || (isFromClient ? "Client" : "Counsel")}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: "10px",
+                                  fontWeight: 600,
+                                  textTransform: "uppercase",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  background: isFromClient ? "rgba(14, 165, 233, 0.2)" : "rgba(99, 102, 241, 0.2)",
+                                  color: isFromClient ? "#38bdf8" : "#a5b4fc",
+                                }}
+                              >
+                                {msg.sender_role || (isFromClient ? "Client" : "Counsel")}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                              {formatDate(msg.created_at)}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: "13px", color: "#cbd5e1", margin: "0", lineHeight: 1.5 }}>
+                            {msg.content}
+                          </p>
+                          {isMeetingInvite && (
+                            <div style={{ marginTop: "8px" }}>
+                              <button
+                                onClick={() => {
+                                  const match = msg.content.match(/\/consultations\/([a-zA-Z0-9_-]+)\/room/);
+                                  if (match) {
+                                    window.open(`/consultations/${match[1]}/room`, "_blank");
+                                  } else {
+                                    setActiveTab("messages");
+                                  }
+                                }}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  color: "#fff",
+                                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                  border: "none",
+                                  padding: "5px 12px",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                📹 Join Video Consultation Now →
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Inline Quick Reply Form */}
+                  <form onSubmit={handleSendQuickReply} style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+                    <input
+                      type="text"
+                      placeholder="Type a quick reply to the client..."
+                      value={quickReplyText}
+                      onChange={(e) => setQuickReplyText(e.target.value)}
+                      style={{
+                        flex: 1,
+                        background: "rgba(0, 0, 0, 0.3)",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        borderRadius: "8px",
+                        padding: "8px 12px",
+                        fontSize: "13px",
+                        color: "#fff",
+                        outline: "none",
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={sendingQuickReply || !quickReplyText.trim()}
+                      style={{
+                        background: sendingQuickReply || !quickReplyText.trim() ? "rgba(99, 102, 241, 0.4)" : "#6366f1",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "8px 16px",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        cursor: sendingQuickReply || !quickReplyText.trim() ? "not-allowed" : "pointer",
+                        transition: "background 0.2s",
+                      }}
+                    >
+                      {sendingQuickReply ? "Sending..." : "Reply"}
+                    </button>
+                  </form>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <button
+                      onClick={() => setActiveTab("messages")}
+                      className={styles.secondaryBtn}
+                      style={{ fontSize: "12px", padding: "4px 10px" }}
+                    >
+                      View all {caseMessages.length} messages in detail →
+                    </button>
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>
+                      Auto-synced with client portal
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p style={{ fontSize: "13px", color: "#94a3b8", margin: "0 0 12px 0" }}>
+                    No messages recorded on this case yet. Start the conversation with your client below.
+                  </p>
+                  <form onSubmit={handleSendQuickReply} style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      type="text"
+                      placeholder="Send a message to client..."
+                      value={quickReplyText}
+                      onChange={(e) => setQuickReplyText(e.target.value)}
+                      style={{
+                        flex: 1,
+                        background: "rgba(0, 0, 0, 0.3)",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        borderRadius: "8px",
+                        padding: "8px 12px",
+                        fontSize: "13px",
+                        color: "#fff",
+                        outline: "none",
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={sendingQuickReply || !quickReplyText.trim()}
+                      style={{
+                        background: sendingQuickReply || !quickReplyText.trim() ? "rgba(99, 102, 241, 0.4)" : "#6366f1",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "8px 16px",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        cursor: sendingQuickReply || !quickReplyText.trim() ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {sendingQuickReply ? "Sending..." : "Send"}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
 
             {/* Recent Timeline Preview */}
             <div
@@ -1374,6 +1995,14 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                   Verified court listings and preparation guidelines for this matter.
                 </p>
               </div>
+
+              <Link
+                href={`/cases/${caseId}/bundles`}
+                className={styles.secondaryBtn}
+                style={{ fontSize: "13px", textDecoration: "none" }}
+              >
+                <span>📦</span> Manage Evidentiary Bundles
+              </Link>
             </div>
 
             {hearings.length === 0 ? (
@@ -1435,7 +2064,14 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                       </span>
                     </div>
 
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                      <Link
+                        href={`/cases/${caseId}/bundles?hearingId=${h.id}`}
+                        className={styles.secondaryBtn}
+                        style={{ fontSize: "12px", textDecoration: "none" }}
+                      >
+                        📦 Prepare Court Bundle
+                      </Link>
                       {assignedLawyer && (
                         <button
                           onClick={() => setActiveTab("people")}
@@ -1453,138 +2089,723 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
           </div>
         )}
 
-        {/* TAB 5: TASKS */}
+        {/* TAB 5: TASKS & DEADLINES (CASE OPERATIONS & WORKFLOW AUTOMATION) */}
         {activeTab === "tasks" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+            {/* Header & Quick Action */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
               <div>
-                <h3 style={{ fontSize: "18px", color: "#fff", fontWeight: 700 }}>
-                  Case Tasks & Action Items
+                <h3 style={{ fontSize: "18px", color: "#fff", fontWeight: 700, margin: 0 }}>
+                  Case Operations, Deadlines & Workflow Automation
                 </h3>
-                <p style={{ fontSize: "13px", color: "#94a3b8" }}>
-                  Human-readable tasks required for your case.
+                <p style={{ fontSize: "13px", color: "#94a3b8", marginTop: "4px" }}>
+                  Actionable case tasks, statutory limitation deadlines, and deterministic procedural workflow templates.
                 </p>
               </div>
+
+              <button
+                onClick={() => setTemplateModalOpen(true)}
+                className={styles.actionBtn}
+                style={{ fontSize: "13px", padding: "8px 16px", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <span>⚡</span> Apply Workflow Template
+              </button>
             </div>
 
-            {/* Add Task Form */}
-            <form
-              onSubmit={handleCreateTask}
-              style={{
-                background: "var(--surface-card, #0e121a)",
-                border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-                borderRadius: "10px",
-                padding: "14px 18px",
-                marginBottom: "20px",
-                display: "flex",
-                gap: "10px",
-                flexWrap: "wrap",
-                alignItems: "center",
-              }}
-            >
-              <input
-                type="text"
-                placeholder="Add a new task (e.g., Upload the sale agreement)..."
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                style={{
-                  flex: 1,
-                  minWidth: "220px",
-                  background: "#141722",
-                  border: "1px solid #283042",
-                  borderRadius: "6px",
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: "13px",
-                }}
-              />
-              <input
-                type="date"
-                value={newTaskDueDate}
-                onChange={(e) => setNewTaskDueDate(e.target.value)}
-                style={{
-                  background: "#141722",
-                  border: "1px solid #283042",
-                  borderRadius: "6px",
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: "13px",
-                }}
-              />
-              <button
-                type="submit"
-                disabled={addingTask || !newTaskTitle.trim()}
-                className={styles.actionBtn}
-                style={{ fontSize: "12px", padding: "8px 16px" }}
-              >
-                {addingTask ? "Adding..." : "+ Add Task"}
-              </button>
-            </form>
-
-            {/* Task Items List */}
-            {tasks.length === 0 ? (
+            {/* Case Health Telemetry Card */}
+            {healthSummary && (
               <div
                 style={{
-                  background: "var(--surface-card, #0e121a)",
-                  border: "1px dashed var(--border-subtle, rgba(255, 255, 255, 0.15))",
+                  background: "#101218",
+                  border: "1px solid #222634",
                   borderRadius: "12px",
-                  padding: "36px 20px",
-                  textAlign: "center",
+                  padding: "16px 20px",
+                  marginBottom: "24px",
                 }}
               >
-                <p style={{ color: "#94a3b8", fontSize: "14px" }}>
-                  All tasks are up to date. You can add tasks above to track reminders.
-                </p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "14px" }}>📊</span>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Operational Case Health Summary
+                    </span>
+                  </div>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>
+                    Deterministic Telemetry · Zero AI Interpretation
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+                  <div style={{ background: "#171a24", padding: "12px 14px", borderRadius: "8px", border: "1px solid #252a39" }}>
+                    <div style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 600 }}>Next Hearing</div>
+                    <div style={{ fontSize: "14px", fontWeight: 700, color: healthSummary.has_upcoming_hearing ? "#38bdf8" : "#64748b", marginTop: "4px" }}>
+                      {healthSummary.next_hearing_date ? formatDate(healthSummary.next_hearing_date) : "None scheduled"}
+                    </div>
+                    {healthSummary.next_hearing_court && (
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>{healthSummary.next_hearing_court}</div>
+                    )}
+                  </div>
+
+                  <div style={{ background: "#171a24", padding: "12px 14px", borderRadius: "8px", border: "1px solid #252a39" }}>
+                    <div style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 600 }}>Overdue Tasks</div>
+                    <div style={{ fontSize: "18px", fontWeight: 700, color: healthSummary.overdue_tasks_count > 0 ? "#f87171" : "#34d399", marginTop: "4px" }}>
+                      {healthSummary.overdue_tasks_count}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
+                      {healthSummary.overdue_tasks_count > 0 ? "Requires attention" : "All current"}
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#171a24", padding: "12px 14px", borderRadius: "8px", border: "1px solid #252a39" }}>
+                    <div style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 600 }}>Upcoming Deadlines</div>
+                    <div style={{ fontSize: "18px", fontWeight: 700, color: "#818cf8", marginTop: "4px" }}>
+                      {healthSummary.upcoming_deadlines_count}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>Statutory & compliance</div>
+                  </div>
+
+                  <div style={{ background: "#171a24", padding: "12px 14px", borderRadius: "8px", border: "1px solid #252a39" }}>
+                    <div style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 600 }}>Active Evidence Items</div>
+                    <div style={{ fontSize: "18px", fontWeight: 700, color: "#fbbf24", marginTop: "4px" }}>
+                      {healthSummary.unreviewed_evidence_count}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>Evidence Locker records</div>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div>
-                {tasks.map((task) => {
-                  const isCompleted = task.status === "COMPLETED";
-                  return (
-                    <div key={task.id} className={styles.taskItemCard}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", flex: 1 }}>
-                        <input
-                          type="checkbox"
-                          checked={isCompleted}
-                          onChange={() => handleToggleTaskStatus(task)}
-                          style={{
-                            width: "18px",
-                            height: "18px",
-                            marginTop: "2px",
-                            accentColor: "#4f5bf7",
-                            cursor: "pointer",
-                          }}
-                        />
-                        <div>
-                          <div
-                            style={{
-                              fontSize: "15px",
-                              fontWeight: 500,
-                              color: isCompleted ? "#717d91" : "#fff",
-                              textDecoration: isCompleted ? "line-through" : "none",
-                              marginBottom: "4px",
-                            }}
-                          >
-                            {task.title}
+            )}
+
+            {/* Deadlines Section */}
+            <div style={{ marginBottom: "32px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                <h4 style={{ fontSize: "16px", color: "#fff", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span>⏳</span> Statutory & Compliance Deadlines ({deadlines.length})
+                </h4>
+              </div>
+
+              {deadlines.length === 0 ? (
+                <div
+                  style={{
+                    background: "#0e121a",
+                    border: "1px dashed rgba(255, 255, 255, 0.12)",
+                    borderRadius: "10px",
+                    padding: "24px 16px",
+                    textAlign: "center",
+                  }}
+                >
+                  <p style={{ color: "#64748b", fontSize: "13px", margin: 0 }}>
+                    No statutory deadlines currently scheduled. Deadlines can be imported from court records or scheduled by counsel.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {deadlines.map((dl) => {
+                    const isPassed = new Date(dl.deadline_at).getTime() < new Date().getTime();
+                    const isClosed = dl.status === "COMPLETED" || dl.status === "CANCELLED";
+                    return (
+                      <div
+                        key={dl.id}
+                        style={{
+                          background: "#101218",
+                          border: isClosed ? "1px solid #1c202a" : isPassed ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid #222634",
+                          borderRadius: "10px",
+                          padding: "14px 18px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          flexWrap: "wrap",
+                          gap: "12px",
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: "240px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                            <span style={{ fontSize: "15px", fontWeight: 600, color: isClosed ? "#64748b" : "#fff", textDecoration: dl.status === "COMPLETED" ? "line-through" : "none" }}>
+                              {dl.title}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                textTransform: "uppercase",
+                                fontWeight: 700,
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                background: dl.status === "COMPLETED" ? "rgba(52, 211, 153, 0.15)" : dl.status === "OVERDUE" || (isPassed && !isClosed) ? "rgba(239, 68, 68, 0.15)" : "rgba(99, 102, 241, 0.15)",
+                                color: dl.status === "COMPLETED" ? "#34d399" : dl.status === "OVERDUE" || (isPassed && !isClosed) ? "#f87171" : "#818cf8",
+                              }}
+                            >
+                              {dl.status}
+                            </span>
                           </div>
-                          <div style={{ fontSize: "12px", color: "#94a3b8", display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                            {task.due_date && <span>Due: {formatDate(task.due_date)}</span>}
+
+                          {dl.description && (
+                            <p style={{ fontSize: "13px", color: "#94a3b8", margin: "4px 0 8px" }}>
+                              {dl.description}
+                            </p>
+                          )}
+
+                          <div style={{ fontSize: "12px", color: "#64748b", display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+                            <span style={{ color: !isClosed && isPassed ? "#f87171" : "#94a3b8", fontWeight: 500 }}>
+                              📅 Due: {formatDate(dl.deadline_at)}
+                            </span>
                             <span>•</span>
-                            <span>Priority: {task.priority}</span>
+                            <span>Type: {dl.deadline_type.replace(/_/g, " ")}</span>
+                            <span>•</span>
+                            <span style={{ color: "#38bdf8" }}>
+                              Provenance: {dl.retrieval_method || "MANUAL"}
+                            </span>
+                            {dl.linked_hearing_id && (
+                              <>
+                                <span>•</span>
+                                <span style={{ color: "#a855f7" }}>Linked to Court Hearing</span>
+                              </>
+                            )}
                           </div>
                         </div>
-                      </div>
 
-                      <button
-                        onClick={() => handleToggleTaskStatus(task)}
-                        className={isCompleted ? styles.secondaryBtn : styles.actionBtn}
-                        style={{ fontSize: "12px", padding: "5px 12px" }}
+                        {!isClosed && (
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              onClick={() => void handleCompleteDeadline(dl.id)}
+                              className={styles.actionBtn}
+                              style={{ fontSize: "12px", padding: "5px 12px" }}
+                            >
+                              ✓ Complete
+                            </button>
+                            <button
+                              onClick={() => void handleCancelDeadline(dl.id)}
+                              className={styles.secondaryBtn}
+                              style={{ fontSize: "12px", padding: "5px 10px" }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Case Tasks Section */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
+                <h4 style={{ fontSize: "16px", color: "#fff", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
+                  <span>✓</span> Case Tasks ({tasks.length})
+                </h4>
+
+                {/* Filter Controls */}
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    placeholder="Search tasks..."
+                    value={taskSearchQuery}
+                    onChange={(e) => setTaskSearchQuery(e.target.value)}
+                    style={{
+                      background: "#141722",
+                      border: "1px solid #283042",
+                      borderRadius: "6px",
+                      padding: "6px 10px",
+                      color: "#fff",
+                      fontSize: "12px",
+                      width: "160px",
+                    }}
+                  />
+
+                  <select
+                    value={taskStatusFilter}
+                    onChange={(e) => setTaskStatusFilter(e.target.value)}
+                    style={{
+                      background: "#141722",
+                      border: "1px solid #283042",
+                      borderRadius: "6px",
+                      padding: "6px 10px",
+                      color: "#fff",
+                      fontSize: "12px",
+                    }}
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="BLOCKED">Blocked</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </select>
+
+                  <select
+                    value={taskPriorityFilter}
+                    onChange={(e) => setTaskPriorityFilter(e.target.value)}
+                    style={{
+                      background: "#141722",
+                      border: "1px solid #283042",
+                      borderRadius: "6px",
+                      padding: "6px 10px",
+                      color: "#fff",
+                      fontSize: "12px",
+                    }}
+                  >
+                    <option value="ALL">All Priorities</option>
+                    <option value="URGENT">Urgent</option>
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Quick Task Creation Drawer */}
+              <form
+                onSubmit={handleCreateTask}
+                style={{
+                  background: "#101218",
+                  border: "1px solid #222634",
+                  borderRadius: "10px",
+                  padding: "16px 18px",
+                  marginBottom: "20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <input
+                    type="text"
+                    placeholder="Task title (e.g., Review listing cause list, finalize exhibit B)..."
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    style={{
+                      flex: 2,
+                      minWidth: "240px",
+                      background: "#141722",
+                      border: "1px solid #283042",
+                      borderRadius: "6px",
+                      padding: "8px 12px",
+                      color: "#fff",
+                      fontSize: "13px",
+                    }}
+                  />
+
+                  <select
+                    value={newTaskPriority}
+                    onChange={(e) => setNewTaskPriority(e.target.value as any)}
+                    style={{
+                      background: "#141722",
+                      border: "1px solid #283042",
+                      borderRadius: "6px",
+                      padding: "8px 12px",
+                      color: "#fff",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <option value="LOW">Low Priority</option>
+                    <option value="MEDIUM">Medium Priority</option>
+                    <option value="HIGH">High Priority</option>
+                    <option value="URGENT">Urgent Priority</option>
+                  </select>
+
+                  <input
+                    type="date"
+                    value={newTaskDueDate}
+                    onChange={(e) => setNewTaskDueDate(e.target.value)}
+                    style={{
+                      background: "#141722",
+                      border: "1px solid #283042",
+                      borderRadius: "6px",
+                      padding: "8px 12px",
+                      color: "#fff",
+                      fontSize: "13px",
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    placeholder="Optional description / operational instructions..."
+                    value={newTaskDesc}
+                    onChange={(e) => setNewTaskDesc(e.target.value)}
+                    style={{
+                      flex: 1,
+                      minWidth: "240px",
+                      background: "#141722",
+                      border: "1px solid #283042",
+                      borderRadius: "6px",
+                      padding: "8px 12px",
+                      color: "#fff",
+                      fontSize: "13px",
+                    }}
+                  />
+
+                  {hearings.length > 0 && (
+                    <select
+                      value={newTaskLinkedHearing}
+                      onChange={(e) => setNewTaskLinkedHearing(e.target.value)}
+                      style={{
+                        background: "#141722",
+                        border: "1px solid #283042",
+                        borderRadius: "6px",
+                        padding: "8px 12px",
+                        color: "#fff",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <option value="">No Hearing Link</option>
+                      {hearings.map((h) => (
+                        <option key={h.id} value={h.id}>
+                          Hearing: {h.court_name} ({formatDate(h.hearing_at)})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={addingTask || !newTaskTitle.trim()}
+                    className={styles.actionBtn}
+                    style={{ fontSize: "12px", padding: "8px 16px" }}
+                  >
+                    {addingTask ? "Adding..." : "+ Create Task"}
+                  </button>
+                </div>
+              </form>
+
+              {/* Tasks List */}
+              {filteredTasksList.length === 0 ? (
+                <div
+                  style={{
+                    background: "#0e121a",
+                    border: "1px dashed rgba(255, 255, 255, 0.12)",
+                    borderRadius: "10px",
+                    padding: "36px 20px",
+                    textAlign: "center",
+                  }}
+                >
+                  <p style={{ color: "#64748b", fontSize: "14px", margin: 0 }}>
+                    {tasks.length === 0
+                      ? "All operational tasks are up to date. You can add tasks above or apply a deterministic workflow template."
+                      : "No tasks match the active filters."}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {filteredTasksList.map((task) => {
+                    const isCompleted = task.status === "COMPLETED";
+                    const isCancelled = task.status === "CANCELLED";
+                    const isClosed = isCompleted || isCancelled;
+                    const isOverdue = !isClosed && task.due_date && new Date(task.due_date).getTime() < new Date().getTime();
+
+                    const priorityColors: Record<string, { bg: string; color: string }> = {
+                      URGENT: { bg: "rgba(239, 68, 68, 0.15)", color: "#f87171" },
+                      HIGH: { bg: "rgba(245, 158, 11, 0.15)", color: "#fbbf24" },
+                      MEDIUM: { bg: "rgba(99, 102, 241, 0.15)", color: "#818cf8" },
+                      LOW: { bg: "rgba(100, 116, 139, 0.15)", color: "#94a3b8" },
+                    };
+                    const pStyle = priorityColors[task.priority] || priorityColors.MEDIUM;
+
+                    return (
+                      <div
+                        key={task.id}
+                        style={{
+                          background: "#101218",
+                          border: isClosed ? "1px solid #1c202a" : isOverdue ? "1px solid rgba(239, 68, 68, 0.35)" : "1px solid #222634",
+                          borderRadius: "10px",
+                          padding: "14px 18px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          flexWrap: "wrap",
+                          gap: "12px",
+                        }}
                       >
-                        {isCompleted ? "Completed ✓" : "Mark Complete"}
-                      </button>
+                        <div style={{ flex: 1, minWidth: "240px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px", flexWrap: "wrap" }}>
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                textTransform: "uppercase",
+                                fontWeight: 700,
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                background: pStyle.bg,
+                                color: pStyle.color,
+                              }}
+                            >
+                              {task.priority}
+                            </span>
+
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                textTransform: "uppercase",
+                                fontWeight: 700,
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                background: isCompleted ? "rgba(52, 211, 153, 0.15)" : task.status === "IN_PROGRESS" ? "rgba(56, 189, 248, 0.15)" : task.status === "BLOCKED" ? "rgba(249, 115, 22, 0.15)" : "rgba(100, 116, 139, 0.15)",
+                                color: isCompleted ? "#34d399" : task.status === "IN_PROGRESS" ? "#38bdf8" : task.status === "BLOCKED" ? "#f97316" : "#94a3b8",
+                              }}
+                            >
+                              {task.status.replace(/_/g, " ")}
+                            </span>
+
+                            <span
+                              style={{
+                                fontSize: "15px",
+                                fontWeight: 600,
+                                color: isClosed ? "#64748b" : "#fff",
+                                textDecoration: isCompleted ? "line-through" : "none",
+                              }}
+                            >
+                              {task.title}
+                            </span>
+                          </div>
+
+                          {task.description && (
+                            <p style={{ fontSize: "13px", color: "#94a3b8", margin: "4px 0 8px", lineHeight: "1.5" }}>
+                              {task.description}
+                            </p>
+                          )}
+
+                          <div style={{ fontSize: "12px", color: "#64748b", display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+                            {task.due_date && (
+                              <span style={{ color: isOverdue ? "#f87171" : "#94a3b8", fontWeight: isOverdue ? 600 : 400 }}>
+                                📅 Due: {formatDate(task.due_date)} {isOverdue && "(OVERDUE)"}
+                              </span>
+                            )}
+                            {task.completed_at && (
+                              <span style={{ color: "#34d399" }}>
+                                ✓ Completed on {formatDate(task.completed_at)}
+                              </span>
+                            )}
+                            {task.linked_hearing_id && (
+                              <span style={{ color: "#a855f7" }}>🏛 Court Hearing Linked</span>
+                            )}
+                            {task.linked_evidence_id && (
+                              <span style={{ color: "#38bdf8" }}>📄 Evidence Linked</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Interactive Lifecycle Actions */}
+                        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                          {(task.status === "PENDING" || task.status === "BLOCKED") && (
+                            <button
+                              onClick={() => void handleStartTask(task.id)}
+                              className={styles.secondaryBtn}
+                              style={{ fontSize: "11px", padding: "5px 10px" }}
+                              title="Start working on this task"
+                            >
+                              ▶ Start
+                            </button>
+                          )}
+
+                          {(task.status === "PENDING" || task.status === "IN_PROGRESS" || task.status === "BLOCKED") && (
+                            <>
+                              <button
+                                onClick={() => void handleCompleteTaskAction(task.id)}
+                                className={styles.actionBtn}
+                                style={{ fontSize: "11px", padding: "5px 12px" }}
+                              >
+                                ✓ Complete
+                              </button>
+                              <button
+                                onClick={() => void handleCancelTaskAction(task.id)}
+                                className={styles.secondaryBtn}
+                                style={{ fontSize: "11px", padding: "5px 8px" }}
+                              >
+                                ⊘
+                              </button>
+                            </>
+                          )}
+
+                          {isClosed && (
+                            <button
+                              onClick={() => void handleReopenTaskAction(task.id)}
+                              className={styles.secondaryBtn}
+                              style={{ fontSize: "11px", padding: "5px 10px" }}
+                              title="Reopen task back to In Progress"
+                            >
+                              ↺ Reopen
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Workflow Template Application Modal */}
+            {templateModalOpen && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0, 0, 0, 0.75)",
+                  backdropFilter: "blur(4px)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 9999,
+                  padding: "20px",
+                }}
+              >
+                <div
+                  style={{
+                    background: "#101218",
+                    border: "1px solid #283042",
+                    borderRadius: "14px",
+                    maxWidth: "600px",
+                    width: "100%",
+                    padding: "24px",
+                    boxShadow: "0 20px 40px rgba(0, 0, 0, 0.6)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                    <div>
+                      <h3 style={{ fontSize: "18px", color: "#fff", fontWeight: 700, margin: 0 }}>
+                        ⚡ Procedural Case Workflow Templates
+                      </h3>
+                      <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>
+                        Select a deterministic procedural template to batch generate verified operational tasks. Zero AI estimation.
+                      </p>
                     </div>
-                  );
-                })}
+                    <button
+                      onClick={() => setTemplateModalOpen(false)}
+                      style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+                    {[
+                      {
+                        id: "HEARING_PREPARATION",
+                        title: "🏛 Hearing Preparation Template",
+                        desc: "Generates 6 tasks: Cause list verification, prior order audit, sequential exhibit check, evidentiary bundle PDF compilation with Bates stamps, BSA Section 63 certificate draft, and appearance logistics confirmation.",
+                      },
+                      {
+                        id: "POST_HEARING_FOLLOWUP",
+                        title: "📋 Post-Hearing Follow-up Template",
+                        desc: "Generates 4 tasks: Bench proceedings synopsis, certified court order deposit to Evidence Locker, next listing date registration, and compliance filings scheduling.",
+                      },
+                      {
+                        id: "EVIDENCE_PREPARATION",
+                        title: "📁 Evidence Preparation Template",
+                        desc: "Generates 3 tasks: Native digital records retrieval from client, Evidence Locker upload with SHA-256 integrity hashing, and formal exhibit letter designations.",
+                      },
+                      {
+                        id: "NEW_CONSULTATION",
+                        title: "🤝 New Matter Consultation Template",
+                        desc: "Generates 3 tasks: Intake facts review, foundational agreement and ID document request, and consultation session with matter brief preparation.",
+                      },
+                    ].map((tpl) => (
+                      <div
+                        key={tpl.id}
+                        onClick={() => setSelectedTemplate(tpl.id)}
+                        style={{
+                          background: selectedTemplate === tpl.id ? "rgba(99, 102, 241, 0.12)" : "#141722",
+                          border: selectedTemplate === tpl.id ? "1px solid #4f5bf7" : "1px solid #252a39",
+                          borderRadius: "8px",
+                          padding: "12px 14px",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <input
+                            type="radio"
+                            checked={selectedTemplate === tpl.id}
+                            onChange={() => setSelectedTemplate(tpl.id)}
+                            style={{ accentColor: "#4f5bf7" }}
+                          />
+                          <span style={{ fontSize: "14px", fontWeight: 600, color: "#fff" }}>
+                            {tpl.title}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: "12px", color: "#94a3b8", margin: "6px 0 0 24px", lineHeight: "1.4" }}>
+                          {tpl.desc}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Optional Target Hearing */}
+                  {hearings.length > 0 && selectedTemplate === "HEARING_PREPARATION" && (
+                    <div style={{ marginBottom: "20px" }}>
+                      <label style={{ fontSize: "12px", color: "#94a3b8", display: "block", marginBottom: "6px" }}>
+                        Link to Scheduled Hearing:
+                      </label>
+                      <select
+                        value={templateHearingId}
+                        onChange={(e) => setTemplateHearingId(e.target.value)}
+                        style={{
+                          width: "100%",
+                          background: "#141722",
+                          border: "1px solid #283042",
+                          borderRadius: "6px",
+                          padding: "8px 12px",
+                          color: "#fff",
+                          fontSize: "13px",
+                        }}
+                      >
+                        <option value="">Select court listing...</option>
+                        {hearings.map((h) => (
+                          <option key={h.id} value={h.id}>
+                            {h.court_name} · {formatDate(h.hearing_at)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {participants.length > 0 && (
+                    <div style={{ marginBottom: "20px" }}>
+                      <label style={{ fontSize: "12px", color: "#94a3b8", display: "block", marginBottom: "6px" }}>
+                        Assign Generated Tasks To:
+                      </label>
+                      <select
+                        value={templateAssigneeId}
+                        onChange={(e) => setTemplateAssigneeId(e.target.value)}
+                        style={{
+                          width: "100%",
+                          background: "#141722",
+                          border: "1px solid #283042",
+                          borderRadius: "6px",
+                          padding: "8px 12px",
+                          color: "#fff",
+                          fontSize: "13px",
+                        }}
+                      >
+                        <option value="">Unassigned (Case Participants)</option>
+                        {participants.map((p) => (
+                          <option key={p.id} value={p.user_id}>
+                            {p.user?.full_name || p.user?.email || p.user_id} ({p.participant_role})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                    <button
+                      onClick={() => setTemplateModalOpen(false)}
+                      className={styles.secondaryBtn}
+                      style={{ fontSize: "13px", padding: "8px 16px" }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => void handleApplyWorkflowTemplate()}
+                      disabled={applyingTemplate}
+                      className={styles.actionBtn}
+                      style={{ fontSize: "13px", padding: "8px 20px" }}
+                    >
+                      {applyingTemplate ? "Applying..." : "Apply Template"}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1627,9 +2848,27 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                   >
                     Assigned Legal Counsel
                   </span>
-                  <h4 style={{ fontSize: "18px", color: "#fff", fontWeight: 600, margin: "10px 0 4px" }}>
-                    Adv. {assignedLawyer.full_name}
-                  </h4>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "10px 0 4px" }}>
+                    <h4 style={{ fontSize: "18px", color: "#fff", fontWeight: 600, margin: 0 }}>
+                      Adv. {assignedLawyer.full_name}
+                    </h4>
+                    {lawyerCallStatus?.is_in_meeting ? (
+                      <span style={{ fontSize: "11px", color: "#f59e0b", background: "rgba(245, 158, 11, 0.15)", padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f59e0b" }}></span>
+                        In Another Meeting
+                      </span>
+                    ) : lawyerCallStatus?.is_online ? (
+                      <span style={{ fontSize: "11px", color: "#10b981", background: "rgba(16, 185, 129, 0.15)", padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }}></span>
+                        Online & Available
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: "11px", color: "#94a3b8", background: "rgba(148, 163, 184, 0.15)", padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#94a3b8" }}></span>
+                        Offline
+                      </span>
+                    )}
+                  </div>
                   {assignedLawyer.lawyer_specialization && (
                     <div style={{ fontSize: "13px", color: "#94a3b8" }}>
                       Specialization: {assignedLawyer.lawyer_specialization}
@@ -1645,6 +2884,59 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                       Email: {assignedLawyer.email}
                     </div>
                   )}
+
+                  <div style={{ marginTop: "16px" }}>
+                    {lawyerCallStatus?.is_in_meeting ? (
+                      <div style={{ background: "rgba(245, 158, 11, 0.1)", border: "1px solid rgba(245, 158, 11, 0.2)", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", color: "#fbbf24" }}>
+                        Advocate is currently in another consultation. You can send a request to join when they finish.
+                        <button
+                          onClick={handleStartInstantVideoCall}
+                          disabled={startingCall}
+                          style={{
+                            marginTop: "8px",
+                            width: "100%",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            background: "rgba(245, 158, 11, 0.2)",
+                            border: "1px solid rgba(245, 158, 11, 0.4)",
+                            color: "#fbbf24",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {startingCall ? "Connecting..." : "Send Request to Join"}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleStartInstantVideoCall}
+                        disabled={startingCall}
+                        className={styles.actionBtn}
+                        style={{
+                          width: "100%",
+                          justifyContent: "center",
+                          background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+                          color: "#fff",
+                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "10px 16px",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                        {startingCall ? "Starting Video Room..." : "📹 Start Video Call Now →"}
+                      </button>
+                    )}
+                    {callError && (
+                      <div style={{ color: "#ef4444", fontSize: "12px", marginTop: "6px" }}>
+                        {callError}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1734,6 +3026,20 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
           </div>
         )}
 
+        {/* TAB: MESSAGES */}
+        {activeTab === "messages" && (
+          <div>
+            <MatterInbox
+              caseId={caseId}
+              messages={caseMessages}
+              documents={documents}
+              tasks={tasks}
+              userRole={user?.role || "CLIENT"}
+              onRefresh={fetchCaseWorkspace}
+            />
+          </div>
+        )}
+
         {/* TAB 7: PAYMENTS */}
         {activeTab === "payments" && (
           <div>
@@ -1764,8 +3070,6 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
                 {consultations.map((con) => {
                   const fee = con.fee_amount || 0;
-                  const gst = Math.round(fee * 0.18 * 100) / 100;
-                  const total = Math.round((fee + gst) * 100) / 100;
                   const isPending = con.status === "REQUESTED" || con.status === "ACCEPTED";
 
                   return (
@@ -1808,26 +3112,43 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8" }}>
                             <span>Consultation Fee:</span>
-                            <span>₹{fee.toLocaleString("en-IN")}</span>
+                            <span style={{ color: "#fff", fontWeight: 600 }}>₹{fee.toLocaleString("en-IN")}</span>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8" }}>
-                            <span>GST (18%):</span>
-                            <span>₹{gst.toFixed(2)}</span>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: "#fff", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "6px" }}>
-                            <span>Total Amount:</span>
-                            <span>₹{total.toFixed(2)}</span>
+                          <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8", fontSize: "12px" }}>
+                            <span>Taxes & Platform Charges:</span>
+                            <span>Itemized at Checkout</span>
                           </div>
                         </div>
                       </div>
 
-                      {isPending && (
+                      {isPending ? (
                         <button
                           onClick={() => setCheckoutConsultation(con)}
                           className={styles.actionBtn}
                           style={{ width: "100%", justifyContent: "center" }}
                         >
                           Pay securely →
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => router.push(`/consultations/${con.id}/room?bypass_time=true`)}
+                          className={styles.actionBtn}
+                          style={{
+                            width: "100%",
+                            justifyContent: "center",
+                            background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+                            color: "#fff",
+                            fontWeight: 600,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "10px 14px",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                          Join Video Call Now →
                         </button>
                       )}
                     </div>
@@ -2063,6 +3384,67 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               void fetchCaseWorkspace();
             }}
           />
+        )}
+
+        {/* LCC Legal Assistant Modal (Section 12) */}
+        {copilotModalOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15, 30, 54, 0.45)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "20px",
+            }}
+            onClick={() => setCopilotModalOpen(false)}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: "960px",
+                maxHeight: "90vh",
+                background: "#FFFFFF",
+                borderRadius: "var(--radius-xl)",
+                overflow: "hidden",
+                boxShadow: "var(--shadow-xl)",
+                position: "relative",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ position: "absolute", top: "14px", right: "16px", zIndex: 10 }}>
+                <button
+                  onClick={() => setCopilotModalOpen(false)}
+                  style={{
+                    background: "#F1F5F9",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "32px",
+                    height: "32px",
+                    fontSize: "16px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--navy-primary)",
+                  }}
+                  title="Close Legal Assistant"
+                >
+                  ✕
+                </button>
+              </div>
+              <CopilotChat
+                caseId={caseId}
+                conversations={[]}
+                activeConvId={null}
+                messages={[]}
+                onSelectConversation={async () => {}}
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>

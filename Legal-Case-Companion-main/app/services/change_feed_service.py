@@ -301,12 +301,15 @@ class ChangeFeedService:
                 .all()
             )
             for c in recent_consultations:
+                lawyer_label = (c.lawyer.full_name if c.lawyer and hasattr(c.lawyer, "full_name") else "Advocate")
+                client_label = (c.client.full_name if c.client and hasattr(c.client, "full_name") else "Client")
+                target_person = lawyer_label if user.role == UserRole.CLIENT else client_label
                 events.append({
                     "id": f"consult-{c.id}",
                     "event_type": "CONSULTATION_UPDATE",
                     "category": "CONSULTATION",
                     "title": f"Consultation Update: Status {c.status.value}",
-                    "description": f"Consultation session with {c.lawyer_name if user.role == UserRole.CLIENT else c.client_name or 'Client'} on {c.scheduled_at.strftime('%d %b %Y, %I:%M %p') if c.scheduled_at else 'pending schedule'}.",
+                    "description": f"Consultation session with {target_person} on {c.scheduled_at.strftime('%d %b %Y, %I:%M %p') if c.scheduled_at else 'pending schedule'}.",
                     "source_url": "/calendar",
                     "provenance": "CONSULTATION DESK",
                     "timestamp": (c.updated_at or c.created_at).isoformat(),

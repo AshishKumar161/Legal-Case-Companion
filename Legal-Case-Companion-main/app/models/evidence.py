@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -23,6 +24,7 @@ from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 if TYPE_CHECKING:
     from app.models.case import Case
     from app.models.user import User
+    from app.models.workflow import CaseHearing
 
 
 class EvidenceCategory(str, enum.Enum):
@@ -40,6 +42,7 @@ class EvidenceStatus(str, enum.Enum):
     UPLOADING = "UPLOADING"
     QUARANTINED = "QUARANTINED"
     ACTIVE = "ACTIVE"
+    ARCHIVED = "ARCHIVED"
     REVOKED = "REVOKED"
     DELETION_PENDING = "DELETION_PENDING"
     DELETED = "DELETED"
@@ -87,6 +90,12 @@ class EvidenceCustodyAction(str, enum.Enum):
     LEGAL_HOLD_REMOVED = "LEGAL_HOLD_REMOVED"
     DELETION_REQUESTED = "DELETION_REQUESTED"
     DELETED = "DELETED"
+    ARCHIVED = "ARCHIVED"
+    RESTORED = "RESTORED"
+    TAGS_UPDATED = "TAGS_UPDATED"
+    CATEGORY_UPDATED = "CATEGORY_UPDATED"
+    EXHIBIT_CREATED = "EXHIBIT_CREATED"
+    EXHIBIT_RENUMBERED = "EXHIBIT_RENUMBERED"
 
 
 class Evidence(Base, TimestampMixin, SoftDeleteMixin):
@@ -134,6 +143,7 @@ class Evidence(Base, TimestampMixin, SoftDeleteMixin):
     retention_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
 
     # Relationships
     case: Mapped["Case"] = relationship("Case", backref="evidence_items")
@@ -160,6 +170,12 @@ class Evidence(Base, TimestampMixin, SoftDeleteMixin):
         back_populates="evidence",
         cascade="all, delete-orphan",
         order_by="asc(EvidenceCustodyEvent.timestamp)",
+    )
+    exhibits: Mapped[list["CaseExhibit"]] = relationship(
+        "CaseExhibit",
+        back_populates="evidence",
+        cascade="all, delete-orphan",
+        order_by="asc(CaseExhibit.created_at)",
     )
 
 
@@ -276,3 +292,42 @@ class EvidenceCustodyEvent(Base):
     previous_event: Mapped["EvidenceCustodyEvent | None"] = relationship(
         "EvidenceCustodyEvent", remote_side=[id]
     )
+
+
+class CaseExhibit(Base, TimestampMixin, SoftDeleteMixin):
+    """Formal case exhibit linking a specific evidence version to a case and court hearing."""
+
+    __tablename__ = "case_exhibits"
+    __table_args__ = (
+        UniqueConstraint("case_id", "exhibit_number", name="uq_case_exhibits_case_number"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=generate_uuid7)
+    case_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    evidence_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("evidence.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("evidence_versions.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    hearing_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("case_hearings.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    exhibit_number: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    relevant_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+
+    # Relationships
+    case: Mapped["Case"] = relationship("Case", backref="exhibits")
+    evidence: Mapped["Evidence"] = relationship("Evidence", back_populates="exhibits")
+    version: Mapped["EvidenceVersion"] = relationship("EvidenceVersion")
+    hearing: Mapped["CaseHearing | None"] = relationship("CaseHearing", back_populates="exhibits")
+    created_by: Mapped["User"] = relationship("User", foreign_keys=[created_by_user_id])

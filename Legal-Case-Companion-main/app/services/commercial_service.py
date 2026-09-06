@@ -1,10 +1,12 @@
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal, ROUND_HALF_EVEN
 from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.exceptions import AppException, ResourceNotFoundError
 from app.core.identifiers import generate_uuid7
 from app.models.audit import AuditEvent
@@ -23,12 +25,34 @@ from app.models.commercial import (
 from app.models.consultation import Consultation, ConsultationStatus
 from app.models.user import User
 
+TWOPLACES = Decimal("0.01")
+
+
+def _to_decimal(val: Any) -> Decimal:
+    if isinstance(val, Decimal):
+        return val
+    if val is None:
+        return Decimal("0.00")
+    return Decimal(str(val))
+
+
+def _quantize(val: Decimal) -> Decimal:
+    return val.quantize(TWOPLACES, rounding=ROUND_HALF_EVEN)
+
 
 class CommercialService:
     """Manages immutable commercial transaction records, financial separation, and entitlements (Parts L, M, N)."""
 
     GST_RATE_PERCENT = 18.0  # SAC 9982 - Legal and accounting support services (Subject to formal tax review)
     PLATFORM_FEE_PERCENT = 10.0
+
+    @property
+    def gst_rate_percent(self) -> Decimal:
+        return _to_decimal(getattr(settings, "COMMERCIAL_GST_PERCENT", self.GST_RATE_PERCENT))
+
+    @property
+    def platform_fee_percent(self) -> Decimal:
+        return _to_decimal(getattr(settings, "COMMERCIAL_PLATFORM_FEE_PERCENT", self.PLATFORM_FEE_PERCENT))
 
     def __init__(self, db: Session):
         self.db = db
@@ -41,7 +65,8 @@ class CommercialService:
             .scalar()
             or 0
         )
-        return f"TXN-{today_str}-{count + 1:04d}"
+        entropy = uuid.uuid4().hex[:4].upper()
+        return f"TXN-{today_str}-{count + 1:04d}-{entropy}"
 
     def _generate_invoice_number(self) -> str:
         today_str = datetime.now(UTC).strftime("%Y%m%d")
@@ -51,7 +76,8 @@ class CommercialService:
             .scalar()
             or 0
         )
-        return f"INV-{today_str}-{count + 1:04d}"
+        entropy = uuid.uuid4().hex[:4].upper()
+        return f"INV-{today_str}-{count + 1:04d}-{entropy}"
 
     def create_consultation_transaction(
         self,
@@ -61,12 +87,12 @@ class CommercialService:
         provider_transaction_id: str | None = None,
     ) -> CommercialTransaction:
         now = datetime.now(UTC)
-        gross = float(consultation.fee_amount)
+        gross = _quantize(_to_decimal(consultation.fee_amount))
 
-        # Separate platform fee, GST 18%, and net advocate compensation
-        platform_fee = round(gross * (self.PLATFORM_FEE_PERCENT / 100.0), 2)
-        tax_amount = round(platform_fee * (self.GST_RATE_PERCENT / 100.0), 2)
-        net_advocate = round(gross - platform_fee, 2)
+        # Separate platform fee, GST 18%, and net advocate compensation using exact Decimal bankers rounding
+        platform_fee = _quantize(gross * (self.platform_fee_percent / Decimal("100.0")))
+        tax_amount = _quantize(platform_fee * (self.gst_rate_percent / Decimal("100.0")))
+        net_advocate = _quantize(gross - platform_fee)
 
         txn = CommercialTransaction(
             id=generate_uuid7(),
@@ -89,6 +115,19 @@ class CommercialService:
                 "tax_regime": "INDIA_GST",
                 "sac_code": "9982",
                 "lawyer_profile_id": str(consultation.lawyer_id),
+                "financial_snapshot": {
+                    "gross_amount": float(gross),
+                    "platform_fee_percent": float(self.platform_fee_percent),
+                    "platform_fee": float(platform_fee),
+                    "gst_rate_percent": float(self.gst_rate_percent),
+                    "tax_amount": float(tax_amount),
+                    "net_advocate_amount": float(net_advocate),
+                    "currency": consultation.currency or "INR",
+                    "sac_code": "9982",
+                    "fee_amount_base": float(consultation.fee_amount),
+                    "duration_minutes": consultation.duration_minutes,
+                    "created_at_snapshot": now.isoformat(),
+                },
             },
             created_at=now,
             updated_at=now,
@@ -161,23 +200,53 @@ class CommercialService:
         reason: str = "REQUESTED_BY_CUSTOMER",
         actor: User | None = None,
     ) -> CommercialTransaction:
-        txn = self.get_transaction(transaction_identifier)
+        txn = self.get_transaction(transaction_identifier, for_update=True)
         now = datetime.now(UTC)
 
-        if txn.status not in (TransactionStatus.CAPTURED, TransactionStatus.AUTHORIZED):
+        if txn.status not in (TransactionStatus.CAPTURED, TransactionStatus.AUTHORIZED, TransactionStatus.PARTIALLY_REFUNDED):
             raise AppException(
                 status_code=400,
                 code="INVALID_REFUND_STATE",
                 message=f"Cannot refund transaction in state {txn.status.value}.",
             )
 
-        target_amount = refund_amount or float(txn.gross_amount)
-        is_partial = target_amount < float(txn.gross_amount)
+        prior_refunds = (
+            self.db.query(func.coalesce(func.sum(RefundRecord.amount), 0))
+            .filter(
+                RefundRecord.commercial_transaction_id == txn.id,
+                RefundRecord.status == RefundStatus.SUCCEEDED,
+            )
+            .scalar()
+        )
+        prior_refunds_dec = _quantize(_to_decimal(prior_refunds))
+        remaining_refundable = _quantize(_to_decimal(txn.gross_amount) - prior_refunds_dec)
+
+        if remaining_refundable <= Decimal("0.00") or txn.status == TransactionStatus.REFUNDED:
+            raise AppException(
+                status_code=400,
+                code="TRANSACTION_ALREADY_REFUNDED",
+                message=f"Transaction '{txn.transaction_id}' has already been fully refunded.",
+            )
+
+        target_amount = _quantize(_to_decimal(refund_amount)) if refund_amount is not None else remaining_refundable
+        if target_amount <= Decimal("0.00"):
+            raise AppException(status_code=400, code="INVALID_REFUND_AMOUNT", message="Refund amount must be greater than zero.")
+
+        if target_amount > remaining_refundable:
+            raise AppException(
+                status_code=400,
+                code="REFUND_EXCEEDS_CAPTURED_AMOUNT",
+                message=f"Requested refund of {target_amount} exceeds remaining refundable balance {remaining_refundable}.",
+            )
+
+        is_full_refund = (prior_refunds_dec + target_amount) >= _to_decimal(txn.gross_amount)
+        is_partial = not is_full_refund
 
         txn.status = TransactionStatus.PARTIALLY_REFUNDED if is_partial else TransactionStatus.REFUNDED
         txn.updated_at = now
         txn.metadata_["refund_info"] = {
-            "refund_amount": target_amount,
+            "refund_amount": float(target_amount),
+            "cumulative_refunded": float(prior_refunds_dec + target_amount),
             "refunded_at": now.isoformat(),
             "reason": reason,
         }
@@ -204,7 +273,7 @@ class CommercialService:
             timestamp=now,
             metadata_={
                 "transaction_id": txn.transaction_id,
-                "refund_amount": target_amount,
+                "refund_amount": float(target_amount),
                 "is_partial": is_partial,
             },
         )
@@ -213,8 +282,12 @@ class CommercialService:
         self.db.refresh(txn)
         return txn
 
-    def get_transaction(self, identifier: str | uuid.UUID) -> CommercialTransaction:
+    def get_transaction(
+        self, identifier: str | uuid.UUID, for_update: bool = False
+    ) -> CommercialTransaction:
         query = self.db.query(CommercialTransaction)
+        if for_update:
+            query = query.with_for_update()
         if isinstance(identifier, uuid.UUID):
             txn = query.filter(CommercialTransaction.id == identifier).first()
         else:
@@ -302,8 +375,9 @@ class CommercialService:
         """Creates an advocate payout obligation with double-payout and refund protection."""
         now = datetime.now(UTC)
 
-        # 1. Double Payout Guard
+        # 1. Double Payout Guard & Row Lock
         if commercial_transaction_id:
+            txn = self.get_transaction(commercial_transaction_id, for_update=True)
             existing_payout = (
                 self.db.query(AdvocatePayout)
                 .filter(
@@ -319,20 +393,25 @@ class CommercialService:
                     message=f"Active payout '{existing_payout.payout_id}' already exists for transaction.",
                 )
 
-            # 2. Refund Check: Ensure transaction is not refunded
-            txn = self.get_transaction(commercial_transaction_id)
+            # 2. Refund Check: Ensure transaction is not refunded or cancelled
             if txn.status in (TransactionStatus.REFUNDED, TransactionStatus.CANCELLED):
                 raise AppException(
                     status_code=400,
                     code="CANNOT_PAYOUT_REFUNDED_TXN",
                     message=f"Cannot issue advocate payout for refunded transaction '{txn.transaction_id}'.",
                 )
-            target_amount = amount or float(txn.net_advocate_amount)
+            if txn.status != TransactionStatus.CAPTURED:
+                raise AppException(
+                    status_code=400,
+                    code="CANNOT_PAYOUT_UNCAPTURED_TXN",
+                    message=f"Cannot issue payout for transaction in state {txn.status.value}.",
+                )
+            target_amount = _quantize(_to_decimal(amount)) if amount is not None else _quantize(_to_decimal(txn.net_advocate_amount))
             currency = txn.currency
         else:
-            if amount is None or amount <= 0:
+            if amount is None or _to_decimal(amount) <= Decimal("0.00"):
                 raise AppException(status_code=400, code="INVALID_AMOUNT", message="Valid payout amount required.")
-            target_amount = amount
+            target_amount = _quantize(_to_decimal(amount))
             currency = "INR"
 
         payout = AdvocatePayout(
@@ -418,12 +497,24 @@ class CommercialService:
         audit_notes: str | None = None,
         actor: User | None = None,
     ) -> RefundRecord:
-        """Executes a deterministic refund with strict double-refund protection."""
-        txn = self.get_transaction(transaction_identifier)
+        """Executes a deterministic refund with strict double-refund and cumulative cap protection."""
+        txn = self.get_transaction(transaction_identifier, for_update=True)
         now = datetime.now(UTC)
 
+        # Cumulative refund calculation
+        prior_refunds = (
+            self.db.query(func.coalesce(func.sum(RefundRecord.amount), 0))
+            .filter(
+                RefundRecord.commercial_transaction_id == txn.id,
+                RefundRecord.status == RefundStatus.SUCCEEDED,
+            )
+            .scalar()
+        )
+        prior_refunds_dec = _quantize(_to_decimal(prior_refunds))
+        remaining_refundable = _quantize(_to_decimal(txn.gross_amount) - prior_refunds_dec)
+
         # 1. Double Refund Protection
-        if txn.status == TransactionStatus.REFUNDED:
+        if remaining_refundable <= Decimal("0.00") or txn.status == TransactionStatus.REFUNDED:
             existing_record = (
                 self.db.query(RefundRecord)
                 .filter(
@@ -432,15 +523,30 @@ class CommercialService:
                 )
                 .first()
             )
-            if existing_record:
-                raise AppException(
-                    status_code=400,
-                    code="TRANSACTION_ALREADY_REFUNDED",
-                    message=f"Transaction '{txn.transaction_id}' has already been fully refunded under refund ID '{existing_record.refund_id}'.",
-                )
+            msg = (
+                f"Transaction '{txn.transaction_id}' has already been fully refunded under refund ID '{existing_record.refund_id}'."
+                if existing_record
+                else f"Transaction '{txn.transaction_id}' has already been fully refunded."
+            )
+            raise AppException(
+                status_code=400,
+                code="TRANSACTION_ALREADY_REFUNDED",
+                message=msg,
+            )
 
-        target_amount = refund_amount or float(txn.gross_amount)
-        is_partial = target_amount < float(txn.gross_amount)
+        target_amount = _quantize(_to_decimal(refund_amount)) if refund_amount is not None else remaining_refundable
+        if target_amount <= Decimal("0.00"):
+            raise AppException(status_code=400, code="INVALID_REFUND_AMOUNT", message="Refund amount must be greater than zero.")
+
+        if target_amount > remaining_refundable:
+            raise AppException(
+                status_code=400,
+                code="REFUND_EXCEEDS_CAPTURED_AMOUNT",
+                message=f"Requested refund of {target_amount} exceeds remaining refundable balance {remaining_refundable}.",
+            )
+
+        is_full_refund = (prior_refunds_dec + target_amount) >= _to_decimal(txn.gross_amount)
+        is_partial = not is_full_refund
 
         # 2. Check if advocate was already paid out (requires adjustment flag)
         linked_payout = (
@@ -463,12 +569,13 @@ class CommercialService:
             reason=reason,
             status=RefundStatus.SUCCEEDED,
             processed_by_user_id=actor.id if actor else None,
-            gateway_refund_id=f"gw_rfd_{txn.transaction_id}",
+            gateway_refund_id=f"gw_rfd_{txn.transaction_id}_{uuid.uuid4().hex[:6]}",
             audit_notes=audit_notes or f"Deterministic refund processed for reason: {reason.value}",
             metadata_={
                 "is_partial": is_partial,
                 "adjustment_required": adjustment_required,
                 "linked_payout_id": linked_payout.payout_id if linked_payout else None,
+                "cumulative_refunded": float(prior_refunds_dec + target_amount),
             },
             created_at=now,
             updated_at=now,
@@ -511,6 +618,18 @@ class CommercialService:
         self.db.refresh(refund_record)
         return refund_record
 
+    @staticmethod
+    def _extract_stored_tax(t: CommercialTransaction) -> Decimal:
+        """
+        Authoritatively extracts the stored applied tax amount from the immutable financial snapshot or column.
+        Never recalculates historical tax dynamically from active configuration or a hardcoded rate.
+        """
+        if t.metadata_ and isinstance(t.metadata_, dict):
+            snapshot = t.metadata_.get("financial_snapshot")
+            if isinstance(snapshot, dict) and "tax_amount" in snapshot and snapshot["tax_amount"] is not None:
+                return _to_decimal(snapshot["tax_amount"])
+        return _to_decimal(t.tax_amount)
+
     def get_settlement_reconciliation(self) -> dict[str, Any]:
         """Calculates authoritative financial reconciliation across all transactions, payouts, and refunds."""
         transactions = (
@@ -531,16 +650,71 @@ class CommercialService:
             .all()
         )
 
-        gross_volume = sum(float(t.gross_amount) for t in transactions)
-        total_tax = sum(float(t.tax_amount) for t in transactions)
-        total_platform_fees = sum(float(t.platform_fee) for t in transactions)
-        total_advocate_obligations = sum(float(t.net_advocate_amount) for t in transactions if t.status == TransactionStatus.CAPTURED)
-        total_payouts_settled = sum(float(p.amount) for p in payouts)
-        total_refunds_processed = sum(float(r.amount) for r in refunds)
+        gross_volume = sum((_to_decimal(t.gross_amount) for t in transactions), start=Decimal("0.00"))
+        total_tax = sum((self._extract_stored_tax(t) for t in transactions), start=Decimal("0.00"))
+        total_platform_fees = sum((_to_decimal(t.platform_fee) for t in transactions), start=Decimal("0.00"))
+        total_advocate_obligations = sum(
+            (_to_decimal(t.net_advocate_amount) for t in transactions if t.status == TransactionStatus.CAPTURED),
+            start=Decimal("0.00"),
+        )
+        total_payouts_settled = sum((_to_decimal(p.amount) for p in payouts), start=Decimal("0.00"))
+        total_refunds_processed = sum((_to_decimal(r.amount) for r in refunds), start=Decimal("0.00"))
 
-        # Net cash remaining = gross - total_refunds - total_payouts
-        net_cash_retained = round(gross_volume - total_refunds_processed - total_payouts_settled, 2)
-        variance = round((gross_volume - total_refunds_processed) - (total_payouts_settled + total_platform_fees + total_tax), 2)
+        # Retained active platform fees (excluding fully refunded transactions)
+        active_platform_fees = sum(
+            (_to_decimal(t.platform_fee) for t in transactions if t.status == TransactionStatus.CAPTURED),
+            start=Decimal("0.00"),
+        )
+        active_tax = sum(
+            (self._extract_stored_tax(t) for t in transactions if t.status == TransactionStatus.CAPTURED),
+            start=Decimal("0.00"),
+        )
+        platform_net_revenue = _quantize(active_platform_fees - active_tax)
+
+        # Net cash remaining in bank accounts = gross - total_refunds - total_payouts
+        net_cash_retained = _quantize(gross_volume - total_refunds_processed - total_payouts_settled)
+
+        # Advocate payouts pending settlement
+        advocate_payouts_pending = max(Decimal("0.00"), total_advocate_obligations - total_payouts_settled)
+
+        # Deterministic variance: (gross - refunds) - (settled_payouts + pending_advocate_obligations + active_platform_fees)
+        # Note: active_platform_fees == platform_net_revenue + active_tax.
+        # This balances identically to 0.00 on uncorrupted books without float drift.
+        variance = _quantize(
+            (gross_volume - total_refunds_processed)
+            - (total_payouts_settled + advocate_payouts_pending + active_platform_fees)
+        )
+
+        # Discrepancy Detection Engine
+        discrepancies: list[dict[str, Any]] = []
+
+        # 1. Payouts on fully refunded transactions
+        for p in payouts:
+            if p.commercial_transaction_id:
+                t = next((tx for tx in transactions if tx.id == p.commercial_transaction_id), None)
+                if t and t.status == TransactionStatus.REFUNDED:
+                    discrepancies.append({
+                        "type": "PAYOUT_ON_REFUNDED_TRANSACTION",
+                        "severity": "CRITICAL",
+                        "payout_id": p.payout_id,
+                        "transaction_id": t.transaction_id,
+                        "amount": float(p.amount),
+                    })
+
+        # 2. Multiple currencies check
+        distinct_currencies = {t.currency for t in transactions}
+        if len(distinct_currencies) > 1:
+            discrepancies.append({
+                "type": "MULTIPLE_CURRENCIES_DETECTED",
+                "severity": "WARNING",
+                "currencies": list(distinct_currencies),
+            })
+
+        reconciliation_status = (
+            "BALANCED"
+            if (abs(variance) < Decimal("0.01") and len(discrepancies) == 0)
+            else "VARIANCE_DETECTED"
+        )
 
         return {
             "source_of_truth": "REAL_USER_DATA",
@@ -549,23 +723,29 @@ class CommercialService:
             "transaction_count": len(transactions),
             "payout_count": len(payouts),
             "refund_count": len(refunds),
-            "gross_consultation_volume": round(gross_volume, 2),
-            "gross_consultation_inr": round(gross_volume, 2),
-            "total_gst_tax_collected_18": round(total_tax, 2),
-            "tax_gst_inr": round(total_tax, 2),
-            "total_platform_fee_revenue": round(total_platform_fees, 2),
-            "platform_fee_inr": round(total_platform_fees, 2),
-            "total_advocate_obligations": round(total_advocate_obligations, 2),
-            "advocate_share_inr": round(total_advocate_obligations, 2),
-            "total_payouts_settled": round(total_payouts_settled, 2),
-            "advocate_payouts_completed_inr": round(total_payouts_settled, 2),
-            "advocate_payouts_pending_inr": 0.0,
-            "total_refunds_processed": round(total_refunds_processed, 2),
-            "refunds_completed_inr": round(total_refunds_processed, 2),
-            "net_cash_retained": net_cash_retained,
-            "net_cash_balance_inr": net_cash_retained,
-            "reconciliation_variance": variance,
-            "reconciliation_status": "BALANCED" if abs(variance) < 1.0 else "VARIANCE_DETECTED",
+            "total_collected": float(gross_volume),
+            "gross_consultation_volume": float(gross_volume),
+            "gross_consultation_inr": float(gross_volume),
+            "total_tax_collected": float(total_tax),
+            "total_tax_inr": float(total_tax),
+            "total_gst_tax_collected_18": float(total_tax),  # Backwards-compatible alias
+            "tax_gst_inr": float(total_tax),
+            "total_platform_fee_revenue": float(total_platform_fees),
+            "platform_fee_inr": float(total_platform_fees),
+            "platform_net_revenue_inr": float(platform_net_revenue),
+            "total_advocate_obligations": float(total_advocate_obligations),
+            "advocate_share_inr": float(total_advocate_obligations),
+            "total_payouts_settled": float(total_payouts_settled),
+            "advocate_payouts_completed_inr": float(total_payouts_settled),
+            "advocate_payouts_pending_inr": float(advocate_payouts_pending),
+            "total_refunds_processed": float(total_refunds_processed),
+            "refunds_completed_inr": float(total_refunds_processed),
+            "net_cash_retained": float(net_cash_retained),
+            "net_cash_balance_inr": float(net_cash_retained),
+            "reconciliation_variance": float(variance),
+            "reconciliation_status": reconciliation_status,
+            "discrepancies": discrepancies,
+            "discrepancy_count": len(discrepancies),
         }
 
     def generate_receipt(self, transaction_identifier: str | uuid.UUID) -> dict[str, Any]:

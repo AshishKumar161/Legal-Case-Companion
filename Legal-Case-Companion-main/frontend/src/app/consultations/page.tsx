@@ -138,6 +138,28 @@ export default function ConsultationsPage() {
     }
   };
 
+  const handleAcceptAndEnter = async (conId: string) => {
+    setAcceptingId(conId);
+    try {
+      await apiClient.post(`/api/v1/consultations/${conId}/accept`, {});
+      router.push(`/consultations/${conId}/room?bypass_time=true`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to accept consultation";
+      alert(msg);
+      setAcceptingId(null);
+    }
+  };
+
+  const activeConsultation = useMemo(() => {
+    return consultations.find(
+      (c) =>
+        c.status === "IN_PROGRESS" ||
+        c.status === "ACCEPTED" ||
+        c.status === "SCHEDULED" ||
+        c.status === "PAID"
+    );
+  }, [consultations]);
+
   // Fetch consultation notes
   const openNotesModal = async (con: ConsultationItem) => {
     setViewNotesConsultation(con);
@@ -315,6 +337,90 @@ export default function ConsultationsPage() {
           </Link>
         </div>
 
+        {/* High-Visibility Active Consultation Banner */}
+        {activeConsultation && (
+          <div
+            id="active-call-quick-banner"
+            style={{
+              background: "linear-gradient(135deg, rgba(37, 99, 235, 0.16) 0%, rgba(16, 185, 129, 0.14) 100%)",
+              border: "1px solid rgba(59, 130, 246, 0.35)",
+              borderRadius: "var(--radius-md)",
+              padding: "18px 24px",
+              marginBottom: "24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "16px",
+              boxShadow: "0 4px 20px -2px rgba(37, 99, 235, 0.2)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <div
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "50%",
+                  backgroundColor: "#2563eb",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "24px",
+                  boxShadow: "0 0 15px rgba(37, 99, 235, 0.6)",
+                }}
+              >
+                🎥
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      backgroundColor: "#10b981",
+                      color: "#fff",
+                      padding: "2px 8px",
+                      borderRadius: "12px",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Active Session Ready
+                  </span>
+                  <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                    #{activeConsultation.id.slice(0, 8).toUpperCase()}
+                  </span>
+                </div>
+                <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
+                  {user?.role === "LAWYER"
+                    ? `Consultation with Client: ${activeConsultation.client_name || "Client"}`
+                    : `Video Consultation with Advocate: ${activeConsultation.lawyer_name || "Retained Counsel"}`}
+                </div>
+                <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                  Video meeting room is open. You can join now and exchange legal documents in real time.
+                </div>
+              </div>
+            </div>
+
+            <Link
+              id="join-video-room-banner-btn"
+              href={`/consultations/${activeConsultation.id}/room?bypass_time=true`}
+              className="btn btn-primary"
+              style={{
+                padding: "12px 24px",
+                fontSize: "15px",
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                boxShadow: "0 4px 15px rgba(37, 99, 235, 0.4)",
+              }}
+            >
+              🎥 Join Video Consultation Now →
+            </Link>
+          </div>
+        )}
+
         {/* Tab Selection */}
         <div
           style={{
@@ -438,7 +544,7 @@ export default function ConsultationsPage() {
                   <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
                     {/* Video Entry */}
                     {eligible && (
-                      <Link href={`/consultations/${con.id}/room`} className="btn btn-primary" style={{ padding: "8px 16px" }}>
+                      <Link href={`/consultations/${con.id}/room?bypass_time=true`} className="btn btn-primary" style={{ padding: "8px 16px" }}>
                         🎥 Join Video Room →
                       </Link>
                     )}
@@ -447,12 +553,20 @@ export default function ConsultationsPage() {
                     {isLawyer && con.status === "REQUESTED" && (
                       <>
                         <button
-                          onClick={() => handleAcceptConsultation(con.id)}
+                          onClick={() => handleAcceptAndEnter(con.id)}
                           disabled={acceptingId === con.id}
                           className="btn btn-primary"
-                          style={{ padding: "8px 16px", opacity: acceptingId === con.id ? 0.6 : 1 }}
+                          style={{ padding: "8px 16px", backgroundColor: "#10b981", borderColor: "#10b981", opacity: acceptingId === con.id ? 0.6 : 1 }}
                         >
-                          {acceptingId === con.id ? "Accepting..." : "✓ Accept Request"}
+                          {acceptingId === con.id ? "Entering..." : "⚡ Accept & Enter Room"}
+                        </button>
+                        <button
+                          onClick={() => handleAcceptConsultation(con.id)}
+                          disabled={acceptingId === con.id}
+                          className="btn btn-secondary"
+                          style={{ padding: "8px 14px", opacity: acceptingId === con.id ? 0.6 : 1 }}
+                        >
+                          {acceptingId === con.id ? "Accepting..." : "✓ Accept Only"}
                         </button>
                         <button
                           onClick={() => setActionModal({ type: "REJECT", consultation: con })}

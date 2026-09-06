@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from fastapi import HTTPException
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -20,6 +21,7 @@ from app.models.consultation import ConsultationStatus
 from app.models.notification import NotificationType
 from app.models.payment import Payment, PaymentStatus
 from app.models.user import User, UserRole
+from app.models.webhook import ProcessedWebhookEvent, WebhookProcessingStatus
 from app.schemas.payment import PaymentIntentResponse
 from app.services.auth_service import AuthService
 from app.services.case_service import CaseService
@@ -163,7 +165,10 @@ class PaymentService:
             )
 
         amount = float(consultation.fee_amount)
-        currency = consultation.currency or "INR"
+        currency = (consultation.currency or "INR").upper()
+
+        if currency not in ("INR", "USD", "EUR", "GBP"):
+            raise ValidationError(f"Unsupported payment currency: {currency}")
 
         if amount <= 0:
             raise ValidationError("Consultation fee is zero, no payment required.")
@@ -176,6 +181,7 @@ class PaymentService:
                 Payment.consultation_id == consultation.id,
                 Payment.status.in_([PaymentStatus.CREATED, PaymentStatus.PENDING]),
             )
+            .with_for_update()
             .first()
         )
 
@@ -287,11 +293,9 @@ class PaymentService:
     ) -> dict:
         secret = settings.STRIPE_WEBHOOK_SECRET
         if not secret:
-            if settings.ENVIRONMENT == "production":
-                raise HTTPException(
-                    status_code=500, detail="STRIPE_WEBHOOK_SECRET not configured"
-                )
-            secret = "whsec_test_secret_123"
+            raise HTTPException(
+                status_code=500, detail="STRIPE_WEBHOOK_SECRET not configured"
+            )
 
         payload = verify_stripe_webhook_signature(
             raw_payload=raw_body,
@@ -311,6 +315,43 @@ class PaymentService:
         if not event_type:
             raise ValidationError("Missing event type in webhook payload")
 
+        # --- DB-LEVEL WEBHOOK DEDUPLICATION ---
+        webhook_rec = None
+        if event_id:
+            existing_webhook = (
+                self.db.query(ProcessedWebhookEvent)
+                .filter(
+                    ProcessedWebhookEvent.event_id == str(event_id),
+                    ProcessedWebhookEvent.provider == "STRIPE",
+                )
+                .first()
+            )
+            if existing_webhook and existing_webhook.status in (
+                WebhookProcessingStatus.PROCESSED,
+                WebhookProcessingStatus.PROCESSING,
+            ):
+                return {"status": "already_processed"}
+
+            if not existing_webhook:
+                try:
+                    webhook_rec = ProcessedWebhookEvent(
+                        id=generate_uuid7(),
+                        event_id=str(event_id),
+                        provider="STRIPE",
+                        event_type=str(event_type),
+                        status=WebhookProcessingStatus.PROCESSING,
+                        payload=payload,
+                        created_at=datetime.now(UTC),
+                    )
+                    self.db.add(webhook_rec)
+                    self.db.commit()
+                except Exception:
+                    self.db.rollback()
+                    # Concurrent delivery caught by DB-level unique constraint on event_id
+                    return {"status": "already_processed"}
+            else:
+                webhook_rec = existing_webhook
+
         if event_type == "payment_intent.succeeded":
             data_object = payload.get("data", {}).get("object", {})
             provider_payment_id = data_object.get("id")
@@ -320,28 +361,101 @@ class PaymentService:
             payment = (
                 self.db.query(Payment)
                 .filter(Payment.provider_payment_id == provider_payment_id)
+                .with_for_update()
                 .first()
             )
             if not payment:
+                if webhook_rec:
+                    webhook_rec.status = WebhookProcessingStatus.FAILED
+                    webhook_rec.error_message = f"Payment not found for provider ID {provider_payment_id}"
+                    self.db.commit()
                 raise ResourceNotFoundError("Payment not found")
 
-            # Idempotency: if already processed, return immediately
+            # Currency validation against gateway payload
+            payload_currency = data_object.get("currency")
+            if payload_currency and payload_currency.upper() != payment.currency.upper():
+                if webhook_rec:
+                    webhook_rec.status = WebhookProcessingStatus.FAILED
+                    webhook_rec.error_message = f"Currency mismatch: expected {payment.currency}, got {payload_currency}"
+                    self.db.commit()
+                raise ValidationError(
+                    f"Currency mismatch: expected {payment.currency}, got {payload_currency.upper()}"
+                )
+
+            # Idempotency: if already processed, finalize webhook record and return immediately
             if payment.status == PaymentStatus.SUCCEEDED:
+                if webhook_rec:
+                    webhook_rec.status = WebhookProcessingStatus.PROCESSED
+                    webhook_rec.processed_at = datetime.now(UTC)
+                    webhook_rec.resource_id = provider_payment_id
+                    self.db.commit()
                 return {"status": "already_processed"}
 
             payment.status = PaymentStatus.SUCCEEDED
             consultation = payment.consultation
 
-            if consultation.status in (
-                ConsultationStatus.REQUESTED,
-                ConsultationStatus.ACCEPTED,
-            ):
-                consultation.status = ConsultationStatus.PAID
+            if consultation:
+                if consultation.status in (
+                    ConsultationStatus.REQUESTED,
+                    ConsultationStatus.ACCEPTED,
+                ):
+                    consultation.status = ConsultationStatus.PAID
+                elif consultation.status not in (
+                    ConsultationStatus.PAID,
+                    ConsultationStatus.SCHEDULED,
+                    ConsultationStatus.IN_PROGRESS,
+                    ConsultationStatus.COMPLETED,
+                ):
+                    logger.warning(
+                        "Payment %s succeeded for consultation %s in non-standard state %s",
+                        payment.id,
+                        consultation.id,
+                        consultation.status.value,
+                    )
+
+            # Synchronize authoritative CommercialTransaction & Entitlements
+            from app.models.commercial import CommercialTransaction, TransactionStatus
+            from app.services.commercial_service import CommercialService
+
+            comm_service = CommercialService(self.db)
+            if consultation:
+                comm_txn = (
+                    self.db.query(CommercialTransaction)
+                    .filter(CommercialTransaction.consultation_id == consultation.id)
+                    .first()
+                )
+                if not comm_txn:
+                    payer = self.db.query(User).filter(User.id == payment.payer_user_id).first()
+                    if payer:
+                        try:
+                            comm_txn = comm_service.create_consultation_transaction(
+                                consultation=consultation,
+                                payer=payer,
+                                provider="STRIPE",
+                                provider_transaction_id=provider_payment_id,
+                            )
+                            comm_service.capture_transaction(comm_txn.id, provider_payment_id=provider_payment_id)
+                        except Exception as e:
+                            logger.warning("Commercial transaction creation caught race condition: %s", e)
+                            comm_txn = (
+                                self.db.query(CommercialTransaction)
+                                .filter(CommercialTransaction.consultation_id == consultation.id)
+                                .first()
+                            )
+                            if comm_txn and comm_txn.status != TransactionStatus.CAPTURED:
+                                comm_service.capture_transaction(comm_txn.id, provider_payment_id=provider_payment_id)
+                elif comm_txn.status != TransactionStatus.CAPTURED:
+                    comm_service.capture_transaction(comm_txn.id, provider_payment_id=provider_payment_id)
+
+            if webhook_rec:
+                webhook_rec.status = WebhookProcessingStatus.PROCESSED
+                webhook_rec.processed_at = datetime.now(UTC)
+                webhook_rec.resource_id = provider_payment_id
 
             self.db.commit()
 
             # Emit case timeline event if linked
-            if consultation.case_id:
+            if consultation and consultation.case_id:
                 self.case_service.record_case_activity(
                     consultation.case_id,
                     payment.payer_user_id,
@@ -358,28 +472,29 @@ class PaymentService:
                 payment.payer_user_id,
                 {
                     "payment_id": str(payment.id),
-                    "consultation_id": str(consultation.id),
+                    "consultation_id": str(consultation.id) if consultation else None,
                 },
             )
 
-            self.notification_service.create_notification(
-                user_id=payment.payer_user_id,
-                type=NotificationType.PAYMENT_SUCCEEDED,
-                title="Payment Successful",
-                message=f"Your payment of {payment.currency} {payment.amount:.2f} was successful.",
-                consultation_id=consultation.id,
-                metadata={"payment_id": str(payment.id)},
-                event_id=f"payment_succeeded_{payment.id}",
-            )
-            self.notification_service.create_notification(
-                user_id=consultation.lawyer.user_id,
-                type=NotificationType.PAYMENT_SUCCEEDED,
-                title="Consultation Payment Received",
-                message=f"Payment received for consultation: {payment.currency} {payment.amount:.2f}.",
-                consultation_id=consultation.id,
-                metadata={"payment_id": str(payment.id)},
-                event_id=f"payment_received_{payment.id}",
-            )
+            if consultation:
+                self.notification_service.create_notification(
+                    user_id=payment.payer_user_id,
+                    type=NotificationType.PAYMENT_SUCCEEDED,
+                    title="Payment Successful",
+                    message=f"Your payment of {payment.currency} {payment.amount:.2f} was successful.",
+                    consultation_id=consultation.id,
+                    metadata={"payment_id": str(payment.id)},
+                    event_id=f"payment_succeeded_{payment.id}",
+                )
+                self.notification_service.create_notification(
+                    user_id=consultation.lawyer.user_id,
+                    type=NotificationType.PAYMENT_SUCCEEDED,
+                    title="Consultation Payment Received",
+                    message=f"Payment received for consultation: {payment.currency} {payment.amount:.2f}.",
+                    consultation_id=consultation.id,
+                    metadata={"payment_id": str(payment.id)},
+                    event_id=f"payment_received_{payment.id}",
+                )
 
             self._log_audit(
                 "WEBHOOK_PROCESSED",
@@ -398,13 +513,31 @@ class PaymentService:
             payment = (
                 self.db.query(Payment)
                 .filter(Payment.provider_payment_id == provider_payment_id)
+                .with_for_update()
                 .first()
             )
             if not payment:
+                if webhook_rec:
+                    webhook_rec.status = WebhookProcessingStatus.FAILED
+                    webhook_rec.error_message = f"Payment not found for provider ID {provider_payment_id}"
+                    self.db.commit()
                 raise ResourceNotFoundError("Payment not found")
 
+            # Out-of-order protection: terminal success cannot be overridden by late failure
             if payment.status != PaymentStatus.SUCCEEDED:
                 payment.status = PaymentStatus.FAILED
+                consultation = payment.consultation
+                if consultation and consultation.status in (
+                    ConsultationStatus.REQUESTED,
+                    ConsultationStatus.ACCEPTED,
+                ):
+                    consultation.status = ConsultationStatus.PAYMENT_FAILED
+
+                if webhook_rec:
+                    webhook_rec.status = WebhookProcessingStatus.PROCESSED
+                    webhook_rec.processed_at = datetime.now(UTC)
+                    webhook_rec.resource_id = provider_payment_id
+
                 self.db.commit()
 
                 self._log_audit(
@@ -425,6 +558,12 @@ class PaymentService:
                     metadata={"payment_id": str(payment.id)},
                     event_id=f"payment_failed_{payment.id}",
                 )
+            else:
+                if webhook_rec:
+                    webhook_rec.status = WebhookProcessingStatus.PROCESSED
+                    webhook_rec.processed_at = datetime.now(UTC)
+                    webhook_rec.resource_id = provider_payment_id
+                self.db.commit()
 
             self._log_audit(
                 "WEBHOOK_PROCESSED",
@@ -434,4 +573,132 @@ class PaymentService:
 
             return {"status": "failed_recorded"}
 
+        if webhook_rec:
+            webhook_rec.status = WebhookProcessingStatus.PROCESSED
+            webhook_rec.processed_at = datetime.now(UTC)
+            self.db.commit()
+
         return {"status": "ignored"}
+
+    def reprocess_stale_or_failed_webhooks(
+        self,
+        stale_minutes: int = 10,
+        limit: int = 25,
+    ) -> dict[str, Any]:
+        """
+        Background maintenance job: safely reprocesses webhooks stuck in PROCESSING (past stale_minutes)
+        or marked as FAILED due to transient errors.
+        Ensures strict idempotency:
+        - If payment is already succeeded and captured, updates webhook status to PROCESSED without double-mutating domain state.
+        - If payment is still pending, executes capture and consultation update.
+        """
+        from datetime import timedelta
+        from app.models.commercial import CommercialTransaction, TransactionStatus
+        from app.services.commercial_service import CommercialService
+
+        now = datetime.now(UTC)
+        cutoff = now - timedelta(minutes=stale_minutes)
+
+        stale_events = (
+            self.db.query(ProcessedWebhookEvent)
+            .filter(
+                or_(
+                    ProcessedWebhookEvent.status == WebhookProcessingStatus.FAILED,
+                    and_(
+                        ProcessedWebhookEvent.status == WebhookProcessingStatus.PROCESSING,
+                        ProcessedWebhookEvent.created_at <= cutoff,
+                    ),
+                ),
+            )
+            .order_by(ProcessedWebhookEvent.created_at.asc())
+            .limit(limit)
+            .all()
+        )
+
+        reprocessed_count = 0
+        failed_count = 0
+
+        for event in stale_events:
+            try:
+                payload = event.payload or {}
+                event_type = event.event_type
+
+                if event_type == "payment_intent.succeeded":
+                    data_object = payload.get("data", {}).get("object", {})
+                    provider_payment_id = data_object.get("id") or event.resource_id
+                    if not provider_payment_id:
+                        event.status = WebhookProcessingStatus.FAILED
+                        event.error_message = "Payload missing provider payment id"
+                        failed_count += 1
+                        continue
+
+                    payment = (
+                        self.db.query(Payment)
+                        .filter(Payment.provider_payment_id == provider_payment_id)
+                        .first()
+                    )
+                    if not payment:
+                        event.status = WebhookProcessingStatus.FAILED
+                        event.error_message = f"Payment record not found for {provider_payment_id}"
+                        failed_count += 1
+                        continue
+
+                    # Safe synchronization
+                    if payment.status != PaymentStatus.SUCCEEDED:
+                        payment.status = PaymentStatus.SUCCEEDED
+
+                    consultation = payment.consultation
+                    if consultation and consultation.status in (
+                        ConsultationStatus.REQUESTED,
+                        ConsultationStatus.ACCEPTED,
+                    ):
+                        consultation.status = ConsultationStatus.PAID
+
+                    comm_service = CommercialService(self.db)
+                    if consultation:
+                        comm_txn = (
+                            self.db.query(CommercialTransaction)
+                            .filter(CommercialTransaction.consultation_id == consultation.id)
+                            .first()
+                        )
+                        if not comm_txn:
+                            payer = self.db.query(User).filter(User.id == payment.payer_user_id).first()
+                            if payer:
+                                try:
+                                    comm_txn = comm_service.create_consultation_transaction(
+                                        consultation=consultation,
+                                        payer=payer,
+                                        provider="STRIPE",
+                                        provider_transaction_id=provider_payment_id,
+                                    )
+                                    comm_service.capture_transaction(comm_txn.id, provider_payment_id=provider_payment_id)
+                                except Exception as e:
+                                    logger.warning("Reprocess caught commercial txn race: %s", e)
+                        elif comm_txn.status != TransactionStatus.CAPTURED:
+                            comm_service.capture_transaction(comm_txn.id, provider_payment_id=provider_payment_id)
+
+                    event.status = WebhookProcessingStatus.PROCESSED
+                    event.processed_at = now
+                    event.resource_id = provider_payment_id
+                    event.error_message = None
+                    reprocessed_count += 1
+
+                else:
+                    # Non-payment webhook (e.g. informational)
+                    event.status = WebhookProcessingStatus.PROCESSED
+                    event.processed_at = now
+                    reprocessed_count += 1
+
+            except Exception as e:  # noqa: BLE001
+                logger.error("Error reprocessing webhook %s: %s", event.event_id, e)
+                event.error_message = str(e)
+                failed_count += 1
+
+        if reprocessed_count or failed_count:
+            self.db.commit()
+
+        return {
+            "evaluated_count": len(stale_events),
+            "reprocessed_count": reprocessed_count,
+            "failed_count": failed_count,
+        }

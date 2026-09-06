@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum, ForeignKey, Integer, JSON, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.identifiers import generate_uuid7
@@ -30,10 +30,36 @@ class AccountStatus(str, enum.Enum):
 
 
 class VerificationStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
     PENDING = "PENDING"
     UNDER_REVIEW = "UNDER_REVIEW"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+    NEEDS_INFO = "NEEDS_INFO"
+    REVOKED = "REVOKED"
+
+
+class AdvocateDocumentType(str, enum.Enum):
+    BAR_COUNCIL_ENROLLMENT_CERT = "BAR_COUNCIL_ENROLLMENT_CERT"
+    BAR_COUNCIL_ID_CARD = "BAR_COUNCIL_ID_CARD"
+    GOVERNMENT_PHOTO_ID = "GOVERNMENT_PHOTO_ID"
+    CERTIFICATE_OF_PRACTICE = "CERTIFICATE_OF_PRACTICE"
+
+
+class DocumentVerificationStatus(str, enum.Enum):
+    NOT_SUBMITTED = "NOT_SUBMITTED"
+    SUBMITTED = "SUBMITTED"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    NEEDS_RESUBMISSION = "NEEDS_RESUBMISSION"
+
+
+class DocumentScanStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    QUARANTINED = "QUARANTINED"
 
 
 class User(Base, TimestampMixin, SoftDeleteMixin):
@@ -79,6 +105,14 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     case_participants: Mapped[list["CaseParticipant"]] = relationship(
         "CaseParticipant", back_populates="user", cascade="all, delete-orphan"
     )
+
+    @property
+    def full_name(self) -> str:
+        if self.client_profile and self.client_profile.full_name:
+            return self.client_profile.full_name
+        if self.lawyer_profile and self.lawyer_profile.full_name:
+            return self.lawyer_profile.full_name
+        return self.email.split("@")[0] if self.email else "User"
 
 
 class ClientProfile(Base, TimestampMixin, SoftDeleteMixin):
@@ -161,16 +195,22 @@ class LawyerProfile(Base, TimestampMixin, SoftDeleteMixin):
     def verification_status(self) -> str:
         if not self.verifications:
             return "PENDING"
-        # Check if any verification is APPROVED
-        if any(v.status == VerificationStatus.APPROVED for v in self.verifications):
-            return "APPROVED"
-        # Check if any verification is UNDER_REVIEW
-        if any(v.status == VerificationStatus.UNDER_REVIEW for v in self.verifications):
-            return "UNDER_REVIEW"
-        # Check if any verification is PENDING
-        if any(v.status == VerificationStatus.PENDING for v in self.verifications):
-            return "PENDING"
-        return "REJECTED"
+        latest = sorted(self.verifications, key=lambda v: v.created_at or datetime.min, reverse=True)[0]
+        return latest.status.value
+
+    @property
+    def enrollment_number(self) -> str | None:
+        if not self.verifications:
+            return None
+        latest = sorted(self.verifications, key=lambda v: v.created_at or datetime.min, reverse=True)[0]
+        return latest.enrollment_number
+
+    @property
+    def state_bar_council(self) -> str | None:
+        if not self.verifications:
+            return None
+        latest = sorted(self.verifications, key=lambda v: v.created_at or datetime.min, reverse=True)[0]
+        return latest.state_bar_council
 
 
 class LawyerVerification(Base, TimestampMixin):
@@ -178,27 +218,115 @@ class LawyerVerification(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=generate_uuid7)
     lawyer_profile_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("lawyer_profiles.id", ondelete="RESTRICT"), nullable=False
+        ForeignKey("lawyer_profiles.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    enrollment_number: Mapped[str] = mapped_column(String, nullable=False)
-    state_bar_council: Mapped[str] = mapped_column(String, nullable=False)
+    enrollment_number: Mapped[str] = mapped_column(String(100), nullable=False)
+    state_bar_council: Mapped[str] = mapped_column(String(150), nullable=False)
     status: Mapped[VerificationStatus] = mapped_column(
         Enum(VerificationStatus, name="verificationstatus"),
         default=VerificationStatus.PENDING,
         nullable=False,
+        index=True,
     )
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True
     )
-    reviewed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     evidence_document_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rejection_reason_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_reverification: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # Phase 14 Provenance & Governance Extensions
+    verification_source: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    verification_method: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    declared_practice_jurisdictions: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewer_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Relationships
     lawyer_profile: Mapped["LawyerProfile"] = relationship(
         "LawyerProfile", back_populates="verifications"
+    )
+    reviewer: Mapped["User | None"] = relationship("User")
+    documents: Mapped[list["AdvocateVerificationDocument"]] = relationship(
+        "AdvocateVerificationDocument", back_populates="verification", cascade="all, delete-orphan"
+    )
+    review_events: Mapped[list["VerificationReviewEvent"]] = relationship(
+        "VerificationReviewEvent",
+        back_populates="verification",
+        cascade="all, delete-orphan",
+        order_by="desc(VerificationReviewEvent.created_at)",
+    )
+
+
+class AdvocateVerificationDocument(Base, TimestampMixin):
+    """
+    Authoritative professional credential document for advocate verification.
+    Maintains cryptographic SHA-256 integrity hash, magic byte scanning status, and independent verification lifecycle.
+    """
+    __tablename__ = "advocate_verification_documents"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=generate_uuid7)
+    verification_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("lawyer_verifications.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    document_type: Mapped[AdvocateDocumentType] = mapped_column(
+        Enum(AdvocateDocumentType, name="advocatedocumenttype"), nullable=False
+    )
+    storage_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    sha256_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    scan_status: Mapped[DocumentScanStatus] = mapped_column(
+        Enum(DocumentScanStatus, name="documentscanstatus_v2"),
+        default=DocumentScanStatus.PENDING,
+        nullable=False,
+    )
+    verification_status: Mapped[DocumentVerificationStatus] = mapped_column(
+        Enum(DocumentVerificationStatus, name="documentverificationstatus"),
+        default=DocumentVerificationStatus.SUBMITTED,
+        nullable=False,
+    )
+    rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Relationships
+    verification: Mapped["LawyerVerification"] = relationship(
+        "LawyerVerification", back_populates="documents"
+    )
+
+    @property
+    def uploaded_at(self) -> datetime:
+        return self.created_at
+
+
+class VerificationReviewEvent(Base, TimestampMixin):
+    """
+    Immutable chronological audit trail of advocate verification reviews and state transitions.
+    """
+    __tablename__ = "verification_review_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=generate_uuid7)
+    verification_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("lawyer_verifications.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    reviewer_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    from_status: Mapped[str] = mapped_column(String(50), nullable=False)
+    to_status: Mapped[str] = mapped_column(String(50), nullable=False)
+    decision: Mapped[str] = mapped_column(String(50), nullable=False)
+    verification_method: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    verification_source: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Relationships
+    verification: Mapped["LawyerVerification"] = relationship(
+        "LawyerVerification", back_populates="review_events"
     )
     reviewer: Mapped["User | None"] = relationship("User")
 

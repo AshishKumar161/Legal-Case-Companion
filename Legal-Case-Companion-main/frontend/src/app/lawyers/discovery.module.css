@@ -1,308 +1,117 @@
-/* ==========================================================================
-   LCC Phase 7.3: Lawyer Discovery & Progressive Intake Styles
-   Mobile-first, human-centered legal directory with explainable ranking.
-   ========================================================================== */
-
 .pageContainer {
-  padding: 32px 16px 80px;
-  max-width: 1200px;
+  padding: 32px 24px 80px;
+  max-width: 1240px;
   margin: 0 auto;
 }
 
-/* Header Section */
 .discoveryHeader {
-  text-align: center;
   margin-bottom: 32px;
-}
-
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--accent-secondary, #818cf8);
-  margin-bottom: 8px;
 }
 
 .title {
-  font-size: clamp(24px, 3.5vw, 36px);
+  font-size: clamp(1.8rem, 3.5vw, 2.4rem);
   font-weight: 800;
-  color: var(--text-primary, #ffffff);
-  margin: 0 0 10px 0;
-  letter-spacing: -0.02em;
+  color: var(--navy-primary);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.025em;
 }
 
 .subtitle {
-  font-size: 15px;
-  color: var(--text-secondary, #94a3b8);
-  max-width: 620px;
-  margin: 0 auto;
-  line-height: 1.6;
-}
-
-/* Primary Intent Entry Grid (Section 2) */
-.intentSection {
-  background: var(--surface-card, #0e121a);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-  border-radius: var(--radius-lg, 14px);
-  padding: 24px;
-  margin-bottom: 32px;
-}
-
-.intentSectionHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.intentSectionTitle {
-  font-size: 17px;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: 1.05rem;
+  color: var(--text-secondary);
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  line-height: 1.5;
 }
 
-.intentSectionHint {
-  font-size: 13px;
-  color: var(--text-muted, #64748b);
-}
-
-.intentGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.intentCard {
-  background: rgba(14, 18, 26, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 14px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.intentCard:hover {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(22, 28, 41, 0.95);
-  transform: translateY(-1px);
-}
-
-.intentCardActive {
-  border-color: var(--accent-primary, #6366f1);
-  background: rgba(99, 102, 241, 0.12);
-  box-shadow: 0 0 0 1px var(--accent-primary, #6366f1);
-}
-
-.intentCardTop {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.intentIcon {
-  font-size: 20px;
-}
-
-.intentLabel {
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.intentDesc {
-  font-size: 12px;
-  color: #94a3b8;
-  line-height: 1.4;
-  margin: 0;
-}
-
-/* Progressive Guided Questions (Section 3) */
-.wizardBox {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(15, 23, 42, 0.95));
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: var(--radius-lg, 14px);
-  padding: 24px;
-  margin-bottom: 32px;
-}
-
-.wizardHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.wizardStepTitle {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.wizardStepCounter {
-  font-size: 12px;
-  color: #818cf8;
-  font-weight: 700;
-  background: rgba(99, 102, 241, 0.15);
-  padding: 4px 10px;
-  border-radius: 999px;
-}
-
-.questionTitle {
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffffff;
-  margin: 0 0 6px 0;
-}
-
-.questionSubtitle {
-  font-size: 13px;
-  color: #94a3b8;
-  margin: 0 0 16px 0;
-}
-
-.pillGroup {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.choicePill {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #cbd5e1;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.choicePill:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
-
-.choicePillActive {
-  background: var(--accent-primary, #6366f1);
-  border-color: var(--accent-primary, #6366f1);
-  color: #ffffff;
-}
-
-.wizardNav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* Simplified Filter Experience (Section 6) */
-.filterContainer {
-  background: var(--surface-card, #0e121a);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-  border-radius: var(--radius-md, 12px);
-  padding: 18px 20px;
-  margin-bottom: 24px;
-}
-
-.mainFiltersRow {
+/* Search and Filter Row */
+.filterBar {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 28px;
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+  box-shadow: var(--shadow-sm);
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 240px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  color: var(--text-muted);
+}
+
+.searchBox:focus-within {
+  border-color: var(--navy-primary);
+  background: #FFFFFF;
 }
 
 .searchInput {
-  flex: 1;
-  min-width: 220px;
-  background: rgba(14, 18, 26, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
+  border: none;
+  background: none;
   outline: none;
-}
-
-.searchInput:focus {
-  border-color: var(--accent-primary, #6366f1);
-}
-
-.filterSelect {
-  background: rgba(14, 18, 26, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  outline: none;
-  cursor: pointer;
-}
-
-.advancedToggleBtn {
-  background: transparent;
-  border: 1px dashed rgba(255, 255, 255, 0.2);
-  color: #94a3b8;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.advancedToggleBtn:hover {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
-.advancedDrawer {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-/* Results & Ranking Section (Section 4 & 5) */
-.resultsHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.resultsCount {
   font-size: 14px;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-primary);
+  width: 100%;
 }
 
-.resultsCount strong {
-  color: #ffffff;
+.selectField {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
 }
 
+/* Categories Pills */
+.intentPills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 24px;
+}
+
+.intentPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.intentPill:hover {
+  background: var(--surface-subtle);
+  color: var(--navy-primary);
+}
+
+.intentPillActive {
+  background: var(--navy-primary) !important;
+  color: #FFFFFF !important;
+  border-color: var(--navy-primary) !important;
+}
+
+/* Lawyer Grid & Cards (Section 11) */
 .lawyerGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -310,193 +119,257 @@
 }
 
 .lawyerCard {
-  background: var(--surface-card, #0e121a);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-  border-radius: var(--radius-md, 12px);
-  padding: 22px;
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  transition: all 0.2s ease;
+  justify-content: space-between;
+  transition: all var(--transition-fast);
 }
 
 .lawyerCard:hover {
-  border-color: rgba(99, 102, 241, 0.35);
-  background: rgba(18, 23, 33, 0.95);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
-.lawyerTopRow {
+.cardHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  margin-bottom: 12px;
 }
 
 .lawyerName {
-  font-size: 17px;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--navy-primary);
   margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .verifiedBadge {
-  font-size: 11px;
-  font-weight: 700;
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  padding: 3px 8px;
-  border-radius: 4px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--status-safe-bg);
+  color: var(--status-safe-text);
+  border: 1px solid var(--status-safe-border);
+  white-space: nowrap;
 }
 
-/* Deterministic Explainability Badge (Section 5) */
-.explainabilityTag {
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.25);
-  color: #a5b4fc;
-  font-size: 11px;
+.practiceAreas {
+  font-size: 14px;
+  color: var(--navy-secondary);
   font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.courtName {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.ratingRow {
   display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.stars {
+  color: #EAB308;
+  font-weight: 700;
+}
+
+.availabilityBadge {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--status-safe-text);
+  margin-bottom: 18px;
 }
 
-.metaRow {
-  font-size: 13px;
-  color: #cbd5e1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+.availDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--status-success);
 }
 
-.feeDisplay {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  padding: 10px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.feeAmount {
-  font-size: 18px;
-  font-weight: 800;
-  color: #818cf8;
-}
-
-.feeLabel {
-  font-size: 11px;
-  color: #94a3b8;
-}
-
-.cardFooter {
+/* Card Action Buttons (Section 11) */
+.cardActions {
   display: flex;
   gap: 10px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 16px;
   margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.primaryActionBtn {
+.viewProfileBtn {
   flex: 1;
-  background: var(--accent-gradient, linear-gradient(135deg, #6366f1, #8b5cf6));
-  color: #ffffff;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  text-align: center;
-  text-decoration: none;
-  transition: all 0.15s ease;
-}
-
-.primaryActionBtn:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
-}
-
-.secondaryActionBtn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  color: var(--navy-primary);
   font-size: 13px;
   font-weight: 600;
-  cursor: pointer;
   text-decoration: none;
-  transition: all 0.15s ease;
+  transition: all var(--transition-fast);
 }
 
-.secondaryActionBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
+.viewProfileBtn:hover {
+  background: var(--surface-subtle);
+  border-color: var(--border-hover);
 }
 
-/* Empty State (Section 28) */
-.emptyStateContainer {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px dashed rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-lg, 14px);
+.talkToLawyerBtn {
+  flex: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--navy-primary);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+}
+
+.talkToLawyerBtn:hover {
+  background: var(--navy-hover);
+  box-shadow: var(--shadow-md);
+}
+
+/* Empty State */
+.emptyState {
+  background: #FFFFFF;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-xl);
   padding: 48px 24px;
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  margin: 32px 0;
+  max-width: 520px;
+  margin: 40px auto;
 }
 
-.emptyStateIcon {
-  font-size: 42px;
+.emptyIcon {
+  font-size: 3rem;
+  margin-bottom: 12px;
 }
 
-.emptyStateTitle {
-  font-size: 18px;
+.emptyTitle {
+  font-size: 1.25rem;
   font-weight: 700;
-  color: #ffffff;
-  margin: 0;
+  color: var(--navy-primary);
+  margin: 0 0 8px 0;
 }
 
-.emptyStateDesc {
-  font-size: 14px;
-  color: #94a3b8;
-  max-width: 460px;
+.emptyText {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
   line-height: 1.5;
-  margin: 0;
+  margin: 0 0 20px 0;
 }
 
-.emptyStateActions {
+.resetBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--navy-primary);
+  color: #FFFFFF;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.resetBtn:hover {
+  background: var(--navy-hover);
+}
+
+.avatarCircle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 8px;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--navy-primary);
+  font-size: 15px;
+  flex-shrink: 0;
 }
 
-/* Mobile Responsive */
-@media (max-width: 768px) {
+.feeText {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+}
+
+.matchTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--navy-primary);
+  background: #F1F5F9;
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
   .pageContainer {
-    padding: 20px 12px 64px;
+    padding: 20px 16px 60px;
   }
-  .intentGrid {
+
+  .lawyerGrid {
     grid-template-columns: 1fr;
   }
-  .mainFiltersRow {
+
+  .filterBar {
     flex-direction: column;
     align-items: stretch;
   }
-  .filterSelect {
-    width: 100%;
+
+  .cardActions {
+    flex-direction: column;
   }
-  .lawyerGrid {
-    grid-template-columns: 1fr;
+
+  .viewProfileBtn,
+  .talkToLawyerBtn {
+    width: 100%;
+    text-align: center;
   }
 }

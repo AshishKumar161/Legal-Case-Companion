@@ -295,3 +295,47 @@ def test_consultation_slot_overlap_comprehensive_matrix(client: TestClient, db: 
         headers=h_c2,
     )
     assert res_adj_after.status_code == 201
+
+
+def test_consultation_booking_without_scheduled_time(client: TestClient, db: Session):
+    """Verify that clients can book a consultation without specifying a time."""
+    import uuid
+    from uuid import UUID
+    from app.models.user import LawyerProfile, LawyerVerification, VerificationStatus
+    from app.core.identifiers import generate_uuid7
+
+    client_id, h_client = _setup_user(
+        client, f"client_flex_{uuid.uuid4().hex[:6]}@example.com", "Pass123!", "CLIENT"
+    )
+    lawyer_id, h_lawyer = _setup_user(
+        client, f"lawyer_flex_{uuid.uuid4().hex[:6]}@example.com", "Pass123!", "LAWYER"
+    )
+
+    l_prof = db.query(LawyerProfile).filter(LawyerProfile.user_id == UUID(lawyer_id)).first()
+    assert l_prof is not None
+    l_prof.consultation_fee = 0
+    ver = LawyerVerification(
+        id=generate_uuid7(),
+        lawyer_profile_id=l_prof.id,
+        enrollment_number=f"FLEX/{uuid.uuid4().hex[:4]}/2026",
+        state_bar_council="Delhi",
+        status=VerificationStatus.APPROVED,
+    )
+    db.add(ver)
+    db.commit()
+    db.refresh(l_prof)
+
+    # Book consultation with scheduled_at completely omitted
+    res = client.post(
+        "/api/v1/consultations",
+        json={
+            "lawyer_id": str(l_prof.id),
+            "duration_minutes": 30,
+        },
+        headers=h_client,
+    )
+    assert res.status_code == 201, res.text
+    data = res.json()
+    assert data["status"] == "REQUESTED"
+    assert data["scheduled_at"] is not None
+

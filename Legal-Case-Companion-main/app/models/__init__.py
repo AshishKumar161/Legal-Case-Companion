@@ -78,7 +78,9 @@ from app.models.case_intelligence import (
     RiskSeverity,
 )
 from app.models.consultation import Consultation, ConsultationStatus
+from app.models.consultation_document import ConsultationDocument
 from app.models.consultation_note import ConsultationNote
+from app.models.direct_message import DirectMessage
 from app.models.document import (
     Document,
     DocumentCategory,
@@ -89,6 +91,7 @@ from app.models.document import (
 from app.models.document_page import DocumentPage
 from app.models.evaluation import AIEvaluation
 from app.models.evidence import (
+    CaseExhibit,
     Evidence,
     EvidenceAccessGrant,
     EvidenceAccessLevel,
@@ -114,11 +117,6 @@ from app.models.data_quality import (
     DataQualityRun,
     DataQualityRunStatus,
     DataQualityRunType,
-)
-from app.models.support import (
-    SupportCase,
-    SupportCaseSeverity,
-    SupportCaseStatus,
 )
 from app.models.job import (
     BackgroundJob,
@@ -146,11 +144,16 @@ from app.models.payment import Payment, PaymentStatus
 from app.models.task import CaseTask, TaskPriority, TaskSourceType, TaskStatus
 from app.models.user import (
     AccountStatus,
+    AdvocateDocumentType,
+    AdvocateVerificationDocument,
     ClientProfile,
+    DocumentScanStatus,
+    DocumentVerificationStatus,
     LawyerProfile,
     LawyerVerification,
     User,
     UserRole,
+    VerificationReviewEvent,
     VerificationStatus,
 )
 from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
@@ -190,6 +193,13 @@ from app.models.court_case import (
     UserFollowedCase,
 )
 from app.models.user_feed import UserFeedAcknowledgment
+from app.models.webhook import ProcessedWebhookEvent, WebhookProcessingStatus
+from app.models.bundle import (
+    BSACertificateDraft,
+    BundleStatus,
+    EvidenceBundle,
+    EvidenceBundleItem,
+)
 
 __all__ = [
     "AIConversation",
@@ -198,17 +208,24 @@ __all__ = [
     "AIMessageRole",
     "AIResponseAudit",
     "AccountStatus",
+    "AdvocateDocumentType",
+    "AdvocatePayout",
+    "AdvocatePayoutStatus",
+    "AdvocateVerificationDocument",
     "AllowlistIdentifierType",
     "AllowlistStatus",
     "AuditEvent",
     "AuthorityLevel",
+    "BSACertificateDraft",
     "BackgroundJob",
     "Base",
+    "BundleStatus",
     "Case",
     "CaseChronologyEvent",
     "CaseClaimDefense",
     "CaseDeadline",
     "CaseEvidenceGap",
+    "CaseExhibit",
     "CaseFact",
     "CaseHearing",
     "CaseMessage",
@@ -227,6 +244,7 @@ __all__ = [
     "ClaimPositionType",
     "ClientProfile",
     "Consultation",
+    "ConsultationDocument",
     "ConsultationNote",
     "ConsultationStatus",
     "DatePrecision",
@@ -234,17 +252,22 @@ __all__ = [
     "DeadlineSourceType",
     "DeadlineStatus",
     "DeadlineType",
+    "DirectMessage",
     "Document",
     "DocumentCategory",
     "DocumentChunk",
     "DocumentPage",
     "DocumentProcessingStatus",
+    "DocumentScanStatus",
     "DocumentSecurityStatus",
     "DocumentType",
+    "DocumentVerificationStatus",
     "EmailVerificationToken",
     "Evidence",
     "EvidenceAccessGrant",
     "EvidenceAccessLevel",
+    "EvidenceBundle",
+    "EvidenceBundleItem",
     "EvidenceCategory",
     "EvidenceCustodyAction",
     "EvidenceCustodyEvent",
@@ -310,6 +333,7 @@ __all__ = [
     "UserNotificationPreference",
     "UserRole",
     "UserOperatorPermission",
+    "VerificationReviewEvent",
     "VerificationStatus",
     "VideoMeeting",
     "VideoMeetingStatus",
@@ -341,4 +365,6 @@ __all__ = [
     "UserDocumentConsent",
     "TranslationMessage",
     "TranslationStatus",
+    "ProcessedWebhookEvent",
+    "WebhookProcessingStatus",
 ]

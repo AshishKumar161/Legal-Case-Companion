@@ -14,12 +14,20 @@ import {
   CaseDeadlineItem,
   CaseMessageItem,
 } from "@/types";
-import styles from "./dashboard.module.css";
 import { PaymentCheckoutModal } from "@/components/Payment/PaymentCheckoutModal";
 import { ConsultationActionModal } from "@/components/Consultation/ConsultationActionModal";
-import { NextStep } from "@/components/NextStep";
-import LegalTerm from "@/components/LegalTerm";
 import { WhatChangedBanner } from "@/components/WhatChangedBanner";
+import {
+  CaseIcon,
+  CalendarIcon,
+  DocumentIcon,
+  LawyerIcon,
+  PlusIcon,
+  SearchIcon,
+  ArrowRightIcon,
+  CheckCircleIcon,
+} from "@/components/ui/Icons";
+import styles from "./dashboard.module.css";
 
 interface DashboardAttentionItem {
   id: string;
@@ -27,10 +35,11 @@ interface DashboardAttentionItem {
   type: "HEARING" | "DEADLINE" | "DOCUMENT_REQUEST" | "MESSAGE" | "PAYMENT" | "CONSULTATION";
   headerText: string;
   badgeLabel: string;
-  badgeColor: string;
+  badgeType: "urgent" | "warning" | "success" | "info";
   matterTitle?: string;
   caseId?: string;
-  detailsContent: React.ReactNode;
+  headline: string;
+  detail: string;
   actionLabel: string;
   actionHref?: string;
   onActionClick?: () => void;
@@ -59,7 +68,7 @@ function formatDateTime(dateString?: string | null): string {
     if (isNaN(d.getTime())) return "Not available";
     const datePart = d.toLocaleDateString("en-IN", {
       day: "numeric",
-      month: "long",
+      month: "short",
     });
     const timePart = d.toLocaleTimeString("en-IN", {
       hour: "2-digit",
@@ -109,7 +118,7 @@ export default function Dashboard() {
       setFetching(true);
       setFetchError(null);
 
-      // 1. Parallel primary fetch: Cases, Consultations, and Aggregated Calendar Events (Eliminates 16+ sequential sub-requests)
+      // Fetch Cases, Consultations, and Aggregated Calendar Events in parallel
       const [casesRes, consultRes, calEventsRes] = await Promise.all([
         apiClient.get("/api/v1/cases").catch(() => ({ items: [] })),
         apiClient.get("/api/v1/consultations").catch(() => ({ items: [] })),
@@ -126,82 +135,82 @@ export default function Dashboard() {
       setCases(caseItems);
       setConsultations(consultItems);
 
-      // Extract hearings and deadlines directly from aggregated calendar events
+      // Extract hearings and deadlines directly from calendar events
       const rawEvents = (calEventsRes as { events?: Array<Record<string, unknown>> })?.events || [];
-      const allHearings: CaseHearingItem[] = [];
-      const allDeadlines: CaseDeadlineItem[] = [];
+      const extractedHearings: CaseHearingItem[] = [];
+      const extractedDeadlines: CaseDeadlineItem[] = [];
 
       for (const ev of rawEvents) {
-        if (ev.type === "hearing") {
-          allHearings.push({
+        if (ev.event_type === "hearing") {
+          extractedHearings.push({
             id: String(ev.id),
             case_id: String(ev.case_id || ""),
-            hearing_at: String(ev.scheduled_at),
-            court_name: String(ev.forum || "Court"),
-            bench_or_coram: (ev.lawyer_details as { bench?: string })?.bench || null,
+            hearing_at: String(ev.start_time || ev.event_date || new Date().toISOString()),
+            court_name: String(ev.location || "Official Court"),
+            bench_or_coram: ev.courtroom ? String(ev.courtroom) : undefined,
+            purpose: String(ev.description || "Court hearing"),
             status: "SCHEDULED",
-            purpose: String(ev.title || ""),
-            notes: String(ev.action_tip || ""),
-          } as CaseHearingItem);
-        } else if (ev.type === "limitation" || ev.type === "task") {
-          allDeadlines.push({
+            is_confirmed: true,
+            created_at: String(ev.start_time || new Date().toISOString()),
+          });
+        } else if (ev.event_type === "limitation" || ev.event_type === "deadline") {
+          extractedDeadlines.push({
             id: String(ev.id),
             case_id: String(ev.case_id || ""),
-            title: String(ev.title),
-            deadline_at: String(ev.scheduled_at),
-            status: ev.is_urgent ? "DUE" : "UPCOMING",
-            description: String(ev.action_tip || ""),
-          } as CaseDeadlineItem);
+            title: String(ev.title || "Legal Deadline"),
+            deadline_at: String(ev.start_time || ev.event_date || new Date().toISOString()),
+            deadline_type: "PROCEDURAL" as any,
+            is_confirmed: true,
+            status: "UPCOMING",
+            description: ev.description ? String(ev.description) : undefined,
+            created_at: String(ev.start_time || new Date().toISOString()),
+          });
         }
       }
 
-      // 2. Parallel secondary fetch for top 3 active matters (brief, doc requests, messages)
+      setHearings(extractedHearings);
+      setDeadlines(extractedDeadlines);
+
+      // Fetch case briefs and document requests
       if (caseItems.length > 0) {
-        const topCases = caseItems.slice(0, 3);
-        const matterDetailsPromises = topCases.map(async (c) => {
-          const [brief, reqs, msgs] = await Promise.all([
-            apiClient.get(`/api/v1/cases/${c.id}/collaboration/brief`).catch(() => null),
-            apiClient.get(`/api/v1/cases/${c.id}/collaboration/requests?status=PENDING`).catch(() => []),
-            apiClient.get(`/api/v1/cases/${c.id}/collaboration/messages?limit=3`).catch(() => []),
-          ]);
-          return {
-            caseId: c.id,
-            brief,
-            reqs: Array.isArray(reqs) ? reqs : [],
-            msgs: Array.isArray(msgs) ? msgs : [],
-          };
-        });
-
-        const matterResults = await Promise.all(matterDetailsPromises);
-
+        const topCases = caseItems.slice(0, 8);
+        const briefs = await Promise.all(
+          topCases.map(async (c) => {
+            const brief = await apiClient.get(`/api/v1/cases/${c.id}/collaboration/brief`).catch(() => null);
+            return { caseId: c.id, brief };
+          })
+        );
         const newBriefs: Record<string, MatterBriefItem> = {};
-        const allDocReqs: MatterRequestItem[] = [];
+        for (const b of briefs) {
+          if (b.brief) newBriefs[b.caseId] = b.brief;
+        }
+        setBriefsByCaseId(newBriefs);
+
+        const allDocRequests: MatterRequestItem[] = [];
         const allMsgs: CaseMessageItem[] = [];
 
-        for (const item of matterResults) {
-          if (item.brief) {
-            newBriefs[item.caseId] = item.brief;
-          }
-          if (item.reqs) {
-            allDocReqs.push(...item.reqs);
-          }
-          if (item.msgs) {
-            allMsgs.push(...item.msgs);
-          }
-        }
+        await Promise.all(
+          topCases.map(async (c) => {
+            try {
+              const reqs = await apiClient.get(`/api/v1/cases/${c.id}/collaboration/requests`).catch(() => []);
+              if (Array.isArray(reqs)) {
+                allDocRequests.push(...reqs);
+              }
+              const msgs = await apiClient.get(`/api/v1/cases/${c.id}/collaboration/messages`).catch(() => []);
+              if (Array.isArray(msgs)) {
+                allMsgs.push(...msgs);
+              }
+            } catch {
+              // Ignore per-case non-critical errors
+            }
+          })
+        );
 
-        setBriefsByCaseId(newBriefs);
-        setHearings(allHearings);
-        setDeadlines(allDeadlines);
-        setDocumentRequests(allDocReqs);
+        setDocumentRequests(allDocRequests);
         setRecentMessages(allMsgs);
-      } else {
-        setHearings(allHearings);
-        setDeadlines(allDeadlines);
       }
-    } catch (err: unknown) {
-      console.error("Dashboard fetch error:", err);
-      setFetchError("Unable to synchronize your dashboard matters. Please verify your connection.");
+    } catch {
+      setFetchError("Unable to load case details. Please try refreshing.");
     } finally {
       setFetching(false);
     }
@@ -210,21 +219,18 @@ export default function Dashboard() {
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
-    } else if (user?.role === "LAWYER") {
-      router.push("/lawyer/dashboard");
-    } else if (user?.role === "ADMIN") {
-      router.push("/admin/dashboard");
     } else if (user) {
       void fetchDashboardData();
     }
   }, [user, loading, router, fetchDashboardData]);
 
+  // Handle Creating a New Case
   const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || creating) return;
-    setCreating(true);
     try {
-      const res = await apiClient.post("/api/v1/cases", {
+      setCreating(true);
+      const res: any = await apiClient.post("/api/v1/cases", {
         title: newTitle.trim(),
         description: newDesc.trim(),
       });
@@ -232,111 +238,57 @@ export default function Dashboard() {
       setNewTitle("");
       setNewDesc("");
       router.push(`/cases/${res.id}`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to create case";
-      alert(`Matter creation error: ${msg}`);
+    } catch {
+      alert("Failed to create case. Please try again.");
     } finally {
       setCreating(false);
     }
   };
 
-  // Build the prioritized Attention Items queue
-  const attentionItems: DashboardAttentionItem[] = useMemo(() => {
+  // Compile Prioritized Attention Items (Section 6)
+  const attentionItems = useMemo(() => {
     const items: DashboardAttentionItem[] = [];
     const now = new Date();
 
-    // 1. Urgent Hearings (scheduled in the future, prioritized within 7 days)
+    // 1. Upcoming Hearings (Red/Urgent)
     const upcomingHearings = hearings
       .filter((h) => h.status === "SCHEDULED" && new Date(h.hearing_at).getTime() >= now.getTime())
       .sort((a, b) => new Date(a.hearing_at).getTime() - new Date(b.hearing_at).getTime());
 
-    for (const h of upcomingHearings) {
+    for (const h of upcomingHearings.slice(0, 2)) {
       const hearingDate = new Date(h.hearing_at);
       const diffDays = Math.ceil((hearingDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const isUrgent = diffDays <= 7;
       const associatedCase = cases.find((c) => c.id === h.case_id);
 
       const headerText =
         diffDays === 0
-          ? "YOUR HEARING IS TODAY"
+          ? "Hearing is today"
           : diffDays === 1
-          ? "YOUR HEARING IS TOMORROW"
-          : `YOUR HEARING IS IN ${diffDays} DAYS`;
+          ? "Hearing is tomorrow"
+          : `Hearing coming up in ${diffDays} days`;
 
       items.push({
         id: `hearing-${h.id}`,
-        priority: isUrgent ? 1 : 1.5,
+        priority: 1,
         type: "HEARING",
         headerText,
-        badgeLabel: isUrgent ? "Urgent Hearing" : "Court Hearing",
-        badgeColor: "#ef4444",
-        isUrgent,
+        badgeLabel: diffDays <= 3 ? "Urgent Hearing" : "Court Hearing",
+        badgeType: "urgent",
+        isUrgent: diffDays <= 3,
         matterTitle: associatedCase?.title,
         caseId: h.case_id,
-        detailsContent: (
-          <div>
-            <div style={{ fontWeight: 600, color: "#fff", fontSize: "14px", marginBottom: "4px" }}>
-              {h.court_name} {h.bench_or_coram ? `· Court ${h.bench_or_coram}` : ""}
-            </div>
-            <div style={{ color: "#94a3b8", fontSize: "13px", marginBottom: "6px" }}>
-              {formatDateTime(h.hearing_at)}
-            </div>
-            <div style={{ fontSize: "12px", color: "#cbd5e1" }}>
-              <strong>What to prepare:</strong>{" "}
-              {h.notes || h.purpose || "Bring the requested documents."}
-            </div>
-          </div>
-        ),
-        actionLabel: "View hearing →",
+        headline: `${h.court_name} ${h.bench_or_coram ? `· Court ${h.bench_or_coram}` : ""}`,
+        detail: `${formatDateTime(h.hearing_at)} · What to prepare: ${h.notes || h.purpose || "Bring your ID and requested documents."}`,
+        actionLabel: "View Hearing",
         actionHref: `/cases/${h.case_id}?tab=hearings`,
       });
     }
 
-    // 2. Important Deadlines (due soon or overdue)
-    const activeDeadlines = deadlines
-      .filter((d) => d.status === "UPCOMING" || d.status === "DUE" || d.status === "OVERDUE")
-      .sort((a, b) => new Date(a.deadline_at).getTime() - new Date(b.deadline_at).getTime());
-
-    for (const d of activeDeadlines) {
-      const isOverdue = d.status === "OVERDUE" || new Date(d.deadline_at).getTime() < now.getTime();
-      const associatedCase = cases.find((c) => c.id === d.case_id);
-
-      items.push({
-        id: `deadline-${d.id}`,
-        priority: isOverdue ? 1.2 : 2,
-        type: "DEADLINE",
-        headerText: isOverdue ? "DEADLINE OVERDUE" : "IMPORTANT DEADLINE",
-        badgeLabel: isOverdue ? "Overdue" : "Filing Deadline",
-        badgeColor: isOverdue ? "#ef4444" : "#f59e0b",
-        isUrgent: isOverdue,
-        matterTitle: associatedCase?.title,
-        caseId: d.case_id,
-        detailsContent: (
-          <div>
-            <div style={{ fontWeight: 600, color: "#fff", fontSize: "14px", marginBottom: "4px" }}>
-              {d.title}
-            </div>
-            <div style={{ color: isOverdue ? "#fca5a5" : "#94a3b8", fontSize: "13px" }}>
-              Due: {formatDate(d.deadline_at)}
-            </div>
-            {d.description && (
-              <div style={{ fontSize: "12px", color: "#cbd5e1", marginTop: "4px" }}>
-                {d.description}
-              </div>
-            )}
-          </div>
-        ),
-        actionLabel: "View deadline →",
-        actionHref: `/cases/${d.case_id}?tab=tasks`,
-      });
-    }
-
-    // 3. Document Requests (from lawyer)
+    // 2. Lawyer Document Requests (Yellow/Warning)
     const pendingDocRequests = documentRequests.filter(
       (r) => r.status === "PENDING" && r.request_type === "DOCUMENT_UPLOAD"
     );
 
-    // Group by case if multiple
     const reqsByCase: Record<string, MatterRequestItem[]> = {};
     for (const r of pendingDocRequests) {
       if (!reqsByCase[r.case_id]) reqsByCase[r.case_id] = [];
@@ -350,123 +302,82 @@ export default function Dashboard() {
 
       items.push({
         id: `docreq-${caseId}`,
-        priority: 3,
+        priority: 2,
         type: "DOCUMENT_REQUEST",
-        headerText: count === 1 ? "YOUR LAWYER NEEDS 1 DOCUMENT" : `YOUR LAWYER NEEDS ${count} DOCUMENTS`,
-        badgeLabel: "Document Request",
-        badgeColor: "#818cf8",
+        headerText: count === 1 ? "Document requested" : `${count} documents requested`,
+        badgeLabel: "Lawyer Request",
+        badgeType: "warning",
         matterTitle: associatedCase?.title,
         caseId,
-        detailsContent: (
-          <div>
-            <div style={{ color: "#f8fafc", fontSize: "14px", fontWeight: 500, marginBottom: "4px" }}>
-              Adv. {lawyerName} requested documents for your case.
-            </div>
-            <div style={{ fontSize: "12px", color: "#94a3b8" }}>
-              {reqList.map((r) => r.title).join(" · ")}
-            </div>
-          </div>
-        ),
-        actionLabel: "Upload documents →",
+        headline: `Your lawyer needs ${count === 1 ? "one document" : `${count} documents`}`,
+        detail: `Adv. ${lawyerName} requested: ${reqList.map((r) => r.title).join(", ")}.`,
+        actionLabel: "Upload Document",
         actionHref: `/cases/${caseId}?tab=documents`,
       });
     }
 
-    // 4. Lawyer Messages (recent formal notes / messages)
+    // 3. Important Deadlines (Legal Deadlines)
+    const activeDeadlines = deadlines
+      .filter((d) => d.status === "UPCOMING" || d.status === "DUE" || d.status === "OVERDUE")
+      .sort((a, b) => new Date(a.deadline_at).getTime() - new Date(b.deadline_at).getTime());
+
+    for (const d of activeDeadlines.slice(0, 1)) {
+      const isOverdue = d.status === "OVERDUE" || new Date(d.deadline_at).getTime() < now.getTime();
+      const associatedCase = cases.find((c) => c.id === d.case_id);
+
+      items.push({
+        id: `deadline-${d.id}`,
+        priority: 3,
+        type: "DEADLINE",
+        headerText: isOverdue ? "Legal deadline overdue" : "Important legal deadline",
+        badgeLabel: isOverdue ? "Overdue" : "Legal Deadline",
+        badgeType: isOverdue ? "urgent" : "warning",
+        isUrgent: isOverdue,
+        matterTitle: associatedCase?.title,
+        caseId: d.case_id,
+        headline: d.title,
+        detail: `Due: ${formatDate(d.deadline_at)} ${d.description ? `· ${d.description}` : ""}`,
+        actionLabel: "View Details",
+        actionHref: `/cases/${d.case_id}?tab=tasks`,
+      });
+    }
+
+    // 4. Case Updates / Messages (Green/Success)
     const unreadMsgs = recentMessages.filter((m) => m.sender_role === "LAWYER" || m.sender_role === "PRIMARY_LAWYER");
-    for (const msg of unreadMsgs.slice(0, 2)) {
+    for (const msg of unreadMsgs.slice(0, 1)) {
       const associatedCase = cases.find((c) => c.id === msg.case_id);
       items.push({
         id: `msg-${msg.id}`,
         priority: 4,
         type: "MESSAGE",
-        headerText: "NEW LAWYER MESSAGE",
-        badgeLabel: "Counsel Update",
-        badgeColor: "#38bdf8",
+        headerText: "Case update from lawyer",
+        badgeLabel: "Case Update",
+        badgeType: "success",
         matterTitle: associatedCase?.title,
         caseId: msg.case_id,
-        detailsContent: (
-          <div>
-            <div style={{ color: "#f8fafc", fontSize: "13px", fontStyle: "italic", marginBottom: "4px" }}>
-              &ldquo;{msg.content.slice(0, 140)}...&rdquo;
-            </div>
-            <div style={{ fontSize: "11px", color: "#94a3b8" }}>
-              From Adv. {msg.sender_name} · {formatDate(msg.created_at)}
-            </div>
-          </div>
-        ),
-        actionLabel: "Open message →",
+        headline: `New message from Adv. ${msg.sender_name}`,
+        detail: `"${msg.content.slice(0, 110)}..."`,
+        actionLabel: "View Update",
         actionHref: `/cases/${msg.case_id}?tab=overview`,
       });
     }
 
-    // 5. Pending Payments (consultations needing client payment)
-    const pendingPaymentConsultations = consultations.filter(
-      (c) => (c.status === "REQUESTED" || c.status === "ACCEPTED") && (c.fee_amount ?? 0) > 0
-    );
-
-    for (const consult of pendingPaymentConsultations) {
-      const fee = consult.fee_amount || 0;
-      const gst = Math.round(fee * 0.18 * 100) / 100;
-      const total = Math.round((fee + gst) * 100) / 100;
-
-      items.push({
-        id: `pay-${consult.id}`,
-        priority: 5,
-        type: "PAYMENT",
-        headerText: "PAYMENT PENDING",
-        badgeLabel: "Payment Due",
-        badgeColor: "#eab308",
-        detailsContent: (
-          <div>
-            <div style={{ color: "#f8fafc", fontSize: "13px", marginBottom: "6px" }}>
-              Consultation with Adv. {consult.lawyer_name || "Assigned Counsel"}
-            </div>
-            <div className={styles.paymentBreakdown}>
-              <div className={styles.paymentRow}>
-                <span>Consultation fee:</span>
-                <span>₹{fee.toLocaleString("en-IN")}</span>
-              </div>
-              <div className={styles.paymentRow}>
-                <span>GST (18%):</span>
-                <span>₹{gst.toFixed(2)}</span>
-              </div>
-              <div className={styles.paymentTotalRow}>
-                <span>Total:</span>
-                <span>₹{total.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        ),
-        actionLabel: "Pay securely →",
-        onActionClick: () => setCheckoutConsultation(consult),
-      });
-    }
-
-    // 6. Scheduled Consultations
+    // 5. Scheduled Consultations (Info/Blue)
     const scheduledConsultations = consultations.filter(
       (c) => c.status === "PAID" || c.status === "SCHEDULED"
     );
 
-    for (const consult of scheduledConsultations.slice(0, 2)) {
+    for (const consult of scheduledConsultations.slice(0, 1)) {
       items.push({
         id: `consult-${consult.id}`,
-        priority: 6,
+        priority: 5,
         type: "CONSULTATION",
-        headerText: "SCHEDULED CONSULTATION",
+        headerText: "Upcoming lawyer consultation",
         badgeLabel: "Confirmed Session",
-        badgeColor: "#10b981",
-        detailsContent: (
-          <div>
-            <div style={{ color: "#f8fafc", fontSize: "14px", fontWeight: 500, marginBottom: "4px" }}>
-              Adv. {consult.lawyer_name || "Counsel"}
-            </div>
-            <div style={{ fontSize: "12px", color: "#94a3b8" }}>
-              {formatDateTime(consult.scheduled_start)}
-            </div>
-          </div>
-        ),
-        actionLabel: "Join consultation →",
+        badgeType: "info",
+        headline: `Adv. ${consult.lawyer_name || "Advocate"}`,
+        detail: `Scheduled for ${formatDateTime(consult.scheduled_start)}. Ensure you have your questions ready.`,
+        actionLabel: "Join Consultation",
         actionHref: `/consultations/${consult.id}`,
       });
     }
@@ -488,7 +399,7 @@ export default function Dashboard() {
       const local = user.email.split("@")[0];
       return local.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     }
-    return "Client";
+    return "there";
   }, [user]);
 
   // Filtered cases
@@ -508,11 +419,8 @@ export default function Dashboard() {
     return (
       <div className={styles.dashboardPage}>
         <div className="container" style={{ textAlign: "center", paddingTop: "100px" }}>
-          <div className={styles.eyebrow}>
-            <span className={styles.eyebrowDot} /> Synchronizing Secure Workspace
-          </div>
-          <p style={{ color: "#7b8596", marginTop: "12px" }}>
-            Authenticating credentials and retrieving matter records...
+          <p style={{ color: "var(--text-secondary)", fontSize: "16px" }}>
+            Loading your case assistant...
           </p>
         </div>
       </div>
@@ -522,48 +430,50 @@ export default function Dashboard() {
   return (
     <div className={styles.dashboardPage}>
       <div className="container">
-        {/* Top Greeting Header */}
+        {/* Top Greeting Header (Section 6) */}
         <div className={styles.dashboardHeader}>
           <div className={styles.headerTitleSection}>
             <div className={styles.eyebrow}>
-              <span className={styles.eyebrowDot} /> Client Attention Center
+              <span className={styles.eyebrowDot} /> Your Legal Assistant
             </div>
             <h1 className={styles.pageHeading}>
-              {greeting}, {clientName}
+              {greeting}, {clientName}.
             </h1>
-            <p className={styles.subHeading} style={{ fontSize: "16px", color: "#cbd5e1" }}>
+            <p className={styles.subHeading}>
               {attentionItems.length > 0
-                ? `You have ${attentionItems.length} thing${attentionItems.length === 1 ? "" : "s"} to take care of.`
-                : "You're all caught up. No pending actions need your attention today."}
+                ? "Here's what needs your attention today."
+                : "You're all caught up. No urgent actions need your attention today."}
             </p>
           </div>
 
           <div className={styles.headerActions}>
             <Link href="/lawyers" className={styles.secondaryActionBtn}>
-              <span>⚖</span> Find a lawyer
+              <LawyerIcon size={16} />
+              <span>Find a Lawyer</span>
             </Link>
             <button
               onClick={() => setCreateModalOpen(true)}
               className={styles.primaryActionBtn}
             >
-              <span>+</span> Create a case
+              <PlusIcon size={16} color="#FFFFFF" />
+              <span>Start a Case</span>
             </button>
           </div>
         </div>
 
-        {/* Phase 9: What Changed Since Your Last Visit */}
+        {/* Phase 9: What Changed Notice */}
         <WhatChangedBanner />
 
         {fetchError && (
           <div
             style={{
-              background: "rgba(239, 68, 68, 0.1)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
+              background: "rgba(220, 38, 38, 0.06)",
+              border: "1px solid rgba(220, 38, 38, 0.25)",
               borderRadius: "8px",
               padding: "12px 16px",
               marginBottom: "24px",
-              color: "#fca5a5",
-              fontSize: "13px",
+              color: "var(--status-urgent)",
+              fontSize: "14px",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -573,12 +483,10 @@ export default function Dashboard() {
             <button
               onClick={() => void fetchDashboardData()}
               style={{
-                background: "none",
-                border: "none",
-                color: "#fff",
-                cursor: "pointer",
                 textDecoration: "underline",
-                fontSize: "12px",
+                color: "inherit",
+                fontWeight: 600,
+                cursor: "pointer",
               }}
             >
               Retry
@@ -586,146 +494,118 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 1. Client Attention Center (Cards) */}
+        {/* 1. What Needs My Attention? (Section 6) */}
         {attentionItems.length > 0 && (
-          <div className={styles.attentionCenter}>
+          <section className={styles.attentionCenter} aria-label="What needs your attention">
             <div className={styles.attentionHeader}>
-              <div className={styles.attentionTitle}>
-                <span>⚡</span> Things requiring your attention
-              </div>
+              <h2 className={styles.attentionTitle}>
+                What needs your attention
+              </h2>
               <span
+                className={styles.attentionBadge}
                 style={{
-                  fontSize: "11px",
-                  color: "#fca5a5",
-                  fontWeight: 700,
-                  background: "rgba(239, 68, 68, 0.15)",
-                  padding: "2px 8px",
-                  borderRadius: "4px",
+                  background: "rgba(15, 30, 54, 0.08)",
+                  color: "var(--navy-primary)",
                 }}
               >
-                {attentionItems.length} Action{attentionItems.length === 1 ? "" : "s"} Required
+                {attentionItems.length} {attentionItems.length === 1 ? "Item" : "Items"}
               </span>
             </div>
 
-            {attentionItems[0] && (
-              <div style={{ marginBottom: "16px" }}>
-                <NextStep
-                  context={
-                    attentionItems[0].type === "HEARING"
-                      ? "HEARING"
-                      : attentionItems[0].type === "DEADLINE"
-                      ? "CASE"
-                      : attentionItems[0].type === "DOCUMENT_REQUEST"
-                      ? "DOCUMENT"
-                      : attentionItems[0].type === "PAYMENT"
-                      ? "PAYMENT"
-                      : "DASHBOARD"
-                  }
-                  headline={`${attentionItems[0].headerText}: ${attentionItems[0].matterTitle || "Attention Required"}`}
-                  detail={
-                    attentionItems[0].type === "HEARING"
-                      ? "Your next scheduled court hearing date has been confirmed. Ensure your filings are in order."
-                      : attentionItems[0].type === "DEADLINE"
-                      ? "A critical procedural deadline requires timely action."
-                      : attentionItems[0].type === "DOCUMENT_REQUEST"
-                      ? "Your legal counsel has requested supporting documents for your active matter."
-                      : "Action required on your matter."
-                  }
-                  provenance="LCC INFORMATION"
-                  urgency={attentionItems[0].isUrgent ? "CRITICAL" : "HIGH"}
-                  action={{
-                    label: attentionItems[0].actionLabel,
-                    href: attentionItems[0].actionHref,
-                    onClick: attentionItems[0].onActionClick,
-                  }}
-                  secondaryAction={{
-                    label: "View Calendar",
-                    href: "/calendar",
-                  }}
-                />
-              </div>
-            )}
-
             <div className={styles.attentionCards}>
-              {attentionItems.map((item) => (
-                <div key={item.id} className={styles.attentionCard}>
-                  <div className={styles.attentionCardTop}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                      <span
-                        style={{
-                          fontSize: "10px",
-                          color: item.badgeColor,
-                          fontWeight: 800,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                        }}
-                      >
-                        {item.headerText}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "10px",
-                          fontWeight: 700,
-                          padding: "1px 6px",
-                          borderRadius: "4px",
-                          background: `${item.badgeColor}20`,
-                          color: item.badgeColor,
-                        }}
-                      >
-                        {item.badgeLabel}
-                      </span>
+              {attentionItems.map((item) => {
+                const cardClass =
+                  item.badgeType === "urgent"
+                    ? styles.attentionCardUrgent
+                    : item.badgeType === "warning"
+                    ? styles.attentionCardWarning
+                    : item.badgeType === "success"
+                    ? styles.attentionCardSuccess
+                    : styles.attentionCardInfo;
+
+                const dotColor =
+                  item.badgeType === "urgent"
+                    ? "var(--status-urgent)"
+                    : item.badgeType === "warning"
+                    ? "var(--status-warning)"
+                    : item.badgeType === "success"
+                    ? "var(--status-success)"
+                    : "var(--status-info)";
+
+                return (
+                  <div key={item.id} className={`${styles.attentionCard} ${cardClass}`}>
+                    <div className={styles.attentionCardContent}>
+                      <div className={styles.attentionStatusRow}>
+                        <span className={styles.statusDot} style={{ background: dotColor }} />
+                        <span
+                          className={styles.attentionCardHeading}
+                          style={{ color: dotColor }}
+                        >
+                          {item.headerText}
+                        </span>
+                        {item.matterTitle && (
+                          <>
+                            <span style={{ color: "var(--border-hover)" }}>•</span>
+                            <span className={styles.attentionCaseTag}>
+                              Case: <strong>{item.matterTitle}</strong>
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      <div className={styles.attentionMainText}>{item.headline}</div>
+                      <div className={styles.attentionSubText}>{item.detail}</div>
                     </div>
 
-                    {item.matterTitle && (
-                      <div style={{ fontSize: "11px", color: "var(--brand-primary, #818cf8)", marginBottom: "4px" }}>
-                        Case: <strong>{item.matterTitle}</strong>
-                      </div>
-                    )}
-
-                    {item.detailsContent}
+                    <div className={styles.attentionCardAction}>
+                      {item.onActionClick ? (
+                        <button
+                          onClick={item.onActionClick}
+                          className={`${styles.actionBtn} ${
+                            item.isUrgent ? styles.actionBtnUrgent : styles.actionBtnPrimary
+                          }`}
+                        >
+                          <span>{item.actionLabel}</span>
+                          <ArrowRightIcon size={14} />
+                        </button>
+                      ) : item.actionHref ? (
+                        <Link
+                          href={item.actionHref}
+                          className={`${styles.actionBtn} ${
+                            item.isUrgent ? styles.actionBtnUrgent : styles.actionBtnPrimary
+                          }`}
+                        >
+                          <span>{item.actionLabel}</span>
+                          <ArrowRightIcon size={14} />
+                        </Link>
+                      ) : null}
+                    </div>
                   </div>
-
-                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
-                    {item.onActionClick ? (
-                      <button
-                        onClick={item.onActionClick}
-                        className={`${styles.attentionCardBtn} ${item.isUrgent ? styles.urgentBtn : ""}`}
-                        style={{ cursor: "pointer" }}
-                      >
-                        {item.actionLabel}
-                      </button>
-                    ) : item.actionHref ? (
-                      <Link
-                        href={item.actionHref}
-                        className={`${styles.attentionCardBtn} ${item.isUrgent ? styles.urgentBtn : ""}`}
-                      >
-                        {item.actionLabel}
-                      </Link>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          </div>
+          </section>
         )}
 
         {/* 2. My Cases Section */}
-        <div style={{ marginTop: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
+        <section style={{ marginTop: "32px" }}>
+          <div className={styles.sectionHeadingRow}>
             <h2 className={styles.myCasesHeading}>
-              <span>📁</span> My cases
+              <CaseIcon size={22} color="var(--navy-primary)" />
+              <span>My Cases</span>
             </h2>
 
             {cases.length > 0 && (
               <div className={styles.filterControls}>
                 <div className={styles.searchBox}>
-                  <span className={styles.searchIcon}>🔍</span>
+                  <SearchIcon size={14} />
                   <input
                     type="text"
                     placeholder="Search your cases..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className={styles.searchInput}
+                    aria-label="Search cases"
                   />
                 </div>
 
@@ -746,188 +626,188 @@ export default function Dashboard() {
           </div>
 
           {cases.length === 0 ? (
-            /* 3. Empty State for First-Time Clients */
-            <div className={styles.emptyStateContainer}>
-              <div className={styles.emptyStateIcon}>⚖</div>
-              <h2 className={styles.emptyStateHeading}>You don&apos;t have a case yet.</h2>
-              <p className={styles.emptyStateText}>
-                Create a case to keep your documents, hearings, lawyer and important updates together.
+            /* Empty State for First-Time Clients */
+            <div className={styles.emptyContainer}>
+              <div className={styles.emptyIcon}>
+                <CaseIcon size={28} />
+              </div>
+              <h3 className={styles.emptyHeading}>You don&apos;t have a case yet.</h3>
+              <p className={styles.emptyDesc}>
+                Create a case to keep your documents, hearings, lawyer, and important updates together in one simple place.
               </p>
-              <div className={styles.emptyStateActions}>
+              <div className={styles.emptyActions}>
                 <button
                   onClick={() => setCreateModalOpen(true)}
-                  className={styles.primaryActionBtn}
+                  className="btn btn-primary"
                 >
-                  <span>+</span> Create a case
+                  <PlusIcon size={16} />
+                  <span>Start a Case</span>
                 </button>
-                <Link href="/lawyers" className={styles.secondaryActionBtn}>
-                  <span>⚖</span> Find a lawyer
+                <Link href="/lawyers" className="btn btn-secondary">
+                  <LawyerIcon size={16} />
+                  <span>Find a Lawyer</span>
                 </Link>
               </div>
             </div>
           ) : filteredCases.length === 0 ? (
-            <div className={styles.emptyStateContainer} style={{ padding: "32px 20px" }}>
-              <p style={{ color: "#94a3b8", fontSize: "14px" }}>
-                No matters match &ldquo;{searchQuery}&rdquo;. Try resetting your search filter.
+            <div className={styles.emptyContainer}>
+              <p style={{ color: "var(--text-secondary)", fontSize: "14px" }}>
+                No cases match &ldquo;{searchQuery}&rdquo;. Try clearing your search.
               </p>
             </div>
           ) : (
-            <div className={styles.matterGrid}>
+            <div className={styles.caseGrid}>
               {filteredCases.map((c) => {
                 const brief = briefsByCaseId[c.id];
-                const courtDisplay = brief?.next_hearing_court || "Official Court Record";
+                const courtDisplay = brief?.next_hearing_court || "Court Record";
                 const nextEventDisplay = brief?.next_hearing_date
                   ? `Next hearing: ${formatDate(brief.next_hearing_date)}`
                   : "Waiting for next hearing date";
                 const lawyerDisplay = brief?.lead_counsel_name
                   ? `Adv. ${brief.lead_counsel_name}`
-                  : "Not assigned yet";
+                  : "Lawyer not assigned yet";
 
                 return (
-                  <div key={c.id} className={styles.clientMatterCard}>
-                    <div className={styles.matterCardTop}>
-                      <div className={styles.matterCardHeaderRow}>
-                        <div>
-                          <div className={styles.matterCardCourt}>
-                            <span>🏛</span> {courtDisplay}
-                          </div>
-                          <h3 className={styles.matterCardTitle}>{c.title}</h3>
-                        </div>
+                  <Link key={c.id} href={`/cases/${c.id}`} className={styles.caseCard}>
+                    <div className={styles.caseTop}>
+                      <div className={styles.caseBadgeRow}>
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            padding: "2px 8px",
+                            borderRadius: "var(--radius-full)",
+                            background:
+                              c.status === "CLOSED"
+                                ? "var(--surface-subtle)"
+                                : "var(--status-safe-bg)",
+                            color:
+                              c.status === "CLOSED"
+                                ? "var(--text-muted)"
+                                : "var(--status-safe-text)",
+                            border: `1px solid ${
+                              c.status === "CLOSED"
+                                ? "var(--border-subtle)"
+                                : "var(--status-safe-border)"
+                            }`,
+                          }}
+                        >
+                          ● {c.status === "CLOSED" ? "Closed Case" : "Active Case"}
+                        </span>
+                        <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 600 }}>
+                          REF #{c.id.slice(0, 8).toUpperCase()}
+                        </span>
                       </div>
 
-                      {/* Plain-Language Status with LegalTerm */}
-                      <div style={{ marginTop: "4px" }}>
-                        <LegalTerm term={c.status} layout="stacked" showBadge={false} />
+                      <h3 className={styles.caseTitle}>{c.title}</h3>
+
+                      <div className={styles.caseMeta}>
+                        <div><strong>Court:</strong> {courtDisplay}</div>
+                        <div><strong>Lawyer:</strong> {lawyerDisplay}</div>
                       </div>
 
-                      {/* Next Important Event */}
-                      <div className={styles.matterCardNextEvent}>
-                        <span className={styles.matterCardNextEventLabel}>Next Event</span>
-                        <span className={styles.matterCardNextEventValue}>{nextEventDisplay}</span>
+                      <div className={styles.caseNextEvent}>
+                        <CalendarIcon size={14} color="var(--navy-primary)" />
+                        <span>{nextEventDisplay}</span>
                       </div>
                     </div>
 
-                    <div className={styles.matterCardFooter}>
-                      <div className={styles.matterCardMeta}>
-                        <div>
-                          <strong>Lawyer:</strong> {lawyerDisplay}
-                        </div>
-                        <div>
-                          Last update: {formatDate(c.updated_at || c.created_at)}
-                        </div>
-                      </div>
-
-                      <Link href={`/cases/${c.id}`} className={styles.openCaseBtn}>
-                        Open case →
-                      </Link>
+                    <div className={styles.caseFooter}>
+                      <span>View Case Details</span>
+                      <ArrowRightIcon size={14} />
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
           )}
-        </div>
+        </section>
+      </div>
 
-        {/* Create Case Modal */}
-        {createModalOpen && (
-          <div
-            className={styles.modalOverlay}
-            onClick={() => setCreateModalOpen(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-matter-title"
-          >
-            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-              <div className={styles.modalHeader}>
-                <h3 id="create-matter-title">Create a new legal matter</h3>
-                <button
-                  onClick={() => setCreateModalOpen(false)}
-                  className={styles.modalClose}
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
+      {/* Start Case Modal */}
+      {createModalOpen && (
+        <div className={styles.modalBackdrop} onClick={() => setCreateModalOpen(false)}>
+          <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>Start a New Case</h3>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setCreateModalOpen(false)}
+                aria-label="Close dialog"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCase}>
+              <div className="input-group">
+                <label className="input-label">What is this case about?</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="e.g. Property boundary dispute, Rent agreement issue"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  required
+                />
               </div>
 
-              <form onSubmit={handleCreateCase} className={styles.modalBody}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="matter-title" className={styles.label}>
-                    Matter Title *
-                  </label>
-                  <input
-                    id="matter-title"
-                    type="text"
-                    required
-                    placeholder="e.g., Property dispute · DLF Phase 2"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    className={styles.inputField}
-                  />
-                  <span style={{ fontSize: "11px", color: "#8c97ad", marginTop: "4px" }}>
-                    Give your case a clear name so you can recognize it easily.
-                  </span>
-                </div>
+              <div className="input-group">
+                <label className="input-label">Briefly explain what happened (Optional)</label>
+                <textarea
+                  className="input-field"
+                  rows={3}
+                  placeholder="Describe your situation in plain words..."
+                  value={newDesc}
+                  onChange={(e) => setNewDesc(e.target.value)}
+                />
+              </div>
 
-                <div className={styles.formGroup}>
-                  <label htmlFor="matter-desc" className={styles.label}>
-                    Brief description (optional)
-                  </label>
-                  <textarea
-                    id="matter-desc"
-                    rows={3}
-                    placeholder="Describe what happened or what help you need..."
-                    value={newDesc}
-                    onChange={(e) => setNewDesc(e.target.value)}
-                    className={styles.textareaField}
-                  />
-                </div>
-
-                <div className={styles.modalFooter}>
-                  <button
-                    type="button"
-                    onClick={() => setCreateModalOpen(false)}
-                    className={styles.secondaryActionBtn}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={creating || !newTitle.trim()}
-                    className={styles.primaryActionBtn}
-                  >
-                    {creating ? "Creating..." : "Create matter"}
-                  </button>
-                </div>
-              </form>
-            </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+                <button
+                  type="button"
+                  onClick={() => setCreateModalOpen(false)}
+                  className="btn btn-secondary"
+                  disabled={creating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={creating}
+                >
+                  {creating ? "Creating Case..." : "Continue →"}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Payment Checkout Modal */}
-        {checkoutConsultation && (
-          <PaymentCheckoutModal
-            consultation={checkoutConsultation}
-            onClose={() => setCheckoutConsultation(null)}
-            onPaymentSuccess={() => {
-              setCheckoutConsultation(null);
-              void fetchDashboardData();
-            }}
-          />
-        )}
+      {/* Consultation Action & Checkout Modals */}
+      {checkoutConsultation && (
+        <PaymentCheckoutModal
+          consultation={checkoutConsultation}
+          onClose={() => setCheckoutConsultation(null)}
+          onPaymentSuccess={() => {
+            setCheckoutConsultation(null);
+            void fetchDashboardData();
+          }}
+        />
+      )}
 
-        {/* Consultation Action Modal (Reschedule / Cancel) */}
-        {actionConsultationModal && (
-          <ConsultationActionModal
-            type={actionConsultationModal.type}
-            consultation={actionConsultationModal.consultation}
-            onClose={() => setActionConsultationModal(null)}
-            onSuccess={() => {
-              setActionConsultationModal(null);
-              void fetchDashboardData();
-            }}
-          />
-        )}
-      </div>
+      {actionConsultationModal && (
+        <ConsultationActionModal
+          type={actionConsultationModal.type}
+          consultation={actionConsultationModal.consultation}
+          onClose={() => setActionConsultationModal(null)}
+          onSuccess={() => {
+            setActionConsultationModal(null);
+            void fetchDashboardData();
+          }}
+        />
+      )}
     </div>
   );
 }

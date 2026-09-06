@@ -5,14 +5,18 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from sqlalchemy.orm import Session
 from app.db.database import SessionLocal, engine
 from app.models.base import Base
 from app.models.court_case import CourtCase
 from app.core.identifiers import generate_uuid7
 
-def seed_court_cases():
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+def seed_court_cases(db: Session | None = None):
+    should_close = False
+    if db is None:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        should_close = True
     try:
         # Check if already seeded
         existing = db.query(CourtCase).filter(CourtCase.cnr == "DLHC010041202025").first()
@@ -208,7 +212,8 @@ def seed_court_cases():
         db.commit()
         print(f"Successfully seeded {len(cases)} court cases.")
     finally:
-        db.close()
+        if should_close:
+            db.close()
 
 if __name__ == "__main__":
     seed_court_cases()

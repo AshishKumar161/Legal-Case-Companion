@@ -2,31 +2,59 @@ import json
 import logging
 import secrets
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal, ROUND_HALF_EVEN
 from typing import Any
 from uuid import UUID
 
+TWOPLACES = Decimal("0.01")
+
+
+def _to_decimal(val: Any) -> Decimal:
+    if isinstance(val, Decimal):
+        return val
+    if val is None:
+        return Decimal("0.00")
+    return Decimal(str(val))
+
+
+def _quantize(val: Decimal) -> Decimal:
+    return val.quantize(TWOPLACES, rounding=ROUND_HALF_EVEN)
+
+import io
 from fastapi import (
     APIRouter,
     Depends,
+    File,
+    Form,
     Query,
     Request,
+    UploadFile,
     WebSocket,
     WebSocketDisconnect,
     status,
 )
+from fastapi.responses import StreamingResponse
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import RequireRole, get_current_user, get_db
 from app.api.v1.auth import limiter
 from app.core.config import settings
-from app.core.exceptions import AuthorizationError, ResourceNotFoundError
+from app.core.exceptions import AuthorizationError, ResourceNotFoundError, ValidationError
 from app.core.redis import get_redis_client
 from app.core.security import verify_access_token
+from app.core.storage import get_storage_provider
+from app.core.identifiers import generate_uuid7
+from app.models.case import Case, CaseParticipant, ParticipantRole, ParticipantStatus
+from app.models.case_collaboration import CaseMessage, CaseMessageType
+from app.models.direct_message import DirectMessage
+from app.models.consultation_document import ConsultationDocument
 from app.models.consultation import Consultation, ConsultationStatus
 from app.models.notification import NotificationType
 from app.models.payment import Payment, PaymentStatus
-from app.models.user import AccountStatus, LawyerProfile, User, UserRole
+from app.models.user import AccountStatus, ClientProfile, LawyerProfile, User, UserRole
 from app.schemas.auth import WSTicketResponse
+from app.schemas.presence import PresenceStatus
 from app.services.lawyer_call_channel import incoming_call_channel_manager
 from app.services.notification_service import NotificationService
 from app.services.presence_service import presence_service
@@ -37,6 +65,7 @@ from app.schemas.consultation import (
     ConsultationCancelRequest,
     ConsultationCreate,
     ConsultationCreateCaseRequest,
+    ConsultationDocumentResponse,
     ConsultationLinkCaseRequest,
     ConsultationNoShowRequest,
     ConsultationPricingBreakdown,
@@ -57,6 +86,7 @@ from app.schemas.video_meeting import (
     VideoJoinInfoResponse,
     VideoMeetingEndRequest,
     VideoMeetingResponse,
+    VideoRoomAccessStatusResponse,
 )
 from app.schemas.video_recording import (
     ConsentStatusResponse,
@@ -126,30 +156,31 @@ def get_consultation_pricing_preview(
     if not lawyer:
         raise ResourceNotFoundError("Lawyer profile not found")
 
-    base_fee = float(lawyer.consultation_fee) if lawyer.consultation_fee is not None else 2500.0
-    ratio = max(1, duration_minutes // 30)
-    fee_amount = round(base_fee * ratio, 2)
-    gst_rate = 0.18
-    gst_amount = round(fee_amount * gst_rate, 2)
-    platform_fee = 0.0
-    total_amount = round(fee_amount + gst_amount + platform_fee, 2)
+    base_fee = _to_decimal(lawyer.consultation_fee) if lawyer.consultation_fee is not None else Decimal("2500.00")
+    ratio = Decimal(str(max(1, duration_minutes // 30)))
+    fee_amount = _quantize(base_fee * ratio)
+    gst_percent = _to_decimal(getattr(settings, "COMMERCIAL_GST_PERCENT", 18.0))
+    gst_rate = _quantize(gst_percent / Decimal("100.0"))
+    gst_amount = _quantize(fee_amount * gst_rate)
+    platform_fee = Decimal("0.00")
+    total_amount = _quantize(fee_amount + gst_amount + platform_fee)
 
-    cgst = round(gst_amount / 2, 2)
-    sgst = round(gst_amount - cgst, 2)
+    cgst = _quantize(gst_amount / Decimal("2.0"))
+    sgst = _quantize(gst_amount - cgst)
 
     return ConsultationPricingResponse(
         lawyer_id=lawyer.id,
         duration_minutes=duration_minutes,
-        fee_amount=fee_amount,
-        gst_rate=gst_rate,
-        gst_amount=gst_amount,
-        platform_fee=platform_fee,
-        total_amount=total_amount,
+        fee_amount=float(fee_amount),
+        gst_rate=float(gst_rate),
+        gst_amount=float(gst_amount),
+        platform_fee=float(platform_fee),
+        total_amount=float(total_amount),
         currency="INR",
         breakdown=ConsultationPricingBreakdown(
-            cgst=cgst,
-            sgst=sgst,
-            description="18% GST (9% Central GST + 9% State GST)",
+            cgst=float(cgst),
+            sgst=float(sgst),
+            description=f"{int(gst_percent)}% GST ({int(gst_percent / 2)}% Central GST + {int(gst_percent / 2)}% State GST)",
         ),
     )
 
@@ -323,6 +354,284 @@ async def websocket_incoming_calls(
         logger.debug("Incoming call WebSocket disconnected: %s", e)
     finally:
         await incoming_call_channel_manager.disconnect(lawyer_id, websocket)
+
+
+from pydantic import BaseModel
+
+
+class InstantCallRequest(BaseModel):
+    lawyer_id: UUID
+    case_id: UUID | None = None
+    duration_minutes: int = 30
+
+
+@router.get("/lawyer-call-status")
+def get_lawyer_call_status(
+    lawyer_id: UUID = Query(..., description="ID of the lawyer profile or user"),
+    case_id: UUID | None = Query(None, description="Optional case ID to check existing consultations"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Check if a lawyer is currently online, in another meeting, or available for video consultation.
+    """
+    consultation_service = ConsultationService(db)
+    is_avail, reason, p_status = consultation_service.is_lawyer_available(lawyer_id)
+
+    # Check if there is an active consultation for this client and lawyer
+    client_profile = db.query(ClientProfile).filter(ClientProfile.user_id == current_user.id).first()
+    active_con_id = None
+    is_meeting_with_me = False
+
+    lawyer_profile = (
+        db.query(LawyerProfile)
+        .filter(or_(LawyerProfile.id == lawyer_id, LawyerProfile.user_id == lawyer_id))
+        .first()
+    )
+
+    if client_profile and lawyer_profile:
+        # Check if currently in an active meeting with THIS client
+        in_progress_con = (
+            db.query(Consultation)
+            .filter(
+                Consultation.client_id == client_profile.id,
+                Consultation.lawyer_id == lawyer_profile.id,
+                Consultation.status == ConsultationStatus.IN_PROGRESS,
+                Consultation.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if in_progress_con:
+            is_meeting_with_me = True
+            active_con_id = str(in_progress_con.id)
+
+        if not active_con_id:
+            query = db.query(Consultation).filter(
+                Consultation.client_id == client_profile.id,
+                Consultation.lawyer_id == lawyer_profile.id,
+                Consultation.deleted_at.is_(None),
+                Consultation.status.in_([
+                    ConsultationStatus.REQUESTED,
+                    ConsultationStatus.ACCEPTED,
+                    ConsultationStatus.SCHEDULED,
+                    ConsultationStatus.PAID,
+                ]),
+            )
+            if case_id:
+                query = query.filter(Consultation.case_id == case_id)
+            active_con = query.order_by(Consultation.created_at.desc()).first()
+            if active_con:
+                active_con_id = str(active_con.id)
+
+    is_online = p_status in (PresenceStatus.ONLINE, PresenceStatus.AVAILABLE, PresenceStatus.BUSY)
+    is_in_meeting = p_status == PresenceStatus.BUSY and not is_meeting_with_me
+
+    if is_meeting_with_me:
+        status_label = "Call In Progress with You"
+        can_call = True
+    elif is_in_meeting:
+        status_label = "In Another Meeting"
+        can_call = False
+    elif is_avail:
+        status_label = "Available for Video Call"
+        can_call = True
+    else:
+        status_label = "Offline"
+        can_call = False
+
+    return {
+        "lawyer_id": str(lawyer_id),
+        "is_online": is_online,
+        "is_available": is_avail or is_meeting_with_me,
+        "is_in_meeting": is_in_meeting,
+        "is_meeting_with_me": is_meeting_with_me,
+        "presence_status": p_status.value,
+        "status_label": status_label,
+        "reason": reason,
+        "can_call_now": can_call,
+        "active_consultation_id": active_con_id,
+    }
+
+
+def _notify_lawyer_meeting_live(
+    db: Session,
+    consultation: Consultation,
+    client_user: User,
+    consultation_service: ConsultationService,
+):
+    try:
+        lawyer_prof = (
+            db.query(LawyerProfile)
+            .filter(LawyerProfile.id == consultation.lawyer_id)
+            .first()
+        )
+        if not lawyer_prof or not lawyer_prof.user_id:
+            return
+
+        client_name = client_user.full_name or (client_user.email.split("@")[0] if client_user.email else "Client")
+        case_title = "Direct Consultation"
+        if consultation.case_id:
+            c_obj = db.query(Case).filter(Case.id == consultation.case_id).first()
+            if c_obj and c_obj.title:
+                case_title = c_obj.title
+
+            # Ensure both client and lawyer are enrolled as active participants in this case
+            for uid, role in [(client_user.id, ParticipantRole.OWNER), (lawyer_prof.user_id, ParticipantRole.LAWYER)]:
+                p_existing = (
+                    db.query(CaseParticipant)
+                    .filter(
+                        CaseParticipant.case_id == consultation.case_id,
+                        CaseParticipant.user_id == uid,
+                    )
+                    .first()
+                )
+                if not p_existing:
+                    new_p = CaseParticipant(
+                        id=generate_uuid7(),
+                        case_id=consultation.case_id,
+                        user_id=uid,
+                        participant_role=role,
+                        status=ParticipantStatus.ACTIVE,
+                        joined_at=datetime.now(UTC),
+                    )
+                    db.add(new_p)
+
+        # 1. Direct message in chat thread
+        chat_msg_content = f"📹 Video Call Started: I have joined the video room for case '{case_title}'. Click to join: /consultations/{consultation.id}/room"
+        dm = DirectMessage(
+            id=generate_uuid7(),
+            sender_id=client_user.id,
+            recipient_id=lawyer_prof.user_id,
+            content=chat_msg_content,
+            is_read=False,
+        )
+        db.add(dm)
+
+        # 2. CaseMessage if linked to case
+        if consultation.case_id:
+            cm = CaseMessage(
+                id=generate_uuid7(),
+                case_id=consultation.case_id,
+                sender_id=client_user.id,
+                content=chat_msg_content,
+                message_type=CaseMessageType.GENERAL,
+            )
+            db.add(cm)
+
+        # 3. In-app notification
+        notification_service = NotificationService(db)
+        notification_service.create_notification(
+            user_id=lawyer_prof.user_id,
+            type=NotificationType.CONSULTATION_REQUESTED,
+            title="Client Joined Video Meeting",
+            message=f"{client_name} has joined the video meeting for case '{case_title}'. Click to join now.",
+            case_id=consultation.case_id,
+            consultation_id=consultation.id,
+            metadata={
+                "consultation_id": str(consultation.id),
+                "action": "incoming_video_call",
+                "client_name": client_name,
+                "case_id": str(consultation.case_id) if consultation.case_id else None,
+                "case_title": case_title,
+                "room_url": f"/consultations/{consultation.id}/room",
+            },
+            event_id=f"incoming_call_{consultation.id}_{int(datetime.now(UTC).timestamp())}",
+        )
+
+        db.commit()
+
+        # 4. Real-time WebSocket ringing alert
+        call_data = {
+            "id": str(consultation.id),
+            "client_name": client_name,
+            "fee": float(consultation.fee_amount) if consultation.fee_amount else 0.0,
+            "case_id": str(consultation.case_id) if consultation.case_id else None,
+            "case_title": case_title,
+            "room_url": f"/consultations/{consultation.id}/room",
+            "scheduled_at": consultation.scheduled_at.isoformat() if consultation.scheduled_at else None,
+            "created_at": consultation.created_at.isoformat() if consultation.created_at else None,
+            "ring_timeout_seconds": settings.INSTANT_CALL_RING_TIMEOUT_SECONDS,
+        }
+        consultation_service._dispatch_async(
+            incoming_call_channel_manager.notify_incoming_call(
+                consultation.lawyer_id, call_data
+            )
+        )
+    except Exception as exc:
+        logger.warning("Error notifying lawyer of client meeting join: %s", exc)
+
+
+@router.post("/instant-call")
+def request_instant_video_call(
+    req: InstantCallRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Initiate or join an immediate video call with a lawyer.
+    If an active consultation already exists, reuses it.
+    Otherwise creates an instant consultation and provisions the room immediately.
+    """
+    consultation_service = ConsultationService(db)
+    client_profile = db.query(ClientProfile).filter(ClientProfile.user_id == current_user.id).first()
+    if not client_profile and current_user.role == UserRole.CLIENT:
+        raise ResourceNotFoundError("Client profile not found")
+
+    vms = VideoMeetingService(db)
+
+    # If an active consultation already exists, reuse it directly
+    if client_profile:
+        existing = (
+            db.query(Consultation)
+            .filter(
+                Consultation.client_id == client_profile.id,
+                Consultation.deleted_at.is_(None),
+                Consultation.status.in_([
+                    ConsultationStatus.IN_PROGRESS,
+                    ConsultationStatus.ACCEPTED,
+                    ConsultationStatus.SCHEDULED,
+                    ConsultationStatus.PAID,
+                    ConsultationStatus.REQUESTED,
+                ]),
+            )
+        )
+        if req.case_id:
+            existing = existing.filter(Consultation.case_id == req.case_id)
+        con = existing.order_by(Consultation.created_at.desc()).first()
+        if con:
+            m = vms.ensure_meeting_provisioned(con)
+            if con.status != ConsultationStatus.IN_PROGRESS:
+                con.status = ConsultationStatus.IN_PROGRESS
+                db.commit()
+            _notify_lawyer_meeting_live(db, con, current_user, consultation_service)
+            return {
+                "consultation_id": str(con.id),
+                "room_id": m.room_id,
+                "room_url": f"/consultations/{con.id}/room",
+                "status": con.status.value,
+                "is_new": False,
+            }
+
+    # Create new instant consultation
+    create_req = ConsultationCreate(
+        lawyer_id=req.lawyer_id,
+        case_id=req.case_id,
+        duration_minutes=req.duration_minutes,
+        is_instant=True,
+    )
+    new_con = consultation_service.request_consultation(current_user, create_req)
+    m = vms.ensure_meeting_provisioned(new_con)
+    new_con.status = ConsultationStatus.IN_PROGRESS
+    db.commit()
+    _notify_lawyer_meeting_live(db, new_con, current_user, consultation_service)
+
+    return {
+        "consultation_id": str(new_con.id),
+        "room_id": m.room_id,
+        "room_url": f"/consultations/{new_con.id}/room",
+        "status": new_con.status.value,
+        "is_new": True,
+    }
 
 
 
@@ -570,6 +879,26 @@ def get_messages(
 
 
 @router.get(
+    "/{consultation_id}/video/access-status",
+    response_model=VideoRoomAccessStatusResponse,
+)
+@limiter.limit("60/minute")
+def get_video_meeting_access_status(
+    request: Request,
+    consultation_id: UUID,
+    bypass_time: bool = Query(default=False, description="Bypass scheduled time window check for instant testing or when advocate is online"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Evaluates server-authoritative eligibility to join the video consultation room.
+    Provides precise UTC and IST join-window timing, countdown, and blocking reason without throwing 422.
+    """
+    service = VideoMeetingService(db)
+    return service.get_room_access_status(current_user, consultation_id, bypass_time_window=bypass_time)
+
+
+@router.get(
     "/{consultation_id}/video/join",
     response_model=VideoJoinInfoResponse,
 )
@@ -577,6 +906,7 @@ def get_messages(
 def join_video_meeting(
     request: Request,
     consultation_id: UUID,
+    bypass_time: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -585,7 +915,26 @@ def join_video_meeting(
     Enforces strict participant authorization (Client, assigned Lawyer, or Admin).
     """
     service = VideoMeetingService(db)
-    return service.get_join_information(current_user, consultation_id)
+    return service.get_join_information(current_user, consultation_id, bypass_time_window=bypass_time)
+
+
+@router.post(
+    "/{consultation_id}/video/reconnect",
+    response_model=VideoJoinInfoResponse,
+)
+@limiter.limit("60/minute")
+def reconnect_video_meeting(
+    request: Request,
+    consultation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Idempotent reconnect and session restoration endpoint for active video consultations.
+    Reissues fresh room credentials without creating duplicate meetings or drifting business status.
+    """
+    service = VideoMeetingService(db)
+    return service.restore_or_reconnect_session(current_user, consultation_id)
 
 
 @router.post(
@@ -601,7 +950,13 @@ def start_video_meeting(
     Mark the video consultation meeting as ACTIVE and consultation as IN_PROGRESS.
     """
     service = VideoMeetingService(db)
-    return service.start_meeting(current_user, consultation_id)
+    res = service.start_meeting(current_user, consultation_id)
+    if current_user.role != UserRole.LAWYER:
+        con = db.query(Consultation).filter(Consultation.id == consultation_id).first()
+        if con:
+            consultation_service = ConsultationService(db)
+            _notify_lawyer_meeting_live(db, con, current_user, consultation_service)
+    return res
 
 
 @router.post(
@@ -620,6 +975,7 @@ def end_video_meeting(
     service = VideoMeetingService(db)
     notes = req.notes if req else None
     return service.end_meeting(current_user, consultation_id, notes=notes)
+
 
 
 # --- Consultation Video Recording Endpoints ---
@@ -870,3 +1226,182 @@ def get_consultation_notes(
     """
     service = ConsultationService(db)
     return service.get_consultation_notes(current_user, consultation_id)
+
+
+# --------------------------------------------------------------------------
+# IN-CONSULTATION SHARED DOCUMENTS ENDPOINTS
+# --------------------------------------------------------------------------
+
+
+@router.post(
+    "/{consultation_id}/documents",
+    response_model=ConsultationDocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("30/minute")
+async def upload_consultation_document(
+    request: Request,
+    consultation_id: UUID,
+    file: UploadFile = File(...),
+    description: str | None = Form(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Upload and share a document directly within a consultation session.
+    """
+    consultation = db.query(Consultation).filter(Consultation.id == consultation_id).first()
+    if not consultation:
+        raise ResourceNotFoundError("Consultation not found")
+
+    is_client = current_user.client_profile and consultation.client_id == current_user.client_profile.id
+    is_lawyer = current_user.lawyer_profile and consultation.lawyer_id == current_user.lawyer_profile.id
+    is_admin = current_user.role == UserRole.ADMIN
+    if not (is_client or is_lawyer or is_admin):
+        raise AuthorizationError("You do not have access to this consultation.")
+
+    file_bytes = await file.read()
+    if len(file_bytes) > 25 * 1024 * 1024:  # 25 MB limit
+        raise ValidationError("File size exceeds 25 MB limit.")
+
+    file_name = file.filename or "shared_document.pdf"
+    mime_type = file.content_type or "application/octet-stream"
+    storage_key = f"consultations/{consultation_id}/{secrets.token_hex(8)}_{file_name}"
+
+    storage = get_storage_provider()
+    storage.put_object_bytes(storage_key, file_bytes, mime_type)
+
+    doc = ConsultationDocument(
+        consultation_id=consultation_id,
+        uploader_id=current_user.id,
+        file_name=file_name,
+        file_size=len(file_bytes),
+        mime_type=mime_type,
+        storage_key=storage_key,
+        description=description,
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+
+    uploader_name = current_user.full_name or "Participant"
+    uploader_role = "LAWYER" if is_lawyer else ("CLIENT" if is_client else "ADMIN")
+
+    return ConsultationDocumentResponse(
+        id=doc.id,
+        consultation_id=doc.consultation_id,
+        uploader_id=doc.uploader_id,
+        uploader_name=uploader_name,
+        uploader_role=uploader_role,
+        file_name=doc.file_name,
+        file_size=doc.file_size,
+        mime_type=doc.mime_type,
+        description=doc.description,
+        download_url=f"/api/v1/consultations/{consultation_id}/documents/{doc.id}/download",
+        created_at=doc.created_at,
+    )
+
+
+@router.get(
+    "/{consultation_id}/documents",
+    response_model=list[ConsultationDocumentResponse],
+)
+def get_consultation_documents(
+    consultation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    List all documents shared during or for this consultation.
+    """
+    consultation = db.query(Consultation).filter(Consultation.id == consultation_id).first()
+    if not consultation:
+        raise ResourceNotFoundError("Consultation not found")
+
+    is_client = current_user.client_profile and consultation.client_id == current_user.client_profile.id
+    is_lawyer = current_user.lawyer_profile and consultation.lawyer_id == current_user.lawyer_profile.id
+    is_admin = current_user.role == UserRole.ADMIN
+    if not (is_client or is_lawyer or is_admin):
+        raise AuthorizationError("You do not have access to this consultation.")
+
+    docs = (
+        db.query(ConsultationDocument)
+        .filter(ConsultationDocument.consultation_id == consultation_id)
+        .order_by(ConsultationDocument.created_at.asc())
+        .all()
+    )
+
+    results = []
+    for d in docs:
+        uploader = db.query(User).filter(User.id == d.uploader_id).first()
+        u_name = uploader.full_name if uploader and uploader.full_name else "Participant"
+        u_role = "LAWYER" if (uploader and uploader.role == UserRole.LAWYER) else "CLIENT"
+
+        results.append(
+            ConsultationDocumentResponse(
+                id=d.id,
+                consultation_id=d.consultation_id,
+                uploader_id=d.uploader_id,
+                uploader_name=u_name,
+                uploader_role=u_role,
+                file_name=d.file_name,
+                file_size=d.file_size,
+                mime_type=d.mime_type,
+                description=d.description,
+                download_url=f"/api/v1/consultations/{consultation_id}/documents/{d.id}/download",
+                created_at=d.created_at,
+            )
+        )
+    return results
+
+
+@router.get(
+    "/{consultation_id}/documents/{document_id}/download",
+)
+def download_consultation_document(
+    consultation_id: UUID,
+    document_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Download a shared consultation document.
+    """
+    doc = (
+        db.query(ConsultationDocument)
+        .filter(
+            ConsultationDocument.id == document_id,
+            ConsultationDocument.consultation_id == consultation_id,
+        )
+        .first()
+    )
+    if not doc:
+        raise ResourceNotFoundError("Consultation document not found")
+
+    consultation = db.query(Consultation).filter(Consultation.id == consultation_id).first()
+    if not consultation:
+        raise ResourceNotFoundError("Consultation not found")
+
+    is_client = current_user.client_profile and consultation.client_id == current_user.client_profile.id
+    is_lawyer = current_user.lawyer_profile and consultation.lawyer_id == current_user.lawyer_profile.id
+    is_admin = current_user.role == UserRole.ADMIN
+    if not (is_client or is_lawyer or is_admin):
+        raise AuthorizationError("You do not have access to this document.")
+
+    storage = get_storage_provider()
+    file_bytes = storage.get_object_bytes(doc.storage_key)
+    if not file_bytes:
+        raise ResourceNotFoundError("Document file bytes not found")
+
+    from urllib.parse import quote
+    safe_filename = quote(doc.file_name)
+
+    return StreamingResponse(
+        io.BytesIO(file_bytes),
+        media_type=doc.mime_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{doc.file_name}"; filename*=UTF-8\'\'{safe_filename}',
+            "Content-Length": str(len(file_bytes)),
+        },
+    )
+

@@ -3,400 +3,276 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { apiClient, ApiError } from "@/api/client";
-import LegalTerm from "@/components/LegalTerm";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { trackFunnelEvent } from "@/lib/analytics";
-import { CalendarEventItem, CalendarEventsResponse } from "@/types";
+import { CalendarEventItem, CalendarEventsResponse, CaseItem } from "@/types";
+import {
+  CalendarIcon,
+  CourthouseIcon,
+  CheckCircleIcon,
+  AssistantIcon,
+  ArrowRightIcon,
+} from "@/components/ui/Icons";
 import styles from "./page.module.css";
 
-type ViewTimeframe = "upcoming" | "today" | "this_week" | "later" | "all";
-type EventTypeFilter = "all" | "hearing" | "limitation" | "consultation" | "task";
-type PerspectiveView = "client" | "lawyer";
+function formatDateParts(dateString?: string | null): { dateStr: string; timeStr: string } {
+  if (!dateString) return { dateStr: "Not scheduled", timeStr: "Time TBA" };
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return { dateStr: "Not scheduled", timeStr: "Time TBA" };
+    const dateStr = d.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    const timeStr = d.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return { dateStr, timeStr };
+  } catch {
+    return { dateStr: "Not scheduled", timeStr: "Time TBA" };
+  }
+}
 
 export default function CalendarPage() {
-  const [viewTimeframe, setViewTimeframe] = useState<ViewTimeframe>("upcoming");
-  const [typeFilter, setTypeFilter] = useState<EventTypeFilter>("all");
-  const [perspective, setPerspective] = useState<PerspectiveView>("client");
-
   const [events, setEvents] = useState<CalendarEventItem[]>([]);
-  const [nextAttention, setNextAttention] = useState<CalendarEventItem | null>(null);
+  const [cases, setCases] = useState<CaseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCalendarEvents = useCallback(
-    async (timeframeParam: ViewTimeframe, typeParam: EventTypeFilter) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const params = new URLSearchParams();
-        params.set("timeframe", timeframeParam);
-        if (typeParam !== "all") params.set("event_type", typeParam);
+  // "Ask LCC" Guidance Modal State (Section 10)
+  const [askLccEvent, setAskLccEvent] = useState<CalendarEventItem | null>(null);
 
-        const data = (await apiClient.get(
-          `/api/v1/calendar/events?${params.toString()}`
-        )) as CalendarEventsResponse;
+  const fetchCalendarEvents = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [calData, casesData] = await Promise.all([
+        apiClient.get<CalendarEventsResponse>("/api/v1/calendar/events?timeframe=upcoming"),
+        apiClient.get<any>("/api/v1/cases").catch(() => []),
+      ]);
 
-        setEvents(data.events || []);
-        setNextAttention(data.next_attention_event || null);
-      } catch (err: unknown) {
-        const msg =
-          err instanceof ApiError ? err.message : "Unable to retrieve calendar events.";
-        setError(msg);
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+      const casesList: CaseItem[] = Array.isArray(casesData)
+        ? casesData
+        : casesData?.items || [];
+      setCases(casesList);
+
+      const allEvents = calData?.events || [];
+      // Filter primarily for hearings and court listings
+      const hearingEvents = allEvents.filter(
+        (e) => e.type === "hearing" || e.type === "limitation"
+      );
+      setEvents(hearingEvents.length > 0 ? hearingEvents : allEvents);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof ApiError ? err.message : "Unable to retrieve upcoming hearings.";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetchCalendarEvents(viewTimeframe, typeFilter);
-  }, [fetchCalendarEvents, viewTimeframe, typeFilter]);
-
-  const getTypeBadgeClass = (type: string) => {
-    switch (type) {
-      case "hearing":
-        return styles.typeHearing;
-      case "limitation":
-        return styles.typeLimitation;
-      case "consultation":
-        return styles.typeConsultation;
-      case "task":
-        return styles.typeTask;
-      default:
-        return styles.typeHearing;
-    }
-  };
+    void fetchCalendarEvents();
+  }, [fetchCalendarEvents]);
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div>
-          <div className={styles.eyebrow}>
-            <span>📅</span>
-            <span>Indian Court Calendar & Deadlines</span>
-          </div>
-          <h1 className={styles.title}>Hearing & Limitation Center</h1>
-          <p className={styles.subtitle}>
-            Never miss a court date, limitation cutoff, or lawyer consultation. All events are explained in plain language with exact instructions on what you need to do.
-          </p>
-        </div>
-
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-          {/* View Perspective Toggle */}
-          <div className={styles.viewToggle} role="group" aria-label="Perspective View">
-            <button
-              type="button"
-              className={`${styles.viewToggleBtn} ${perspective === "client" ? styles.viewToggleBtnActive : ""}`}
-              onClick={() => setPerspective("client")}
-            >
-              Client View
-            </button>
-            <button
-              type="button"
-              className={`${styles.viewToggleBtn} ${perspective === "lawyer" ? styles.viewToggleBtnActive : ""}`}
-              onClick={() => setPerspective("lawyer")}
-            >
-              Advocate View
-            </button>
-          </div>
-
-          <Link href="/court-tracking" className={styles.actionBtn} style={{ padding: "8px 16px" }}>
-            🏛 Sync eCourts Registry
-          </Link>
-          <Link
-            href="/cases/new"
-            className={styles.actionBtn}
-            style={{ padding: "8px 16px", background: "var(--accent-gradient, #6366f1)" }}
-          >
-            + New Legal Matter
-          </Link>
-        </div>
-      </header>
-
-      {/* UX North Star: Most Urgent Next Attention Banner */}
-      {nextAttention && (
-        <div className={styles.nextAttentionBanner}>
-          <div>
-            <div className={styles.bannerKicker}>
-              <span>⚡</span> Urgent: Your Next Important Legal Date
-            </div>
-            <h2 className={styles.bannerTitle}>
-              {nextAttention.type_label}: {nextAttention.title}
-            </h2>
-            <p className={styles.bannerDesc}>
-              {nextAttention.time_display} · {nextAttention.forum} · <strong>{nextAttention.case_name}</strong> ({nextAttention.case_ref})
-            </p>
-            <div style={{ marginTop: "8px", fontSize: "13px", color: "#fca5a5" }}>
-              <strong>What you need to do:</strong> {nextAttention.action_tip}
-            </div>
-          </div>
-
-          <Link
-            href={nextAttention.action_href}
-            className={styles.bannerActionBtn}
-            onClick={() => trackFunnelEvent("hearing_opened", { court_category: nextAttention.title })}
-          >
-            {nextAttention.action_label} →
-          </Link>
-        </div>
-      )}
-
-      {/* Navigation and Filters */}
-      <div className={styles.controlsRow}>
-        <div className={styles.viewTabs} role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewTimeframe === "upcoming"}
-            className={`${styles.tabBtn} ${viewTimeframe === "upcoming" ? styles.tabBtnActive : ""}`}
-            onClick={() => setViewTimeframe("upcoming")}
-          >
-            All Upcoming
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewTimeframe === "today"}
-            className={`${styles.tabBtn} ${viewTimeframe === "today" ? styles.tabBtnActive : ""}`}
-            onClick={() => setViewTimeframe("today")}
-          >
-            Today
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewTimeframe === "this_week"}
-            className={`${styles.tabBtn} ${viewTimeframe === "this_week" ? styles.tabBtnActive : ""}`}
-            onClick={() => setViewTimeframe("this_week")}
-          >
-            This Week
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewTimeframe === "later"}
-            className={`${styles.tabBtn} ${viewTimeframe === "later" ? styles.tabBtnActive : ""}`}
-            onClick={() => setViewTimeframe("later")}
-          >
-            Later
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewTimeframe === "all"}
-            className={`${styles.tabBtn} ${viewTimeframe === "all" ? styles.tabBtnActive : ""}`}
-            onClick={() => setViewTimeframe("all")}
-          >
-            All Dates
-          </button>
-        </div>
-
-        <div className={styles.filterGroup}>
-          <label htmlFor="eventTypeSelect" style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-            Event Type:
-          </label>
-          <select
-            id="eventTypeSelect"
-            className={styles.filterSelect}
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as EventTypeFilter)}
-          >
-            <option value="all">All Event Categories</option>
-            <option value="hearing">Court Hearings Only</option>
-            <option value="limitation">Statutory Limitations Only</option>
-            <option value="consultation">Lawyer Consultations Only</option>
-            <option value="task">Chamber Tasks Only</option>
-          </select>
-        </div>
+      {/* Header */}
+      <div className={styles.header}>
+        <h1 className={styles.title}>Upcoming Hearings</h1>
+        <p className={styles.subtitle}>
+          Know when you need to be in court, where to go, and what to bring.
+        </p>
       </div>
 
-      {/* Error State */}
-      {error && (
-        <div
-          style={{
-            background: "rgba(239, 68, 68, 0.12)",
-            border: "1px solid rgba(239, 68, 68, 0.3)",
-            color: "#fca5a5",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            fontSize: "13px",
-          }}
-        >
+      {loading ? (
+        <div style={{ padding: "60px 0", textAlign: "center", color: "var(--text-secondary)" }}>
+          Loading your hearing schedule...
+        </div>
+      ) : error ? (
+        <div style={{ padding: "20px", background: "rgba(220, 38, 38, 0.08)", color: "var(--status-urgent)", borderRadius: "8px" }}>
           {error}
         </div>
-      )}
-
-      {/* Loading Skeleton */}
-      {loading && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <LoadingSkeleton type="card" count={3} />
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && events.length === 0 && (
-        <div className={styles.emptyCalendar}>
-          <div className={styles.emptyCalendarIcon}>📅</div>
-          <h2 className={styles.emptyCalendarTitle}>No legal events scheduled for this timeframe.</h2>
-          <p className={styles.emptyCalendarDesc}>
-            You have no upcoming court hearings, statutory limitation cutoffs, or consultations matching the selected filters.
-          </p>
-          <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
-            <button
-              type="button"
-              className={styles.actionBtn}
-              onClick={() => {
-                setViewTimeframe("all");
-                setTypeFilter("all");
-              }}
-            >
-              Show All Dates
-            </button>
-            <Link href="/court-tracking" className={styles.actionBtn} style={{ background: "var(--accent-gradient)" }}>
-              Find & Track a Court Case
-            </Link>
+      ) : events.length === 0 ? (
+        /* Empty State */
+        <div className={styles.emptyContainer}>
+          <div className={styles.emptyIcon}>
+            <CalendarIcon size={28} />
           </div>
+          <h3 className={styles.emptyTitle}>No hearings currently scheduled</h3>
+          <p className={styles.emptyDesc}>
+            When a court date is assigned by the judge or entered by your lawyer, it will appear here with step-by-step preparation instructions.
+          </p>
+          <Link href="/dashboard" className="btn btn-primary">
+            Return to Dashboard
+          </Link>
+        </div>
+      ) : (
+        /* Action-Oriented Hearings List (Section 10) */
+        <div className={styles.hearingList}>
+          {events.map((ev) => {
+            const eventDate = ev.scheduled_at || ev.start_at || "";
+            const { dateStr, timeStr } = formatDateParts(eventDate);
+            const associatedCase = cases.find((c) => c.id === ev.case_id);
+            const caseTitle = associatedCase?.title || ev.case_name || ev.title;
+            const courtRoom = ev.lawyer_details?.court_room;
+
+            // Calculate urgency (within 7 days)
+            const isUrgent =
+              ev.is_urgent ||
+              (eventDate &&
+              new Date(eventDate).getTime() - new Date().getTime() <= 7 * 24 * 60 * 60 * 1000 &&
+              new Date(eventDate).getTime() >= new Date().getTime());
+
+            return (
+              <div
+                key={ev.id}
+                className={`${styles.hearingCard} ${isUrgent ? styles.hearingCardUrgent : ""}`}
+              >
+                <div className={styles.cardTopRow}>
+                  <span className={`${styles.badge} ${isUrgent ? styles.badgeUrgent : styles.badgeNormal}`}>
+                    {isUrgent ? "Upcoming Hearing · Due Soon" : "Scheduled Court Hearing"}
+                  </span>
+                  {courtRoom && (
+                    <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>
+                      Courtroom: <strong>{courtRoom}</strong>
+                    </span>
+                  )}
+                </div>
+
+                <div className={styles.cardMainGrid}>
+                  {/* WHEN & WHERE & WHY */}
+                  <div className={styles.dateTimeLocation}>
+                    <div className={styles.dateRow}>
+                      <CalendarIcon size={22} color="var(--navy-primary)" />
+                      <span>{dateStr}</span>
+                    </div>
+
+                    <div className={styles.timeRow}>
+                      <span>⏰ {ev.time_display || timeStr}</span>
+                    </div>
+
+                    <div className={styles.locationRow}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <CourthouseIcon size={16} color="var(--navy-secondary)" />
+                        <strong>{ev.forum || ev.lawyer_details?.court || "District Court Complex"}</strong>
+                      </div>
+                      {(ev.action_tip || ev.technical_term) && (
+                        <div style={{ marginTop: "4px", fontSize: "13px", color: "var(--text-secondary)" }}>
+                          Purpose: {ev.action_tip || ev.technical_term}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={styles.caseTitleTag}>
+                      Case: <strong>{caseTitle}</strong>
+                    </div>
+                  </div>
+
+                  {/* WHAT YOU NEED TO DO (Section 10) */}
+                  <div className={styles.checklistCard}>
+                    <div className={styles.checklistHeading}>What you need to know</div>
+                    <div className={styles.checkItem}>
+                      <span className={styles.checkIcon}>✓</span>
+                      <span>Bring your physical Government Photo ID (Aadhaar / PAN / Voter ID)</span>
+                    </div>
+                    <div className={styles.checkItem}>
+                      <span className={styles.checkIcon}>✓</span>
+                      <span>Bring requested case documents and agreement copies</span>
+                    </div>
+                    <div className={styles.checkItem}>
+                      <span className={styles.checkIcon}>✓</span>
+                      <span>Speak with your lawyer beforehand to confirm courtroom number</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions: [ View Details ] and [ Ask LCC ] (Section 10) */}
+                <div className={styles.cardActions}>
+                  {ev.case_id ? (
+                    <Link
+                      href={`/cases/${ev.case_id}?tab=hearings`}
+                      className={styles.actionBtnPrimary}
+                    >
+                      <span>View Details</span>
+                      <ArrowRightIcon size={14} />
+                    </Link>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={() => setAskLccEvent(ev)}
+                    className={styles.actionBtnSecondary}
+                  >
+                    <AssistantIcon size={16} color="var(--accent-gold)" />
+                    <span>Ask LCC Legal Assistant</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Events Feed */}
-      {!loading && events.length > 0 && (
-        <div className={styles.eventList}>
-          {events.map((evt) => (
-            <div key={evt.id} className={styles.eventCard}>
-              {/* Date Box */}
-              <div className={styles.dateBadge}>
-                <span className={styles.dateMonth}>{evt.month}</span>
-                <span className={styles.dateDay}>{evt.day}</span>
-                <span className={styles.dateTime}>
-                  {new Date(evt.scheduled_at).toLocaleTimeString("en-IN", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+      {/* Ask LCC Guidance Modal (Section 10) */}
+      {askLccEvent && (
+        <div className={styles.modalBackdrop} onClick={() => setAskLccEvent(null)}>
+          <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent-gold)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>
+                  ⚖ Hearing Preparation Guide
+                </div>
+                <h3 className={styles.modalTitle}>What to Expect at Your Hearing</h3>
+              </div>
+              <button
+                onClick={() => setAskLccEvent(null)}
+                className={styles.closeBtn}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px", fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.55" }}>
+              <div>
+                <strong style={{ color: "var(--navy-primary)" }}>1. What happens at this hearing?</strong>
+                <p style={{ marginTop: "4px" }}>
+                  The judge will take up listed matters by sequence. Your advocate will stand when your item is called and present the status or arguments.
+                </p>
               </div>
 
-              {/* Event Body */}
-              <div className={styles.eventBody}>
-                <div className={styles.eventTopRow}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <span className={`${styles.typeBadge} ${getTypeBadgeClass(evt.type)}`}>
-                      {evt.type_label}
-                    </span>
-                    {evt.technical_term && (
-                      <LegalTerm term={evt.technical_term} source={evt.source} />
-                    )}
-                    {evt.is_urgent && (
-                      <span
-                        style={{
-                          fontSize: "10px",
-                          fontWeight: 700,
-                          color: "#f87171",
-                          background: "rgba(239, 68, 68, 0.15)",
-                          padding: "2px 6px",
-                          borderRadius: "4px",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        ⚡ Action Required Soon
-                      </span>
-                    )}
-                  </div>
+              <div>
+                <strong style={{ color: "var(--navy-primary)" }}>2. Do I need to speak?</strong>
+                <p style={{ marginTop: "4px" }}>
+                  Usually, you do not need to address the court directly unless specifically asked by the judge. Your lawyer represents and speaks for you.
+                </p>
+              </div>
 
-                  <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                    {evt.time_display}
-                  </span>
-                </div>
+              <div>
+                <strong style={{ color: "var(--navy-primary)" }}>3. What should I ask my lawyer?</strong>
+                <ul style={{ paddingLeft: "20px", marginTop: "4px" }}>
+                  <li>&ldquo;What is the realistic outcome expected on this date?&rdquo;</li>
+                  <li>&ldquo;Are we seeking an order or an adjournment for filing documents?&rdquo;</li>
+                  <li>&ldquo;Do you have all original copies ready for inspection?&rdquo;</li>
+                </ul>
+              </div>
 
-                <h3 className={styles.eventTitle}>{evt.title}</h3>
-                <div className={styles.caseName}>
-                  {evt.case_name} · <strong>{evt.case_ref}</strong> · {evt.forum}
-                </div>
-
-                {/* Perspective 1: Client View */}
-                {perspective === "client" && (
-                  <div className={styles.actionTipBox}>
-                    <strong style={{ display: "block", marginBottom: "3px", color: "#f8fafc" }}>
-                      What should I know?
-                    </strong>
-                    {evt.action_tip}
-                  </div>
-                )}
-
-                {/* Perspective 2: Lawyer View */}
-                {perspective === "lawyer" && evt.lawyer_details && (
-                  <div className={styles.lawyerDetailsGrid}>
-                    {evt.lawyer_details.court && (
-                      <div className={styles.lawyerDetailItem}>
-                        <span>Court Forum</span>
-                        <strong>{evt.lawyer_details.court}</strong>
-                      </div>
-                    )}
-                    {evt.lawyer_details.court_room && (
-                      <div className={styles.lawyerDetailItem}>
-                        <span>Room & Item</span>
-                        <strong>{evt.lawyer_details.court_room} ({evt.lawyer_details.item_number || "Board"})</strong>
-                      </div>
-                    )}
-                    {evt.lawyer_details.bench && (
-                      <div className={styles.lawyerDetailItem}>
-                        <span>Bench / Coram</span>
-                        <strong>{evt.lawyer_details.bench}</strong>
-                      </div>
-                    )}
-                    {evt.lawyer_details.status && (
-                      <div className={styles.lawyerDetailItem}>
-                        <span>Listing Status</span>
-                        <strong>{evt.lawyer_details.status}</strong>
-                      </div>
-                    )}
-                    {evt.lawyer_details.petitioner_advocate && (
-                      <div className={styles.lawyerDetailItem}>
-                        <span>Counsel on Record</span>
-                        <strong>{evt.lawyer_details.petitioner_advocate}</strong>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginTop: "12px",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                  }}
-                >
-                  <div className={styles.provenanceLine}>
-                    <span>Source: {evt.source}</span>
-                  </div>
-
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    {evt.case_id && (
-                      <Link
-                        href={`/cases/${evt.case_id}`}
-                        className={styles.actionBtn}
-                      >
-                        View Matter Workspace
-                      </Link>
-                    )}
-                    <Link
-                      href={evt.action_href}
-                      className={styles.actionBtn}
-                      style={{ background: "rgba(99, 102, 241, 0.2)", borderColor: "rgba(99, 102, 241, 0.4)" }}
-                      onClick={() => trackFunnelEvent("hearing_opened", { court_category: evt.title })}
-                    >
-                      {evt.action_label} →
-                    </Link>
-                  </div>
-                </div>
+              <div style={{ marginTop: "10px", padding: "12px", background: "var(--surface-subtle)", borderRadius: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
+                Note: LCC provides procedural guidance to help you stay calm and organized. For advice on specific case strategies, consult your assigned advocate.
               </div>
             </div>
-          ))}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px" }}>
+              <button
+                onClick={() => setAskLccEvent(null)}
+                className="btn btn-primary"
+              >
+                Close Guidance
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

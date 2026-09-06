@@ -1,6 +1,6 @@
 .sidebar {
-  width: 260px;
-  background: var(--surface-card);
+  width: 250px;
+  background: #FFFFFF;
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
@@ -27,32 +27,46 @@
 .brandLink {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: var(--text-primary);
-  font-family: 'Outfit', sans-serif;
+  gap: 12px;
+  color: var(--navy-primary);
+  font-family: var(--font-display);
   font-weight: 700;
-  font-size: 16px;
+  font-size: 17px;
   letter-spacing: -0.02em;
   overflow: hidden;
   white-space: nowrap;
 }
 
 .brandIcon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--navy-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
-  color: #fff;
+  color: #FFFFFF;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(79, 91, 247, 0.4);
+  box-shadow: 0 2px 6px rgba(15, 30, 54, 0.15);
 }
 
 .brandText {
-  transition: opacity 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brandTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--navy-primary);
+  letter-spacing: -0.02em;
+}
+
+.brandTagline {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .collapseToggleBtn {
@@ -66,8 +80,8 @@
 }
 
 .collapseToggleBtn:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
+  background: var(--surface-subtle);
+  color: var(--navy-primary);
 }
 
 /* Nav Groups */
@@ -77,33 +91,39 @@
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .navGroup {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+}
+
+.navGroupDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 6px 4px 10px;
 }
 
 .navGroupLabel {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-subtle);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
   padding: 4px 10px;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .navItem {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 12px;
+  padding: 10px 12px;
   border-radius: 8px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   transition: all 0.15s ease;
   position: relative;
@@ -112,13 +132,13 @@
 }
 
 .navItem:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
+  background: var(--surface-subtle);
+  color: var(--navy-primary);
 }
 
 .navItemActive {
-  background: rgba(79, 91, 247, 0.12) !important;
-  color: #fff !important;
+  background: rgba(15, 30, 54, 0.06) !important;
+  color: var(--navy-primary) !important;
   font-weight: 600;
 }
 
@@ -130,24 +150,23 @@
   bottom: 6px;
   width: 3px;
   border-radius: 0 4px 4px 0;
-  background: var(--accent-primary);
-  box-shadow: 0 0 8px var(--accent-primary);
+  background: var(--navy-primary);
 }
 
 .navIcon {
-  font-size: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 20px;
   flex-shrink: 0;
+  color: inherit;
 }
 
-/* Active matter shortcut */
+/* Active Case Context Ribbon */
 .matterContextCard {
   margin: 0 12px 14px;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface-subtle);
   border: 1px solid var(--border-subtle);
 }
@@ -156,15 +175,15 @@
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--accent-secondary);
+  color: var(--accent-gold);
   letter-spacing: 0.08em;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .matterContextTitle {
   font-size: 12px;
   font-weight: 600;
-  color: #fff;
+  color: var(--navy-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -177,6 +196,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: #FFFFFF;
 }
 
 .userSummary {
@@ -187,47 +207,53 @@
 }
 
 .userAvatar {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: #1f2536;
+  background: var(--surface-subtle);
   border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  color: #8d98ff;
+  color: var(--navy-primary);
   flex-shrink: 0;
 }
 
 .userInfo {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  line-height: 1.25;
 }
 
 .userName {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: var(--navy-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .userRole {
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-transform: capitalize;
 }
 
-@media (max-width: 900px) {
+/* Mobile Drawer support */
+@media (max-width: 768px) {
   .sidebar {
     position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
     transform: translateX(-100%);
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+    box-shadow: var(--shadow-xl);
   }
+
   .sidebarMobileOpen {
     transform: translateX(0);
   }

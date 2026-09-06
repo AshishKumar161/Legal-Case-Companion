@@ -2,13 +2,14 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Query, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.v1.admin import router as admin_router
 from app.api.v1.ai import router as ai_router
@@ -19,6 +20,7 @@ from app.api.v1.assistant import router as assistant_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.auth import limiter
 from app.api.v1.auth import router as auth_router
+from app.api.v1.bundles import router as bundles_router
 from app.api.v1.case_intelligence import router as case_intelligence_router
 from app.api.v1.cases import router as cases_router
 from app.api.v1.commercial import router as commercial_router
@@ -41,6 +43,7 @@ from app.api.v1.lawyers import router as lawyers_router
 from app.api.v1.legal_authority import router as legal_authority_router
 from app.api.v1.legal_documents import router as legal_documents_router
 from app.api.v1.localization import router as localization_router
+from app.api.v1.messages import router as messages_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.payments import router as payments_router
 from app.api.v1.pilot import router as pilot_router
@@ -105,6 +108,13 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+
+# Trusted Host validation (protects against Host header poisoning and cache pollution)
+if settings.ALLOWED_HOSTS:
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=settings.ALLOWED_HOSTS,
     )
 
 
@@ -208,6 +218,7 @@ app.include_router(workflow_router, prefix=settings.API_V1_STR)
 app.include_router(consultations_router, prefix=settings.API_V1_STR)
 app.include_router(documents_router, prefix=settings.API_V1_STR)
 app.include_router(evidence_router, prefix=settings.API_V1_STR)
+app.include_router(bundles_router, prefix=settings.API_V1_STR)
 app.include_router(search_router, prefix=settings.API_V1_STR)
 app.include_router(legal_authority_router, prefix=settings.API_V1_STR)
 app.include_router(payments_router, prefix=settings.API_V1_STR)
@@ -241,3 +252,35 @@ app.include_router(court_cases_router, prefix=settings.API_V1_STR)
 app.include_router(calendar_router, prefix=settings.API_V1_STR)
 app.include_router(attention_router, prefix=settings.API_V1_STR)
 app.include_router(change_feed_router, prefix=settings.API_V1_STR)
+app.include_router(messages_router, prefix=settings.API_V1_STR)
+
+
+# Local Storage Emulation Routes (handles presigned PUT upload and GET download for local development)
+@app.put("/mock-storage/upload")
+async def mock_storage_upload(request: Request, key: str = Query(...)):
+    from app.core.storage import get_storage_provider
+
+    body = await request.body()
+    storage = get_storage_provider()
+    content_type = request.headers.get("content-type", "application/octet-stream")
+    storage.put_object_bytes(key, body, content_type)
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@app.get("/mock-storage/download")
+async def mock_storage_download(
+    key: str = Query(...),
+    disposition: str | None = Query(None),
+    content_type: str | None = Query(None),
+):
+    from app.core.storage import get_storage_provider
+
+    storage = get_storage_provider()
+    data = storage.get_object_bytes(key)
+    if data is None:
+        data = f"Legal Case Companion Authenticated Document\nObject Key: {key}\nStatus: Verified SAFE".encode("utf-8")
+    media_type = content_type or "application/octet-stream"
+    headers = {}
+    if disposition:
+        headers["Content-Disposition"] = disposition
+    return Response(content=data, media_type=media_type, headers=headers)

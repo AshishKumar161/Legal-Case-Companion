@@ -11,12 +11,15 @@ from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.case import Case
+    from app.models.evidence import Evidence
     from app.models.user import User
+    from app.models.workflow import CaseDeadline, CaseHearing
 
 
 class TaskStatus(str, enum.Enum):
     PENDING = "PENDING"
     IN_PROGRESS = "IN_PROGRESS"
+    BLOCKED = "BLOCKED"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
 
@@ -72,10 +75,28 @@ class CaseTask(Base, TimestampMixin, SoftDeleteMixin):
     )
     source_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_confirmed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    linked_evidence_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("evidence.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    linked_hearing_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("case_hearings.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    linked_deadline_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("case_deadlines.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Relationships
     case: Mapped["Case"] = relationship("Case", back_populates="tasks")
     owner: Mapped["User | None"] = relationship("User", foreign_keys=[owner_user_id])
     created_by: Mapped["User | None"] = relationship(
         "User", foreign_keys=[created_by_user_id]
+    )
+    linked_evidence: Mapped["Evidence | None"] = relationship(
+        "Evidence", foreign_keys=[linked_evidence_id]
+    )
+    linked_hearing: Mapped["CaseHearing | None"] = relationship(
+        "CaseHearing", foreign_keys=[linked_hearing_id]
+    )
+    linked_deadline: Mapped["CaseDeadline | None"] = relationship(
+        "CaseDeadline", foreign_keys=[linked_deadline_id]
     )

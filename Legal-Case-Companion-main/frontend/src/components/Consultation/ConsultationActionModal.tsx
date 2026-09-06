@@ -29,25 +29,26 @@ export function ConsultationActionModal({
     setError(null);
 
     try {
+      const dateVal = scheduledAt.includes("T") ? scheduledAt : `${scheduledAt}T10:00:00+05:30`;
       if (type === "RESCHEDULE") {
         if (!scheduledAt) {
-          setError("Please select a new date and time.");
+          setError("Please select a date.");
           setLoading(false);
           return;
         }
         await apiClient.post(`/api/v1/consultations/${consultation.id}/reschedule`, {
-          scheduled_at: new Date(scheduledAt).toISOString(),
+          scheduled_at: new Date(dateVal).toISOString(),
           duration_minutes: durationMinutes,
           reason: reason || undefined,
         });
       } else if (type === "SCHEDULE") {
         if (!scheduledAt) {
-          setError("Please select a date and time for the consultation.");
+          setError("Please select a date for the consultation.");
           setLoading(false);
           return;
         }
         await apiClient.post(`/api/v1/consultations/${consultation.id}/schedule`, {
-          scheduled_at: new Date(scheduledAt).toISOString(),
+          scheduled_at: new Date(dateVal).toISOString(),
           duration_minutes: durationMinutes,
         });
       } else if (type === "CANCEL") {
@@ -145,11 +146,12 @@ export function ConsultationActionModal({
             <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "16px" }}>
               <div>
                 <label style={{ display: "block", fontSize: "12px", color: "#94a3b8", marginBottom: "6px" }}>
-                  Select New Date & Time (IST):
+                  Select Consultation Date (IST):
                 </label>
                 <input
-                  type="datetime-local"
+                  type="date"
                   required
+                  min={new Date().toISOString().split("T")[0]}
                   value={scheduledAt}
                   onChange={(e) => setScheduledAt(e.target.value)}
                   style={{
@@ -162,6 +164,9 @@ export function ConsultationActionModal({
                     fontSize: "13px",
                   }}
                 />
+                <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#64748b" }}>
+                  Timing is flexible within standard chamber hours (08:00 AM - 08:00 PM IST) and coordinated with counsel.
+                </p>
               </div>
 
               <div>

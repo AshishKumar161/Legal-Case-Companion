@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db, get_optional_current_user
 from app.models.user import LawyerProfile, User
 from app.schemas.availability import LawyerAvailabilityResponse, SlotResponse
+from app.schemas.lawyer_dashboard import LawyerDashboardResponse
 from app.schemas.pagination import PaginatedResponse
 from app.schemas.presence import (
     HeartbeatRequest,
@@ -15,10 +16,34 @@ from app.schemas.presence import (
 )
 from app.schemas.profile import LawyerPublicResponse
 from app.services.consultation_service import ConsultationService
+from app.services.lawyer_dashboard_service import LawyerDashboardService
 from app.services.presence_service import presence_service
 from app.services.profile_service import ProfileService
 
 router = APIRouter(prefix="/lawyers", tags=["lawyers"])
+
+
+@router.get("/dashboard", response_model=LawyerDashboardResponse)
+def get_lawyer_operational_dashboard(
+    days_ahead: int = Query(7, ge=1, le=90),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Unified operational dashboard for advocates.
+    Aggregates today's agenda, upcoming court hearings with preparation readiness,
+    statutory limitation radar, overdue tasks/deadlines, and assigned matters directory.
+    Zero-AI deterministic operations. Strictly scoped to matters the lawyer is authorized to access.
+    """
+    service = LawyerDashboardService(db)
+    return service.get_operational_dashboard(
+        current_user=current_user,
+        days_ahead=days_ahead,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
 
 @router.post("/heartbeat")

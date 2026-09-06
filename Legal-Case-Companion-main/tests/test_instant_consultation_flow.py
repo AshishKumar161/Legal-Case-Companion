@@ -20,7 +20,7 @@ async def test_full_flow(db):
     app.dependency_overrides[get_db] = override_get_db
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             # 1. Login Lawyer (Advocate Ananya Roy)
             res = await client.post("/api/v1/auth/login", json={"email": "advocate@lcc.test", "password": "Password123!"})
             assert res.status_code == 200, f"Lawyer login failed: {res.text}"

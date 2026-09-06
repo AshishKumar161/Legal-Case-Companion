@@ -3,6 +3,14 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { apiClient } from "@/api/client";
 import { NextStep, NextStepProps } from "@/components/NextStep";
+import {
+  CalendarIcon,
+  DocumentIcon,
+  ClockIcon,
+  CourthouseIcon,
+  ChatIcon,
+  ShieldIcon,
+} from "@/components/ui/Icons";
 import styles from "./CaseAttentionCard.module.css";
 
 interface AttentionDimension {
@@ -33,6 +41,7 @@ interface CaseAttentionCardProps {
 export function CaseAttentionCard({ caseId }: CaseAttentionCardProps) {
   const [data, setData] = useState<CaseAttentionResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showDetailedDimensions, setShowDetailedDimensions] = useState(false);
 
   const fetchAttention = useCallback(async () => {
     try {
@@ -93,94 +102,118 @@ export function CaseAttentionCard({ caseId }: CaseAttentionCardProps) {
         />
       )}
 
-      {/* 2. 6-Dimension Deterministic Attention Matrix */}
-      <section className={styles.matrixCard} aria-label="Operational Case Attention Matrix">
-        <div className={styles.matrixHeader}>
-          <div className={styles.titleArea}>
-            <span style={{ fontSize: "18px" }}>📊</span>
-            <div>
-              <span className={styles.kicker}>Deterministic Operational Status</span>
-              <h3 className={styles.matrixTitle}>Case Health & Compliance Dimensions</h3>
-            </div>
-          </div>
-          <span style={{ fontSize: "11px", color: "#64748b" }}>
-            Last verified: {new Date(data.evaluated_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-          </span>
-        </div>
+      {/* 2. Progressive Disclosure for Detailed Dimensions */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowDetailedDimensions((prev) => !prev)}
+          className={styles.detailsToggleBtn}
+        >
+          <span>{showDetailedDimensions ? "▲ Hide Case Health Overview" : "▼ View Case Health Overview"}</span>
+        </button>
 
-        <div className={styles.grid}>
-          {/* Hearing */}
-          <div className={styles.dimensionCard}>
-            <div className={styles.dimTopRow}>
-              <span className={styles.dimLabel}>📅 Hearing</span>
-              <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.hearing.state)}`}>
-                {formatStateLabel(data.dimensions.hearing.state)}
+        {showDetailedDimensions && (
+          <section className={styles.matrixCard} aria-label="Case Status Dimensions">
+            <div className={styles.matrixHeader}>
+              <div className={styles.titleArea}>
+                <div>
+                  <span className={styles.kicker}>Status Overview</span>
+                  <h3 className={styles.matrixTitle}>Case Health & Activity Status</h3>
+                </div>
+              </div>
+              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                Verified: {new Date(data.evaluated_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
-            <p className={styles.dimReason}>{data.dimensions.hearing.reason}</p>
-          </div>
 
-          {/* Documents */}
-          <div className={styles.dimensionCard}>
-            <div className={styles.dimTopRow}>
-              <span className={styles.dimLabel}>📄 Documents</span>
-              <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.documents.state)}`}>
-                {formatStateLabel(data.dimensions.documents.state)}
-              </span>
+            <div className={styles.grid}>
+              {/* Hearing */}
+              <div className={styles.dimensionCard}>
+                <div className={styles.dimTopRow}>
+                  <span className={styles.dimLabel}>
+                    <CalendarIcon size={14} color="var(--navy-primary)" />
+                    <span>Hearing</span>
+                  </span>
+                  <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.hearing.state)}`}>
+                    {formatStateLabel(data.dimensions.hearing.state)}
+                  </span>
+                </div>
+                <p className={styles.dimReason}>{data.dimensions.hearing.reason}</p>
+              </div>
+
+              {/* Documents */}
+              <div className={styles.dimensionCard}>
+                <div className={styles.dimTopRow}>
+                  <span className={styles.dimLabel}>
+                    <DocumentIcon size={14} color="var(--navy-primary)" />
+                    <span>Documents</span>
+                  </span>
+                  <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.documents.state)}`}>
+                    {formatStateLabel(data.dimensions.documents.state)}
+                  </span>
+                </div>
+                <p className={styles.dimReason}>{data.dimensions.documents.reason}</p>
+              </div>
+
+              {/* Tasks & Deadlines */}
+              <div className={styles.dimensionCard}>
+                <div className={styles.dimTopRow}>
+                  <span className={styles.dimLabel}>
+                    <ClockIcon size={14} color="var(--navy-primary)" />
+                    <span>Deadlines</span>
+                  </span>
+                  <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.tasks.state)}`}>
+                    {formatStateLabel(data.dimensions.tasks.state)}
+                  </span>
+                </div>
+                <p className={styles.dimReason}>{data.dimensions.tasks.reason}</p>
+              </div>
+
+              {/* Court Sync */}
+              <div className={styles.dimensionCard}>
+                <div className={styles.dimTopRow}>
+                  <span className={styles.dimLabel}>
+                    <CourthouseIcon size={14} color="var(--navy-primary)" />
+                    <span>Court Sync</span>
+                  </span>
+                  <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.court_sync.state)}`}>
+                    {formatStateLabel(data.dimensions.court_sync.state)}
+                  </span>
+                </div>
+                <p className={styles.dimReason}>{data.dimensions.court_sync.reason}</p>
+              </div>
+
+              {/* Communication */}
+              <div className={styles.dimensionCard}>
+                <div className={styles.dimTopRow}>
+                  <span className={styles.dimLabel}>
+                    <ChatIcon size={14} color="var(--navy-primary)" />
+                    <span>Lawyer Chat</span>
+                  </span>
+                  <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.communication.state)}`}>
+                    {formatStateLabel(data.dimensions.communication.state)}
+                  </span>
+                </div>
+                <p className={styles.dimReason}>{data.dimensions.communication.reason}</p>
+              </div>
+
+              {/* Security / Protection */}
+              <div className={styles.dimensionCard}>
+                <div className={styles.dimTopRow}>
+                  <span className={styles.dimLabel}>
+                    <ShieldIcon size={14} color="var(--navy-primary)" />
+                    <span>Security</span>
+                  </span>
+                  <span className={`${styles.stateBadge} ${styles.badgeSuccess}`}>
+                    Protected
+                  </span>
+                </div>
+                <p className={styles.dimReason}>Your documents and case information are protected.</p>
+              </div>
             </div>
-            <p className={styles.dimReason}>{data.dimensions.documents.reason}</p>
-          </div>
-
-          {/* Tasks & Deadlines */}
-          <div className={styles.dimensionCard}>
-            <div className={styles.dimTopRow}>
-              <span className={styles.dimLabel}>⏳ Tasks & Deadlines</span>
-              <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.tasks.state)}`}>
-                {formatStateLabel(data.dimensions.tasks.state)}
-              </span>
-            </div>
-            <p className={styles.dimReason}>{data.dimensions.tasks.reason}</p>
-          </div>
-
-          {/* Court Sync */}
-          <div className={styles.dimensionCard}>
-            <div className={styles.dimTopRow}>
-              <span className={styles.dimLabel}>🏛️ Court Sync</span>
-              <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.court_sync.state)}`}>
-                {formatStateLabel(data.dimensions.court_sync.state)}
-              </span>
-            </div>
-            <p className={styles.dimReason}>{data.dimensions.court_sync.reason}</p>
-          </div>
-
-          {/* Communication */}
-          <div className={styles.dimensionCard}>
-            <div className={styles.dimTopRow}>
-              <span className={styles.dimLabel}>💬 Communication</span>
-              <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.communication.state)}`}>
-                {formatStateLabel(data.dimensions.communication.state)}
-              </span>
-            </div>
-            <p className={styles.dimReason}>{data.dimensions.communication.reason}</p>
-          </div>
-
-          {/* Payment */}
-          <div className={styles.dimensionCard}>
-            <div className={styles.dimTopRow}>
-              <span className={styles.dimLabel}>💳 Payment</span>
-              <span className={`${styles.stateBadge} ${getBadgeClass(data.dimensions.payment.state)}`}>
-                {formatStateLabel(data.dimensions.payment.state)}
-              </span>
-            </div>
-            <p className={styles.dimReason}>{data.dimensions.payment.reason}</p>
-          </div>
-        </div>
-
-        <div className={styles.footerDisclaimer}>
-          <span>⚖️ Deterministic Evaluation · Zero AI Risk Scoring</span>
-          <span>Status derived directly from statutory deadlines, court dockets, and verified evidence</span>
-        </div>
-      </section>
+          </section>
+        )}
+      </div>
     </div>
   );
 }

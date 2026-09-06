@@ -8,15 +8,18 @@ from app.core.config import settings
 
 engine_kwargs: dict[str, Any] = {"pool_pre_ping": True}
 if settings.DATABASE_URL.startswith("postgresql"):
+    connect_args: dict[str, Any] = {
+        "options": f"-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}"
+    }
+    if settings.ENVIRONMENT in ("production", "staging"):
+        connect_args["sslmode"] = "require"
     engine_kwargs.update(
         {
             "pool_size": settings.DB_POOL_SIZE,
             "max_overflow": settings.DB_MAX_OVERFLOW,
             "pool_timeout": settings.DB_POOL_TIMEOUT,
             "pool_recycle": settings.DB_POOL_RECYCLE,
-            "connect_args": {
-                "options": f"-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}"
-            },
+            "connect_args": connect_args,
         }
     )
 

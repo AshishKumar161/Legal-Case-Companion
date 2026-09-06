@@ -44,6 +44,25 @@ def run_worker_loop(poll_interval_seconds: float = 2.0, batch_size: int = 10):
         finally:
             db.close()
 
+        # Update heartbeat file for container healthcheck
+        try:
+            import json
+            import os
+            import tempfile
+            from datetime import UTC, datetime
+            from pathlib import Path
+
+            hb_path = Path(tempfile.gettempdir()) / "lcc_worker_heartbeat.json"
+            hb_path.write_text(
+                json.dumps({
+                    "status": "HEALTHY",
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "pid": os.getpid(),
+                })
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
         # Sleep in small increments to respond quickly to shutdown signals
         sleep_elapsed = 0.0
         while running and sleep_elapsed < poll_interval_seconds:

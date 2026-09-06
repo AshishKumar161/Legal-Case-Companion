@@ -4,6 +4,7 @@ import React, { use, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/api/client";
+import { EvidenceShareModal } from "@/components/Evidence/EvidenceShareModal";
 import styles from "../evidence.module.css";
 
 interface EvidenceVersionItem {
@@ -44,6 +45,30 @@ interface EvidenceCustodyItem {
   metadata?: Record<string, unknown>;
 }
 
+interface CaseExhibitItem {
+  id: string;
+  case_id: string;
+  evidence_id: string;
+  version_id: string;
+  hearing_id: string | null;
+  exhibit_number: string;
+  title: string;
+  description: string | null;
+  relevant_date: string | null;
+  created_by_user_id: string;
+  created_at: string;
+  version_number?: number | null;
+  hearing_purpose?: string | null;
+  court_name?: string | null;
+}
+
+interface CaseHearingItem {
+  id: string;
+  purpose: string;
+  court_name: string;
+  hearing_at: string;
+}
+
 interface EvidenceDetail {
   id: string;
   case_id: string;
@@ -55,14 +80,17 @@ interface EvidenceDetail {
   status: string;
   sensitivity: string;
   original_filename: string;
+  tags: string[];
   legal_hold: boolean;
   legal_hold_reason: string | null;
   retention_until: string | null;
   created_at: string;
   updated_at: string;
+  exhibit_numbers: string[];
   current_version: EvidenceVersionItem | null;
   versions: EvidenceVersionItem[];
   grants: EvidenceGrantItem[];
+  exhibits: CaseExhibitItem[];
 }
 
 export default function EvidenceDetailPage({
@@ -76,10 +104,19 @@ export default function EvidenceDetailPage({
 
   const [evidence, setEvidence] = useState<EvidenceDetail | null>(null);
   const [custodyEvents, setCustodyEvents] = useState<EvidenceCustodyItem[]>([]);
+  const [caseHearings, setCaseHearings] = useState<CaseHearingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Integrity Verification state
+  // Tabs: 'overview', 'versions', 'custody', 'grants', 'exhibits'
+  const [activeTab, setActiveTab] = useState<"overview" | "versions" | "custody" | "grants" | "exhibits">("overview");
+
+  // Inline Preview State
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<string>("application/pdf");
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
+  // Integrity Verification State
   const [verifying, setVerifying] = useState(false);
   const [integrityResult, setIntegrityResult] = useState<{
     match: boolean;
@@ -88,32 +125,49 @@ export default function EvidenceDetailPage({
     verified_at: string;
   } | null>(null);
 
-  // New Version Modal state
+  // New Version Modal State
   const [versionModalOpen, setVersionModalOpen] = useState(false);
   const [uploadingVersion, setUploadingVersion] = useState(false);
   const [newVersionFile, setNewVersionFile] = useState<File | null>(null);
   const [versionError, setVersionError] = useState("");
 
-  // Share Modal state
+  // Share Modal State
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const [shareTargetId, setShareTargetId] = useState("");
-  const [shareLevel, setShareLevel] = useState("VIEW");
-  const [shareExpires, setShareExpires] = useState("");
-  const [shareError, setShareError] = useState("");
+
+  // Mark Exhibit Modal State
+  const [exhibitModalOpen, setExhibitModalOpen] = useState(false);
+  const [exhibitLoading, setExhibitLoading] = useState(false);
+  const [exhibitError, setExhibitError] = useState("");
+  const [exhibitTitle, setExhibitTitle] = useState("");
+  const [exhibitNumber, setExhibitNumber] = useState("");
+  const [exhibitDesc, setExhibitDesc] = useState("");
+  const [exhibitVersionId, setExhibitVersionId] = useState("");
+  const [exhibitHearingId, setExhibitHearingId] = useState("");
+  const [exhibitDate, setExhibitDate] = useState("");
+
+  // Tag Editor State
+  const [newTagInput, setNewTagInput] = useState("");
+  const [tagLoading, setTagLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const [detailRes, custodyRes] = await Promise.all([
+      const [detailRes, custodyRes, hearingsRes] = await Promise.all([
         apiClient.get(`/api/v1/cases/${caseId}/evidence/${evidenceId}`) as Promise<EvidenceDetail>,
-        apiClient.get(`/api/v1/cases/${caseId}/evidence/${evidenceId}/custody`) as Promise<
-          EvidenceCustodyItem[]
-        >,
+        apiClient.get(`/api/v1/cases/${caseId}/evidence/${evidenceId}/custody`) as Promise<EvidenceCustodyItem[]>,
+        apiClient.get(`/api/v1/cases/${caseId}/hearings`).catch(() => []) as Promise<CaseHearingItem[]>,
       ]);
       setEvidence(detailRes);
       setCustodyEvents(custodyRes || []);
+      setCaseHearings(hearingsRes || []);
+
+      if (detailRes?.current_version_id) {
+        setExhibitVersionId(detailRes.current_version_id);
+      }
+      if (detailRes?.title) {
+        setExhibitTitle((prev) => prev || detailRes.title);
+      }
     } catch (err: unknown) {
       const e = err as { message?: string };
       setError(e?.message || "Failed to load evidence details");
@@ -126,6 +180,29 @@ export default function EvidenceDetailPage({
     loadData();
   }, [loadData]);
 
+  // Load preview URL for overview tab
+  const loadInlinePreview = useCallback(async (versionId?: string) => {
+    try {
+      setLoadingPreview(true);
+      let url = `/api/v1/cases/${caseId}/evidence/${evidenceId}/view-url`;
+      if (versionId) url += `?version_id=${versionId}`;
+      const res = (await apiClient.get(url)) as { url: string; content_type: string };
+      setPreviewUrl(res.url);
+      setPreviewType(res.content_type || "application/pdf");
+    } catch {
+      setPreviewUrl(null);
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, [caseId, evidenceId]);
+
+  useEffect(() => {
+    if (evidence?.current_version) {
+      loadInlinePreview(evidence.current_version.id);
+    }
+  }, [evidence?.current_version, loadInlinePreview]);
+
+  // Integrity Verification
   const handleVerifyIntegrity = async () => {
     try {
       setVerifying(true);
@@ -148,6 +225,7 @@ export default function EvidenceDetailPage({
     }
   };
 
+  // Download
   const handleDownload = async (versionId?: string) => {
     try {
       let url = `/api/v1/cases/${caseId}/evidence/${evidenceId}/download`;
@@ -162,20 +240,7 @@ export default function EvidenceDetailPage({
     }
   };
 
-  const handleView = async (versionId?: string) => {
-    try {
-      let url = `/api/v1/cases/${caseId}/evidence/${evidenceId}/view-url`;
-      if (versionId) url += `?version_id=${versionId}`;
-      const res = (await apiClient.get(url)) as { url: string };
-      if (res?.url) {
-        window.open(res.url, "_blank", "noopener,noreferrer");
-      }
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      alert(e?.message || "Preview failed");
-    }
-  };
-
+  // Upload New Version
   const handleVersionUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newVersionFile) {
@@ -222,36 +287,10 @@ export default function EvidenceDetailPage({
     }
   };
 
-  const handleShare = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!shareTargetId) {
-      setShareError("Target user UUID is required");
-      return;
-    }
 
-    try {
-      setSharing(true);
-      setShareError("");
-
-      await apiClient.post(`/api/v1/cases/${caseId}/evidence/${evidenceId}/share`, {
-        target_user_id: shareTargetId.trim(),
-        access_level: shareLevel,
-        expires_at: shareExpires ? new Date(shareExpires).toISOString() : null,
-      });
-
-      setShareModalOpen(false);
-      setShareTargetId("");
-      await loadData();
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      setShareError(e?.message || "Failed to share evidence");
-    } finally {
-      setSharing(false);
-    }
-  };
-
+  // Revoke Share
   const handleRevoke = async (targetUserId: string) => {
-    if (!confirm("Are you sure you want to revoke this user's access to this evidence item?")) {
+    if (!confirm("Are you sure you want to revoke this user's access? Access will terminate immediately.")) {
       return;
     }
     try {
@@ -266,12 +305,93 @@ export default function EvidenceDetailPage({
     }
   };
 
+  // Create Case Exhibit
+  const handleCreateExhibit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!exhibitTitle.trim()) {
+      setExhibitError("Exhibit title is required");
+      return;
+    }
+
+    try {
+      setExhibitLoading(true);
+      setExhibitError("");
+
+      await apiClient.post(`/api/v1/cases/${caseId}/evidence/${evidenceId}/exhibits`, {
+        title: exhibitTitle.trim(),
+        exhibit_number: exhibitNumber.trim() || null,
+        description: exhibitDesc.trim() || null,
+        version_id: exhibitVersionId || null,
+        hearing_id: exhibitHearingId || null,
+        relevant_date: exhibitDate ? new Date(exhibitDate).toISOString() : null,
+      });
+
+      setExhibitModalOpen(false);
+      setExhibitNumber("");
+      setExhibitDesc("");
+      await loadData();
+      setActiveTab("exhibits");
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setExhibitError(e?.message || "Failed to mark exhibit");
+    } finally {
+      setExhibitLoading(false);
+    }
+  };
+
+  // Tag Management
+  const handleAddTag = async () => {
+    if (!newTagInput.trim() || !evidence) return;
+    const cleanTag = newTagInput.trim().toLowerCase();
+    const currentTags = evidence.tags || [];
+    if (currentTags.includes(cleanTag)) {
+      setNewTagInput("");
+      return;
+    }
+    if (currentTags.length >= 20) {
+      alert("Maximum 20 tags permitted per evidence item");
+      return;
+    }
+
+    try {
+      setTagLoading(true);
+      await apiClient.patch(`/api/v1/cases/${caseId}/evidence/${evidenceId}`, {
+        tags: [...currentTags, cleanTag],
+      });
+      setNewTagInput("");
+      await loadData();
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      alert(e?.message || "Failed to update tags");
+    } finally {
+      setTagLoading(false);
+    }
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!evidence) return;
+    try {
+      setTagLoading(true);
+      const updated = (evidence.tags || []).filter((t) => t !== tagToRemove);
+      await apiClient.patch(`/api/v1/cases/${caseId}/evidence/${evidenceId}`, {
+        tags: updated,
+      });
+      await loadData();
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      alert(e?.message || "Failed to remove tag");
+    } finally {
+      setTagLoading(false);
+    }
+  };
+
+  // Legal Hold Toggle
   const handleToggleLegalHold = async () => {
     if (!evidence) return;
     const targetState = !evidence.legal_hold;
     const reason = targetState
-      ? prompt("Enter justification for applying technical Legal Hold:")
-      : "Legal hold lifted by manager";
+      ? prompt("Enter legal justification for applying technical Legal Hold:")
+      : "Legal hold lifted by authorized manager";
     if (targetState && !reason) return;
 
     try {
@@ -286,12 +406,26 @@ export default function EvidenceDetailPage({
     }
   };
 
+  // Archive / Restore
+  const handleToggleArchive = async () => {
+    if (!evidence) return;
+    const isArchived = evidence.status === "ARCHIVED";
+    const endpoint = isArchived ? "restore" : "archive";
+    if (!isArchived && !confirm("Archive this evidence item? It will be safely retained in the vault.")) {
+      return;
+    }
+    try {
+      await apiClient.post(`/api/v1/cases/${caseId}/evidence/${evidenceId}/${endpoint}`, {});
+      await loadData();
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      alert(e?.message || `Failed to ${endpoint} evidence`);
+    }
+  };
+
+  // Soft Delete
   const handleDelete = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this evidence item? This will be recorded permanently in the chain of custody."
-      )
-    ) {
+    if (!confirm("Are you sure you want to delete this evidence item? This will be recorded permanently in the chain of custody.")) {
       return;
     }
     try {
@@ -304,13 +438,13 @@ export default function EvidenceDetailPage({
   };
 
   if (loading) {
-    return <div className={styles.container}>Loading evidence details & custody ledger...</div>;
+    return <div className={styles.container}>Loading evidence vault ledger...</div>;
   }
 
   if (error || !evidence) {
     return (
       <div className={styles.container}>
-        <div style={{ color: "#f87171", padding: "20px" }}>{error || "Evidence not found"}</div>
+        <div style={{ color: "#f87171", padding: "20px" }}>{error || "Evidence item not found"}</div>
       </div>
     );
   }
@@ -336,7 +470,7 @@ export default function EvidenceDetailPage({
         <span className={styles.breadcrumbCurrent}>{evidence.title}</span>
       </nav>
 
-      {/* Header */}
+      {/* Hero Header */}
       <div className={styles.heroHeader}>
         <div className={styles.heroGlow} />
         <div>
@@ -350,14 +484,20 @@ export default function EvidenceDetailPage({
                   className={`${styles.pill} ${
                     evidence.sensitivity === "PRIVILEGED"
                       ? styles.pillPrivileged
-                      : styles.pillConfidential
+                      : evidence.sensitivity === "CONFIDENTIAL"
+                      ? styles.pillConfidential
+                      : styles.pillStandard
                   }`}
                 >
                   {evidence.sensitivity}
                 </span>
                 <span
                   className={`${styles.pill} ${
-                    evidence.status === "ACTIVE" ? styles.pillActive : styles.pillQuarantined
+                    evidence.status === "ACTIVE"
+                      ? styles.pillActive
+                      : evidence.status === "ARCHIVED"
+                      ? styles.pillArchived
+                      : styles.pillQuarantined
                   }`}
                 >
                   {evidence.status}
@@ -365,14 +505,28 @@ export default function EvidenceDetailPage({
                 {evidence.legal_hold && (
                   <span className={`${styles.pill} ${styles.pillHold}`}>⚖️ Legal Hold Active</span>
                 )}
+                {(evidence.exhibits || []).map((ex) => (
+                  <span key={ex.id} className={styles.exhibitBadge}>
+                    🏷️ {ex.exhibit_number}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button className={styles.primaryBtn} onClick={() => setExhibitModalOpen(true)}>
+            🏷️ Mark as Exhibit
+          </button>
+          <button className={styles.secondaryBtn} onClick={() => setShareModalOpen(true)}>
+            🔗 Share Document
+          </button>
           <button className={styles.secondaryBtn} onClick={handleToggleLegalHold}>
             {evidence.legal_hold ? "Lift Legal Hold" : "Apply Legal Hold"}
+          </button>
+          <button className={styles.secondaryBtn} onClick={handleToggleArchive}>
+            {evidence.status === "ARCHIVED" ? "♻️ Restore Item" : "📦 Archive Item"}
           </button>
           <button className={styles.dangerBtn} onClick={handleDelete}>
             Delete Item
@@ -380,333 +534,691 @@ export default function EvidenceDetailPage({
         </div>
       </div>
 
-      {/* Detail Grid */}
-      <div className={styles.detailGrid}>
-        {/* Left Column: Current Version & Version History */}
-        <div>
-          {/* Active Version Card */}
-          <div className={styles.panel}>
-            <div className={styles.panelTitle}>
-              <span>Active Evidence Version {curVer ? `(v${curVer.version_number})` : ""}</span>
+      {/* Structured Navigation Tabs */}
+      <div className={styles.tabNav} role="tablist">
+        <button
+          role="tab"
+          aria-selected={activeTab === "overview"}
+          className={`${styles.tabBtn} ${activeTab === "overview" ? styles.tabBtnActive : ""}`}
+          onClick={() => setActiveTab("overview")}
+        >
+          👁️ Overview & Preview
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === "versions"}
+          className={`${styles.tabBtn} ${activeTab === "versions" ? styles.tabBtnActive : ""}`}
+          onClick={() => setActiveTab("versions")}
+        >
+          📄 Immutable Versions
+          <span className={styles.tabBadgeCount}>{evidence.versions.length}</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === "exhibits"}
+          className={`${styles.tabBtn} ${activeTab === "exhibits" ? styles.tabBtnActive : ""}`}
+          onClick={() => setActiveTab("exhibits")}
+        >
+          🏷️ Court Exhibits
+          <span className={styles.tabBadgeCount}>{(evidence.exhibits || []).length}</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === "grants"}
+          className={`${styles.tabBtn} ${activeTab === "grants" ? styles.tabBtnActive : ""}`}
+          onClick={() => setActiveTab("grants")}
+        >
+          👥 Sharing & Access
+          <span className={styles.tabBadgeCount}>{evidence.grants.length}</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === "custody"}
+          className={`${styles.tabBtn} ${activeTab === "custody" ? styles.tabBtnActive : ""}`}
+          onClick={() => setActiveTab("custody")}
+        >
+          📜 Chain of Custody
+          <span className={styles.tabBadgeCount}>{custodyEvents.length}</span>
+        </button>
+      </div>
+
+      {/* Tab 1: Overview & Preview */}
+      {activeTab === "overview" && (
+        <div className={styles.detailGrid}>
+          {/* Left: Metadata & Tags */}
+          <div>
+            <div className={styles.panel}>
+              <div className={styles.panelTitle}>
+                <span>Active Evidence File Details</span>
+                {curVer && (
+                  <button className={styles.primaryBtn} onClick={() => handleDownload(curVer.id)}>
+                    📥 Download Verified File
+                  </button>
+                )}
+              </div>
+
+              {curVer ? (
+                <div>
+                  <div className={styles.metaGrid} style={{ marginBottom: "16px" }}>
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaKey}>Filename</span>
+                      <span className={styles.metaVal}>{curVer.original_filename}</span>
+                    </div>
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaKey}>File Size</span>
+                      <span className={styles.metaVal}>{(curVer.size_bytes / 1024).toFixed(1)} KB</span>
+                    </div>
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaKey}>Content Type</span>
+                      <span className={styles.metaVal}>{curVer.content_type}</span>
+                    </div>
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaKey}>Scan Status</span>
+                      <span
+                        className={styles.metaVal}
+                        style={{
+                          color: curVer.scan_status === "PASSED" ? "#34d399" : "#f87171",
+                          fontWeight: 600,
+                        }}
+                      >
+                        ✓ {curVer.scan_status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: "16px" }}>
+                    <span className={styles.statLabel}>Cryptographic SHA-256 Digest:</span>
+                    <div className={styles.hashBox} style={{ marginTop: "6px" }}>
+                      <span>{curVer.sha256}</span>
+                      <button
+                        className={styles.secondaryBtn}
+                        style={{ padding: "3px 8px", fontSize: "11px" }}
+                        onClick={() => {
+                          navigator.clipboard.writeText(curVer.sha256);
+                          alert("SHA-256 hash copied to clipboard!");
+                        }}
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Integrity Card */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "14px 18px",
+                      background: "#08090d",
+                      border: "1px solid #1f2434",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: "13px", fontWeight: 600, color: "#ffffff" }}>
+                        Integrity Status:{" "}
+                        <span
+                          style={{
+                            color:
+                              curVer.integrity_status === "VERIFIED_MATCH"
+                                ? "#34d399"
+                                : curVer.integrity_status === "TAMPER_DETECTED"
+                                ? "#f87171"
+                                : "#94a3b8",
+                          }}
+                        >
+                          {curVer.integrity_status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
+                        Last checked:{" "}
+                        {curVer.last_verified_at
+                          ? new Date(curVer.last_verified_at).toLocaleString()
+                          : "Never"}
+                      </div>
+                    </div>
+                    <button
+                      className={styles.secondaryBtn}
+                      onClick={handleVerifyIntegrity}
+                      disabled={verifying}
+                    >
+                      {verifying ? "Verifying..." : "⚡ Verify Integrity"}
+                    </button>
+                  </div>
+
+                  {integrityResult && (
+                    <div
+                      style={{
+                        marginTop: "12px",
+                        padding: "12px 16px",
+                        borderRadius: "8px",
+                        background: integrityResult.match
+                          ? "rgba(16, 185, 129, 0.12)"
+                          : "rgba(239, 68, 68, 0.15)",
+                        border: `1px solid ${
+                          integrityResult.match ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.35)"
+                        }`,
+                        color: integrityResult.match ? "#34d399" : "#f87171",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <strong>
+                        {integrityResult.match
+                          ? "✓ Cryptographic Integrity Verified"
+                          : "⚠️ TAMPER DETECTED: Storage bytes do not match recorded hash!"}
+                      </strong>
+                      <div style={{ fontSize: "11px", marginTop: "4px", color: "#94a3b8" }}>
+                        Recorded: {integrityResult.sha256_recorded}
+                      </div>
+                      <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                        Computed: {integrityResult.sha256_computed}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className={styles.emptyState}>No version currently active.</div>
+              )}
+            </div>
+
+            {/* Tag Management */}
+            <div className={styles.panel}>
+              <div className={styles.panelTitle}>
+                <span>Metadata Tags ({(evidence.tags || []).length}/20)</span>
+              </div>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+                {(evidence.tags || []).map((tag) => (
+                  <span
+                    key={tag}
+                    className={styles.tagPill}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+                  >
+                    #{tag}
+                    <button
+                      onClick={() => handleRemoveTag(tag)}
+                      disabled={tagLoading}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#94a3b8",
+                        cursor: "pointer",
+                        padding: 0,
+                        fontSize: "12px",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+
               <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="text"
+                  className={styles.formInput}
+                  placeholder="Add new tag (e.g. lease, audit)..."
+                  value={newTagInput}
+                  onChange={(e) => setNewTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  style={{ flex: 1 }}
+                />
                 <button
                   className={styles.secondaryBtn}
-                  onClick={() => handleView()}
-                  title="View Securely"
+                  onClick={handleAddTag}
+                  disabled={tagLoading || !newTagInput.trim()}
                 >
-                  👁️ View
-                </button>
-                <button
-                  className={styles.primaryBtn}
-                  style={{ padding: "8px 14px", fontSize: "12px" }}
-                  onClick={() => handleDownload()}
-                  title="Download File"
-                >
-                  📥 Download
+                  + Add Tag
                 </button>
               </div>
             </div>
+          </div>
 
-            {curVer ? (
-              <div>
-                <div className={styles.metaGrid} style={{ marginBottom: "16px" }}>
-                  <div className={styles.metaItem}>
-                    <span className={styles.metaKey}>Filename</span>
-                    <span className={styles.metaVal}>{curVer.original_filename}</span>
-                  </div>
-                  <div className={styles.metaItem}>
-                    <span className={styles.metaKey}>File Size</span>
-                    <span className={styles.metaVal}>
-                      {(curVer.size_bytes / 1024).toFixed(1)} KB
-                    </span>
-                  </div>
-                  <div className={styles.metaItem}>
-                    <span className={styles.metaKey}>Content Type</span>
-                    <span className={styles.metaVal}>{curVer.content_type}</span>
-                  </div>
-                  <div className={styles.metaItem}>
-                    <span className={styles.metaKey}>Scan Status</span>
-                    <span
-                      className={styles.metaVal}
-                      style={{
-                        color: curVer.scan_status === "PASSED" ? "#34d399" : "#f87171",
-                        fontWeight: 600,
-                      }}
-                    >
-                      ✓ {curVer.scan_status}
-                    </span>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: "16px" }}>
-                  <span className={styles.statLabel}>Cryptographic SHA-256 Digest:</span>
-                  <div className={styles.hashBox} style={{ marginTop: "6px" }}>
-                    <span>{curVer.sha256}</span>
-                    <button
-                      className={styles.secondaryBtn}
-                      style={{ padding: "3px 8px", fontSize: "11px" }}
-                      onClick={() => {
-                        navigator.clipboard.writeText(curVer.sha256);
-                        alert("SHA-256 hash copied to clipboard!");
-                      }}
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "14px 18px",
-                    background: "#08090d",
-                    border: "1px solid #1f2434",
-                    borderRadius: "10px",
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "#ffffff" }}>
-                      Integrity Status:{" "}
-                      <span
-                        style={{
-                          color:
-                            curVer.integrity_status === "VERIFIED_MATCH"
-                              ? "#34d399"
-                              : curVer.integrity_status === "TAMPER_DETECTED"
-                              ? "#f87171"
-                              : "#94a3b8",
-                        }}
-                      >
-                        {curVer.integrity_status}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
-                      Last checked:{" "}
-                      {curVer.last_verified_at
-                        ? new Date(curVer.last_verified_at).toLocaleString()
-                        : "Never"}
-                    </div>
-                  </div>
+          {/* Right: Embedded Safe Preview */}
+          <div>
+            <div className={styles.panel} style={{ minHeight: "440px", display: "flex", flexDirection: "column" }}>
+              <div className={styles.panelTitle}>
+                <span>Embedded File Preview</span>
+                {curVer && (
                   <button
                     className={styles.secondaryBtn}
-                    onClick={handleVerifyIntegrity}
-                    disabled={verifying}
+                    onClick={() => handleDownload(curVer.id)}
                   >
-                    {verifying ? "Verifying..." : "⚡ Verify Integrity"}
+                    📥 Download
                   </button>
-                </div>
+                )}
+              </div>
 
-                {integrityResult && (
-                  <div
-                    style={{
-                      marginTop: "12px",
-                      padding: "12px 16px",
-                      borderRadius: "8px",
-                      background: integrityResult.match
-                        ? "rgba(16, 185, 129, 0.12)"
-                        : "rgba(239, 68, 68, 0.15)",
-                      border: `1px solid ${
-                        integrityResult.match
-                          ? "rgba(16, 185, 129, 0.3)"
-                          : "rgba(239, 68, 68, 0.35)"
-                      }`,
-                      color: integrityResult.match ? "#34d399" : "#f87171",
-                      fontSize: "13px",
-                    }}
-                  >
-                    <strong>
-                      {integrityResult.match
-                        ? "✓ Cryptographic Integrity Verified"
-                        : "⚠️ TAMPER DETECTED: Storage bytes do not match recorded hash!"}
-                    </strong>
-                    <div style={{ fontSize: "11px", marginTop: "4px", color: "#94a3b8" }}>
-                      Recorded: {integrityResult.sha256_recorded}
-                    </div>
-                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>
-                      Computed: {integrityResult.sha256_computed}
-                    </div>
+              <div
+                style={{
+                  flex: 1,
+                  background: "#08090d",
+                  borderRadius: "10px",
+                  border: "1px solid #1f2434",
+                  overflow: "hidden",
+                  minHeight: "380px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {loadingPreview ? (
+                  <div className={styles.emptyState}>Loading preview bytes...</div>
+                ) : !previewUrl ? (
+                  <div className={styles.emptyState}>No preview available</div>
+                ) : previewType === "application/pdf" ? (
+                  <iframe
+                    src={previewUrl}
+                    title="Inline PDF Preview"
+                    style={{ width: "100%", height: "420px", border: "none" }}
+                    sandbox="allow-scripts allow-same-origin"
+                  />
+                ) : previewType.startsWith("image/") ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewUrl}
+                    alt="Inline Preview"
+                    style={{ maxWidth: "100%", maxHeight: "420px", objectFit: "contain" }}
+                  />
+                ) : (
+                  <div className={styles.previewFallback}>
+                    <p style={{ fontSize: "14px", color: "#ffffff", fontWeight: 600 }}>
+                      Inline preview unavailable for {previewType}
+                    </p>
+                    <button
+                      className={styles.primaryBtn}
+                      style={{ marginTop: "12px" }}
+                      onClick={() => handleDownload()}
+                    >
+                      📥 Download File
+                    </button>
                   </div>
                 )}
               </div>
-            ) : (
-              <div className={styles.emptyState}>No version currently active.</div>
-            )}
-          </div>
-
-          {/* Immutable Version History */}
-          <div className={styles.panel}>
-            <div className={styles.panelTitle}>
-              <span>Version History ({evidence.versions.length})</span>
-              <button
-                className={styles.secondaryBtn}
-                onClick={() => setVersionModalOpen(true)}
-              >
-                + New Version
-              </button>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {evidence.versions.map((ver) => (
-                <div
-                  key={ver.id}
-                  style={{
-                    padding: "14px 18px",
-                    background: "#090a0f",
-                    border: "1px solid #1a1e2b",
-                    borderRadius: "10px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ fontWeight: 700, color: "#ffffff", fontSize: "13px" }}>
-                        Version {ver.version_number}
-                      </span>
-                      {ver.id === evidence.current_version_id && (
-                        <span className={`${styles.pill} ${styles.pillActive}`}>Current</span>
-                      )}
-                      <span className={`${styles.pill} ${styles.pillStandard}`}>
-                        {(ver.size_bytes / 1024).toFixed(1)} KB
-                      </span>
-                    </div>
-                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
-                      Uploaded: {new Date(ver.created_at).toLocaleString()} · SHA:{" "}
-                      {ver.sha256.slice(0, 16)}...
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: "6px" }}>
-                    <button
-                      className={styles.secondaryBtn}
-                      style={{ padding: "4px 8px", fontSize: "11px" }}
-                      onClick={() => handleView(ver.id)}
-                    >
-                      View
-                    </button>
-                    <button
-                      className={styles.secondaryBtn}
-                      style={{ padding: "4px 8px", fontSize: "11px" }}
-                      onClick={() => handleDownload(ver.id)}
-                    >
-                      Download
-                    </button>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Controlled Sharing & Access Grants */}
-          <div className={styles.panel}>
-            <div className={styles.panelTitle}>
-              <span>Controlled Sharing Grants ({evidence.grants.length})</span>
-              <button
-                className={styles.secondaryBtn}
-                onClick={() => setShareModalOpen(true)}
+      {/* Tab 2: Immutable Versions */}
+      {activeTab === "versions" && (
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>
+            <span>Immutable Version History ({evidence.versions.length})</span>
+            <button className={styles.primaryBtn} onClick={() => setVersionModalOpen(true)}>
+              + Deposit New Version
+            </button>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {evidence.versions.map((ver) => (
+              <div
+                key={ver.id}
+                style={{
+                  padding: "16px 20px",
+                  background: "#090a0f",
+                  border: "1px solid #1a1e2b",
+                  borderRadius: "12px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "12px",
+                }}
               >
-                + Share with Lawyer
-              </button>
-            </div>
-
-            {evidence.grants.length === 0 ? (
-              <div style={{ fontSize: "13px", color: "#64748b", padding: "12px 0" }}>
-                This evidence item has not been shared with any additional parties.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {evidence.grants.map((grant) => {
-                  const isRevoked = !!grant.revoked_at;
-                  return (
-                    <div
-                      key={grant.id}
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontWeight: 700, color: "#ffffff", fontSize: "14px" }}>
+                      Version {ver.version_number}
+                    </span>
+                    {ver.id === evidence.current_version_id && (
+                      <span className={`${styles.pill} ${styles.pillActive}`}>Current Active</span>
+                    )}
+                    <span className={`${styles.pill} ${styles.pillStandard}`}>
+                      {(ver.size_bytes / 1024).toFixed(1)} KB
+                    </span>
+                    <span
                       style={{
-                        padding: "12px 16px",
-                        background: "#090a0f",
-                        border: `1px solid ${isRevoked ? "#27272a" : "#1a1e2b"}`,
-                        borderRadius: "10px",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        opacity: isRevoked ? 0.6 : 1,
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: ver.scan_status === "PASSED" ? "#34d399" : "#f87171",
                       }}
                     >
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: "13px", color: "#e2e8f0", fontWeight: 600 }}>
-                            Grantee: {grant.grantee_user_id.slice(0, 12)}...
-                          </span>
-                          <span className={`${styles.pill} ${styles.pillCategory}`}>
-                            {grant.access_level}
-                          </span>
-                          {isRevoked && (
-                            <span className={`${styles.pill} ${styles.pillPrivileged}`}>
-                              Revoked
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
-                          Granted: {new Date(grant.created_at).toLocaleDateString()}
-                          {grant.expires_at &&
-                            ` · Expires: ${new Date(grant.expires_at).toLocaleDateString()}`}
-                          {isRevoked && ` · Revoked on ${new Date(grant.revoked_at!).toLocaleDateString()}`}
-                        </div>
-                      </div>
+                      ✓ {ver.scan_status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#8c97ad", marginTop: "6px" }}>
+                    Uploaded: {new Date(ver.created_at).toLocaleString()} · SHA-256:{" "}
+                    <code style={{ color: "#38bdf8" }}>{ver.sha256}</code>
+                  </div>
+                </div>
 
-                      {!isRevoked && (
-                        <button
-                          className={styles.dangerBtn}
-                          style={{ padding: "4px 8px", fontSize: "11px" }}
-                          onClick={() => handleRevoke(grant.grantee_user_id)}
-                        >
-                          Revoke
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    className={styles.secondaryBtn}
+                    onClick={() => {
+                      loadInlinePreview(ver.id);
+                      setActiveTab("overview");
+                    }}
+                  >
+                    👁️ View
+                  </button>
+                  <button className={styles.secondaryBtn} onClick={() => handleDownload(ver.id)}>
+                    📥 Download
+                  </button>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         </div>
+      )}
 
-        {/* Right Column: Chain of Custody Timeline */}
-        <div>
-          <div className={styles.panel}>
-            <div className={styles.panelTitle}>
-              <span>Chain of Custody</span>
-              <span className={styles.securityBadge} style={{ fontSize: "10px" }}>
-                Audit Ledger
-              </span>
+      {/* Tab 3: Court Exhibits */}
+      {activeTab === "exhibits" && (
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>
+            <span>Formal Court Exhibits ({(evidence.exhibits || []).length})</span>
+            <button className={styles.primaryBtn} onClick={() => setExhibitModalOpen(true)}>
+              + Mark as Exhibit
+            </button>
+          </div>
+
+          {(evidence.exhibits || []).length === 0 ? (
+            <div className={styles.emptyState}>
+              <p style={{ fontSize: "16px", color: "#cbd5e1", fontWeight: 600 }}>
+                No Court Exhibits Marked
+              </p>
+              <p style={{ fontSize: "13px", marginTop: "6px" }}>
+                Formal exhibits reference specific immutable versions and can be linked directly to court hearings.
+              </p>
+              <button
+                className={styles.primaryBtn}
+                style={{ marginTop: "14px" }}
+                onClick={() => setExhibitModalOpen(true)}
+              >
+                + Mark First Exhibit
+              </button>
             </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {evidence.exhibits.map((ex) => (
+                <div key={ex.id} className={styles.exhibitCard}>
+                  <div className={styles.exhibitHeader}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span className={styles.exhibitBadge} style={{ fontSize: "13px", padding: "4px 10px" }}>
+                          🏷️ {ex.exhibit_number}
+                        </span>
+                        <span className={styles.exhibitTitle}>{ex.title}</span>
+                      </div>
+                      <p style={{ fontSize: "13px", color: "#94a3b8", margin: "6px 0 0" }}>
+                        {ex.description || "No specific exhibit description."}
+                      </p>
+                    </div>
+                  </div>
 
-            <div className={styles.timeline}>
-              {custodyEvents.map((evt) => (
-                <div key={evt.id} className={styles.timelineNode}>
-                  <div className={styles.timelineDot} />
-                  <span className={styles.timelineAction}>{evt.action}</span>
-                  <span className={styles.timelineTime}>
-                    {new Date(evt.timestamp).toLocaleString()}
-                  </span>
-                  {evt.actor_user_id && (
-                    <span style={{ fontSize: "11px", color: "#94a3b8" }}>
-                      Actor: {evt.actor_user_id.slice(0, 10)}...
+                  <div className={styles.exhibitMetaRow}>
+                    <span>
+                      📌 <strong>Points to:</strong> Version {ex.version_number ?? 1}
                     </span>
-                  )}
+                    {ex.hearing_purpose && (
+                      <span>
+                        ⚖️ <strong>Linked Hearing:</strong> {ex.hearing_purpose}{" "}
+                        {ex.court_name && `(${ex.court_name})`}
+                      </span>
+                    )}
+                    {ex.relevant_date && (
+                      <span>
+                        📅 <strong>Relevant Date:</strong>{" "}
+                        {new Date(ex.relevant_date).toLocaleDateString()}
+                      </span>
+                    )}
+                    <span>
+                      🕒 <strong>Marked on:</strong> {new Date(ex.created_at).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 4: Sharing & Access Grants */}
+      {activeTab === "grants" && (
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>
+            <span>Controlled Sharing Grants ({evidence.grants.length})</span>
+            <button className={styles.primaryBtn} onClick={() => setShareModalOpen(true)}>
+              + Share with Lawyer
+            </button>
+          </div>
+
+          {evidence.grants.length === 0 ? (
+            <div className={styles.emptyState}>
+              This evidence item has not been shared with any additional parties.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {evidence.grants.map((grant) => {
+                const isRevoked = !!grant.revoked_at;
+                return (
+                  <div
+                    key={grant.id}
+                    style={{
+                      padding: "14px 18px",
+                      background: "#090a0f",
+                      border: `1px solid ${isRevoked ? "#27272a" : "#1a1e2b"}`,
+                      borderRadius: "12px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      opacity: isRevoked ? 0.6 : 1,
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "14px", color: "#ffffff", fontWeight: 600 }}>
+                          Grantee ID: {grant.grantee_user_id}
+                        </span>
+                        <span className={`${styles.pill} ${styles.pillCategory}`}>
+                          {grant.access_level}
+                        </span>
+                        {isRevoked && (
+                          <span className={`${styles.pill} ${styles.pillPrivileged}`}>
+                            Revoked
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#8c97ad", marginTop: "4px" }}>
+                        Granted on: {new Date(grant.created_at).toLocaleDateString()}
+                        {grant.expires_at && ` · Expires: ${new Date(grant.expires_at).toLocaleDateString()}`}
+                        {isRevoked && ` · Revoked on ${new Date(grant.revoked_at!).toLocaleDateString()}`}
+                      </div>
+                    </div>
+
+                    {!isRevoked && (
+                      <button
+                        className={styles.dangerBtn}
+                        onClick={() => handleRevoke(grant.grantee_user_id)}
+                      >
+                        Revoke Access
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 5: Chain of Custody */}
+      {activeTab === "custody" && (
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>
+            <span>Chain of Custody Provenance Ledger</span>
+            <span className={styles.securityBadge}>Cryptographically Chained</span>
+          </div>
+
+          <div className={styles.timeline}>
+            {custodyEvents.map((evt) => (
+              <div key={evt.id} className={styles.timelineNode}>
+                <div className={styles.timelineDot} />
+                <span className={styles.timelineAction}>{evt.action}</span>
+                <span className={styles.timelineTime}>
+                  {new Date(evt.timestamp).toLocaleString()}
+                </span>
+                {evt.actor_user_id && (
+                  <span style={{ fontSize: "12px", color: "#8c97ad" }}>
+                    Actor UUID: {evt.actor_user_id}
+                  </span>
+                )}
+                {evt.metadata && Object.keys(evt.metadata).length > 0 && (
+                  <pre
+                    style={{
+                      background: "#08090d",
+                      border: "1px solid #1a1e2b",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      color: "#94a3b8",
+                      marginTop: "4px",
+                      overflowX: "auto",
+                    }}
+                  >
+                    {JSON.stringify(evt.metadata, null, 2)}
+                  </pre>
+                )}
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* New Version Modal */}
+      {/* Mark Exhibit Modal */}
+      {exhibitModalOpen && (
+        <div className={styles.modalBackdrop} onClick={() => setExhibitModalOpen(false)}>
+          <div className={styles.modalWindow} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Mark Formal Court Exhibit</h2>
+            {exhibitError && (
+              <div
+                style={{
+                  background: "rgba(239, 68, 68, 0.15)",
+                  color: "#f87171",
+                  padding: "10px",
+                  borderRadius: "8px",
+                  marginBottom: "12px",
+                  fontSize: "13px",
+                }}
+              >
+                {exhibitError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateExhibit}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Exhibit Number (Optional — auto-allocated if blank)</label>
+                <input
+                  type="text"
+                  className={styles.formInput}
+                  placeholder="Leave blank for next letter (e.g. Exhibit A, Exhibit B), or enter custom (e.g. Exhibit P-1)"
+                  value={exhibitNumber}
+                  onChange={(e) => setExhibitNumber(e.target.value)}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Exhibit Title *</label>
+                <input
+                  type="text"
+                  className={styles.formInput}
+                  placeholder="e.g., Primary Sale Deed with Land Annexure"
+                  value={exhibitTitle}
+                  onChange={(e) => setExhibitTitle(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Target Evidence Version</label>
+                <select
+                  className={styles.formSelect}
+                  value={exhibitVersionId}
+                  onChange={(e) => setExhibitVersionId(e.target.value)}
+                >
+                  {evidence.versions.map((ver) => (
+                    <option key={ver.id} value={ver.id}>
+                      Version {ver.version_number} ({ver.original_filename} · {new Date(ver.created_at).toLocaleDateString()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Link to Court Hearing (Optional)</label>
+                <select
+                  className={styles.formSelect}
+                  value={exhibitHearingId}
+                  onChange={(e) => setExhibitHearingId(e.target.value)}
+                >
+                  <option value="">-- None (Case Level Exhibit) --</option>
+                  {caseHearings.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.purpose} ({h.court_name} · {new Date(h.hearing_at).toLocaleDateString()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Relevant Date (Optional)</label>
+                <input
+                  type="date"
+                  className={styles.formInput}
+                  value={exhibitDate}
+                  onChange={(e) => setExhibitDate(e.target.value)}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Legal Context / Description</label>
+                <textarea
+                  className={styles.formTextarea}
+                  placeholder="Notes for litigation, relevant clauses, or cross-examination points..."
+                  rows={2}
+                  value={exhibitDesc}
+                  onChange={(e) => setExhibitDesc(e.target.value)}
+                />
+              </div>
+
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.secondaryBtn}
+                  onClick={() => setExhibitModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className={styles.primaryBtn} disabled={exhibitLoading}>
+                  {exhibitLoading ? "Allocating & Marking..." : "Confirm Exhibit"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Deposit Version Modal */}
       {versionModalOpen && (
-        <div className={styles.modalBackdrop}>
-          <div className={styles.modalWindow}>
+        <div className={styles.modalBackdrop} onClick={() => setVersionModalOpen(false)}>
+          <div className={styles.modalWindow} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>Deposit Immutable Version</h2>
             {versionError && (
               <div
@@ -725,7 +1237,7 @@ export default function EvidenceDetailPage({
 
             <form onSubmit={handleVersionUpload}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Select New Document File</label>
+                <label className={styles.formLabel}>Select New Version File *</label>
                 <div
                   className={styles.fileDropZone}
                   onClick={() => document.getElementById("new-ver-input")?.click()}
@@ -749,12 +1261,12 @@ export default function EvidenceDetailPage({
                     </div>
                   ) : (
                     <div>
-                      <p style={{ margin: 0, color: "#94a3b8", fontSize: "13px" }}>
-                        Click to select replacement file
-                      </p>
-                      <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "11px" }}>
-                        Previous versions will remain immutable and permanently verifiable
-                      </p>
+                      <span style={{ color: "#818cf8", fontSize: "13px" }}>
+                        Click to select new version file
+                      </span>
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
+                        PDF, PNG, JPEG (SHA-256 Verifiable)
+                      </div>
                     </div>
                   )}
                 </div>
@@ -765,16 +1277,15 @@ export default function EvidenceDetailPage({
                   type="button"
                   className={styles.secondaryBtn}
                   onClick={() => setVersionModalOpen(false)}
-                  disabled={uploadingVersion}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className={styles.primaryBtn}
-                  disabled={uploadingVersion}
+                  disabled={uploadingVersion || !newVersionFile}
                 >
-                  {uploadingVersion ? "Verifying..." : "Upload Version"}
+                  {uploadingVersion ? "Uploading & Scanning..." : "Deposit Version"}
                 </button>
               </div>
             </form>
@@ -782,78 +1293,18 @@ export default function EvidenceDetailPage({
         </div>
       )}
 
-      {/* Share Modal */}
+      {/* Evidence Share Modal */}
       {shareModalOpen && (
-        <div className={styles.modalBackdrop}>
-          <div className={styles.modalWindow}>
-            <h2 className={styles.modalTitle}>Share Evidence with Case Lawyer</h2>
-            {shareError && (
-              <div
-                style={{
-                  background: "rgba(239, 68, 68, 0.15)",
-                  color: "#f87171",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  marginBottom: "12px",
-                  fontSize: "13px",
-                }}
-              >
-                {shareError}
-              </div>
-            )}
-
-            <form onSubmit={handleShare}>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Target Lawyer User ID (UUID) *</label>
-                <input
-                  type="text"
-                  className={styles.formInput}
-                  placeholder="e.g. 018f23a4-5678-..."
-                  value={shareTargetId}
-                  onChange={(e) => setShareTargetId(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Access Level</label>
-                <select
-                  className={styles.formSelect}
-                  value={shareLevel}
-                  onChange={(e) => setShareLevel(e.target.value)}
-                >
-                  <option value="VIEW">VIEW (Preview only)</option>
-                  <option value="DOWNLOAD">DOWNLOAD (Download & View)</option>
-                  <option value="MANAGE">MANAGE (Manage, Share, Version)</option>
-                </select>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Grant Expiration (Optional)</label>
-                <input
-                  type="datetime-local"
-                  className={styles.formInput}
-                  value={shareExpires}
-                  onChange={(e) => setShareExpires(e.target.value)}
-                />
-              </div>
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  className={styles.secondaryBtn}
-                  onClick={() => setShareModalOpen(false)}
-                  disabled={sharing}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className={styles.primaryBtn} disabled={sharing}>
-                  {sharing ? "Granting..." : "Create Access Grant"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <EvidenceShareModal
+          isOpen={shareModalOpen}
+          onClose={() => {
+            setShareModalOpen(false);
+            loadData();
+          }}
+          caseId={caseId}
+          evidenceId={evidenceId}
+          evidenceTitle={evidence.title}
+        />
       )}
     </div>
   );

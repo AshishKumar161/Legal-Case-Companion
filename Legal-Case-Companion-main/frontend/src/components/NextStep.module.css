@@ -1,40 +1,37 @@
 .nextStepCard {
-  background: var(--surface-card, #0E121A);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-  border-radius: var(--radius-lg, 12px);
-  padding: 16px 20px;
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   position: relative;
   overflow: hidden;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
 }
 
 .nextStepCard:hover {
-  border-color: rgba(99, 102, 241, 0.35);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .urgencyCritical {
-  border-left: 4px solid #ef4444;
-  background: linear-gradient(90deg, rgba(239, 68, 68, 0.08) 0%, var(--surface-card, #0E121A) 40%);
+  border-left: 4px solid var(--status-urgent);
 }
 
 .urgencyHigh {
-  border-left: 4px solid #f59e0b;
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0.08) 0%, var(--surface-card, #0E121A) 40%);
+  border-left: 4px solid var(--status-warning);
 }
 
 .urgencyMedium {
-  border-left: 4px solid #60a5fa;
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.08) 0%, var(--surface-card, #0E121A) 40%);
+  border-left: 4px solid var(--navy-primary);
 }
 
 .urgencyLow {
-  border-left: 4px solid #10b981;
-  background: linear-gradient(90deg, rgba(16, 185, 129, 0.08) 0%, var(--surface-card, #0E121A) 40%);
+  border-left: 4px solid var(--status-success);
 }
 
 .contentWrapper {
@@ -48,13 +45,13 @@
 .contextIcon {
   width: 40px;
   height: 40px;
-  border-radius: var(--radius-md, 8px);
-  background: var(--surface-elevated, #151A24);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  color: var(--navy-primary);
   flex-shrink: 0;
 }
 
@@ -67,7 +64,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   flex-wrap: wrap;
 }
 
@@ -75,103 +72,101 @@
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #94a3b8;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
 }
 
 .provenanceBadge {
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
 .headline {
   font-size: 15px;
-  font-weight: 600;
-  color: #f8fafc;
+  font-weight: 700;
+  color: var(--navy-primary);
   margin: 0 0 3px 0;
   line-height: 1.35;
 }
 
 .detail {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-secondary);
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
-.actionGroup {
+.actionsWrapper {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .primaryAction {
-  padding: 8px 16px;
-  background: #6366f1;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 8px;
-  text-decoration: none;
-  border: none;
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: background 0.15s ease, transform 0.1s ease;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  background: var(--navy-primary);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
   white-space: nowrap;
 }
 
 .primaryAction:hover {
-  background: #4f46e5;
-  transform: translateY(-1px);
+  background: var(--navy-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .secondaryAction {
-  padding: 8px 12px;
-  background: transparent;
-  color: #94a3b8;
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: 8px;
-  text-decoration: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  transition: all 0.15s ease;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
   white-space: nowrap;
 }
 
 .secondaryAction:hover {
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-subtle);
+  color: var(--navy-primary);
 }
 
 @media (max-width: 640px) {
   .nextStepCard {
     flex-direction: column;
     align-items: stretch;
-    padding: 14px 16px;
-    gap: 12px;
   }
 
-  .actionGroup {
-    width: 100%;
+  .actionsWrapper {
+    margin-top: 12px;
     flex-direction: column;
-    align-items: stretch;
   }
 
-  .primaryAction, .secondaryAction {
-    justify-content: center;
+  .primaryAction,
+  .secondaryAction {
     width: 100%;
-    min-height: 44px; /* Accessible 44px mobile touch targets */
+    justify-content: center;
   }
 }

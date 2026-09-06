@@ -116,3 +116,47 @@ The Legal Case Companion (LCC) codebase has undergone a complete, systematic rep
 ## Conclusion & Next Steps
 
 The repository is fully stabilized and verified against all 25 phases and 20 non-negotiable engineering rules. The platform is ready for controlled commercial pilot onboarding in Indian jurisdictions.
+
+---
+
+# Case Document Sharing Between Client and Lawyer
+
+We implemented and verified seamless bidirectional case document sharing between Clients and Lawyers across the platform (both in the global Document Vault `/documents` and inside Case Workspaces `/cases/[caseId]`).
+
+### 1. Root Cause & Architectural Fixes
+- **Missing Direct Multipart Endpoint**: The frontend `/documents` page posted multipart/form-data directly to `POST /api/v1/cases/{case_id}/documents`. The backend previously only had a two-phase presigned upload endpoint (`/upload-init`), causing FastAPI to return `405 Method Not Allowed`.
+- **Added `POST /api/v1/cases/{case_id}/documents`**:
+  - Implemented in [`app/api/v1/documents.py`](file:///c:/Users/akuma/OneDrive/Desktop/lcc/Legal-Case-Companion-main/Legal-Case-Companion-main/app/api/v1/documents.py).
+  - Enforces case participant authorization (`authorize_case_modification`).
+  - Validates file security (filename validation, max size checking, SHA-256 integrity checksum).
+  - Automatically maps client-friendly categories (`AGREEMENT`, `COURT`, `ID`, `NOTICE`, `EVIDENCE`) to backend enums (`CONTRACT`, `COURT_ORDER`, `IDENTITY_PROOF`, `LEGAL_NOTICE`, `EVIDENCE`).
+  - Stores file bytes via storage provider, records case timeline activity, and triggers real-time in-app notifications (`DOCUMENT_READY`) to the other case participants.
+- **Local Dev Mock Storage Handlers**: Added `PUT /mock-storage/upload` and `GET /mock-storage/download` in [`app/main.py`](file:///c:/Users/akuma/OneDrive/Desktop/lcc/Legal-Case-Companion-main/Legal-Case-Companion-main/app/main.py) to enable end-to-end file uploads and authenticated byte streaming in local dev environments without cloud storage credentials.
+
+---
+
+### 2. Automated Test Verification
+- **Integration Test Suite**: [`tests/integration/test_case_document_sharing_and_access.py`](file:///c:/Users/akuma/OneDrive/Desktop/lcc/Legal-Case-Companion-main/Legal-Case-Companion-main/tests/integration/test_case_document_sharing_and_access.py)
+  - Client uploads agreement PDF to case matter.
+  - Lawyer queries case documents and downloads file; byte integrity verified.
+  - Lawyer uploads court order PDF to case matter.
+  - Client queries case documents and downloads file; byte integrity verified.
+  - Notification dispatch verified for both parties.
+  - **Result**: `PASSED [100%]` in 9.59s.
+- **Regression Suite**: [`tests/integration/test_documents.py`](file:///c:/Users/akuma/OneDrive/Desktop/lcc/Legal-Case-Companion-main/Legal-Case-Companion-main/tests/integration/test_documents.py)
+  - **Result**: 4 passed in 11.71s (`PASSED [100%]`).
+
+---
+
+### 3. Visual UI Verification & Screenshots
+
+````carousel
+![Client Document Vault - Shared Injunction Order & Lease Agreement](/C:/Users/akuma/.gemini/antigravity-ide/brain/052b462b-c779-4be9-bbb2-83ae34c57616/client_documents_view_1788719730656.png)
+<!-- slide -->
+![Client Case Workspace - Documents Tab](/C:/Users/akuma/.gemini/antigravity-ide/brain/052b462b-c779-4be9-bbb2-83ae34c57616/client_case_documents_view_1788719804075.png)
+<!-- slide -->
+![Advocate Document Vault - Shared Matters Injunction & Lease Agreement](/C:/Users/akuma/.gemini/antigravity-ide/brain/052b462b-c779-4be9-bbb2-83ae34c57616/lawyer_documents_view_1788719897789.png)
+<!-- slide -->
+![Advocate Case Workspace - Documents Tab](/C:/Users/akuma/.gemini/antigravity-ide/brain/052b462b-c779-4be9-bbb2-83ae34c57616/lawyer_case_documents_view_1788719979432.png)
+````
+

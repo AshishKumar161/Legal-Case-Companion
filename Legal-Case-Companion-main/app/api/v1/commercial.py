@@ -176,7 +176,7 @@ def get_invoice_receipt(
         return service.generate_receipt(transaction_identifier)
     except ResourceNotFoundError as e:
         from app.core.exceptions import NotFoundError
-        raise NotFoundError(str(e))
+        raise NotFoundError(str(e)) from e
 
 
 @router.post("/payouts/process")

@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   title: "Legal Case Companion | Secure Legal Tech Platform",
   description:
     "A production-grade legal technology platform connecting clients and verified lawyers in India.",
+  icons: {
+    icon: "/logo-icon.png",
+    shortcut: "/logo-icon.png",
+    apple: "/logo-icon.png",
+  },
 };
 
 export default function RootLayout({

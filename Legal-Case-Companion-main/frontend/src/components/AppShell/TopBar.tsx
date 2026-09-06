@@ -8,6 +8,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { GlobalSearchModal } from "@/components/GlobalSearchModal";
 import { PilotFeedbackModal } from "@/components/PilotFeedbackModal";
 import { useI18n, SUPPORTED_LOCALES, SupportedLocale } from "@/providers/I18nProvider";
+import { SearchIcon } from "@/components/ui/Icons";
 import styles from "./TopBar.module.css";
 
 interface TopBarProps {
@@ -21,6 +22,8 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
   const router = useRouter();
 
   const [istTime, setIstTime] = useState("");
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -43,52 +46,52 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
     router.push("/login");
   };
 
-  // Generate contextual breadcrumbs
+  // Generate contextual breadcrumbs with plain human language (Section 8)
   const getBreadcrumbs = () => {
     if (pathname === "/dashboard") {
-      return [{ label: "Command Center", href: "/dashboard" }];
+      return [{ label: "Home", href: "/dashboard" }];
     }
     if (pathname.startsWith("/cases/")) {
       const parts = pathname.split("/");
       if (parts[2] === "new") {
         return [
-          { label: "Matters", href: "/dashboard" },
-          { label: "New Case Record", href: "/cases/new" },
+          { label: "My Case", href: "/cases" },
+          { label: "Start a New Case", href: "/cases/new" },
         ];
       }
       return [
-        { label: "Matters", href: "/dashboard" },
+        { label: "My Case", href: "/cases" },
         { label: `Case #${parts[2].slice(0, 8).toUpperCase()}`, href: `/cases/${parts[2]}` },
       ];
     }
+    if (pathname === "/cases") {
+      return [{ label: "My Case", href: "/cases" }];
+    }
     if (pathname.startsWith("/court-tracking")) {
-      return [{ label: "Court Case Tracking", href: "/court-tracking" }];
+      return [{ label: "Court / Location", href: "/court-tracking" }];
     }
     if (pathname.startsWith("/calendar")) {
-      return [{ label: "Hearing Calendar", href: "/calendar" }];
+      return [{ label: "Hearings", href: "/calendar" }];
     }
     if (pathname.startsWith("/documents")) {
-      return [{ label: "Evidence & Documents", href: "/documents" }];
+      return [{ label: "My Documents", href: "/documents" }];
+    }
+    if (pathname.startsWith("/messages")) {
+      return [{ label: "Talk to My Lawyer", href: "/messages" }];
     }
     if (pathname.startsWith("/lawyer/dashboard")) {
-      return [{ label: "Lawyer Practice Hub", href: "/lawyer/dashboard" }];
-    }
-    if (pathname.startsWith("/lawyer/profile")) {
-      return [
-        { label: "Lawyer Practice Hub", href: "/lawyer/dashboard" },
-        { label: "Profile & Availability", href: "/lawyer/profile" },
-      ];
+      return [{ label: "Practice Hub", href: "/lawyer/dashboard" }];
     }
     if (pathname.startsWith("/settings") || pathname.startsWith("/profile")) {
-      return [{ label: "Account & Settings", href: "/settings" }];
+      return [{ label: "Settings", href: "/settings" }];
     }
     if (pathname.startsWith("/admin/dashboard")) {
-      return [{ label: "Admin Console", href: "/admin/dashboard" }];
+      return [{ label: "Admin", href: "/admin/dashboard" }];
     }
     if (pathname.startsWith("/lawyers")) {
-      return [{ label: "Counsel Directory", href: "/lawyers" }];
+      return [{ label: "Find a Lawyer", href: "/lawyers" }];
     }
-    return [{ label: "Legal Case Companion", href: "/dashboard" }];
+    return [{ label: "LCC", href: "/dashboard" }];
   };
 
   const breadcrumbs = getBreadcrumbs();
@@ -96,20 +99,13 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
   const role = user?.role;
   const roleStyle =
     role === "ADMIN"
-      ? { bg: "rgba(239, 68, 68, 0.15)", text: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)" }
+      ? { bg: "rgba(220, 38, 38, 0.08)", text: "#DC2626", border: "1px solid rgba(220, 38, 38, 0.2)" }
       : role === "LAWYER"
-      ? { bg: "rgba(109, 124, 255, 0.15)", text: "#8d98ff", border: "1px solid rgba(109, 124, 255, 0.3)" }
-      : role === "CLIENT"
-      ? { bg: "rgba(59, 130, 246, 0.15)", text: "#60a5fa", border: "1px solid rgba(59, 130, 246, 0.3)" }
-      : { bg: "transparent", text: "transparent", border: "none" };
-
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
+      ? { bg: "rgba(15, 30, 54, 0.08)", text: "#0F1E36", border: "1px solid rgba(15, 30, 54, 0.2)" }
+      : { bg: "rgba(5, 150, 105, 0.08)", text: "#047857", border: "1px solid rgba(5, 150, 105, 0.2)" };
 
   return (
     <>
-      <GlobalSearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
-      <PilotFeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <header className={styles.topBar}>
         <div className={styles.leftSection}>
           <button
@@ -120,119 +116,91 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
             ☰
           </button>
 
-          <nav className={styles.breadcrumbs}>
-            {breadcrumbs.map((crumb, idx) => (
-              <span key={idx} style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                {idx > 0 && <span className={styles.breadcrumbSeparator}>/</span>}
-                {idx === breadcrumbs.length - 1 ? (
-                  <span className={styles.breadcrumbActive}>{crumb.label}</span>
-                ) : (
-                  <Link href={crumb.href} className={styles.breadcrumbLink}>
-                    {crumb.label}
-                  </Link>
-                )}
-              </span>
-            ))}
+          {/* Contextual Breadcrumbs */}
+          <nav className={styles.breadcrumbs} aria-label="Breadcrumbs">
+            {breadcrumbs.map((crumb, idx) => {
+              const isLast = idx === breadcrumbs.length - 1;
+              return (
+                <span key={idx} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {idx > 0 && <span className={styles.breadcrumbSeparator}>/</span>}
+                  {isLast ? (
+                    <span className={styles.breadcrumbActive}>{crumb.label}</span>
+                  ) : (
+                    <Link href={crumb.href} className={styles.breadcrumbLink}>
+                      {crumb.label}
+                    </Link>
+                  )}
+                </span>
+              );
+            })}
           </nav>
         </div>
 
         <div className={styles.rightSection}>
-          {istTime && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                fontSize: "11px",
-                fontWeight: 600,
-                color: "var(--text-secondary, #94a3b8)",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "6px",
-                padding: "3px 8px",
-              }}
-              className={styles.desktopOnly}
-              title="Indian Standard Time (IST) - Court sessions typically active 10:30 AM to 4:30 PM"
-            >
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }} />
-              <span>{istTime} IST</span>
-            </div>
-          )}
+          {/* Quick Search Button */}
+          <button
+            onClick={() => setSearchModalOpen(true)}
+            className={styles.searchTriggerBtn}
+            title="Search your cases and documents (Ctrl+K)"
+          >
+            <SearchIcon size={14} />
+            <span className={styles.searchLabel}>Search...</span>
+            <kbd className={styles.searchTriggerKbd}>Ctrl K</kbd>
+          </button>
 
           {/* Language Selector */}
           <select
             value={locale}
             onChange={(e) => setLocale(e.target.value as SupportedLocale)}
+            aria-label="Choose Language"
             style={{
-              background: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
+              padding: "4px 8px",
               borderRadius: "6px",
-              color: "var(--text-secondary, #cbd5e1)",
+              border: "1px solid var(--border-subtle)",
+              background: "#FFFFFF",
+              color: "var(--text-secondary)",
               fontSize: "12px",
               fontWeight: 500,
-              padding: "4px 8px",
-              cursor: "pointer",
             }}
-            aria-label="Select platform language"
           >
-            {SUPPORTED_LOCALES.map((l) => (
-              <option key={l.code} value={l.code} style={{ background: "#0e121a", color: "#ffffff" }}>
-                {l.nativeName} ({l.name})
+            {SUPPORTED_LOCALES.map((loc) => (
+              <option key={loc.code} value={loc.code}>
+                {loc.nativeName}
               </option>
             ))}
           </select>
 
-          <button
-            onClick={() => setSearchOpen(true)}
-            className={styles.searchTriggerBtn}
-            title="Search matters, documents, or legal counsel (Ctrl+K)"
-          >
-            <span>🔍</span>
-            <span style={{ display: "inline-block" }}>Search...</span>
-            <kbd className={styles.searchTriggerKbd}>⌘K</kbd>
-          </button>
-
-          <button
-            onClick={() => setFeedbackOpen(true)}
-            style={{
-              padding: "4px 10px",
-              background: "rgba(245, 158, 11, 0.12)",
-              border: "1px solid rgba(245, 158, 11, 0.3)",
-              borderRadius: "6px",
-              color: "#f59e0b",
-              fontSize: "12px",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-            title="Share pilot feedback, friction, or report an issue"
-          >
-            <span>💬</span>
-            <span className={styles.desktopOnly}>Feedback</span>
-          </button>
-
+          {/* Notifications */}
           <NotificationBell />
 
-          {role && (
-            <span
-              className={styles.roleBadge}
-              style={{
-                background: roleStyle.bg,
-                color: roleStyle.text,
-                border: roleStyle.border,
-              }}
-            >
-              {role}
-            </span>
-          )}
+          {/* Role Pill */}
+          <span
+            className={styles.roleBadge}
+            style={{
+              background: roleStyle.bg,
+              color: roleStyle.text,
+              border: roleStyle.border,
+            }}
+          >
+            {role === "LAWYER" ? "Advocate" : role === "ADMIN" ? "Admin" : "Client"}
+          </span>
 
+          {/* Sign Out Button */}
           <button onClick={handleLogout} className={styles.logoutBtn}>
             Sign Out
           </button>
         </div>
       </header>
+
+      {/* Global Search & Feedback Modals */}
+      <GlobalSearchModal
+        isOpen={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+      />
+      <PilotFeedbackModal
+        isOpen={feedbackModalOpen}
+        onClose={() => setFeedbackModalOpen(false)}
+      />
     </>
   );
 }

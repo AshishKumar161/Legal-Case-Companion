@@ -163,6 +163,28 @@ function LoginForm() {
   return (
     <div className={styles.authContainer}>
       <div className={`glass-panel ${styles.authCard} animate-fade-in`}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+          <div
+            style={{
+              width: "72px",
+              height: "72px",
+              borderRadius: "16px",
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid rgba(255, 255, 255, 0.12)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "8px",
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.3)",
+            }}
+          >
+            <img
+              src="/logo-icon-white.png"
+              alt="Legal Case Companion Logo"
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
+          </div>
+        </div>
         <h1 className="text-gradient">Welcome Back</h1>
         <p className={styles.subtitle}>Log in to access your Legal Case Companion</p>
 

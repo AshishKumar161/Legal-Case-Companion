@@ -270,12 +270,16 @@ export interface CaseTaskItem {
   title: string;
   description?: string;
   priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  status: "PENDING" | "IN_PROGRESS" | "BLOCKED" | "COMPLETED" | "CANCELLED";
   due_date?: string | null;
   owner_user_id?: string | null;
   created_by_user_id?: string | null;
   is_confirmed: boolean;
   source_type?: string;
+  linked_evidence_id?: string | null;
+  linked_hearing_id?: string | null;
+  linked_deadline_id?: string | null;
+  completed_at?: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -286,13 +290,29 @@ export interface CaseDeadlineItem {
   title: string;
   description?: string | null;
   deadline_at: string;
-  deadline_type: "STATUTORY_LIMITATION" | "COURT_ORDERED" | "FILING" | "COMPLIANCE" | "GENERAL" | "CUSTOM";
+  deadline_type: "STATUTORY_LIMITATION" | "COURT_ORDERED" | "FILING" | "COMPLIANCE" | "GENERAL" | "CUSTOM" | string;
   status: "UPCOMING" | "DUE" | "OVERDUE" | "COMPLETED" | "CANCELLED";
   is_confirmed: boolean;
   source_type?: string;
   source_reference?: string | null;
+  linked_hearing_id?: string | null;
+  retrieval_method?: string | null;
+  retrieved_at?: string | null;
+  confirmed_by_user_id?: string | null;
+  completed_at?: string | null;
   created_at: string;
   updated_at?: string;
+}
+
+export interface CaseHealthSummary {
+  case_id: string;
+  has_upcoming_hearing: boolean;
+  next_hearing_date?: string | null;
+  next_hearing_court?: string | null;
+  overdue_tasks_count: number;
+  upcoming_deadlines_count: number;
+  unreviewed_evidence_count: number;
+  latest_activity_at?: string | null;
 }
 
 export interface CaseHearingItem {
@@ -1082,6 +1102,70 @@ export interface RecordingConsentStatus {
   can_record: boolean;
 }
 
+export interface VideoRoomAccessStatus {
+  consultation_id: string;
+  meeting_id?: string | null;
+  room_id?: string | null;
+  consultation_status: string;
+  is_authorized: boolean;
+  can_join: boolean;
+  scheduled_at_utc: string;
+  current_server_time_utc: string;
+  earliest_join_time_utc: string;
+  latest_join_time_utc: string;
+  scheduled_at_ist: string;
+  earliest_join_ist: string;
+  time_until_open_seconds?: number | null;
+  reason_blocked?: string | null;
+  participant_name?: string | null;
+  participant_role?: string | null;
+  other_party_name?: string | null;
+  lawyer_online?: boolean | null;
+  time_bypass_allowed?: boolean | null;
+}
+
+export interface ShareableParticipant {
+  user_id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  has_access: boolean;
+  current_access_level?: "VIEW" | "DOWNLOAD" | "MANAGE" | null;
+  grant_id?: string | null;
+}
+
+export interface EvidenceAccessGrantItem {
+  id: string;
+  evidence_id: string;
+  grantee_user_id: string;
+  granted_by_user_id: string;
+  grantee_name?: string | null;
+  grantee_email?: string | null;
+  access_level: "VIEW" | "DOWNLOAD" | "MANAGE";
+  created_at: string;
+  expires_at?: string | null;
+  revoked_at?: string | null;
+  revocation_reason?: string | null;
+}
+
+export interface SharedEvidenceItem {
+  id: string;
+  case_id: string;
+  case_title: string;
+  title: string;
+  description?: string | null;
+  category: string;
+  original_filename: string;
+  mime_type: string;
+  size_bytes: number;
+  access_level: "VIEW" | "DOWNLOAD" | "MANAGE";
+  granted_by_name: string;
+  granted_at: string;
+  expires_at?: string | null;
+  version_number: number;
+  sha256: string;
+}
+
 export interface InMeetingChatMessage {
   id: string;
   sender_id: string;
@@ -1188,6 +1272,13 @@ export interface CalendarEventItem {
   action_label: string;
   action_href: string;
   is_urgent: boolean;
+  source_type?: string | null;
+  source_id?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  status?: string | null;
+  priority?: string | null;
+  category?: string | null;
   lawyer_details?: {
     court?: string;
     court_room?: string;
@@ -1208,7 +1299,299 @@ export interface CalendarEventsResponse {
   events: CalendarEventItem[];
   total: number;
   next_attention_event?: CalendarEventItem | null;
+  timeframe?: string | null;
+  range_start?: string | null;
+  range_end?: string | null;
 }
+
+// ----------------------------------------------------------------------------
+// LAWYER OPERATIONAL DASHBOARD (PHASE 13)
+// ----------------------------------------------------------------------------
+
+export interface OperationalAttentionItem {
+  item_id: string;
+  item_type:
+    | "OVERDUE_TASK"
+    | "OVERDUE_DEADLINE"
+    | "IMMINENT_HEARING"
+    | "APPROACHING_DEADLINE"
+    | "UNREVIEWED_EVIDENCE";
+  title: string;
+  case_id: string;
+  case_title: string;
+  severity: "URGENT" | "WARNING" | "INFO";
+  reason: string;
+  action_href: string;
+  action_label: string;
+  due_at?: string | null;
+}
+
+export interface TodayAgendaItem {
+  id: string;
+  event_type: "HEARING" | "DEADLINE" | "TASK" | "CONSULTATION";
+  title: string;
+  scheduled_at: string;
+  time_display: string;
+  case_id?: string | null;
+  case_title: string;
+  court_info?: string | null;
+  status: string;
+  priority?: string | null;
+  action_href: string;
+  action_label: string;
+  is_urgent: boolean;
+}
+
+export interface UpcomingHearingSummary {
+  hearing_id: string;
+  case_id: string;
+  case_title: string;
+  court_name: string;
+  courtroom?: string | null;
+  bench?: string | null;
+  purpose?: string | null;
+  hearing_at: string;
+  time_display: string;
+  status: string;
+  preparation_tasks_total: number;
+  preparation_tasks_completed: number;
+  exhibits_count: number;
+  bundle_status?: string | null;
+  action_href: string;
+}
+
+export interface UpcomingDeadlineSummary {
+  deadline_id: string;
+  case_id: string;
+  case_title: string;
+  title: string;
+  deadline_at: string;
+  time_display: string;
+  status: string;
+  source: string;
+  retrieval_method?: string | null;
+  is_urgent: boolean;
+  action_href: string;
+}
+
+export interface AssignedMatterSummary {
+  case_id: string;
+  title: string;
+  case_number?: string | null;
+  status: string;
+  court_name?: string | null;
+  next_hearing_at?: string | null;
+  next_hearing_purpose?: string | null;
+  overdue_tasks_count: number;
+  active_deadlines_count: number;
+  unreviewed_evidence_count: number;
+  bundle_status?: string | null;
+  last_activity_at?: string | null;
+  action_href: string;
+}
+
+export interface LawyerOperationalMetrics {
+  active_cases_count: number;
+  upcoming_hearings_count: number;
+  overdue_tasks_count: number;
+  upcoming_deadlines_count: number;
+  pending_consultations_count: number;
+  unread_notifications_count: number;
+}
+
+export interface LawyerDashboardResponse {
+  metrics: LawyerOperationalMetrics;
+  today_agenda: TodayAgendaItem[];
+  needs_attention: OperationalAttentionItem[];
+  upcoming_hearings: UpcomingHearingSummary[];
+  upcoming_deadlines: UpcomingDeadlineSummary[];
+  high_priority_tasks: TodayAgendaItem[];
+  assigned_matters: AssignedMatterSummary[];
+  range_days: number;
+}
+
+// ----------------------------------------------------------------------------
+// EVIDENTIARY BUNDLES & BSA SECTION 63 CERTIFICATES (PHASE 11)
+// ----------------------------------------------------------------------------
+
+export type BundleStatus = "DRAFT" | "GENERATING" | "FINALIZED" | "FAILED";
+
+export interface BundleItem {
+  id: string;
+  bundle_id: string;
+  evidence_id: string;
+  evidence_version_id: string;
+  order_index: number;
+  exhibit_label?: string | null;
+  bates_start?: string | null;
+  bates_end?: string | null;
+  page_count: number;
+  evidence_title?: string | null;
+  original_filename?: string | null;
+  sha256_hash?: string | null;
+  mime_type?: string | null;
+  file_size_bytes?: number | null;
+}
+
+export interface BSACertificateDraftItem {
+  id: string;
+  bundle_id: string;
+  case_id: string;
+  created_by_user_id: string;
+  statutory_reference: string;
+  declarant_name: string;
+  declarant_designation: string;
+  declarant_organization?: string | null;
+  device_description: string;
+  device_serial_number?: string | null;
+  lawful_control_declaration: string;
+  operational_condition_declaration: string;
+  is_confirmed: boolean;
+  is_draft: boolean;
+  certificate_pdf_storage_key?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EvidenceBundleItemDetail {
+  id: string;
+  case_id: string;
+  hearing_id?: string | null;
+  created_by_user_id: string;
+  title: string;
+  description?: string | null;
+  bates_prefix: string;
+  bates_start_number: number;
+  status: BundleStatus;
+  finalized_at?: string | null;
+  bundle_pdf_storage_key?: string | null;
+  bundle_sha256?: string | null;
+  total_pages: number;
+  total_size_bytes: number;
+  created_at: string;
+  updated_at: string;
+  item_count: number;
+  items?: BundleItem[];
+  manifest_data?: Record<string, unknown> | null;
+  certificate_drafts?: BSACertificateDraftItem[];
+}
+
+// ----------------------------------------------------------------------------
+// ADVOCATE VERIFICATION & PRACTICE COMPLIANCE (PHASE 14)
+// ----------------------------------------------------------------------------
+
+export type AdvocateDocumentType =
+  | "BAR_COUNCIL_ENROLLMENT_CERTIFICATE"
+  | "CERTIFICATE_OF_PRACTICE"
+  | "IDENTITY_DOCUMENT"
+  | "PROPORTIONAL_PRACTICE_CREDENTIAL"
+  | "RESIDENCE_ADDRESS_SUPPORT";
+
+export type DocumentVerificationStatus =
+  | "NOT_SUBMITTED"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "NEEDS_RESUBMISSION";
+
+export type DocumentScanStatus = "PENDING" | "CLEAN" | "FLAGGED" | "UNSUPPORTED";
+
+export type AdvocateVerificationStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "NEEDS_INFO"
+  | "REVOKED";
+
+export interface AdvocateVerificationDocumentItem {
+  id: string;
+  document_type: AdvocateDocumentType;
+  original_filename: string;
+  file_size: number;
+  mime_type: string;
+  sha256_hash: string;
+  scan_status: DocumentScanStatus;
+  verification_status: DocumentVerificationStatus;
+  rejection_reason?: string | null;
+  created_at: string;
+}
+
+export interface VerificationReviewEventItem {
+  id: string;
+  reviewer_id?: string | null;
+  from_status?: string | null;
+  to_status: string;
+  decision: string;
+  verification_method?: string | null;
+  verification_source?: string | null;
+  source_reference?: string | null;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface AdvocateVerificationDetail {
+  id: string;
+  lawyer_profile_id: string;
+  user_id?: string | null;
+  full_name?: string | null;
+  enrollment_number?: string | null;
+  state_bar_council?: string | null;
+  status: AdvocateVerificationStatus;
+  declared_practice_jurisdictions?: string[];
+  verification_source?: string | null;
+  source_reference?: string | null;
+  verification_method?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  last_reviewed_at?: string | null;
+  expires_at?: string | null;
+  reviewer_notes?: string | null;
+  rejection_reason_category?: string | null;
+  created_at: string;
+  updated_at: string;
+  documents: AdvocateVerificationDocumentItem[];
+  missing_documents: AdvocateDocumentType[];
+  review_events: VerificationReviewEventItem[];
+}
+
+export interface VerificationQueueItem {
+  id: string;
+  lawyer_profile_id: string;
+  full_name: string;
+  email?: string | null;
+  enrollment_number: string;
+  state_bar_council: string;
+  status: AdvocateVerificationStatus;
+  submitted_documents_count: number;
+  missing_documents: string[];
+  submitted_at?: string | null;
+  last_reviewed_at?: string | null;
+  reviewer_name?: string | null;
+}
+
+export interface VerificationQueueResponse {
+  items: VerificationQueueItem[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export interface PublicVerificationBadge {
+  lawyer_id: string;
+  is_verified: boolean;
+  verification_badge_text: string;
+  verified_at?: string | null;
+  expires_at?: string | null;
+  state_bar_council?: string | null;
+  enrollment_number_masked?: string | null;
+  verification_method?: string | null;
+  verification_source?: string | null;
+  compliance_declaration: string;
+}
+
 
 
 

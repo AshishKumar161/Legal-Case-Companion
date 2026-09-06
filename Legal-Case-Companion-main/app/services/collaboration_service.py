@@ -17,6 +17,7 @@ from app.models.case_collaboration import (
     MatterRequest,
     MatterRequestStatus,
 )
+from app.models.direct_message import DirectMessage
 from app.models.document import Document
 from app.models.notification import NotificationType
 from app.models.task import CaseTask, TaskPriority, TaskSourceType, TaskStatus
@@ -151,6 +152,18 @@ class CollaborationService:
                 message=f"New matter communication ({req.message_type.value}): {req.content[:120]}...",
                 case_id=case_id,
             )
+
+            # Mirror to DirectMessage so messages sent in the case workspace appear in /messages
+            dm = DirectMessage(
+                id=generate_uuid7(),
+                sender_id=user.id,
+                recipient_id=p.user_id,
+                content=req.content.strip(),
+                is_read=False,
+            )
+            self.db.add(dm)
+
+        self.db.commit()
 
         return CaseMessageResponse(
             id=msg.id,

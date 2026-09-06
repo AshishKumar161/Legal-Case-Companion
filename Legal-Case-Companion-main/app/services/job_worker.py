@@ -155,6 +155,18 @@ class JobWorker:
             return self._handle_abandoned_upload_cleanup(job)
         elif job.job_type == JobType.OUTBOX_DISPATCH:
             return self._handle_outbox_dispatch(job)
+        elif job.job_type == JobType.STALE_MEETING_CLEANUP:
+            return self._handle_stale_meeting_cleanup(job)
+        elif job.job_type == JobType.RECORDING_UPLOAD_RETRY:
+            return self._handle_recording_upload_retry(job)
+        elif job.job_type == JobType.WEBHOOK_REPROCESS:
+            return self._handle_webhook_reprocess(job)
+        elif job.job_type == JobType.COMMERCIAL_RECONCILIATION:
+            return self._handle_commercial_reconciliation(job)
+        elif job.job_type == JobType.EXPIRED_SESSION_CLEANUP:
+            return self._handle_expired_session_cleanup(job)
+        elif job.job_type == JobType.NOTIFICATION_RETRY:
+            return self._handle_notification_retry(job)
         else:
             raise ValidationError(f"Unknown job type {job.job_type}")
 
@@ -483,6 +495,79 @@ class JobWorker:
         outbox_svc = OutboxService(self.db)
         dispatched_count = outbox_svc.process_outbox_batch(limit=limit)
         return {"status": "SUCCESS", "dispatched_count": dispatched_count}
+
+    def _handle_stale_meeting_cleanup(self, job: BackgroundJob) -> dict[str, Any]:
+        from app.services.video_meeting_service import VideoMeetingService
+
+        max_idle_hours = job.payload.get("max_idle_hours", 2)
+        service = VideoMeetingService(self.db)
+        cleaned_count = service.cleanup_stale_meetings(max_idle_hours=max_idle_hours)
+        return {"status": "SUCCESS", "cleaned_meetings_count": cleaned_count}
+
+    def _handle_recording_upload_retry(self, job: BackgroundJob) -> dict[str, Any]:
+        from app.services.video_recording_service import VideoRecordingService
+
+        max_age_minutes = job.payload.get("max_age_minutes", 60)
+        grace_period_minutes = job.payload.get("grace_period_minutes", 5)
+        service = VideoRecordingService(self.db)
+        res = service.retry_pending_and_failed_recordings(
+            max_age_minutes=max_age_minutes,
+            grace_period_minutes=grace_period_minutes,
+        )
+        return {"status": "SUCCESS", **res}
+
+    def _handle_webhook_reprocess(self, job: BackgroundJob) -> dict[str, Any]:
+        from app.services.payment_service import PaymentService
+
+        stale_minutes = job.payload.get("stale_minutes", 10)
+        limit = job.payload.get("limit", 25)
+        service = PaymentService(self.db)
+        res = service.reprocess_stale_or_failed_webhooks(
+            stale_minutes=stale_minutes,
+            limit=limit,
+        )
+        return {"status": "SUCCESS", **res}
+
+    def _handle_commercial_reconciliation(self, job: BackgroundJob) -> dict[str, Any]:
+        from app.services.commercial_service import CommercialService
+
+        service = CommercialService(self.db)
+        reconciliation = service.get_settlement_reconciliation()
+        discrepancy_count = reconciliation.get("discrepancy_count", 0)
+        variance = reconciliation.get("variance_inr", "0.00")
+
+        if discrepancy_count > 0 or variance != "0.00":
+            logger.warning(
+                "Commercial reconciliation detected %d discrepancies with variance %s",
+                discrepancy_count,
+                variance,
+            )
+
+        return {
+            "status": "SUCCESS",
+            "gross_volume_inr": reconciliation.get("gross_volume_inr"),
+            "variance_inr": variance,
+            "discrepancy_count": discrepancy_count,
+            "discrepancies": reconciliation.get("discrepancies", []),
+        }
+
+    def _handle_expired_session_cleanup(self, job: BackgroundJob) -> dict[str, Any]:
+        from app.services.session_cleanup_service import SessionCleanupService
+
+        rt_days = job.payload.get("refresh_token_retention_days", 30)
+        vt_days = job.payload.get("verification_token_retention_days", 7)
+        service = SessionCleanupService(self.db)
+        res = service.cleanup_expired_sessions(
+            refresh_token_retention_days=rt_days,
+            verification_token_retention_days=vt_days,
+        )
+        return {"status": "SUCCESS", **res}
+
+    def _handle_notification_retry(self, job: BackgroundJob) -> dict[str, Any]:
+        limit = job.payload.get("limit", 25)
+        outbox_svc = OutboxService(self.db)
+        dispatched_count = outbox_svc.process_outbox_batch(limit=limit)
+        return {"status": "SUCCESS", "dispatched_notifications": dispatched_count}
 
     def _handle_permanent_failure_side_effects(self, job: BackgroundJob, error_msg: str) -> None:
         """Notifies users if a critical job like document processing fails permanently."""

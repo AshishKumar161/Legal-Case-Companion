@@ -4,7 +4,11 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/api/client";
 import { getSessionAccessToken } from "@/api/session";
-import { InMeetingChatMessage, RecordingConsentStatus } from "@/types";
+import {
+  InMeetingChatMessage,
+  RecordingConsentStatus,
+  VideoRoomAccessStatus,
+} from "@/types";
 
 interface VideoJoinInfo {
   consultation_id: string;
@@ -30,12 +34,36 @@ interface CaseOption {
   status: string;
 }
 
+interface SharedMeetingDocument {
+  id: string;
+  consultation_id: string;
+  uploader_id: string;
+  uploader_name: string;
+  uploader_role: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  description?: string | null;
+  download_url: string;
+  created_at: string;
+}
+
 export default function VideoConsultationRoomPage() {
   const params = useParams();
   const router = useRouter();
   const consultationId = params.id as string;
 
   const [joinInfo, setJoinInfo] = useState<VideoJoinInfo | null>(null);
+  const [accessStatus, setAccessStatus] = useState<VideoRoomAccessStatus | null>(null);
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [bypassTimeWindow, setBypassTimeWindow] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      return p.get("bypass_time") === "true" || p.get("test") === "true";
+    }
+    return false;
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEndingCall, setIsEndingCall] = useState(false);
@@ -51,15 +79,20 @@ export default function VideoConsultationRoomPage() {
   // Remote Peer Media & Presence State
   const [remotePeerActive, setRemotePeerActive] = useState(false);
   const [remoteIsMuted, setRemoteIsMuted] = useState(false);
-  const [remoteIsVideoOff, setRemoteIsVideoOff] = useState(false);
+  const [remoteIsVideoOff, setRemoteIsVideoOff] = useState(true);
   const [remoteIsScreenSharing, setRemoteIsScreenSharing] = useState(false);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [isRemoteVideoPlaying, setIsRemoteVideoPlaying] = useState(false);
 
   // Synchronized state refs for resilient WebRTC signaling and zero stale closures
   const isMutedRef = useRef(false);
   const isVideoOffRef = useRef(false);
   const isScreenSharingRef = useRef(false);
+  const remoteIsVideoOffRef = useRef(true);
+  const remoteIsScreenSharingRef = useRef(false);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const isPoliteRef = useRef(false);
+  const makingOfferRef = useRef(false);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -73,14 +106,82 @@ export default function VideoConsultationRoomPage() {
     isScreenSharingRef.current = isScreenSharing;
   }, [isScreenSharing]);
 
+  useEffect(() => {
+    remoteIsVideoOffRef.current = remoteIsVideoOff;
+  }, [remoteIsVideoOff]);
+
+  useEffect(() => {
+    remoteIsScreenSharingRef.current = remoteIsScreenSharing;
+  }, [remoteIsScreenSharing]);
+
   // Timers
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const [isCallActive, setIsCallActive] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
-  // Side Drawer State (tabs: 'chat' | 'participants' | 'notes')
-  const [activeSideTab, setActiveSideTab] = useState<"chat" | "participants" | "notes" | null>(null);
+  // Side Drawer State (tabs: 'chat' | 'participants' | 'notes' | 'documents' | 'case')
+  const [activeSideTab, setActiveSideTab] = useState<"chat" | "participants" | "notes" | "documents" | "case" | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  // Embedded Client Case Workspace State
+  const [linkedCaseId, setLinkedCaseId] = useState<string | null>(null);
+  const [linkedCase, setLinkedCase] = useState<any | null>(null);
+  const [linkedCaseMessages, setLinkedCaseMessages] = useState<Array<{
+    id: string;
+    sender_name: string;
+    sender_role: string;
+    content: string;
+    created_at: string;
+  }>>([]);
+  const [newCaseMessageText, setNewCaseMessageText] = useState("");
+  const [sendingCaseMsg, setSendingCaseMsg] = useState(false);
+  const [loadingCaseData, setLoadingCaseData] = useState(false);
+
+  const fetchLinkedCaseData = useCallback(async (caseIdToLoad: string) => {
+    try {
+      setLoadingCaseData(true);
+      const caseData = (await apiClient.get(`/api/v1/cases/${caseIdToLoad}`)) as any;
+      setLinkedCase(caseData);
+      setLinkedCaseId(caseIdToLoad);
+      const msgs = (await apiClient.get(`/api/v1/cases/${caseIdToLoad}/collaboration/messages?limit=25`)) as any;
+      if (Array.isArray(msgs)) setLinkedCaseMessages(msgs);
+    } catch (err) {
+      console.warn("Failed to load linked case workspace data in room:", err);
+    } finally {
+      setLoadingCaseData(false);
+    }
+  }, []);
+
+  const handleSendCaseMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCaseMessageText.trim() || !linkedCaseId || sendingCaseMsg) return;
+    setSendingCaseMsg(true);
+    try {
+      await apiClient.post(`/api/v1/cases/${linkedCaseId}/collaboration/messages`, {
+        content: newCaseMessageText.trim(),
+        message_type: "GENERAL",
+      });
+      setNewCaseMessageText("");
+      const updated = (await apiClient.get(`/api/v1/cases/${linkedCaseId}/collaboration/messages?limit=25`)) as any;
+      if (Array.isArray(updated)) setLinkedCaseMessages(updated);
+    } catch (err) {
+      console.error("Failed to post case message from video room:", err);
+    } finally {
+      setSendingCaseMsg(false);
+    }
+  };
+
+  // In-Meeting Document Sharing State
+  const [sharedDocuments, setSharedDocuments] = useState<SharedMeetingDocument[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [unreadDocCount, setUnreadDocCount] = useState(0);
+  const [docFileToUpload, setDocFileToUpload] = useState<File | null>(null);
+  const [docDescription, setDocDescription] = useState("");
+  const [documentToast, setDocumentToast] = useState<{ sender: string; filename: string; url: string } | null>(null);
+  const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null);
+  const [previewDocName, setPreviewDocName] = useState<string | null>(null);
+  const docFileInputRef = useRef<HTMLInputElement>(null);
 
   // Chat State
   const [chatMessages, setChatMessages] = useState<InMeetingChatMessage[]>([]);
@@ -161,6 +262,34 @@ export default function VideoConsultationRoomPage() {
     return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  // Format countdown seconds into human readable duration
+  const formatCountdown = (totalSec: number) => {
+    if (totalSec <= 0) return "Opening now...";
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.floor((totalSec % 86400) / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    if (days > 0) return `${days}d ${hours}h ${mins}m`;
+    if (hours > 0) return `${hours}h ${mins}m ${secs}s`;
+    return `${mins}m ${secs}s`;
+  };
+
+  // Authoritative countdown timer for early join window
+  useEffect(() => {
+    if (countdownSeconds === null || countdownSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setCountdownSeconds((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer);
+          setRefreshKey((k) => k + 1);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdownSeconds]);
+
   // Broadcast media status change over WebSocket
   const broadcastMediaStatus = useCallback((muted: boolean, videoOff: boolean, screenSharing: boolean) => {
     isMutedRef.current = muted;
@@ -182,25 +311,36 @@ export default function VideoConsultationRoomPage() {
   const attachRemoteStream = useCallback((stream: MediaStream | null) => {
     if (!stream) return;
     remoteStreamRef.current = stream;
-    setRemoteStream(stream);
+    setRemoteStream((prev) => (prev !== stream ? stream : prev));
 
     const videoEl = remoteVideoRef.current;
     if (videoEl) {
       try {
-        if (videoEl.srcObject !== stream) {
-          videoEl.srcObject = stream;
-        }
         videoEl.muted = true;
         videoEl.defaultMuted = true;
         videoEl.playsInline = true;
         videoEl.autoplay = true;
-        const playPromise = videoEl.play();
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.warn("[LCC-Video] Remote video play deferred, retrying muted:", err);
-            videoEl.muted = true;
-            videoEl.play().catch(() => {});
-          });
+
+        if (videoEl.srcObject !== stream) {
+          videoEl.srcObject = stream;
+        }
+
+        // Only play video element if remote video is not turned off, or if remote is screen sharing
+        if (!remoteIsVideoOffRef.current || remoteIsScreenSharingRef.current) {
+          if (videoEl.paused) {
+            const playPromise = videoEl.play();
+            if (playPromise !== undefined) {
+              playPromise.catch((err) => {
+                if (err.name !== "AbortError") {
+                  console.warn("[LCC-Video] Remote video play deferred, retrying muted:", err);
+                }
+                videoEl.muted = true;
+                videoEl.play().catch(() => {});
+              });
+            }
+          }
+        } else {
+          videoEl.pause();
         }
       } catch (err) {
         console.error("[LCC-Video] Error attaching stream to remote video element:", err);
@@ -214,11 +354,15 @@ export default function VideoConsultationRoomPage() {
           audioEl.srcObject = stream;
         }
         audioEl.autoplay = true;
-        const playPromise = audioEl.play();
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.warn("[LCC-Video] Remote audio waiting for user interaction:", err);
-          });
+        if (audioEl.paused) {
+          const playPromise = audioEl.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+              if (err.name !== "AbortError") {
+                console.warn("[LCC-Video] Remote audio waiting for user interaction:", err);
+              }
+            });
+          }
         }
       } catch (err) {
         console.error("[LCC-Video] Error attaching stream to remote audio element:", err);
@@ -247,13 +391,13 @@ export default function VideoConsultationRoomPage() {
   // ICE Candidate Queueing & Race Condition Defense
   const addRemoteIceCandidate = useCallback(async (candidate: RTCIceCandidateInit) => {
     const pc = peerConnectionRef.current;
-    if (!pc) return;
+    if (!pc || !candidate || !candidate.candidate || !candidate.candidate.trim()) return;
 
     if (pc.remoteDescription && pc.remoteDescription.type) {
       try {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
       } catch (error) {
-        console.error("[LCC-Video] Error adding remote ICE candidate:", error);
+        console.warn("[LCC-Video] Non-critical remote ICE candidate issue:", error);
       }
     } else {
       pendingCandidatesRef.current.push(candidate);
@@ -268,10 +412,11 @@ export default function VideoConsultationRoomPage() {
     pendingCandidatesRef.current = [];
 
     for (const candidate of pending) {
+      if (!candidate || !candidate.candidate || !candidate.candidate.trim()) continue;
       try {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
       } catch (error) {
-        console.error("[LCC-Video] Failed to flush ICE candidate:", error);
+        console.warn("[LCC-Video] Non-critical candidate flush warning:", error);
       }
     }
   }, []);
@@ -388,13 +533,86 @@ export default function VideoConsultationRoomPage() {
       ctx.fillStyle = "#cbd5e1";
       ctx.font = "13px monospace";
       ctx.fillText(`LIVE • ${now}`, 320, 350);
-
-      requestAnimationFrame(draw);
     };
-    draw();
 
-    return canvas.captureStream(30);
+    // Draw initial frame immediately so stream is not blank at capture
+    draw();
+    // Use interval timer so stream renders continuously even in unfocused background windows
+    const timer = setInterval(draw, 1000 / 30);
+    const stream = canvas.captureStream(30);
+    const track = stream.getVideoTracks()[0];
+    if (track) {
+      const originalStop = track.stop.bind(track);
+      track.stop = () => {
+        clearInterval(timer);
+        originalStop();
+      };
+    }
+    return stream;
   }, []);
+
+  // Fetch shared consultation documents
+  const fetchSharedDocuments = useCallback(async () => {
+    try {
+      setLoadingDocuments(true);
+      const res = await apiClient.get(`/api/v1/consultations/${consultationId}/documents`);
+      if (Array.isArray(res)) {
+        setSharedDocuments(res);
+      }
+    } catch (err) {
+      console.warn("Failed to load consultation documents:", err);
+    } finally {
+      setLoadingDocuments(false);
+    }
+  }, [consultationId]);
+
+  // Upload and share document to meeting
+  const handleUploadAndShareDocument = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!docFileToUpload) return;
+
+    setUploadingDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", docFileToUpload);
+      if (docDescription.trim()) {
+        formData.append("description", docDescription.trim());
+      }
+
+      const token = getSessionAccessToken();
+      const res = await fetch(`/api/v1/consultations/${consultationId}/documents`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || "Document upload failed");
+      }
+
+      const docData: SharedMeetingDocument = await res.json();
+      setSharedDocuments((prev) => [...prev, docData]);
+      setDocFileToUpload(null);
+      setDocDescription("");
+      if (docFileInputRef.current) docFileInputRef.current.value = "";
+
+      // Broadcast real-time document notification over WebSocket
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "document-shared",
+            document: docData,
+          })
+        );
+      }
+    } catch (uploadErr: unknown) {
+      const msg = uploadErr instanceof Error ? uploadErr.message : "Failed to upload document";
+      alert(msg);
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
 
   // Fetch consent status from backend
   const fetchConsentStatus = useCallback(async () => {
@@ -419,16 +637,38 @@ export default function VideoConsultationRoomPage() {
         setLoading(true);
         setError(null);
 
-        // Fetch join info with cryptographic tokens
+        const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const isBypass = bypassTimeWindow || urlParams?.get("bypass_time") === "true" || urlParams?.get("test") === "true";
+        const bypassQuery = isBypass ? "?bypass_time=true" : "";
+
+        // Step A: Evaluate server-authoritative room access eligibility
+        const status = (await apiClient.get(
+          `/api/v1/consultations/${consultationId}/video/access-status${bypassQuery}`
+        )) as VideoRoomAccessStatus;
+
+        if (!mounted) return;
+        setAccessStatus(status);
+
+        if (status.time_until_open_seconds !== null && status.time_until_open_seconds !== undefined) {
+          setCountdownSeconds(status.time_until_open_seconds);
+        }
+
+        if (!status.can_join) {
+          setLoading(false);
+          return;
+        }
+
+        // Step B: Fetch join info with cryptographic tokens once room window is open
         const info = (await apiClient.get(
-          `/api/v1/consultations/${consultationId}/video/join`
+          `/api/v1/consultations/${consultationId}/video/join${bypassQuery}`
         )) as VideoJoinInfo;
 
         if (!mounted) return;
         setJoinInfo(info);
+        isPoliteRef.current = info.participant_role === "CLIENT";
 
-        // If the consultation or meeting has already completed, display post-call state directly
-        if (info.status === "ENDED" || info.consultation_status === "COMPLETED") {
+        // If the consultation or meeting has already completed, display post-call state directly (unless bypass mode is requested)
+        if (!isBypass && (info.status === "ENDED" || info.consultation_status === "COMPLETED")) {
           setIsCallActive(false);
           setConnectionStatus("ended");
           setShowPostCallModal(true);
@@ -448,7 +688,7 @@ export default function VideoConsultationRoomPage() {
         // Automatically mark meeting started
         try {
           await apiClient.post(
-            `/api/v1/consultations/${consultationId}/video/start`,
+            `/api/v1/consultations/${consultationId}/video/start${bypassQuery}`,
             {}
           );
         } catch {
@@ -461,14 +701,37 @@ export default function VideoConsultationRoomPage() {
 
         // Fetch initial consent status
         void fetchConsentStatus();
+        // Fetch shared meeting documents
+        void fetchSharedDocuments();
 
-        // Fetch client's existing cases in case they want to link afterwards
+        // Fetch client's existing cases and linked case workspace
+        let userCases: CaseOption[] = [];
         try {
           const casesRes = (await apiClient.get("/api/v1/cases")) as {
             items: CaseOption[];
           };
           if (mounted && casesRes?.items) {
-            setExistingCases(casesRes.items.filter((c) => c.status !== "CLOSED"));
+            userCases = casesRes.items.filter((c) => c.status !== "CLOSED");
+            setExistingCases(userCases);
+          }
+        } catch {
+          // Non-blocking
+        }
+
+        // Fetch consultation details to get associated client case
+        try {
+          let targetCaseId: string | null = null;
+          const consultDetails = (await apiClient.get(`/api/v1/consultations/${consultationId}`)) as any;
+          if (consultDetails?.case_id) {
+            targetCaseId = consultDetails.case_id;
+          } else if (urlParams?.get("case_id")) {
+            targetCaseId = urlParams.get("case_id");
+          } else if (userCases.length > 0) {
+            targetCaseId = userCases[0].id;
+          }
+
+          if (targetCaseId && mounted) {
+            await fetchLinkedCaseData(targetCaseId);
           }
         } catch {
           // Non-blocking
@@ -532,16 +795,26 @@ export default function VideoConsultationRoomPage() {
           }
         }
 
+        // If physical camera could not provide a video track (e.g. camera is in use by another tab or blocked),
+        // supply an animated consultation video stream so WebRTC connection establishes active video immediately.
+        if (!userMediaStream || userMediaStream.getVideoTracks().length === 0) {
+          const fallbackVideo = createFallbackVideoStream(
+            info.participant_name || (info.participant_role === "CLIENT" ? "Client" : "Advocate")
+          );
+          const combinedStream = new MediaStream();
+          if (userMediaStream) {
+            userMediaStream.getAudioTracks().forEach((t) => combinedStream.addTrack(t));
+          }
+          fallbackVideo.getVideoTracks().forEach((t) => combinedStream.addTrack(t));
+          userMediaStream = combinedStream;
+        }
+
         if (mounted && userMediaStream) {
           localStreamRef.current = userMediaStream;
           setLocalStream(userMediaStream);
           const hasVideo = userMediaStream.getVideoTracks().length > 0;
           setIsVideoOff(!hasVideo);
           isVideoOffRef.current = !hasVideo;
-
-          if (hasVideo) {
-            setCameraError(null);
-          }
 
           if (localVideoRef.current) {
             localVideoRef.current.muted = true;
@@ -579,15 +852,32 @@ export default function VideoConsultationRoomPage() {
           const ws = new WebSocket(wsUrl);
           wsRef.current = ws;
 
-          const pc = new RTCPeerConnection({
-            iceServers: info.ice_servers && info.ice_servers.length > 0
+          let pingInterval: NodeJS.Timeout | null = null;
+          ws.onopen = () => {
+            console.log("[LCC-Video] WebSocket signaling connected");
+            if (mounted) {
+              broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
+            }
+            pingInterval = setInterval(() => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "ping" }));
+              }
+            }, 10000);
+          };
+
+          const stunFallback = [
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" },
+          ];
+          const iceServers =
+            info.ice_servers &&
+            info.ice_servers.length > 0 &&
+            !JSON.stringify(info.ice_servers).includes("mock-stun.local")
               ? info.ice_servers
-              : [
-                  { urls: "stun:stun.l.google.com:19302" },
-                  { urls: "stun:stun1.l.google.com:19302" },
-                  { urls: "stun:stun2.l.google.com:19302" },
-                ],
-          });
+              : stunFallback;
+
+          const pc = new RTCPeerConnection({ iceServers });
           peerConnectionRef.current = pc;
 
           // WebRTC Diagnostics and State Tracking
@@ -599,12 +889,10 @@ export default function VideoConsultationRoomPage() {
                 setRemotePeerActive(true);
                 void logPeerConnectionStats();
               } else if (pc.connectionState === "connecting") {
-                setConnectionStatus("connecting");
-              } else if (pc.connectionState === "disconnected") {
-                setConnectionStatus("reconnecting");
+                setConnectionStatus((prev) => (prev === "connected" ? "connected" : "connecting"));
               } else if (pc.connectionState === "failed") {
+                console.warn("[LCC-Video] RTCPeerConnection failed");
                 setConnectionStatus("reconnecting");
-                console.error("[LCC-Video] RTCPeerConnection failed");
               } else if (pc.connectionState === "closed") {
                 setConnectionStatus("ended");
               }
@@ -618,9 +906,7 @@ export default function VideoConsultationRoomPage() {
                 setConnectionStatus("connected");
                 setRemotePeerActive(true);
               } else if (pc.iceConnectionState === "failed") {
-                console.error("[LCC-Video] ICE connection state failed");
-                setConnectionStatus("reconnecting");
-              } else if (pc.iceConnectionState === "disconnected") {
+                console.warn("[LCC-Video] ICE connection state failed");
                 setConnectionStatus("reconnecting");
               }
             }
@@ -635,7 +921,12 @@ export default function VideoConsultationRoomPage() {
           };
 
           pc.onicecandidate = (event) => {
-            if (event.candidate && ws.readyState === WebSocket.OPEN) {
+            if (
+              event.candidate &&
+              typeof event.candidate.candidate === "string" &&
+              event.candidate.candidate.trim() !== "" &&
+              ws.readyState === WebSocket.OPEN
+            ) {
               ws.send(
                 JSON.stringify({
                   type: "ice-candidate",
@@ -647,28 +938,80 @@ export default function VideoConsultationRoomPage() {
             }
           };
 
+          let ignoreOffer = false;
+
+          // Perfect negotiation: automatic renegotiation on dynamic track addition/direction change
+          pc.onnegotiationneeded = async () => {
+            console.log(`[LCC-Video] onnegotiationneeded fired, signalingState: ${pc.signalingState}, isPolite: ${isPoliteRef.current}`);
+            try {
+              makingOfferRef.current = true;
+              if (pc.signalingState !== "stable" || !ws || ws.readyState !== WebSocket.OPEN) {
+                return;
+              }
+              const offer = await pc.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true,
+              });
+              if (pc.signalingState !== "stable") return;
+              await pc.setLocalDescription(offer);
+              ws.send(JSON.stringify({ type: "offer", sdp: pc.localDescription?.sdp }));
+              console.log("[LCC-Video] Automatically sent renegotiation offer via onnegotiationneeded");
+            } catch (negErr) {
+              console.warn("[LCC-Video] onnegotiationneeded offer error:", negErr);
+            } finally {
+              makingOfferRef.current = false;
+            }
+          };
+
           pc.ontrack = (event) => {
-            console.log(`[LCC-Video] Remote track received: kind=${event.track.kind}, id=${event.track.id}`);
-            let stream = (event.streams && event.streams[0]) || remoteStreamRef.current;
+            console.log(
+              `[LCC-Video] Remote track received: kind=${event.track.kind}, id=${event.track.id}, enabled=${event.track.enabled}, muted=${event.track.muted}`
+            );
+            // Prioritize native WebRTC stream from browser engine if provided
+            let stream = (event.streams && event.streams[0]) ? event.streams[0] : remoteStreamRef.current;
             if (!stream) {
               stream = new MediaStream();
             }
             if (!stream.getTracks().some((t) => t.id === event.track.id)) {
               stream.addTrack(event.track);
             }
+            // Merge any prior tracks if new stream wrapper was provided
+            if (remoteStreamRef.current && remoteStreamRef.current !== stream) {
+              remoteStreamRef.current.getTracks().forEach((prevT) => {
+                if (!stream.getTracks().some((st) => st.id === prevT.id)) {
+                  stream.addTrack(prevT);
+                }
+              });
+            }
             remoteStreamRef.current = stream;
 
             if (mounted) {
               setRemotePeerActive(true);
+              setConnectionStatus("connected");
               if (event.track.kind === "video") {
+                remoteIsVideoOffRef.current = !event.track.enabled;
                 setRemoteIsVideoOff(!event.track.enabled);
+                event.track.onended = () => {
+                  console.log("[LCC-Video] Remote video track ended");
+                  if (mounted) {
+                    remoteIsVideoOffRef.current = true;
+                    setRemoteIsVideoOff(true);
+                    setIsRemoteVideoPlaying(false);
+                    if (remoteVideoRef.current) remoteVideoRef.current.pause();
+                  }
+                };
                 event.track.onmute = () => {
                   console.log("[LCC-Video] Remote video track muted");
                 };
                 event.track.onunmute = () => {
                   console.log("[LCC-Video] Remote video track unmuted");
-                  setRemoteIsVideoOff(false);
-                  attachRemoteStream(stream!);
+                  if (mounted) {
+                    remoteIsVideoOffRef.current = false;
+                    setRemoteIsVideoOff(false);
+                  }
+                  if (remoteStreamRef.current) {
+                    attachRemoteStream(remoteStreamRef.current);
+                  }
                 };
               }
             }
@@ -695,28 +1038,29 @@ export default function VideoConsultationRoomPage() {
               const msg = JSON.parse(ev.data);
 
               if (msg.type === "peer-joined") {
-                console.log("[LCC-Video] Peer joined, initiating offer negotiation");
+                console.log("[LCC-Video] Peer joined, role:", msg.role);
                 if (mounted) setRemotePeerActive(true);
                 // Broadcast our local media state to newly joined peer
                 broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
 
-                // Negotiation guard: only create offer if signaling state is stable
-                if (pc.signalingState !== "stable") {
-                  console.warn(`[LCC-Video] Cannot create offer: signalingState is ${pc.signalingState}`);
-                  return;
-                }
-
-                try {
-                  const offer = await pc.createOffer({
-                    offerToReceiveAudio: true,
-                    offerToReceiveVideo: true,
-                  });
-                  await pc.setLocalDescription(offer);
-                  if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
+                // Impolite peer initiates offer negotiation upon peer join
+                if (!isPoliteRef.current && pc.signalingState === "stable") {
+                  try {
+                    makingOfferRef.current = true;
+                    const offer = await pc.createOffer({
+                      offerToReceiveAudio: true,
+                      offerToReceiveVideo: true,
+                    });
+                    await pc.setLocalDescription(offer);
+                    if (ws.readyState === WebSocket.OPEN) {
+                      ws.send(JSON.stringify({ type: "offer", sdp: pc.localDescription?.sdp }));
+                      console.log("[LCC-Video] Impolite peer sent initial offer to joined peer");
+                    }
+                  } catch (offerErr) {
+                    console.error("[LCC-Video] Error creating/setting local offer:", offerErr);
+                  } finally {
+                    makingOfferRef.current = false;
                   }
-                } catch (offerErr) {
-                  console.error("[LCC-Video] Error creating/setting local offer:", offerErr);
                 }
               } else if (msg.type === "existing-peer") {
                 console.log("[LCC-Video] Connected to room with existing peer");
@@ -724,28 +1068,64 @@ export default function VideoConsultationRoomPage() {
                 // Broadcast our media state back to the existing peer
                 broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
               } else if (msg.type === "offer" && msg.sdp) {
-                console.log("[LCC-Video] Received offer from peer, applying remote description");
+                console.log(`[LCC-Video] Received offer from peer, signalingState: ${pc.signalingState}, isPolite: ${isPoliteRef.current}`);
                 if (mounted) setRemotePeerActive(true);
+
+                const offerCollision = makingOfferRef.current || pc.signalingState !== "stable";
+                ignoreOffer = !isPoliteRef.current && offerCollision;
+                if (ignoreOffer) {
+                  console.warn("[LCC-Video] Glare detected: Impolite peer ignoring incoming offer");
+                  return;
+                }
+
                 try {
+                  if (offerCollision) {
+                    console.log("[LCC-Video] Glare detected: Polite peer rolling back local offer");
+                    await pc.setLocalDescription({ type: "rollback" });
+                  }
                   await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: msg.sdp }));
                   await flushPendingIceCandidates();
                   const answer = await pc.createAnswer();
                   await pc.setLocalDescription(answer);
                   if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ type: "answer", sdp: answer.sdp }));
+                    ws.send(JSON.stringify({ type: "answer", sdp: pc.localDescription?.sdp }));
+                  }
+                  // Sync any newly negotiated receiver tracks immediately
+                  const videoReceiver = pc.getReceivers().find((r) => r.track && r.track.kind === "video");
+                  if (videoReceiver && videoReceiver.track) {
+                    let stream = remoteStreamRef.current || new MediaStream();
+                    if (!stream.getTracks().some((t) => t.id === videoReceiver.track.id)) {
+                      stream.addTrack(videoReceiver.track);
+                    }
+                    remoteStreamRef.current = stream;
+                    attachRemoteStream(stream);
                   }
                   broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
                 } catch (ansErr) {
                   console.error("[LCC-Video] Error handling offer and creating answer:", ansErr);
                 }
               } else if (msg.type === "answer" && msg.sdp) {
-                console.log("[LCC-Video] Received answer from peer, applying remote description");
-                try {
-                  await pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: msg.sdp }));
-                  await flushPendingIceCandidates();
-                  broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
-                } catch (setAnsErr) {
-                  console.error("[LCC-Video] Error applying answer remote description:", setAnsErr);
+                console.log(`[LCC-Video] Received answer from peer, signalingState: ${pc.signalingState}`);
+                if (pc.signalingState === "have-local-offer") {
+                  try {
+                    await pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: msg.sdp }));
+                    await flushPendingIceCandidates();
+                    // Sync any newly negotiated receiver tracks immediately
+                    const videoReceiver = pc.getReceivers().find((r) => r.track && r.track.kind === "video");
+                    if (videoReceiver && videoReceiver.track) {
+                      let stream = remoteStreamRef.current || new MediaStream();
+                      if (!stream.getTracks().some((t) => t.id === videoReceiver.track.id)) {
+                        stream.addTrack(videoReceiver.track);
+                      }
+                      remoteStreamRef.current = stream;
+                      attachRemoteStream(stream);
+                    }
+                    broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
+                  } catch (setAnsErr) {
+                    console.error("[LCC-Video] Error applying answer remote description:", setAnsErr);
+                  }
+                } else {
+                  console.warn(`[LCC-Video] Ignored answer received in state: ${pc.signalingState}`);
                 }
               } else if (msg.type === "ice-candidate" && msg.candidate !== undefined) {
                 await addRemoteIceCandidate({
@@ -759,8 +1139,11 @@ export default function VideoConsultationRoomPage() {
                   setRemotePeerActive(false);
                   setRemoteStream(null);
                   setRemoteIsScreenSharing(false);
+                  remoteIsScreenSharingRef.current = false;
                   setRemoteIsMuted(false);
-                  setRemoteIsVideoOff(false);
+                  setRemoteIsVideoOff(true);
+                  remoteIsVideoOffRef.current = true;
+                  setIsRemoteVideoPlaying(false);
                 }
                 remoteStreamRef.current = null;
                 if (remoteVideoRef.current) {
@@ -788,22 +1171,68 @@ export default function VideoConsultationRoomPage() {
                     setUnreadChatCount((c) => c + 1);
                   }
                 }
+              } else if (msg.type === "document-shared" && msg.document) {
+                // In-meeting shared document notification received from peer
+                console.log("[LCC-Video] Remote peer shared a document:", msg.document);
+                if (mounted) {
+                  const doc = msg.document as SharedMeetingDocument;
+                  setSharedDocuments((prev) => {
+                    if (prev.some((d) => d.id === doc.id)) return prev;
+                    return [...prev, doc];
+                  });
+                  setDocumentToast({
+                    sender: doc.uploader_name || (info.participant_role === "CLIENT" ? "Advocate" : "Client"),
+                    filename: doc.file_name,
+                    url: doc.download_url,
+                  });
+                  if (activeSideTab !== "documents") {
+                    setUnreadDocCount((c) => c + 1);
+                  }
+                }
               } else if (msg.type === "media-status") {
                 // Remote peer toggled audio, video, or screen sharing
                 if (mounted) {
                   if (typeof msg.is_muted === "boolean") setRemoteIsMuted(msg.is_muted);
                   if (typeof msg.is_video_off === "boolean") {
+                    remoteIsVideoOffRef.current = msg.is_video_off;
                     setRemoteIsVideoOff(msg.is_video_off);
-                    if (!msg.is_video_off && remoteStreamRef.current) {
+                    if (msg.is_video_off) {
+                      setIsRemoteVideoPlaying(false);
                       if (remoteVideoRef.current) {
-                        attachStreamToRemoteVideo(remoteVideoRef.current, remoteStreamRef.current);
+                        remoteVideoRef.current.pause();
                       }
-                      if (remoteAudioRef.current) {
-                        attachStreamToRemoteAudio(remoteAudioRef.current, remoteStreamRef.current);
+                    } else {
+                      // Attempt to attach any existing video track from peer connection receivers
+                      const pc = peerConnectionRef.current;
+                      if (pc) {
+                        const videoReceiver = pc.getReceivers().find((r) => r.track && r.track.kind === "video");
+                        if (videoReceiver && videoReceiver.track) {
+                          let stream = remoteStreamRef.current || new MediaStream();
+                          if (!stream.getTracks().some((t) => t.id === videoReceiver.track.id)) {
+                            stream.addTrack(videoReceiver.track);
+                          }
+                          remoteStreamRef.current = stream;
+                          attachRemoteStream(stream);
+                        }
+                      }
+                      if (remoteStreamRef.current) {
+                        attachRemoteStream(remoteStreamRef.current);
+                      }
+                      if (remoteVideoRef.current) {
+                        remoteVideoRef.current.play().catch(() => {});
                       }
                     }
                   }
-                  if (typeof msg.is_screen_sharing === "boolean") setRemoteIsScreenSharing(msg.is_screen_sharing);
+                  if (typeof msg.is_screen_sharing === "boolean") {
+                    remoteIsScreenSharingRef.current = msg.is_screen_sharing;
+                    setRemoteIsScreenSharing(msg.is_screen_sharing);
+                    if (msg.is_screen_sharing) {
+                      if (remoteStreamRef.current && remoteVideoRef.current) {
+                        attachRemoteStream(remoteStreamRef.current);
+                        remoteVideoRef.current.play().catch(() => {});
+                      }
+                    }
+                  }
                 }
               } else if (msg.type === "recording-status") {
                 // Remote peer started or stopped recording
@@ -874,7 +1303,7 @@ export default function VideoConsultationRoomPage() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consultationId]);
+  }, [consultationId, refreshKey, bypassTimeWindow]);
 
   // 2. Call elapsed timer
   useEffect(() => {
@@ -976,10 +1405,16 @@ export default function VideoConsultationRoomPage() {
     const videoEl = remoteVideoRef.current;
     const audioEl = remoteAudioRef.current;
     if (!loading && remoteStreamRef.current) {
-      if (videoEl) attachStreamToRemoteVideo(videoEl, remoteStreamRef.current);
+      if (videoEl) {
+        if (!remoteIsVideoOff || remoteIsScreenSharing) {
+          attachStreamToRemoteVideo(videoEl, remoteStreamRef.current);
+        } else {
+          videoEl.pause();
+        }
+      }
       if (audioEl) attachStreamToRemoteAudio(audioEl, remoteStreamRef.current);
     }
-  }, [loading, remoteStream, remotePeerActive, remoteIsVideoOff, attachStreamToRemoteVideo, attachStreamToRemoteAudio]);
+  }, [loading, remoteStream, remotePeerActive, remoteIsVideoOff, remoteIsScreenSharing, attachStreamToRemoteVideo, attachStreamToRemoteAudio]);
 
   // Toggle Video with resilient device acquisition, fallback stream, and WebRTC renegotiation
   const toggleVideo = async () => {
@@ -1059,14 +1494,24 @@ export default function VideoConsultationRoomPage() {
                 await videoSender.replaceTrack(newTrack);
               } else {
                 pc.addTrack(newTrack, updatedStream);
-                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && pc.signalingState === "stable") {
-                  const offer = await pc.createOffer({
-                    offerToReceiveAudio: true,
-                    offerToReceiveVideo: true,
-                  });
-                  await pc.setLocalDescription(offer);
-                  wsRef.current.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
-                }
+              }
+            }
+
+            // Impolite peer renegotiates upon enabling video if stable
+            if (!isPoliteRef.current && wsRef.current && wsRef.current.readyState === WebSocket.OPEN && pc.signalingState === "stable") {
+              try {
+                makingOfferRef.current = true;
+                const offer = await pc.createOffer({
+                  offerToReceiveAudio: true,
+                  offerToReceiveVideo: true,
+                });
+                await pc.setLocalDescription(offer);
+                wsRef.current.send(JSON.stringify({ type: "offer", sdp: pc.localDescription?.sdp }));
+                console.log("[LCC-Video] Impolite peer sent renegotiation offer after enabling video");
+              } catch (renegErr) {
+                console.warn("[LCC-Video] Renegotiation after toggleVideo failed:", renegErr);
+              } finally {
+                makingOfferRef.current = false;
               }
             }
           }
@@ -1105,6 +1550,20 @@ export default function VideoConsultationRoomPage() {
           await videoSender.replaceTrack(isVideoOffRef.current ? null : (camTrack || null));
         } catch (repErr) {
           console.error("[LCC-Video] Error restoring camera track on sender:", repErr);
+        }
+      }
+
+      if (!isPoliteRef.current && wsRef.current && wsRef.current.readyState === WebSocket.OPEN && pc.signalingState === "stable") {
+        try {
+          makingOfferRef.current = true;
+          const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+          await pc.setLocalDescription(offer);
+          wsRef.current.send(JSON.stringify({ type: "offer", sdp: pc.localDescription?.sdp }));
+          console.log("[LCC-Video] Sent renegotiation offer after stopping screen share");
+        } catch (renegErr) {
+          console.warn("[LCC-Video] Stop screen share renegotiation error:", renegErr);
+        } finally {
+          makingOfferRef.current = false;
         }
       }
     }
@@ -1154,6 +1613,20 @@ export default function VideoConsultationRoomPage() {
             }
           } else {
             pc.addTrack(screenTrack, screenStream);
+          }
+
+          if (!isPoliteRef.current && wsRef.current && wsRef.current.readyState === WebSocket.OPEN && pc.signalingState === "stable") {
+            try {
+              makingOfferRef.current = true;
+              const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+              await pc.setLocalDescription(offer);
+              wsRef.current.send(JSON.stringify({ type: "offer", sdp: pc.localDescription?.sdp }));
+              console.log("[LCC-Video] Sent renegotiation offer after starting screen share");
+            } catch (renegErr) {
+              console.warn("[LCC-Video] Screen share renegotiation error:", renegErr);
+            } finally {
+              makingOfferRef.current = false;
+            }
           }
         }
 
@@ -1522,6 +1995,200 @@ export default function VideoConsultationRoomPage() {
     );
   }
 
+  if (accessStatus && !accessStatus.can_join) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "#070b14",
+          color: "#f8fafc",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "520px",
+            width: "100%",
+            backgroundColor: "#0f172a",
+            borderRadius: "16px",
+            padding: "36px 32px",
+            border: "1px solid #1e293b",
+            textAlign: "center",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
+          }}
+        >
+          <div
+            style={{
+              width: "56px",
+              height: "56px",
+              backgroundColor: "rgba(99, 102, 241, 0.12)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px",
+              color: "#818cf8",
+              fontSize: "24px",
+            }}
+          >
+            📹
+          </div>
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "#818cf8",
+              marginBottom: "6px",
+            }}
+          >
+            Video Consultation
+          </div>
+          <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "6px", color: "#f8fafc" }}>
+            {accessStatus.other_party_name
+              ? `Session with ${accessStatus.other_party_name}`
+              : "Consultation Session"}
+          </h2>
+          <p style={{ color: "#94a3b8", fontSize: "14px", lineHeight: 1.5, marginBottom: "20px" }}>
+            {accessStatus.reason_blocked || "Consultation isn't open yet."}
+          </p>
+
+          {/* Timing details card */}
+          <div
+            style={{
+              backgroundColor: "#1e293b",
+              borderRadius: "10px",
+              padding: "16px 20px",
+              marginBottom: "24px",
+              textAlign: "left",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              fontSize: "13px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "#94a3b8" }}>Scheduled for:</span>
+              <span style={{ color: "#f8fafc", fontWeight: 600 }}>{accessStatus.scheduled_at_ist}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "#94a3b8" }}>Available from:</span>
+              <span style={{ color: "#38bdf8", fontWeight: 600 }}>{accessStatus.earliest_join_ist}</span>
+            </div>
+            {countdownSeconds !== null && countdownSeconds > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  borderTop: "1px solid #334155",
+                  paddingTop: "10px",
+                  marginTop: "2px",
+                }}
+              >
+                <span style={{ color: "#94a3b8" }}>Opens in:</span>
+                <span style={{ color: "#34d399", fontWeight: 700, fontFamily: "monospace", fontSize: "14px" }}>
+                  {formatCountdown(countdownSeconds)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Advocate Online Status Badge */}
+          {accessStatus.lawyer_online && (
+            <div
+              style={{
+                backgroundColor: "rgba(16, 185, 129, 0.12)",
+                border: "1px solid rgba(16, 185, 129, 0.35)",
+                borderRadius: "10px",
+                padding: "12px 16px",
+                marginBottom: "20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                textAlign: "left",
+              }}
+            >
+              <span style={{ fontSize: "20px" }}>🟢</span>
+              <div>
+                <div style={{ color: "#34d399", fontWeight: 700, fontSize: "13px" }}>
+                  Advocate is Online & Ready
+                </div>
+                <div style={{ color: "#cbd5e1", fontSize: "12px" }}>
+                  Your counsel is active. You can enter the consultation room immediately.
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={() => {
+                setBypassTimeWindow(true);
+                setRefreshKey((k) => k + 1);
+              }}
+              style={{
+                backgroundColor: accessStatus.lawyer_online ? "#059669" : "#4f46e5",
+                color: "#ffffff",
+                padding: "10px 20px",
+                borderRadius: "8px",
+                border: "none",
+                fontWeight: 700,
+                fontSize: "13px",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                boxShadow: "0 4px 14px rgba(79, 70, 229, 0.35)",
+              }}
+            >
+              {accessStatus.lawyer_online ? "🚀 Enter Meeting with Advocate" : "⚡ Connect Now (Early Join / Test)"}
+            </button>
+            <button
+              onClick={() => setRefreshKey((k) => k + 1)}
+              style={{
+                backgroundColor: "#2563eb",
+                color: "#ffffff",
+                padding: "10px 18px",
+                borderRadius: "8px",
+                border: "none",
+                fontWeight: 600,
+                fontSize: "13px",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              ↻ Refresh Status
+            </button>
+            <button
+              onClick={() => router.push("/consultations")}
+              style={{
+                backgroundColor: "transparent",
+                color: "#94a3b8",
+                border: "1px solid #334155",
+                padding: "10px 18px",
+                borderRadius: "8px",
+                fontWeight: 600,
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              Back to Consultations
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div
@@ -1563,32 +2230,56 @@ export default function VideoConsultationRoomPage() {
               fontSize: "24px",
             }}
           >
-            ✕
+            ⚠️
           </div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>
-            Access Restricted
+            Unable to Enter Consultation
           </h2>
           <p style={{ color: "#94a3b8", fontSize: "14px", lineHeight: 1.5, marginBottom: "24px" }}>
             {error}
           </p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            style={{
-              backgroundColor: "#2563eb",
-              color: "#ffffff",
-              padding: "10px 24px",
-              borderRadius: "8px",
-              border: "none",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Return to Dashboard
-          </button>
+          <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={() => {
+                setError(null);
+                setRefreshKey((k) => k + 1);
+              }}
+              style={{
+                backgroundColor: "#2563eb",
+                color: "#ffffff",
+                padding: "10px 20px",
+                borderRadius: "8px",
+                border: "none",
+                fontWeight: 600,
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => router.push("/consultations")}
+              style={{
+                backgroundColor: "transparent",
+                color: "#94a3b8",
+                border: "1px solid #334155",
+                padding: "10px 18px",
+                borderRadius: "8px",
+                fontWeight: 600,
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              Back to Consultations
+            </button>
+          </div>
         </div>
       </div>
     );
   }
+
+  const showRemoteVideo = remotePeerActive && (!remoteIsVideoOff || remoteIsScreenSharing);
+  const showRemotePlaceholder = !remotePeerActive || (remoteIsVideoOff && !remoteIsScreenSharing);
 
   return (
     <div
@@ -1646,7 +2337,26 @@ export default function VideoConsultationRoomPage() {
       >
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "20px" }}>⚖️</span>
+            <div
+              style={{
+                width: "30px",
+                height: "30px",
+                borderRadius: "6px",
+                background: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "2px",
+                overflow: "hidden",
+              }}
+            >
+              <img
+                src="/logo-icon-white.png"
+                alt="LCC Logo"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
             <div>
               <span style={{ fontWeight: 700, fontSize: "15px", letterSpacing: "0.2px" }}>
                 LCC Consultation Room
@@ -1656,6 +2366,34 @@ export default function VideoConsultationRoomPage() {
               </span>
             </div>
           </div>
+
+          {linkedCase && (
+            <button
+              id="header-matter-btn"
+              onClick={() => setActiveSideTab(activeSideTab === "case" ? null : "case")}
+              style={{
+                backgroundColor: activeSideTab === "case" ? "rgba(99, 102, 241, 0.35)" : "rgba(99, 102, 241, 0.15)",
+                color: "#c7d2fe",
+                border: "1px solid rgba(99, 102, 241, 0.4)",
+                borderRadius: "100px",
+                padding: "3px 12px",
+                fontSize: "12px",
+                fontWeight: 600,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              title="Open Case Workspace Inside Room"
+            >
+              <span>⚖️ Matter:</span>
+              <span style={{ fontWeight: 700, color: "#fff" }}>{linkedCase.title}</span>
+              <span style={{ fontSize: "10px", color: "#818cf8" }}>
+                ({linkedCase.reference_number || (linkedCase.id ? linkedCase.id.slice(0, 8) : "")})
+              </span>
+            </button>
+          )}
 
           <span
             style={{
@@ -1789,11 +2527,29 @@ export default function VideoConsultationRoomPage() {
                 width: "8px",
                 height: "8px",
                 borderRadius: "50%",
-                backgroundColor: connectionStatus === "connected" ? "#22c55e" : "#eab308",
+                backgroundColor:
+                  connectionStatus === "connected"
+                    ? "#22c55e"
+                    : connectionStatus === "connecting"
+                    ? remotePeerActive
+                      ? "#38bdf8"
+                      : "#a855f7"
+                    : connectionStatus === "ended"
+                    ? "#ef4444"
+                    : "#eab308",
+                animation: connectionStatus === "connected" ? "none" : "pulse 1.5s infinite",
               }}
             />
-            <span style={{ color: "#94a3b8" }}>
-              {connectionStatus === "connected" ? "Connected" : "Reconnecting"}
+            <span style={{ color: connectionStatus === "connected" ? "#22c55e" : "#94a3b8", fontWeight: 600 }}>
+              {connectionStatus === "connected"
+                ? "Connected"
+                : connectionStatus === "connecting"
+                ? remotePeerActive
+                  ? "Connecting..."
+                  : "Waiting for Peer"
+                : connectionStatus === "ended"
+                ? "Call Ended"
+                : "Reconnecting..."}
             </span>
           </div>
         </div>
@@ -1917,9 +2673,34 @@ export default function VideoConsultationRoomPage() {
                 console.log(
                   `[LCC-Video] Remote video loadedmetadata: ${v.videoWidth}x${v.videoHeight}`
                 );
-                v.play().catch((err) =>
-                  console.warn("[LCC-Video] Remote play error on loadedmetadata:", err)
-                );
+                if (v.videoWidth > 0 && v.videoHeight > 0) {
+                  setIsRemoteVideoPlaying(true);
+                }
+                v.play().catch(() => {});
+              }}
+              onCanPlay={(e) => {
+                const v = e.currentTarget;
+                if (v.videoWidth > 0 && v.videoHeight > 0) {
+                  setIsRemoteVideoPlaying(true);
+                }
+                v.play().catch(() => {});
+              }}
+              onPlaying={(e) => {
+                const v = e.currentTarget;
+                console.log("[LCC-Video] Remote video stream is actively rendering frames:", v.videoWidth, "x", v.videoHeight);
+                setIsRemoteVideoPlaying(true);
+              }}
+              onTimeUpdate={(e) => {
+                const v = e.currentTarget;
+                if (v.currentTime > 0) {
+                  setIsRemoteVideoPlaying(true);
+                }
+              }}
+              onPause={() => {
+                setIsRemoteVideoPlaying(false);
+              }}
+              onEmptied={() => {
+                setIsRemoteVideoPlaying(false);
               }}
               style={{
                 position: "absolute",
@@ -1927,11 +2708,11 @@ export default function VideoConsultationRoomPage() {
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                display: "block",
-                visibility: remotePeerActive && !remoteIsVideoOff ? "visible" : "hidden",
-                opacity: remotePeerActive && !remoteIsVideoOff ? 1 : 0,
+                display: showRemoteVideo ? "block" : "none",
+                visibility: showRemoteVideo ? "visible" : "hidden",
+                opacity: showRemoteVideo ? 1 : 0,
                 zIndex: 1,
-                pointerEvents: remotePeerActive && !remoteIsVideoOff ? "auto" : "none",
+                pointerEvents: showRemoteVideo ? "auto" : "none",
                 transition: "opacity 0.2s ease-in-out",
               }}
             />
@@ -1941,7 +2722,43 @@ export default function VideoConsultationRoomPage() {
               autoPlay
             />
 
-            {(!remotePeerActive || remoteIsVideoOff) && (
+            {/* Connecting Video Stream Overlay (shown during WebRTC negotiation handshake) */}
+            {showRemoteVideo && !isRemoteVideoPlaying && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(13, 19, 34, 0.85)",
+                  backdropFilter: "blur(4px)",
+                  zIndex: 2,
+                  pointerEvents: "none",
+                }}
+              >
+                <div
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "50%",
+                    border: "3px solid rgba(59, 130, 246, 0.2)",
+                    borderTopColor: "#3b82f6",
+                    animation: "spin 1s linear infinite",
+                    marginBottom: "14px",
+                  }}
+                />
+                <div style={{ color: "#f8fafc", fontSize: "14px", fontWeight: 600 }}>
+                  Connecting video stream...
+                </div>
+                <div style={{ color: "#94a3b8", fontSize: "12px", marginTop: "4px" }}>
+                  Receiving secure video feed from {joinInfo?.participant_role === "CLIENT" ? "Counsel" : "Client"}
+                </div>
+              </div>
+            )}
+
+            {showRemotePlaceholder && (
               <div style={{ textAlign: "center", zIndex: 2 }}>
                 <div
                   style={{
@@ -2199,6 +3016,42 @@ export default function VideoConsultationRoomPage() {
                   👥 People
                 </button>
                 <button
+                  id="tab-documents-btn"
+                  onClick={() => {
+                    setActiveSideTab("documents");
+                    setUnreadDocCount(0);
+                  }}
+                  style={{
+                    backgroundColor: activeSideTab === "documents" ? "#2563eb" : "transparent",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "6px 10px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  📁 Docs
+                  {unreadDocCount > 0 && (
+                    <span
+                      style={{
+                        backgroundColor: "#ef4444",
+                        color: "#ffffff",
+                        fontSize: "10px",
+                        padding: "1px 5px",
+                        borderRadius: "10px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {unreadDocCount}
+                    </span>
+                  )}
+                </button>
+                <button
                   onClick={() => setActiveSideTab("notes")}
                   style={{
                     backgroundColor: activeSideTab === "notes" ? "#2563eb" : "transparent",
@@ -2212,6 +3065,25 @@ export default function VideoConsultationRoomPage() {
                   }}
                 >
                   📝 Notes
+                </button>
+                <button
+                  id="tab-case-btn"
+                  onClick={() => setActiveSideTab("case")}
+                  style={{
+                    backgroundColor: activeSideTab === "case" ? "#2563eb" : "transparent",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "6px 10px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  ⚖️ Case
                 </button>
               </div>
 
@@ -2492,6 +3364,567 @@ export default function VideoConsultationRoomPage() {
                 </button>
               </div>
             )}
+
+            {/* Tab Content: Documents */}
+            {activeSideTab === "documents" && (
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "18px" }}>
+                <div>
+                  <h4 style={{ fontSize: "14px", fontWeight: 700, color: "#f8fafc", margin: "0 0 4px" }}>
+                    📁 Consultation Documents
+                  </h4>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0, lineHeight: 1.4 }}>
+                    Instantly share agreements, notices, or evidence with {joinInfo?.participant_role === "CLIENT" ? "Advocate" : "Client"}.
+                  </p>
+                </div>
+
+                {/* Upload / Share Box */}
+                <div
+                  style={{
+                    backgroundColor: "rgba(255, 255, 255, 0.03)",
+                    border: "1px dashed rgba(255, 255, 255, 0.16)",
+                    borderRadius: "8px",
+                    padding: "14px",
+                  }}
+                >
+                  <input
+                    ref={docFileInputRef}
+                    type="file"
+                    style={{ display: "none" }}
+                    accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setDocFileToUpload(e.target.files[0]);
+                      }
+                    }}
+                  />
+
+                  {!docFileToUpload ? (
+                    <div
+                      id="choose-document-btn"
+                      onClick={() => docFileInputRef.current?.click()}
+                      style={{
+                        textAlign: "center",
+                        cursor: "pointer",
+                        padding: "10px 6px",
+                      }}
+                    >
+                      <div style={{ fontSize: "28px", marginBottom: "6px" }}>📄</div>
+                      <div style={{ fontSize: "13px", fontWeight: 600, color: "#38bdf8" }}>
+                        Click to select document
+                      </div>
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
+                        PDF, DOCX, PNG, JPG (Max 25MB)
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          backgroundColor: "rgba(37, 99, 235, 0.12)",
+                          border: "1px solid rgba(37, 99, 235, 0.3)",
+                          padding: "8px 10px",
+                          borderRadius: "6px",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
+                          <span style={{ fontSize: "16px" }}>📎</span>
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              color: "#f8fafc",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              maxWidth: "200px",
+                            }}
+                          >
+                            {docFileToUpload.name}
+                          </span>
+                          <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                            ({(docFileToUpload.size / (1024 * 1024)).toFixed(2)} MB)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDocFileToUpload(null);
+                            if (docFileInputRef.current) docFileInputRef.current.value = "";
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#ef4444",
+                            cursor: "pointer",
+                            fontSize: "14px",
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <input
+                        type="text"
+                        value={docDescription}
+                        onChange={(e) => setDocDescription(e.target.value)}
+                        placeholder="Add a note (e.g., Draft Rental Agreement)..."
+                        style={{
+                          width: "100%",
+                          backgroundColor: "#0f172a",
+                          border: "1px solid #334155",
+                          borderRadius: "6px",
+                          color: "#f8fafc",
+                          padding: "8px 10px",
+                          fontSize: "12px",
+                          marginBottom: "10px",
+                        }}
+                      />
+
+                      <button
+                        id="send-document-submit-btn"
+                        type="button"
+                        onClick={handleUploadAndShareDocument}
+                        disabled={uploadingDoc}
+                        style={{
+                          width: "100%",
+                          backgroundColor: "#2563eb",
+                          color: "#ffffff",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "8px 14px",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          cursor: uploadingDoc ? "not-allowed" : "pointer",
+                          opacity: uploadingDoc ? 0.7 : 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        {uploadingDoc ? "Uploading & Sending..." : "📤 Send to Peer in Call"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Shared Documents List */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", color: "#94a3b8", letterSpacing: "0.5px" }}>
+                      Shared in this Call ({sharedDocuments.length})
+                    </span>
+                    <button
+                      onClick={fetchSharedDocuments}
+                      disabled={loadingDocuments}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#38bdf8",
+                        fontSize: "11px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {loadingDocuments ? "Refreshing..." : "↻ Refresh"}
+                    </button>
+                  </div>
+
+                  {sharedDocuments.length === 0 ? (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "24px 12px",
+                        backgroundColor: "rgba(255, 255, 255, 0.02)",
+                        borderRadius: "8px",
+                        color: "#64748b",
+                        fontSize: "12px",
+                      }}
+                    >
+                      No documents shared in this meeting yet.<br />
+                      Send a file above to share it in real time.
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      {sharedDocuments.map((doc) => {
+                        const isPdf = doc.file_name.toLowerCase().endsWith(".pdf");
+                        const isImg = /\.(png|jpe?g|webp|gif)$/i.test(doc.file_name);
+                        const fileIcon = isPdf ? "📕" : isImg ? "🖼️" : "📄";
+
+                        return (
+                          <div
+                            key={doc.id}
+                            style={{
+                              backgroundColor: "#1e293b",
+                              border: "1px solid rgba(255, 255, 255, 0.08)",
+                              borderRadius: "8px",
+                              padding: "12px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "8px",
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                              <div
+                                style={{
+                                  fontSize: "20px",
+                                  backgroundColor: "rgba(255, 255, 255, 0.06)",
+                                  padding: "6px",
+                                  borderRadius: "6px",
+                                }}
+                              >
+                                {fileIcon}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div
+                                  style={{
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    color: "#f8fafc",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
+                                  title={doc.file_name}
+                                >
+                                  {doc.file_name}
+                                </div>
+                                <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
+                                  {(doc.file_size / (1024 * 1024)).toFixed(2)} MB •{" "}
+                                  <span style={{ color: doc.uploader_role === "LAWYER" ? "#60a5fa" : "#34d399", fontWeight: 600 }}>
+                                    {doc.uploader_name} ({doc.uploader_role})
+                                  </span>
+                                </div>
+                                {doc.description && (
+                                  <div style={{ fontSize: "11px", color: "#cbd5e1", marginTop: "4px", fontStyle: "italic" }}>
+                                    &ldquo;{doc.description}&rdquo;
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                              <a
+                                href={doc.download_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                download={doc.file_name}
+                                style={{
+                                  flex: 1,
+                                  textAlign: "center",
+                                  backgroundColor: "rgba(37, 99, 235, 0.2)",
+                                  border: "1px solid rgba(37, 99, 235, 0.4)",
+                                  color: "#60a5fa",
+                                  borderRadius: "4px",
+                                  padding: "6px 8px",
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  textDecoration: "none",
+                                }}
+                              >
+                                ⬇️ Download
+                              </a>
+                              <button
+                                onClick={() => {
+                                  setPreviewDocUrl(doc.download_url);
+                                  setPreviewDocName(doc.file_name);
+                                }}
+                                style={{
+                                  flex: 1,
+                                  backgroundColor: "rgba(255, 255, 255, 0.08)",
+                                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                                  color: "#f8fafc",
+                                  borderRadius: "4px",
+                                  padding: "6px 8px",
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                👁️ Preview
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab Content: Client Case Workspace */}
+            {activeSideTab === "case" && (
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                {loadingCaseData ? (
+                  <div style={{ textAlign: "center", color: "#94a3b8", padding: "30px 0", fontSize: "13px" }}>
+                    Loading client case details...
+                  </div>
+                ) : linkedCase ? (
+                  <>
+                    {/* Case Header Card */}
+                    <div
+                      style={{
+                        backgroundColor: "rgba(99, 102, 241, 0.08)",
+                        border: "1px solid rgba(99, 102, 241, 0.25)",
+                        borderRadius: "10px",
+                        padding: "14px",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                        <div>
+                          <span
+                            style={{
+                              fontSize: "10px",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              backgroundColor: "rgba(34, 197, 94, 0.2)",
+                              color: "#4ade80",
+                              display: "inline-block",
+                              marginBottom: "6px",
+                            }}
+                          >
+                            ● {linkedCase.status || "ACTIVE"}
+                          </span>
+                          <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#fff", margin: "0 0 2px 0" }}>
+                            {linkedCase.title}
+                          </h3>
+                          <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                            REF #{linkedCase.reference_number || (linkedCase.id ? linkedCase.id.slice(0, 8) : "")}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => window.open(`/cases/${linkedCase.id}`, "_blank")}
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            color: "#38bdf8",
+                            background: "rgba(56, 189, 248, 0.12)",
+                            border: "1px solid rgba(56, 189, 248, 0.25)",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                          title="Open Full Case Workspace in New Tab"
+                        >
+                          Open Workspace ↗
+                        </button>
+                      </div>
+
+                      {linkedCase.description && (
+                        <p style={{ fontSize: "12px", color: "#cbd5e1", margin: "8px 0 0", lineHeight: 1.4 }}>
+                          {linkedCase.description}
+                        </p>
+                      )}
+
+                      {/* Case metadata pills */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
+                        {linkedCase.case_type && (
+                          <span style={{ fontSize: "10px", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: "4px", color: "#94a3b8" }}>
+                            🏛️ {linkedCase.case_type}
+                          </span>
+                        )}
+                        {linkedCase.court_name && (
+                          <span style={{ fontSize: "10px", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: "4px", color: "#94a3b8" }}>
+                            ⚖️ {linkedCase.court_name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Switch Matter Selector (if multiple cases exist) */}
+                    {existingCases.length > 1 && (
+                      <div>
+                        <label style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginBottom: "4px" }}>
+                          Switch Active Client Matter:
+                        </label>
+                        <select
+                          value={linkedCase.id}
+                          onChange={(e) => {
+                            if (e.target.value) void fetchLinkedCaseData(e.target.value);
+                          }}
+                          style={{
+                            width: "100%",
+                            background: "#0f172a",
+                            border: "1px solid #334155",
+                            color: "#f8fafc",
+                            borderRadius: "6px",
+                            padding: "6px 8px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          {existingCases.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.title} ({c.status})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Live Case Messages Feed */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: "220px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                        <h4 style={{ fontSize: "13px", fontWeight: 700, color: "#f8fafc", margin: 0 }}>
+                          💬 Case Messages ({linkedCaseMessages.length})
+                        </h4>
+                        <button
+                          onClick={() => void fetchLinkedCaseData(linkedCase.id)}
+                          style={{ background: "none", border: "none", color: "#38bdf8", fontSize: "11px", cursor: "pointer" }}
+                        >
+                          ↻ Refresh
+                        </button>
+                      </div>
+
+                      <div
+                        style={{
+                          flex: 1,
+                          maxHeight: "240px",
+                          overflowY: "auto",
+                          backgroundColor: "#050811",
+                          border: "1px solid rgba(255, 255, 255, 0.08)",
+                          borderRadius: "8px",
+                          padding: "10px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        {linkedCaseMessages.length === 0 ? (
+                          <div style={{ textAlign: "center", color: "#64748b", fontSize: "12px", padding: "20px 0" }}>
+                            No messages recorded in this case matter yet. Send instructions or notes below.
+                          </div>
+                        ) : (
+                          linkedCaseMessages.map((msg) => {
+                            const isClient = msg.sender_role?.toUpperCase() === "CLIENT" || msg.sender_role?.toUpperCase() === "OWNER";
+                            return (
+                              <div
+                                key={msg.id}
+                                style={{
+                                  backgroundColor: isClient ? "rgba(14, 165, 233, 0.1)" : "rgba(255, 255, 255, 0.04)",
+                                  border: `1px solid ${isClient ? "rgba(14, 165, 233, 0.25)" : "rgba(255, 255, 255, 0.06)"}`,
+                                  borderRadius: "6px",
+                                  padding: "8px 10px",
+                                }}
+                              >
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "3px" }}>
+                                  <span style={{ fontWeight: 700, color: isClient ? "#38bdf8" : "#818cf8" }}>
+                                    {msg.sender_name || (isClient ? "Client" : "Counsel")}
+                                  </span>
+                                  <span style={{ color: "#64748b" }}>
+                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: "12px", color: "#cbd5e1", lineHeight: 1.4 }}>
+                                  {msg.content}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Post to Case Workspace Composer */}
+                      <form onSubmit={handleSendCaseMessage} style={{ display: "flex", gap: "6px" }}>
+                        <input
+                          type="text"
+                          placeholder="Send note/update to case..."
+                          value={newCaseMessageText}
+                          onChange={(e) => setNewCaseMessageText(e.target.value)}
+                          style={{
+                            flex: 1,
+                            backgroundColor: "#0f172a",
+                            border: "1px solid #334155",
+                            borderRadius: "6px",
+                            color: "#f8fafc",
+                            padding: "8px 10px",
+                            fontSize: "12px",
+                            outline: "none",
+                          }}
+                        />
+                        <button
+                          type="submit"
+                          disabled={sendingCaseMsg || !newCaseMessageText.trim()}
+                          style={{
+                            backgroundColor: sendingCaseMsg || !newCaseMessageText.trim() ? "rgba(99, 102, 241, 0.4)" : "#6366f1",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "0 12px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            cursor: sendingCaseMsg || !newCaseMessageText.trim() ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {sendingCaseMsg ? "..." : "Post"}
+                        </button>
+                      </form>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ textAlign: "center", padding: "20px 0" }}>
+                    <div style={{ fontSize: "32px", marginBottom: "8px" }}>⚖️</div>
+                    <h4 style={{ fontSize: "14px", color: "#f8fafc", margin: "0 0 6px" }}>
+                      No Case Matter Linked
+                    </h4>
+                    <p style={{ fontSize: "12px", color: "#94a3b8", margin: "0 0 16px" }}>
+                      Link an existing case to view documents, timeline, and messages directly in this consultation.
+                    </p>
+                    {existingCases.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <select
+                          value={selectedCaseId}
+                          onChange={(e) => setSelectedCaseId(e.target.value)}
+                          style={{
+                            width: "100%",
+                            background: "#0f172a",
+                            border: "1px solid #334155",
+                            color: "#f8fafc",
+                            borderRadius: "6px",
+                            padding: "8px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          <option value="">-- Choose Case Matter --</option>
+                          {existingCases.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.title} ({c.status})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => {
+                            if (selectedCaseId) void fetchLinkedCaseData(selectedCaseId);
+                          }}
+                          disabled={!selectedCaseId}
+                          style={{
+                            backgroundColor: selectedCaseId ? "#6366f1" : "rgba(99, 102, 241, 0.4)",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "8px 14px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            cursor: selectedCaseId ? "pointer" : "not-allowed",
+                          }}
+                        >
+                          Open Case Workspace
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </aside>
         )}
       </div>
@@ -2679,6 +4112,54 @@ export default function VideoConsultationRoomPage() {
           )}
         </button>
 
+        {/* Side Drawer Toggle: Documents */}
+        <button
+          id="open-documents-btn"
+          onClick={() => {
+            setActiveSideTab(activeSideTab === "documents" ? null : "documents");
+            setUnreadDocCount(0);
+          }}
+          style={{
+            backgroundColor: activeSideTab === "documents" ? "#2563eb" : "rgba(255, 255, 255, 0.12)",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "50%",
+            width: "48px",
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: "18px",
+            position: "relative",
+            transition: "all 0.2s",
+          }}
+          title="Share Documents with Peer"
+        >
+          📁
+          {unreadDocCount > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: "2px",
+                right: "2px",
+                backgroundColor: "#ef4444",
+                color: "#fff",
+                fontSize: "10px",
+                fontWeight: 700,
+                width: "18px",
+                height: "18px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {unreadDocCount}
+            </span>
+          )}
+        </button>
+
         {/* Side Drawer Toggle: Participants */}
         <button
           id="open-participants-btn"
@@ -2700,6 +4181,29 @@ export default function VideoConsultationRoomPage() {
           title="Participants"
         >
           👥
+        </button>
+
+        {/* Side Drawer Toggle: Client Case Workspace */}
+        <button
+          id="open-case-workspace-btn"
+          onClick={() => setActiveSideTab(activeSideTab === "case" ? null : "case")}
+          style={{
+            backgroundColor: activeSideTab === "case" ? "#6366f1" : "rgba(255, 255, 255, 0.12)",
+            color: "#ffffff",
+            border: activeSideTab === "case" ? "1px solid #818cf8" : "none",
+            borderRadius: "50%",
+            width: "48px",
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: "18px",
+            transition: "all 0.2s",
+          }}
+          title={linkedCase ? `Matter: ${linkedCase.title}` : "Client Case Workspace"}
+        >
+          ⚖️
         </button>
 
         {/* Device Settings */}
@@ -3347,6 +4851,187 @@ export default function VideoConsultationRoomPage() {
               >
                 Back to Consultations
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Real-Time Document Shared Toast Notification */}
+      {documentToast && (
+        <div
+          id="document-shared-toast"
+          style={{
+            position: "fixed",
+            top: "24px",
+            right: "24px",
+            backgroundColor: "#1e293b",
+            border: "1px solid #3b82f6",
+            borderRadius: "10px",
+            padding: "16px 20px",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            gap: "14px",
+            maxWidth: "380px",
+          }}
+        >
+          <div style={{ fontSize: "24px" }}>📄</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: "12px", color: "#94a3b8" }}>
+              <strong style={{ color: "#60a5fa" }}>{documentToast.sender}</strong> shared a document
+            </div>
+            <div
+              style={{
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#f8fafc",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                marginTop: "2px",
+              }}
+              title={documentToast.filename}
+            >
+              {documentToast.filename}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button
+              onClick={() => {
+                setActiveSideTab("documents");
+                setDocumentToast(null);
+                setUnreadDocCount(0);
+              }}
+              style={{
+                backgroundColor: "#2563eb",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              View
+            </button>
+            <button
+              onClick={() => setDocumentToast(null)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#94a3b8",
+                cursor: "pointer",
+                fontSize: "16px",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* In-Meeting Document Preview Modal */}
+      {previewDocUrl && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(4px)",
+            zIndex: 150,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
+          }}
+          onClick={() => {
+            setPreviewDocUrl(null);
+            setPreviewDocName(null);
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#0f172a",
+              border: "1px solid #334155",
+              borderRadius: "12px",
+              width: "100%",
+              maxWidth: "800px",
+              maxHeight: "85vh",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "14px 18px",
+                borderBottom: "1px solid #1e293b",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "18px" }}>📄</span>
+                <span style={{ fontSize: "14px", fontWeight: 600, color: "#f8fafc" }}>
+                  {previewDocName || "Document Preview"}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <a
+                  href={previewDocUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  download={previewDocName || "document"}
+                  style={{
+                    backgroundColor: "#2563eb",
+                    color: "#ffffff",
+                    borderRadius: "6px",
+                    padding: "6px 12px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  ⬇️ Download
+                </a>
+                <button
+                  onClick={() => {
+                    setPreviewDocUrl(null);
+                    setPreviewDocName(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#94a3b8",
+                    fontSize: "20px",
+                    cursor: "pointer",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, minHeight: "360px", maxHeight: "65vh", overflow: "hidden", backgroundColor: "#020617", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {previewDocName && /\.(png|jpe?g|webp|gif)$/i.test(previewDocName) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewDocUrl}
+                  alt={previewDocName}
+                  style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                />
+              ) : (
+                <iframe
+                  src={previewDocUrl}
+                  title="Document Preview"
+                  style={{ width: "100%", height: "100%", minHeight: "450px", border: "none" }}
+                />
+              )}
             </div>
           </div>
         </div>

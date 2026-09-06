@@ -157,8 +157,22 @@ def dependency_health_check(db: Session = Depends(get_db)):
             .scalar()
             or 0
         )
+        running_jobs = (
+            db.query(func.count(BackgroundJob.id))
+            .filter(BackgroundJob.status == JobStatus.RUNNING)
+            .scalar()
+            or 0
+        )
+        retrying_jobs = (
+            db.query(func.count(BackgroundJob.id))
+            .filter(BackgroundJob.status == JobStatus.RETRYING)
+            .scalar()
+            or 0
+        )
         dependencies["queues"] = {
             "background_jobs_pending": pending_jobs,
+            "background_jobs_running": running_jobs,
+            "background_jobs_retrying": retrying_jobs,
             "background_jobs_dead_letter": dead_letter_jobs,
             "outbox_events_pending": pending_outbox,
             "outbox_events_dead_letter": dead_letter_outbox,

@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -580,8 +580,8 @@ def advance_cohort_2_stage(
     from app.services.cohort_governance_service import Cohort2Stage, CohortGovernanceService
     try:
         stage = Cohort2Stage(target_stage)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid stage '{target_stage}'.")
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid stage '{target_stage}'.") from err
     service = CohortGovernanceService(db)
     return service.advance_cohort_stage(stage)
 

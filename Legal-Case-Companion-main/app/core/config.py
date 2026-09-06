@@ -92,6 +92,10 @@ class Settings(BaseSettings):
         "http://127.0.0.1:8000",
     ]
 
+    # Perimeter / Host Validation Configuration
+    RENDER_EXTERNAL_HOSTNAME: str | None = None
+    ALLOWED_HOSTS: list[str] = Field(default_factory=list)
+
     # CSRF Configuration (Phase 6)
     CSRF_SECRET_KEY: str = Field(default="")
 
@@ -126,6 +130,7 @@ class Settings(BaseSettings):
 
     # Email Configuration
     EMAIL_PROVIDER: str = "console"  # console, smtp, sendgrid, ses
+    EMAIL_CHECK_DELIVERABILITY: bool = False
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
     SMTP_USERNAME: str | None = None
@@ -137,6 +142,10 @@ class Settings(BaseSettings):
     SES_SECRET_ACCESS_KEY: str | None = None
     EMAIL_FROM: str = "noreply@legalcasecompanion.com"
     FRONTEND_URL: str = "http://localhost:3000"
+
+    # Commercial & Tax Configuration (Phase 10)
+    COMMERCIAL_PLATFORM_FEE_PERCENT: float = 10.0
+    COMMERCIAL_GST_PERCENT: float = 18.0
 
     # Google OAuth / OpenID Connect Configuration
     GOOGLE_OAUTH_ENABLED: bool = False
@@ -168,6 +177,8 @@ class Settings(BaseSettings):
     # Business & Legal Policy Boundaries (Pending Business/Legal Policy Finalization)
     DOCUMENT_RETENTION_DAYS: int | None = None  # None represents indefinite retention pending formal policy
     CANCELLATION_REFUND_POLICY_MODE: str = "PENDING_BUSINESS_DECISION"  # Options: MANUAL_REVIEW, AUTOMATIC_TIERED, PENDING_BUSINESS_DECISION
+    CLIENT_LATE_CANCELLATION_CUTOFF_HOURS: int = 2
+    CLIENT_LATE_CANCELLATION_REFUND_PERCENT: float = 50.0
 
     # Video Recording Storage Configuration
     LOCAL_RECORDING_STORAGE_PATH: str = "./storage/recordings"
@@ -245,6 +256,24 @@ class Settings(BaseSettings):
                     current_cors.append(origin)
             self.BACKEND_CORS_ORIGINS = current_cors
 
+        # Resolve ALLOWED_HOSTS based on environment if not explicitly set
+        if not self.ALLOWED_HOSTS:
+            if self.ENVIRONMENT in ("staging", "production"):
+                prod_hosts = [
+                    "legalcasecompanion.in",
+                    "api.legalcasecompanion.in",
+                    "www.legalcasecompanion.in",
+                ]
+                if self.RENDER_EXTERNAL_HOSTNAME:
+                    prod_hosts.append(self.RENDER_EXTERNAL_HOSTNAME)
+                self.ALLOWED_HOSTS = prod_hosts
+            else:
+                self.ALLOWED_HOSTS = [
+                    "localhost",
+                    "127.0.0.1",
+                    "testserver",
+                ]
+
         if self.ENVIRONMENT in ("staging", "production"):
             self.DEBUG = False
             if self.ENVIRONMENT == "production":
@@ -254,6 +283,12 @@ class Settings(BaseSettings):
             if "sqlite" in self.DATABASE_URL.lower():
                 raise ValueError(
                     f"{self.ENVIRONMENT.capitalize()} requires PostgreSQL. SQLite is strictly forbidden in {self.ENVIRONMENT}."
+                )
+
+            # Require database TLS in staging and production
+            if "sslmode=disable" in self.DATABASE_URL.lower():
+                raise ValueError(
+                    f"DATABASE_URL must not disable SSL (sslmode=disable) in {self.ENVIRONMENT}."
                 )
 
             # Require Google OAuth configuration only if enabled

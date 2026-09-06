@@ -11,6 +11,7 @@ from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.case import Case
+    from app.models.consultation_document import ConsultationDocument
     from app.models.consultation_note import ConsultationNote
     from app.models.message import Message
     from app.models.payment import Payment
@@ -87,6 +88,9 @@ class Consultation(Base, TimestampMixin, SoftDeleteMixin):
     )
     notes: Mapped[list["ConsultationNote"]] = relationship(
         "ConsultationNote", back_populates="consultation", cascade="all, delete-orphan"
+    )
+    documents: Mapped[list["ConsultationDocument"]] = relationship(
+        "ConsultationDocument", back_populates="consultation", cascade="all, delete-orphan"
     )
     recordings: Mapped[list["VideoRecording"]] = relationship(
         "VideoRecording", back_populates="consultation", cascade="all, delete-orphan"

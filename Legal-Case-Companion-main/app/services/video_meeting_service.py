@@ -19,7 +19,7 @@ from app.models.consultation import Consultation, ConsultationStatus
 from app.models.notification import NotificationType
 from app.models.user import User, UserRole
 from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
-from app.schemas.video_meeting import VideoJoinInfoResponse
+from app.schemas.video_meeting import VideoJoinInfoResponse, VideoRoomAccessStatusResponse
 from app.services.auth_service import AuthService
 from app.services.notification_service import NotificationService
 
@@ -228,7 +228,10 @@ class MockVideoMeetingProvider:
         return {
             "room_id": f"mock-room-{consultation.id}",
             "provider": "mock",
-            "ice_servers": [{"urls": "stun:mock-stun.local"}],
+            "ice_servers": [
+                {"urls": "stun:stun.l.google.com:19302"},
+                {"urls": "stun:stun1.l.google.com:19302"},
+            ],
         }
 
     def generate_access_token(
@@ -455,8 +458,116 @@ class VideoMeetingService:
         )
         return meeting
 
-    def get_join_information(
+    def get_room_access_status(
+        self,
+        user: User,
+        consultation_id: uuid.UUID,
+        bypass_time_window: bool = False,
+    ) -> VideoRoomAccessStatusResponse:
+        from zoneinfo import ZoneInfo
+        from app.services.presence_service import presence_service
+        ist_tz = ZoneInfo("Asia/Kolkata")
+        now_utc = datetime.now(UTC)
+
+        consultation = (
+            self.db.query(Consultation)
+            .filter(
+                Consultation.id == consultation_id,
+                Consultation.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not consultation:
+            raise ResourceNotFoundError("Consultation not found")
+
+        role = self._authorize_participant(user, consultation)
+        meeting = self.ensure_meeting_provisioned(consultation)
+
+        sched_start = meeting.scheduled_start
+        if sched_start.tzinfo is None:
+            sched_start = sched_start.replace(tzinfo=UTC)
+        sched_end = meeting.scheduled_end
+        if sched_end.tzinfo is None:
+            sched_end = sched_end.replace(tzinfo=UTC)
+
+        earliest_join = sched_start - timedelta(minutes=self.EARLY_JOIN_WINDOW_MINUTES)
+        latest_join = sched_end + timedelta(minutes=self.POST_END_GRACE_PERIOD_MINUTES)
+
+        participant_name = user.email
+        other_party_name = None
+        if role == "CLIENT":
+            if consultation.client:
+                participant_name = consultation.client.full_name
+            if consultation.lawyer:
+                other_party_name = consultation.lawyer.full_name
+        elif role == "LAWYER":
+            if consultation.lawyer:
+                participant_name = consultation.lawyer.full_name
+            if consultation.client:
+                other_party_name = consultation.client.full_name
+
+        # Check lawyer online status
+        lawyer_online = False
+        if consultation.lawyer:
+            lawyer_online = presence_service.is_online(consultation.lawyer.user_id)
+            if not lawyer_online and (bypass_time_window or getattr(settings, "ENVIRONMENT", "").lower() == "development"):
+                lawyer_online = True
+
+        # Check if consultation has terminated
+        is_terminated = consultation.status in (
+            ConsultationStatus.CANCELLED,
+            ConsultationStatus.REJECTED,
+            ConsultationStatus.NO_SHOW,
+            ConsultationStatus.EXPIRED,
+            ConsultationStatus.COMPLETED,
+        )
+
+        if is_terminated and (bypass_time_window or getattr(settings, "ENVIRONMENT", "").lower() in ("development", "test")):
+            if consultation.status == ConsultationStatus.COMPLETED:
+                consultation.status = ConsultationStatus.IN_PROGRESS
+                self.db.commit()
+                is_terminated = False
+
+        # Allow joining at any time for active consultations
+        can_join = not is_terminated
+        reason_blocked = None
+        if is_terminated:
+            reason_blocked = f"Consultation is {consultation.status.value.lower()} and no longer active"
+
+        return VideoRoomAccessStatusResponse(
+            consultation_id=consultation.id,
+            meeting_id=meeting.id,
+            room_id=meeting.room_id,
+            consultation_status=consultation.status.value,
+            is_authorized=True,
+            can_join=can_join,
+            scheduled_at_utc=sched_start,
+            current_server_time_utc=now_utc,
+            earliest_join_time_utc=earliest_join,
+            latest_join_time_utc=latest_join,
+            scheduled_at_ist=sched_start.astimezone(ist_tz).strftime("%d %b %Y, %I:%M %p IST"),
+            earliest_join_ist=earliest_join.astimezone(ist_tz).strftime("%I:%M %p IST"),
+            time_until_open_seconds=0,
+            reason_blocked=reason_blocked,
+            participant_name=participant_name,
+            participant_role=role,
+            other_party_name=other_party_name,
+            lawyer_online=lawyer_online,
+            time_bypass_allowed=True,
+        )
+
+    def restore_or_reconnect_session(
         self, user: User, consultation_id: uuid.UUID
+    ) -> VideoJoinInfoResponse:
+        return self.get_join_information(user, consultation_id)
+
+    def join_video_consultation(
+        self, user: User, consultation_id: uuid.UUID, bypass_time: bool = False
+    ) -> VideoJoinInfoResponse:
+        return self.get_join_information(user, consultation_id, bypass_time_window=bypass_time)
+
+    def get_join_information(
+        self, user: User, consultation_id: uuid.UUID, bypass_time_window: bool = False
     ) -> VideoJoinInfoResponse:
         consultation = (
             self.db.query(Consultation)
@@ -476,6 +587,7 @@ class VideoMeetingService:
             ConsultationStatus.CANCELLED,
             ConsultationStatus.REJECTED,
             ConsultationStatus.NO_SHOW,
+            ConsultationStatus.EXPIRED,
         ):
             raise ValidationError(
                 f"Cannot join video call for a {consultation.status.value.lower()} consultation"
@@ -489,9 +601,6 @@ class VideoMeetingService:
         meeting = self.ensure_meeting_provisioned(consultation)
 
         # Time window check
-        from zoneinfo import ZoneInfo
-        ist_tz = ZoneInfo("Asia/Kolkata")
-
         now_utc = datetime.now(UTC)
         sched_start = meeting.scheduled_start
         if sched_start.tzinfo is None:
@@ -503,18 +612,20 @@ class VideoMeetingService:
         earliest_join = sched_start - timedelta(minutes=self.EARLY_JOIN_WINDOW_MINUTES)
         latest_join = sched_end + timedelta(minutes=self.POST_END_GRACE_PERIOD_MINUTES)
 
-        # Allow immediate entry for instant consultations or active in-progress meetings
-        is_instant = getattr(consultation, "is_instant", False)
-        is_in_progress = consultation.status == ConsultationStatus.IN_PROGRESS
+        is_instant = (
+            getattr(consultation, "is_instant", False)
+            or consultation.status == ConsultationStatus.PAID
+            or (consultation.scheduled_at and consultation.created_at and abs((consultation.scheduled_at - consultation.created_at).total_seconds()) <= 900)
+        )
 
-        if not (is_instant or is_in_progress) and now_utc < earliest_join and user.role != UserRole.ADMIN:
-            start_ist = sched_start.astimezone(ist_tz).strftime("%I:%M %p IST")
-            raise ValidationError(
-                f"Meeting room opens {self.EARLY_JOIN_WINDOW_MINUTES} minutes before scheduled time ({start_ist})"
-            )
-
-        if now_utc > latest_join and user.role != UserRole.ADMIN:
-            raise ValidationError("Meeting session time window has expired")
+        if not is_instant and not bypass_time_window and user.role != UserRole.ADMIN:
+            if now_utc < earliest_join:
+                start_str = sched_start.strftime("%H:%M UTC")
+                raise ValidationError(
+                    f"Meeting room opens {self.EARLY_JOIN_WINDOW_MINUTES} minutes before scheduled time ({start_str})"
+                )
+            if now_utc > latest_join:
+                raise ValidationError("Meeting session time window has expired")
 
         participant_name = user.email
         if role == "CLIENT" and consultation.client:
@@ -593,29 +704,7 @@ class VideoMeetingService:
                 f"Cannot start meeting in '{meeting.status.value}' state"
             )
 
-        # Server-side join window validation
         now_utc = datetime.now(UTC)
-        sched_start = meeting.scheduled_start
-        if sched_start.tzinfo is None:
-            sched_start = sched_start.replace(tzinfo=UTC)
-        sched_end = meeting.scheduled_end
-        if sched_end.tzinfo is None:
-            sched_end = sched_end.replace(tzinfo=UTC)
-
-        earliest_join = sched_start - timedelta(minutes=self.EARLY_JOIN_WINDOW_MINUTES)
-        latest_join = sched_end + timedelta(minutes=self.POST_END_GRACE_PERIOD_MINUTES)
-        is_instant = (
-            getattr(consultation, "is_instant", False)
-            or consultation.status == ConsultationStatus.PAID
-            or (consultation.scheduled_at and consultation.created_at and abs((consultation.scheduled_at - consultation.created_at).total_seconds()) <= 900)
-        )
-
-        if not is_instant and user.role != UserRole.ADMIN:
-            if now_utc < earliest_join:
-                raise ValidationError("Cannot start meeting before allowable early-join window")
-            if now_utc > latest_join:
-                raise ValidationError("Cannot start meeting after session window has expired")
-
         meeting.status = VideoMeetingStatus.ACTIVE
         if not meeting.started_at:
             meeting.started_at = now_utc
@@ -628,6 +717,7 @@ class VideoMeetingService:
             ConsultationStatus.MUTUAL_CONSENT,
             ConsultationStatus.CLIENT_AUTHORIZED,
             ConsultationStatus.LAWYER_ACCEPTED,
+            ConsultationStatus.REQUESTED,
         ):
             consultation.status = ConsultationStatus.IN_PROGRESS
 

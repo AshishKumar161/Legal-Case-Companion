@@ -1,16 +1,35 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   margin-bottom: 24px;
 }
 
+.detailsToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color var(--transition-fast);
+}
+
+.detailsToggleBtn:hover {
+  color: var(--navy-primary);
+}
+
 .matrixCard {
-  background: rgba(15, 23, 42, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
   padding: 20px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-sm);
+  margin-top: 4px;
 }
 
 .matrixHeader {
@@ -30,39 +49,33 @@
 
 .matrixTitle {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  color: #f1f5f9;
-  letter-spacing: 0.2px;
+  color: var(--navy-primary);
 }
 
 .kicker {
   font-size: 11px;
-  font-weight: 600;
-  color: #94a3b8;
+  font-weight: 700;
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
 
 .dimensionCard {
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: border-color 0.2s ease;
-}
-
-.dimensionCard:hover {
-  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .dimTopRow {
@@ -75,48 +88,48 @@
 .dimLabel {
   font-size: 13px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--navy-primary);
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
 .stateBadge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
 }
 
 .badgeSuccess {
-  background: rgba(16, 185, 129, 0.18);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: var(--status-safe-bg);
+  color: var(--status-safe-text);
+  border: 1px solid var(--status-safe-border);
 }
 
 .badgeWarning {
-  background: rgba(245, 158, 11, 0.18);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+  border: 1px solid var(--status-warning-border);
 }
 
 .badgeDanger {
-  background: rgba(239, 68, 68, 0.18);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: var(--status-urgent-bg);
+  color: var(--status-urgent-text);
+  border: 1px solid var(--status-urgent-border);
 }
 
 .badgeNeutral {
-  background: rgba(148, 163, 184, 0.18);
-  color: #cbd5e1;
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
 }
 
 .dimReason {
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 12px;
+  color: var(--text-secondary);
   line-height: 1.4;
   margin: 0;
 }
@@ -124,9 +137,9 @@
 .footerDisclaimer {
   margin-top: 14px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 11px;
-  color: #64748b;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: space-between;

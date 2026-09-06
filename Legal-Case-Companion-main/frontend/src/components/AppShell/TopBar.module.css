@@ -1,6 +1,6 @@
 .topBar {
   height: 60px;
-  background: var(--surface-card);
+  background: #FFFFFF;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -21,7 +21,13 @@
   display: none;
   color: var(--text-secondary);
   font-size: 20px;
-  padding: 4px;
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.mobileMenuBtn:hover {
+  background: var(--surface-subtle);
+  color: var(--navy-primary);
 }
 
 .breadcrumbs {
@@ -35,19 +41,20 @@
 .breadcrumbLink {
   color: var(--text-secondary);
   transition: color 0.15s ease;
+  font-weight: 500;
 }
 
 .breadcrumbLink:hover {
-  color: #fff;
+  color: var(--navy-primary);
 }
 
 .breadcrumbSeparator {
-  color: var(--text-subtle);
+  color: var(--border-hover);
 }
 
 .breadcrumbActive {
-  color: #fff;
-  font-weight: 500;
+  color: var(--navy-primary);
+  font-weight: 600;
 }
 
 .searchTriggerBtn {
@@ -56,7 +63,7 @@
   gap: 8px;
   background: var(--surface-subtle);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: 6px 12px;
   color: var(--text-muted);
   font-size: 13px;
@@ -65,19 +72,30 @@
 }
 
 .searchTriggerBtn:hover {
-  background: var(--surface-hover);
+  background: #FFFFFF;
   border-color: var(--border-hover);
-  color: var(--text-primary);
+  color: var(--navy-primary);
+}
+
+.searchLabel {
+  display: inline;
+}
+
+@media (max-width: 640px) {
+  .searchLabel {
+    display: none;
+  }
 }
 
 .searchTriggerKbd {
   font-size: 10px;
-  font-family: monospace;
-  background: var(--surface-card);
+  font-family: inherit;
+  background: #FFFFFF;
   border: 1px solid var(--border-subtle);
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: 4px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .rightSection {
@@ -91,27 +109,33 @@
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 12px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .logoutBtn {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid var(--border-subtle);
+  background: #FFFFFF;
+  font-weight: 500;
   transition: all 0.15s ease;
 }
 
 .logoutBtn:hover {
-  color: #fff;
-  background: var(--surface-hover);
-  border-color: var(--border-hover);
+  background: var(--surface-subtle);
+  color: var(--urgent);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .mobileMenuBtn {
-    display: block;
+    display: flex;
+  }
+
+  .topBar {
+    padding: 0 16px;
   }
 }

@@ -266,7 +266,7 @@ def test_timezone_aware_timestamps(db: Session):
 
 
 def test_alembic_migration_head_consistency():
-    """Verify Alembic migration environment has exactly one single head."""
+    """Verify Alembic migration environment has exactly one single head and a continuous, acyclic revision graph."""
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
@@ -274,6 +274,15 @@ def test_alembic_migration_head_consistency():
     script = ScriptDirectory.from_config(config)
     heads = script.get_heads()
 
-    assert len(heads) == 1, f"Expected 1 migration head, found {len(heads)}: {heads}"
-    assert heads[0] == "o1a2b3c4d5e6"
+    assert len(heads) == 1, f"Expected exactly 1 migration head, found {len(heads)}: {heads}"
+    head_rev = heads[0]
+    assert head_rev is not None, "Head revision identifier must not be empty"
+
+    # Verify migration graph resolution: walk revisions from base to current head
+    revisions = list(script.walk_revisions(base="base", head=head_rev))
+    assert len(revisions) > 0, "Expected at least one migration revision in the repository"
+
+    # Verify no duplicate revision identifiers across the graph
+    rev_ids = [rev.revision for rev in revisions]
+    assert len(rev_ids) == len(set(rev_ids)), "Duplicate migration revision identifiers detected in chain"
 

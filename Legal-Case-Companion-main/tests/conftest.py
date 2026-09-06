@@ -25,6 +25,7 @@ if not os.environ.get("JWT_PRIVATE_KEY") or not os.environ.get("JWT_PUBLIC_KEY")
     os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
 
 os.environ["EMAIL_PROVIDER"] = "console"
+os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_123")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -32,6 +33,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
+
+settings.STRIPE_WEBHOOK_SECRET = "whsec_test_secret_123"
 
 # Use PostgreSQL for integration tests as requested
 from app.db.database import get_db

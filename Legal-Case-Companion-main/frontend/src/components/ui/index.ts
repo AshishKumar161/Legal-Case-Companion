@@ -20,3 +20,6 @@ export * from "./EmptyState";
 export * from "./ErrorState";
 export * from "./Avatar";
 export * from "./TimelineItem";
+export * from "./PageHeader";
+export * from "./SectionHeader";
+export * from "./Icons";

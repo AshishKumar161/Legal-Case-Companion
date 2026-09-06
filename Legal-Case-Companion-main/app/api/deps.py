@@ -42,8 +42,8 @@ def get_current_user(
     if not user:
         raise AuthenticationError("User not found")
 
-    # Phase 4: Compare against enum, not string
-    if user.account_status != AccountStatus.ACTIVE:
+    # Phase 4 & Phase 14: Active, verified, and onboarding registered accounts are permitted
+    if user.account_status not in (AccountStatus.ACTIVE, AccountStatus.VERIFIED, AccountStatus.REGISTERED):
         raise AuthenticationError("User is inactive")
 
     return user

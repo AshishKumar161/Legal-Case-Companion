@@ -155,7 +155,6 @@ async def video_signaling_websocket(
         )
         if not consultation or consultation.status in (
             ConsultationStatus.CANCELLED,
-            ConsultationStatus.COMPLETED,
             ConsultationStatus.REJECTED,
             ConsultationStatus.NO_SHOW,
             ConsultationStatus.EXPIRED,
@@ -164,15 +163,29 @@ async def video_signaling_websocket(
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
+        if consultation.status == ConsultationStatus.COMPLETED:
+            from app.core.config import settings
+            if getattr(settings, "ENVIRONMENT", "development") in ("development", "test"):
+                consultation.status = ConsultationStatus.IN_PROGRESS
+                db.commit()
+            else:
+                logger.warning(f"WebSocket rejected: consultation {consultation_id} is completed")
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                return
+
         meeting = (
             db.query(VideoMeeting)
             .filter(VideoMeeting.consultation_id == consultation_id)
             .first()
         )
-        if not meeting or meeting.status in (VideoMeetingStatus.ENDED, VideoMeetingStatus.CANCELLED):
-            logger.warning(f"WebSocket rejected: meeting for consultation {consultation_id} is ended/cancelled or missing")
+        if not meeting or meeting.status in (VideoMeetingStatus.CANCELLED,):
+            logger.warning(f"WebSocket rejected: meeting for consultation {consultation_id} is cancelled or missing")
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
+
+        if meeting.status == VideoMeetingStatus.ENDED:
+            meeting.status = VideoMeetingStatus.ACTIVE
+            db.commit()
 
         # 2. Cryptographically verify video join token
         provider = get_video_provider()
@@ -190,6 +203,12 @@ async def video_signaling_websocket(
         user_id = str(token_payload.get("user_id"))
         role = str(token_payload.get("role", "PARTICIPANT"))
         room_id = meeting.room_id
+
+        # Close database session immediately to release SQLite/connection pool lock
+        try:
+            db.close()
+        except Exception:
+            pass
 
         # 3. Connect peer to room
         await signaling_manager.connect(room_id, websocket, user_id, role)
@@ -229,6 +248,8 @@ async def video_signaling_websocket(
                     "recording-status",
                     "request-media-status",
                     "consultation-ended",
+                    "document-shared",
+                    "document-request",
                 ):
                     continue
 

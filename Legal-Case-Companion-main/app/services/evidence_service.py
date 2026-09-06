@@ -3,7 +3,8 @@ import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import desc
+from sqlalchemy import desc, func, or_, String
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.authorization import (
@@ -24,9 +25,10 @@ from app.core.file_validation import (
 from app.core.identifiers import generate_uuid7
 from app.core.metrics import metrics_collector
 from app.core.storage import get_storage_provider
-from app.models.case import CaseParticipant, ParticipantStatus
+from app.models.case import Case, CaseParticipant, CaseTimelineEvent, ParticipantStatus
 from app.models.consultation import Consultation
 from app.models.evidence import (
+    CaseExhibit,
     Evidence,
     EvidenceAccessGrant,
     EvidenceCustodyAction,
@@ -38,12 +40,20 @@ from app.models.evidence import (
 )
 from app.models.notification import NotificationType
 from app.models.user import User, UserRole
+from app.models.workflow import CaseHearing
 from app.schemas.evidence import (
+    CaseExhibitCreateRequest,
+    CaseExhibitUpdateRequest,
+    EvidenceBatchAction,
+    EvidenceBatchRequest,
     EvidenceLegalHoldRequest,
     EvidenceRevokeRequest,
     EvidenceShareRequest,
+    EvidenceUpdateRequest,
     EvidenceUploadInitRequest,
     EvidenceVersionCreateRequest,
+    ShareableParticipantResponse,
+    SharedEvidenceItemResponse,
 )
 from app.services.auth_service import AuthService
 from app.services.notification_service import NotificationService
@@ -53,6 +63,16 @@ from app.services.scanner_service import DefaultMalwareScanner, MalwareScanner
 logger = logging.getLogger(__name__)
 
 MAX_EVIDENCE_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
+
+
+def _resolve_user_name(u: User | None) -> str:
+    if not u:
+        return "Authorized Participant"
+    if getattr(u, "client_profile", None) and u.client_profile.full_name:
+        return u.client_profile.full_name
+    if getattr(u, "lawyer_profile", None) and u.lawyer_profile.full_name:
+        return u.lawyer_profile.full_name
+    return u.email.split("@")[0] if u.email else "User"
 
 
 class EvidenceService:
@@ -133,6 +153,7 @@ class EvidenceService:
             status=EvidenceStatus.UPLOADING,
             sensitivity=req.sensitivity,
             original_filename=safe_filename,
+            tags=getattr(req, "tags", None) or [],
             retention_until=req.retention_until,
         )
         self.db.add(evidence)
@@ -300,7 +321,27 @@ class EvidenceService:
         evidence.status = EvidenceStatus.ACTIVE
         evidence.current_version_id = version.id
 
-        # 5. Record custody chronology
+        # 5. Duplicate detection within case scope
+        existing_dup = (
+            self.db.query(EvidenceVersion)
+            .join(Evidence, Evidence.id == EvidenceVersion.evidence_id)
+            .filter(
+                Evidence.case_id == case_id,
+                EvidenceVersion.sha256 == digest,
+                EvidenceVersion.evidence_id != evidence_id,
+                Evidence.deleted_at.is_(None),
+            )
+            .first()
+        )
+        dup_metadata = {}
+        if existing_dup:
+            dup_metadata = {
+                "duplicate_detected": True,
+                "duplicate_of_evidence_id": str(existing_dup.evidence_id),
+                "duplicate_version_number": existing_dup.version_number,
+            }
+
+        # 6. Record custody chronology
         self._record_custody_event(
             evidence_id=evidence_id,
             version_id=version_id,
@@ -313,7 +354,7 @@ class EvidenceService:
             version_id=version_id,
             actor_user_id=user.id,
             action=EvidenceCustodyAction.SCAN_PASSED,
-            metadata={"sha256": digest},
+            metadata={"sha256": digest, **dup_metadata},
         )
 
         # 6. Transactional Outbox Event for activated evidence
@@ -641,6 +682,141 @@ class EvidenceService:
         self.db.refresh(grant)
         return grant
 
+    def get_shareable_participants(
+        self,
+        user: User,
+        case_id: uuid.UUID,
+        evidence_id: uuid.UUID,
+    ) -> list[ShareableParticipantResponse]:
+        """Resolves all eligible case participants who can be granted access to this evidence item."""
+        evidence = authorize_evidence_management(self.db, user, evidence_id)
+        if evidence.case_id != case_id:
+            raise ResourceNotFoundError("Evidence not found")
+
+        # Gather eligible users
+        participants: dict[uuid.UUID, ShareableParticipantResponse] = {}
+
+        # 1. Active case participants
+        case_participants = (
+            self.db.query(CaseParticipant)
+            .filter(
+                CaseParticipant.case_id == case_id,
+                CaseParticipant.status == ParticipantStatus.ACTIVE,
+            )
+            .all()
+        )
+        for cp in case_participants:
+            if cp.user_id == user.id:
+                continue
+            u = cp.user
+            if not u or u.deleted_at is not None:
+                continue
+            role_label = cp.participant_role.value if hasattr(cp.participant_role, "value") else str(cp.participant_role)
+            participants[u.id] = ShareableParticipantResponse(
+                user_id=u.id,
+                full_name=u.full_name or u.email.split("@")[0],
+                email=u.email,
+                role=role_label,
+                has_access=False,
+                current_access_level=None,
+                grant_id=None,
+            )
+
+        # 2. Associated consultation lawyers
+        consultations = (
+            self.db.query(Consultation)
+            .filter(Consultation.case_id == case_id)
+            .all()
+        )
+        for c in consultations:
+            if c.lawyer and c.lawyer.user:
+                lawyer_user = c.lawyer.user
+                if lawyer_user.id != user.id and lawyer_user.id not in participants and lawyer_user.deleted_at is None:
+                    participants[lawyer_user.id] = ShareableParticipantResponse(
+                        user_id=lawyer_user.id,
+                        full_name=c.lawyer.full_name or lawyer_user.email.split("@")[0],
+                        email=lawyer_user.email,
+                        role="ADVOCATE",
+                        has_access=False,
+                        current_access_level=None,
+                        grant_id=None,
+                    )
+
+        # 3. Check existing active grants for this evidence item
+        now = datetime.now(UTC)
+        grants = (
+            self.db.query(EvidenceAccessGrant)
+            .filter(
+                EvidenceAccessGrant.evidence_id == evidence_id,
+                EvidenceAccessGrant.revoked_at.is_(None),
+                or_(EvidenceAccessGrant.expires_at.is_(None), EvidenceAccessGrant.expires_at > now),
+            )
+            .all()
+        )
+        for g in grants:
+            if g.grantee_user_id in participants:
+                participants[g.grantee_user_id].has_access = True
+                participants[g.grantee_user_id].current_access_level = g.access_level
+                participants[g.grantee_user_id].grant_id = g.id
+
+        return list(participants.values())
+
+    def list_shared_with_me(
+        self,
+        user: User,
+        case_id: uuid.UUID | None = None,
+    ) -> list[SharedEvidenceItemResponse]:
+        """Lists all evidence items explicitly shared with the current user across authorized cases."""
+        now = datetime.now(UTC)
+        query = (
+            self.db.query(EvidenceAccessGrant)
+            .join(Evidence, EvidenceAccessGrant.evidence_id == Evidence.id)
+            .filter(
+                EvidenceAccessGrant.grantee_user_id == user.id,
+                EvidenceAccessGrant.revoked_at.is_(None),
+                Evidence.deleted_at.is_(None),
+                or_(EvidenceAccessGrant.expires_at.is_(None), EvidenceAccessGrant.expires_at > now),
+            )
+        )
+        if case_id is not None:
+            query = query.filter(Evidence.case_id == case_id)
+
+        grants = query.order_by(EvidenceAccessGrant.created_at.desc()).all()
+        results: list[SharedEvidenceItemResponse] = []
+
+        for g in grants:
+            ev = g.evidence
+            if not ev or ev.deleted_at is not None:
+                continue
+            cur_ver = ev.current_version
+            if not cur_ver:
+                continue
+
+            case_title = ev.case.title if ev.case else "Untitled Case"
+            granted_by_name = g.granted_by.full_name if g.granted_by else "Authorized Participant"
+
+            results.append(
+                SharedEvidenceItemResponse(
+                    id=ev.id,
+                    case_id=ev.case_id,
+                    case_title=case_title,
+                    title=ev.title,
+                    description=ev.description,
+                    category=ev.category,
+                    original_filename=cur_ver.original_filename,
+                    mime_type=cur_ver.content_type,
+                    size_bytes=cur_ver.size_bytes,
+                    access_level=g.access_level,
+                    granted_by_name=granted_by_name,
+                    granted_at=g.created_at,
+                    expires_at=g.expires_at,
+                    version_number=cur_ver.version_number,
+                    sha256=cur_ver.sha256 or "",
+                )
+            )
+
+        return results
+
     def get_download_url(
         self,
         user: User,
@@ -827,6 +1003,8 @@ class EvidenceService:
         user: User,
         case_id: uuid.UUID,
         evidence_id: uuid.UUID,
+        skip: int = 0,
+        limit: int = 100,
     ) -> list[EvidenceCustodyEvent]:
         """Retrieves chronological chain of custody events for provenance audit."""
         evidence, _ = authorize_evidence_access(self.db, user, evidence_id, required_level="VIEW")
@@ -837,6 +1015,8 @@ class EvidenceService:
             self.db.query(EvidenceCustodyEvent)
             .filter(EvidenceCustodyEvent.evidence_id == evidence_id)
             .order_by(EvidenceCustodyEvent.timestamp.asc())
+            .offset(skip)
+            .limit(limit)
             .all()
         )
         return events
@@ -892,3 +1072,530 @@ class EvidenceService:
             self.db.commit()
             logger.warning(f"Detected {missing_storage_count} active evidence record(s) missing from storage.")
         return {"missing_storage_objects": missing_storage_count}
+
+    def update_evidence(
+        self,
+        user: User,
+        case_id: uuid.UUID,
+        evidence_id: uuid.UUID,
+        req: EvidenceUpdateRequest,
+    ) -> Evidence:
+        """Updates mutable evidence metadata (title, description, category, sensitivity, bounded tags)."""
+        evidence = authorize_evidence_management(self.db, user, evidence_id)
+        if evidence.case_id != case_id:
+            raise ResourceNotFoundError("Evidence not found")
+
+        if req.title is not None:
+            evidence.title = req.title.strip()
+        if req.description is not None:
+            evidence.description = req.description.strip() if req.description else None
+        if req.sensitivity is not None:
+            evidence.sensitivity = req.sensitivity
+        if req.category is not None and req.category != evidence.category:
+            old_cat = evidence.category
+            evidence.category = req.category
+            self._record_custody_event(
+                evidence_id=evidence_id,
+                actor_user_id=user.id,
+                action=EvidenceCustodyAction.CATEGORY_UPDATED,
+                metadata={"old": str(old_cat), "new": str(req.category)},
+            )
+        if req.tags is not None:
+            evidence.tags = req.tags
+            self._record_custody_event(
+                evidence_id=evidence_id,
+                actor_user_id=user.id,
+                action=EvidenceCustodyAction.TAGS_UPDATED,
+                metadata={"tags": req.tags},
+            )
+
+        self.db.commit()
+        self.db.refresh(evidence)
+        return evidence
+
+    def archive_evidence(
+        self,
+        user: User,
+        case_id: uuid.UUID,
+        evidence_id: uuid.UUID,
+    ) -> Evidence:
+        """Transitions active evidence to ARCHIVED status, verifying legal hold protections."""
+        evidence = authorize_evidence_management(self.db, user, evidence_id)
+        if evidence.case_id != case_id:
+            raise ResourceNotFoundError("Evidence not found")
+
+        if evidence.legal_hold:
+            raise AppException(
+                status_code=403,
+                code="LEGAL_HOLD_ACTIVE",
+                message="Evidence is under legal hold and cannot be archived",
+            )
+
+        evidence.status = EvidenceStatus.ARCHIVED
+        self._record_custody_event(
+            evidence_id=evidence_id,
+            actor_user_id=user.id,
+            action=EvidenceCustodyAction.ARCHIVED,
+        )
+        self.db.commit()
+        self.db.refresh(evidence)
+        return evidence
+
+    def restore_evidence(
+        self,
+        user: User,
+        case_id: uuid.UUID,
+        evidence_id: uuid.UUID,
+    ) -> Evidence:
+        """Restores archived evidence to ACTIVE status."""
+        evidence = authorize_evidence_management(self.db, user, evidence_id)
+        if evidence.case_id != case_id:
+            raise ResourceNotFoundError("Evidence not found")
+
+        evidence.status = EvidenceStatus.ACTIVE
+        self._record_custody_event(
+            evidence_id=evidence_id,
+            actor_user_id=user.id,
+            action=EvidenceCustodyAction.RESTORED,
+        )
+        self.db.commit()
+        self.db.refresh(evidence)
+        return evidence
+
+    def batch_execute(
+        self,
+        user: User,
+        case_id: uuid.UUID,
+        req: EvidenceBatchRequest,
+    ) -> tuple[int, list[uuid.UUID], str]:
+        """Executes atomic batch mutations across multiple evidence items within the case.
+
+        Fails closed: if any item ID does not exist in the case or fails authorization,
+        the entire transaction aborts.
+        """
+        authorize_case_access(self.db, user, case_id)
+
+        requested_ids = list(dict.fromkeys(req.evidence_ids))
+        items = (
+            self.db.query(Evidence)
+            .filter(
+                Evidence.id.in_(requested_ids),
+                Evidence.case_id == case_id,
+                Evidence.deleted_at.is_(None),
+            )
+            .all()
+        )
+        if len(items) != len(requested_ids):
+            raise ResourceNotFoundError(
+                "One or more evidence IDs were not found in this case scope"
+            )
+
+        # Authorize management permission on every item
+        for item in items:
+            authorize_evidence_management(self.db, user, item.id)
+
+        affected_ids: list[uuid.UUID] = []
+
+        if req.action == EvidenceBatchAction.ARCHIVE:
+            for item in items:
+                if item.legal_hold:
+                    raise AppException(
+                        status_code=403,
+                        code="LEGAL_HOLD_ACTIVE",
+                        message=f"Evidence '{item.title}' is under active legal hold and cannot be archived",
+                    )
+                item.status = EvidenceStatus.ARCHIVED
+                self._record_custody_event(
+                    evidence_id=item.id,
+                    actor_user_id=user.id,
+                    action=EvidenceCustodyAction.ARCHIVED,
+                    metadata={"batch": True},
+                )
+                affected_ids.append(item.id)
+            details = f"Archived {len(affected_ids)} evidence item(s)"
+
+        elif req.action == EvidenceBatchAction.RESTORE:
+            for item in items:
+                item.status = EvidenceStatus.ACTIVE
+                self._record_custody_event(
+                    evidence_id=item.id,
+                    actor_user_id=user.id,
+                    action=EvidenceCustodyAction.RESTORED,
+                    metadata={"batch": True},
+                )
+                affected_ids.append(item.id)
+            details = f"Restored {len(affected_ids)} evidence item(s) to ACTIVE"
+
+        elif req.action == EvidenceBatchAction.ASSIGN_CATEGORY:
+            if not req.category:
+                raise ValidationError("category parameter is required for ASSIGN_CATEGORY")
+            for item in items:
+                item.category = req.category
+                self._record_custody_event(
+                    evidence_id=item.id,
+                    actor_user_id=user.id,
+                    action=EvidenceCustodyAction.CATEGORY_UPDATED,
+                    metadata={"category": str(req.category), "batch": True},
+                )
+                affected_ids.append(item.id)
+            details = f"Assigned category {req.category.value} to {len(affected_ids)} item(s)"
+
+        elif req.action == EvidenceBatchAction.ADD_TAGS:
+            if not req.tags:
+                raise ValidationError("tags parameter is required for ADD_TAGS")
+            for item in items:
+                current_tags = list(item.tags or [])
+                for t in req.tags:
+                    if t not in current_tags and len(current_tags) < 20:
+                        current_tags.append(t)
+                item.tags = current_tags
+                self._record_custody_event(
+                    evidence_id=item.id,
+                    actor_user_id=user.id,
+                    action=EvidenceCustodyAction.TAGS_UPDATED,
+                    metadata={"tags": current_tags, "batch": True},
+                )
+                affected_ids.append(item.id)
+            details = f"Added tags to {len(affected_ids)} item(s)"
+
+        elif req.action == EvidenceBatchAction.REMOVE_TAGS:
+            if not req.tags:
+                raise ValidationError("tags parameter is required for REMOVE_TAGS")
+            remove_set = set(req.tags)
+            for item in items:
+                current_tags = [t for t in (item.tags or []) if t not in remove_set]
+                item.tags = current_tags
+                self._record_custody_event(
+                    evidence_id=item.id,
+                    actor_user_id=user.id,
+                    action=EvidenceCustodyAction.TAGS_UPDATED,
+                    metadata={"tags": current_tags, "batch": True},
+                )
+                affected_ids.append(item.id)
+            details = f"Removed tags from {len(affected_ids)} item(s)"
+
+        else:
+            raise ValidationError(f"Unsupported batch action: {req.action}")
+
+        self.db.commit()
+        return len(affected_ids), affected_ids, details
+
+    def create_exhibit(
+        self,
+        user: User,
+        case_id: uuid.UUID,
+        evidence_id: uuid.UUID,
+        req: CaseExhibitCreateRequest,
+    ) -> CaseExhibit:
+        """Creates a formal, version-aware case exhibit with deterministic, collision-safe numbering."""
+        authorize_case_access(self.db, user, case_id)
+        evidence, _ = authorize_evidence_access(self.db, user, evidence_id, required_level="VIEW")
+        if evidence.case_id != case_id:
+            raise ResourceNotFoundError("Evidence not found")
+
+        # Concurrency protection: row lock on parent case
+        case = (
+            self.db.query(Case)
+            .filter(Case.id == case_id)
+            .with_for_update()
+            .first()
+        )
+        if not case:
+            raise ResourceNotFoundError("Case not found")
+
+        # 1. Resolve and validate Version
+        if req.version_id:
+            version = (
+                self.db.query(EvidenceVersion)
+                .filter(
+                    EvidenceVersion.id == req.version_id,
+                    EvidenceVersion.evidence_id == evidence_id,
+                )
+                .first()
+            )
+            if not version:
+                raise ValidationError("Specified evidence version does not belong to this evidence item")
+        else:
+            version = evidence.current_version
+            if not version:
+                raise ValidationError("Evidence item has no active version to mark as exhibit")
+
+        # 2. Resolve and validate Court Hearing if specified
+        hearing = None
+        if req.hearing_id:
+            hearing = (
+                self.db.query(CaseHearing)
+                .filter(
+                    CaseHearing.id == req.hearing_id,
+                    CaseHearing.case_id == case_id,
+                    CaseHearing.deleted_at.is_(None),
+                )
+                .first()
+            )
+            if not hearing:
+                raise ValidationError("Specified hearing not found or does not belong to this case")
+
+        # 3. Determine and allocate Exhibit Number
+        if req.exhibit_number and req.exhibit_number.strip():
+            ex_num = req.exhibit_number.strip()
+            existing = (
+                self.db.query(CaseExhibit)
+                .filter(
+                    CaseExhibit.case_id == case_id,
+                    CaseExhibit.exhibit_number == ex_num,
+                    CaseExhibit.deleted_at.is_(None),
+                )
+                .first()
+            )
+            if existing:
+                raise ValidationError(f"Exhibit number '{ex_num}' is already in use for this case")
+        else:
+            all_existing = (
+                self.db.query(CaseExhibit.exhibit_number)
+                .filter(
+                    CaseExhibit.case_id == case_id,
+                    CaseExhibit.deleted_at.is_(None),
+                )
+                .all()
+            )
+            existing_numbers = [row[0] for row in all_existing]
+            ex_num = _generate_next_exhibit_letter(existing_numbers)
+
+        exhibit = CaseExhibit(
+            id=generate_uuid7(),
+            case_id=case_id,
+            evidence_id=evidence_id,
+            version_id=version.id,
+            hearing_id=req.hearing_id,
+            exhibit_number=ex_num,
+            title=req.title.strip(),
+            description=req.description.strip() if req.description else None,
+            relevant_date=req.relevant_date,
+            created_by_user_id=user.id,
+        )
+        self.db.add(exhibit)
+
+        # 4. Custody Ledger Event
+        self._record_custody_event(
+            evidence_id=evidence_id,
+            version_id=version.id,
+            actor_user_id=user.id,
+            action=EvidenceCustodyAction.EXHIBIT_CREATED,
+            metadata={
+                "exhibit_id": str(exhibit.id),
+                "exhibit_number": ex_num,
+                "version_number": version.version_number,
+                "hearing_id": str(req.hearing_id) if req.hearing_id else None,
+            },
+        )
+
+        # 5. Informational Case Timeline Integration
+        timeline_desc = f"{ex_num} ({exhibit.title}) marked for evidence v{version.version_number}"
+        if hearing:
+            date_str = hearing.hearing_at.strftime("%d %b %Y") if hearing.hearing_at else ""
+            timeline_desc += f" and linked to hearing '{hearing.purpose}' on {date_str}"
+
+        timeline_event = CaseTimelineEvent(
+            id=generate_uuid7(),
+            case_id=case_id,
+            actor_user_id=user.id,
+            event_type="EXHIBIT_MARKED",
+            description=timeline_desc,
+            event_metadata={
+                "exhibit_id": str(exhibit.id),
+                "exhibit_number": ex_num,
+                "evidence_id": str(evidence_id),
+                "version_id": str(version.id),
+                "hearing_id": str(req.hearing_id) if req.hearing_id else None,
+            },
+        )
+        self.db.add(timeline_event)
+
+        try:
+            self.db.commit()
+        except IntegrityError as ie:
+            self.db.rollback()
+            raise AppException(
+                status_code=409,
+                code="EXHIBIT_COLLISION",
+                message="Exhibit number collision detected during concurrent allocation. Please retry.",
+            ) from ie
+
+        self.db.refresh(exhibit)
+        metrics_collector.record_evidence_operation("EXHIBIT_CREATE", "SUCCESS")
+        return exhibit
+
+    def list_exhibits(
+        self,
+        user: User,
+        case_id: uuid.UUID,
+        evidence_id: uuid.UUID | None = None,
+        hearing_id: uuid.UUID | None = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> list[CaseExhibit]:
+        """Lists exhibits for an authorized case, with optional evidence or hearing scoping."""
+        authorize_case_access(self.db, user, case_id)
+        query = (
+            self.db.query(CaseExhibit)
+            .filter(CaseExhibit.case_id == case_id, CaseExhibit.deleted_at.is_(None))
+        )
+        if evidence_id:
+            query = query.filter(CaseExhibit.evidence_id == evidence_id)
+        if hearing_id:
+            query = query.filter(CaseExhibit.hearing_id == hearing_id)
+
+        return query.order_by(CaseExhibit.created_at.asc()).offset(skip).limit(limit).all()
+
+    def get_exhibit(
+        self,
+        user: User,
+        case_id: uuid.UUID,
+        exhibit_id: uuid.UUID,
+    ) -> CaseExhibit:
+        """Retrieves a specific case exhibit by ID."""
+        authorize_case_access(self.db, user, case_id)
+        exhibit = (
+            self.db.query(CaseExhibit)
+            .filter(
+                CaseExhibit.id == exhibit_id,
+                CaseExhibit.case_id == case_id,
+                CaseExhibit.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not exhibit:
+            raise ResourceNotFoundError("Exhibit not found")
+        return exhibit
+
+    def update_exhibit(
+        self,
+        user: User,
+        case_id: uuid.UUID,
+        exhibit_id: uuid.UUID,
+        req: CaseExhibitUpdateRequest,
+    ) -> CaseExhibit:
+        """Updates exhibit details or renumbers with collision protection and custody audit."""
+        authorize_case_access(self.db, user, case_id)
+        exhibit = (
+            self.db.query(CaseExhibit)
+            .filter(
+                CaseExhibit.id == exhibit_id,
+                CaseExhibit.case_id == case_id,
+                CaseExhibit.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not exhibit:
+            raise ResourceNotFoundError("Exhibit not found")
+
+        if req.title is not None:
+            exhibit.title = req.title.strip()
+        if req.description is not None:
+            exhibit.description = req.description.strip() if req.description else None
+        if req.relevant_date is not None:
+            exhibit.relevant_date = req.relevant_date
+
+        if req.hearing_id is not None:
+            hearing = (
+                self.db.query(CaseHearing)
+                .filter(
+                    CaseHearing.id == req.hearing_id,
+                    CaseHearing.case_id == case_id,
+                    CaseHearing.deleted_at.is_(None),
+                )
+                .first()
+            )
+            if not hearing:
+                raise ValidationError("Specified hearing not found or does not belong to this case")
+            exhibit.hearing_id = req.hearing_id
+
+        if req.exhibit_number and req.exhibit_number.strip() != exhibit.exhibit_number:
+            new_num = req.exhibit_number.strip()
+            # Concurrency check
+            existing = (
+                self.db.query(CaseExhibit)
+                .filter(
+                    CaseExhibit.case_id == case_id,
+                    CaseExhibit.exhibit_number == new_num,
+                    CaseExhibit.id != exhibit_id,
+                    CaseExhibit.deleted_at.is_(None),
+                )
+                .first()
+            )
+            if existing:
+                raise ValidationError(f"Exhibit number '{new_num}' is already in use for this case")
+            old_num = exhibit.exhibit_number
+            exhibit.exhibit_number = new_num
+            self._record_custody_event(
+                evidence_id=exhibit.evidence_id,
+                version_id=exhibit.version_id,
+                actor_user_id=user.id,
+                action=EvidenceCustodyAction.EXHIBIT_RENUMBERED,
+                metadata={"old": old_num, "new": new_num, "exhibit_id": str(exhibit.id)},
+            )
+
+        self.db.commit()
+        self.db.refresh(exhibit)
+        return exhibit
+
+    def delete_exhibit(
+        self,
+        user: User,
+        case_id: uuid.UUID,
+        exhibit_id: uuid.UUID,
+    ) -> None:
+        """Soft-deletes a case exhibit association with custody logging."""
+        authorize_case_access(self.db, user, case_id)
+        exhibit = (
+            self.db.query(CaseExhibit)
+            .filter(
+                CaseExhibit.id == exhibit_id,
+                CaseExhibit.case_id == case_id,
+                CaseExhibit.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not exhibit:
+            raise ResourceNotFoundError("Exhibit not found")
+
+        exhibit.deleted_at = datetime.now(UTC)
+        self._record_custody_event(
+            evidence_id=exhibit.evidence_id,
+            version_id=exhibit.version_id,
+            actor_user_id=user.id,
+            action=EvidenceCustodyAction.DELETION_REQUESTED,
+            metadata={"deleted_exhibit_id": str(exhibit.id), "exhibit_number": exhibit.exhibit_number},
+        )
+        self.db.commit()
+
+
+def _generate_next_exhibit_letter(existing_numbers: list[str]) -> str:
+    """Calculates the next common-law sequential exhibit letter:
+
+    A, B, C, ..., Z, AA, AB, ..., AZ, BA...
+    """
+    indices: set[int] = set()
+    for num in existing_numbers:
+        clean = num.strip()
+        if clean.upper().startswith("EXHIBIT "):
+            clean = clean[8:].strip()
+        if clean.isalpha() and clean.isupper():
+            val = 0
+            for char in clean:
+                val = val * 26 + (ord(char) - ord("A") + 1)
+            indices.add(val)
+
+    next_idx = 1
+    while next_idx in indices:
+        next_idx += 1
+
+    result = []
+    n = next_idx
+    while n > 0:
+        rem = (n - 1) % 26
+        result.append(chr(ord("A") + rem))
+        n = (n - 1) // 26
+    label = "".join(reversed(result))
+    return f"Exhibit {label}"
+

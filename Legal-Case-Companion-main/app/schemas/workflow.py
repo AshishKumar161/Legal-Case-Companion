@@ -25,6 +25,9 @@ class CaseDeadlineBase(BaseModel):
     source_reference: str | None = None
     confidence_score: float = Field(default=1.0, ge=0.0, le=1.0)
     is_confirmed: bool = True
+    linked_hearing_id: uuid.UUID | None = None
+    retrieval_method: str | None = None
+    retrieved_at: datetime | None = None
 
 
 class CaseDeadlineCreate(BaseModel):
@@ -35,6 +38,8 @@ class CaseDeadlineCreate(BaseModel):
     source_type: DeadlineSourceType = DeadlineSourceType.MANUAL
     source_reference: str | None = None
     is_confirmed: bool = True
+    linked_hearing_id: uuid.UUID | None = None
+    retrieval_method: str | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -46,6 +51,7 @@ class CaseDeadlineUpdate(BaseModel):
     deadline_type: DeadlineType | None = None
     status: DeadlineStatus | None = None
     is_confirmed: bool | None = None
+    linked_hearing_id: uuid.UUID | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -55,6 +61,7 @@ class CaseDeadlineResponse(CaseDeadlineBase):
     case_id: uuid.UUID
     completed_at: datetime | None = None
     created_by_user_id: uuid.UUID | None = None
+    confirmed_by_user_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -67,6 +74,9 @@ class CaseHearingBase(BaseModel):
     purpose: str = Field(..., min_length=2, max_length=255)
     status: HearingStatus = HearingStatus.SCHEDULED
     bench_or_coram: str | None = None
+    court_number: str | None = None
+    hearing_type: str | None = None
+    next_date: datetime | None = None
     notes: str | None = None
     source_type: HearingSourceType = HearingSourceType.MANUAL
     source_reference: str | None = None
@@ -78,6 +88,9 @@ class CaseHearingCreate(BaseModel):
     hearing_at: datetime
     purpose: str = Field(..., min_length=2, max_length=255)
     bench_or_coram: str | None = None
+    court_number: str | None = None
+    hearing_type: str | None = None
+    next_date: datetime | None = None
     notes: str | None = None
     source_type: HearingSourceType = HearingSourceType.MANUAL
     source_reference: str | None = None
@@ -92,8 +105,39 @@ class CaseHearingUpdate(BaseModel):
     purpose: str | None = None
     status: HearingStatus | None = None
     bench_or_coram: str | None = None
+    court_number: str | None = None
+    hearing_type: str | None = None
+    next_date: datetime | None = None
     notes: str | None = None
     is_confirmed: bool | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CaseHearingAdjournRequest(BaseModel):
+    next_date: datetime = Field(..., description="Next hearing date upon adjournment")
+    purpose: str | None = None
+    notes: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CaseHearingCompleteRequest(BaseModel):
+    notes: str | None = None
+    orders_summary: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CaseHearingECourtsImportRequest(BaseModel):
+    court_name: str = Field(..., min_length=2, max_length=255)
+    hearing_at: datetime
+    purpose: str = Field(..., min_length=2, max_length=255)
+    bench_or_coram: str | None = None
+    court_number: str | None = None
+    hearing_type: str | None = None
+    source_reference: str = Field(..., min_length=2, max_length=255, description="CNR or official cause-list reference")
+    notes: str | None = None
 
     model_config = ConfigDict(extra="forbid")
 
