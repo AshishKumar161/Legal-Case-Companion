@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "release_id": "prod-2026.09.04",
+  "application": "Legal Case Companion",
+  "version": "1.0.0",
+  "build_timestamp": "2026-09-10T19:36:09.629273+00:00",
+  "git_commit_sha": "098e22754377003c7267d23544d0ca8ea444851b",
+  "database_migration_head": "w1a2b3c4d5e6",
+  "environment_target": "production",
+  "release_owner": "Platform Engineering & Release Operations",
+  "quality_gates": {
+    "unit_probes": "PASSED (verified)",
+    "integration_tests": "PASSED (verified live execution context)",
+    "security_hardening": "PASSED (verified)",
+    "e2e_scenarios": "PASSED (verified)",
+    "frontend_production_build": "PASSED (production build verified)",
+    "frontend_dependency_audit": "PASSED (audit clean)",
+    "python_code_quality": "PASSED (0 ruff lint errors)",
+    "python_type_safety": "PASSED (0 errors in 263 source files)"
+  },
+  "sbom": {
+    "backend_manifest": "sbom-backend.json",
+    "backend_sha256": "b659071a61c675261b97d45410dfcbab2903f35c0cd9ee75c0f93d81a4299a44",
+    "frontend_manifest": "sbom-frontend.json",
+    "frontend_sha256": "6481e0a7547c2bf92bcc02c82c9b3749112b1b163fb7cda3de00fa3b0d8778d2"
+  },
+  "rollback_plan": {
+    "runbook": "docs/27_ROLLBACK_RUNBOOK.md",
+    "strategy": "container_image_rollback_with_backward_compatible_schema",
+    "max_rollback_time_minutes": 15
+  },
+  "approval_record": {
+    "security_officer_approval": "APPROVED",
+    "sre_lead_approval": "APPROVED",
+    "legal_compliance_review": "APPROVED_WITH_CONDITIONS (Pilot Operating Restrictions Active)"
+  }
+}

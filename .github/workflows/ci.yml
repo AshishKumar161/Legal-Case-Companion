@@ -1,0 +1,223 @@
+name: LCC Production CI Pipeline
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend-ci:
+    name: Backend Quality, Security & Contract Gates
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: legal_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv Package Manager
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.7"
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check uv.lock Consistency
+        run: uv lock --check
+
+      - name: Install Python Dependencies
+        run: |
+          uv pip install --system -e ".[dev]"
+
+      - name: Python Syntax & Bytecode Compilation
+        run: python -m compileall app tests scripts migrations
+
+      - name: Code Quality & Lint Check (Ruff)
+        run: ruff check .
+
+      - name: Static Type Safety Check (Mypy)
+        run: mypy app
+
+      - name: Static Secret & Credential Scan
+        run: python scripts/ci_secret_scanner.py
+
+      - name: Verify Database Migrations & Schema Lifecycle
+        env:
+          DATABASE_URL: postgresql+psycopg://postgres:postgrespassword@localhost:5432/legal_db
+        run: |
+          alembic heads
+          alembic upgrade head
+          python scripts/test_migrations_lifecycle.py
+
+      - name: Verify OpenAPI Contract Parity
+        run: python scripts/verify_openapi_contract.py
+
+      - name: Run Full Backend Test Suite
+        env:
+          DATABASE_URL: postgresql+psycopg://postgres:postgrespassword@localhost:5432/legal_db
+          REDIS_URL: redis://localhost:6379/0
+          ENVIRONMENT: test
+          LOG_LEVEL: WARNING
+        run: pytest -v --maxfail=5
+
+      - name: Run Security & Threat Model Test Suite
+        env:
+          DATABASE_URL: postgresql+psycopg://postgres:postgrespassword@localhost:5432/legal_db
+          REDIS_URL: redis://localhost:6379/0
+          ENVIRONMENT: test
+          LOG_LEVEL: WARNING
+        run: pytest tests/security/ -v
+
+  frontend-ci:
+    name: Frontend TypeScript, Lint & Build Gates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Frontend Dependency Vulnerability Audit
+        working-directory: ./frontend
+        run: npm audit --audit-level=high
+
+      - name: Run TypeScript Verification
+        working-directory: ./frontend
+        run: npx tsc --noEmit
+
+      - name: Run ESLint Verification
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Run Next.js Production Build
+        working-directory: ./frontend
+        run: npm run build
+
+  docker-build-ci:
+    name: Docker Container Build Verification
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Production Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          no-cache: true
+          tags: lcc-backend:ci-test
+
+      - name: Build Frontend Production Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          no-cache: true
+          tags: lcc-frontend:ci-test
+
+  release-artifacts-ci:
+    name: Release Artifacts & SBOM Generation
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv Package Manager
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.7"
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: |
+          uv pip install --system -e ".[dev]"
+          cd frontend && npm ci
+
+      - name: Generate CycloneDX SBOMs
+        run: python scripts/generate_sbom.py
+
+      - name: Generate Release Manifest
+        run: python scripts/generate_release_manifest.py
+
+      - name: Verify Artifact Integrity
+        run: |
+          test -f release-manifest.json || exit 1
+          test -f sbom-backend.json || exit 1
+          test -f sbom-frontend.json || exit 1
+
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lcc-release-artifacts
+          path: |
+            release-manifest.json
+            sbom-backend.json
+            sbom-frontend.json
+          retention-days: 30

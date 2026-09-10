@@ -1,0 +1,893 @@
+import logging
+import secrets
+import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.core.exceptions import AuthenticationError, ConflictError, ValidationError
+from app.core.identifiers import generate_uuid7
+from app.core.security import (
+    create_access_token,
+    generate_refresh_token,
+    hash_password,
+    hash_refresh_token,
+    normalize_email,
+    verify_password,
+)
+from app.models.audit import AuditEvent
+from app.models.auth import (
+    EmailVerificationToken,
+    PasswordResetToken,
+    RefreshTokenSession,
+    UserExternalIdentity,
+)
+from app.models.user import AccountStatus, ClientProfile, User, UserRole
+from app.schemas.auth import LoginRequest, PasswordChangeRequest
+from app.domain.notifications.email_service import get_email_provider
+from app.domain.users.user_service import UserService
+
+logger = logging.getLogger(__name__)
+
+
+class AuthService:
+    def __init__(self, db: Session):
+        self.db = db
+        self.user_service = UserService(db)
+
+    def log_audit_event(
+        self,
+        event_type: str,
+        user_id: uuid.UUID | None = None,
+        metadata: dict | None = None,
+        action: str = "authenticate",
+    ):
+        """Create an audit event. Metadata must NEVER contain raw tokens or passwords."""
+        event = AuditEvent(
+            id=generate_uuid7(),
+            event_type=event_type,
+            entity_type="user" if user_id else "system",
+            entity_id=user_id,
+            action=action,
+            actor_user_id=user_id,
+            timestamp=datetime.now(UTC),
+            metadata_=metadata or {},
+        )
+        self.db.add(event)
+
+    def _create_user_session(
+        self,
+        user: User,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> tuple[str, str]:
+        """Internal helper to create a refresh session and issue Ed25519 access + opaque refresh token."""
+        access_token = create_access_token(str(user.id), user.role.value)
+        refresh_token_raw = generate_refresh_token()
+        refresh_token_hashed = hash_refresh_token(refresh_token_raw)
+
+        family_id = generate_uuid7()
+        now = datetime.now(UTC)
+
+        session = RefreshTokenSession(
+            id=generate_uuid7(),
+            user_id=user.id,
+            token_family_id=family_id,
+            token_hash=refresh_token_hashed,
+            created_at=now,
+            last_used_at=now,
+            expires_at=now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+            revoked_at=None,
+            device_metadata=user_agent,
+            ip_metadata=ip_address,
+        )
+        self.db.add(session)
+        return access_token, refresh_token_raw
+
+    def login(
+        self,
+        login_request: LoginRequest,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> tuple[str, str]:
+        """Returns access_token, unhashed_refresh_token"""
+        user = self.user_service.get_user_by_email(login_request.email)
+
+        if (
+            not user
+            or not user.password_hash
+            or not verify_password(login_request.password, user.password_hash)
+        ):
+            if user:
+                self.log_audit_event(
+                    "LOGIN_FAILED",
+                    user.id,
+                    {"reason": "invalid_credentials", "ip": ip_address},
+                    action="login",
+                )
+                self.db.commit()
+            else:
+                # Phase 11: Log auth failures even for unknown users (limited metadata, no user ID)
+                logger.info(
+                    f"Login attempt for non-existent email from IP {ip_address}"
+                )
+            raise AuthenticationError("Invalid authentication credentials")
+
+        if user.account_status != AccountStatus.ACTIVE:
+            raise AuthenticationError("Account is inactive")
+
+        access_token, refresh_token_raw = self._create_user_session(
+            user, ip_address=ip_address, user_agent=user_agent
+        )
+
+        self.log_audit_event(
+            "LOGIN_SUCCESS",
+            user.id,
+            {"ip": ip_address, "method": "password"},
+            action="login",
+        )
+        self.db.commit()
+
+        return access_token, refresh_token_raw
+
+    def authenticate_google_identity(
+        self,
+        claims: dict[str, Any],
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> tuple[User, str, str]:
+        """Authenticates a user via verified Google OIDC claims.
+
+        Performs:
+          1. Provider subject lookup (provider="GOOGLE", provider_subject=claims["sub"])
+          2. Existing user lookup by verified email (with safe auto-linking)
+          3. New user registration with default role CLIENT and ClientProfile
+          4. Refresh token session creation and audit event logging.
+
+        Returns (user, access_token, refresh_token_raw).
+        """
+        provider_subject = str(claims["sub"]).strip()
+        raw_email = str(claims["email"]).strip()
+        email = normalize_email(raw_email)
+        name = claims.get("name") or email.split("@")[0]
+        picture = claims.get("picture")
+
+        # 1. Check if identity already exists
+        identity = (
+            self.db.query(UserExternalIdentity)
+            .filter(
+                UserExternalIdentity.provider == "GOOGLE",
+                UserExternalIdentity.provider_subject == provider_subject,
+            )
+            .first()
+        )
+
+        if identity:
+            user = self.user_service.get_user_by_id(identity.user_id)
+            if not user or user.deleted_at is not None:
+                raise AuthenticationError("User account is deleted")
+            if user.account_status != AccountStatus.ACTIVE:
+                raise AuthenticationError("Account is inactive")
+
+            access_token, refresh_token_raw = self._create_user_session(
+                user, ip_address=ip_address, user_agent=user_agent
+            )
+            self.log_audit_event(
+                "GOOGLE_LOGIN_SUCCESS",
+                user.id,
+                {"provider": "GOOGLE", "provider_subject": provider_subject, "ip": ip_address},
+                action="login",
+            )
+            self.db.commit()
+            return user, access_token, refresh_token_raw
+
+        # 2. Check if a user with matching email already exists
+        existing_user = self.user_service.get_user_by_email(email)
+        if existing_user:
+            if existing_user.account_status != AccountStatus.ACTIVE:
+                raise AuthenticationError("Account is inactive")
+
+            # Safe link: Google email is cryptographically verified
+            new_identity = UserExternalIdentity(
+                id=generate_uuid7(),
+                user_id=existing_user.id,
+                provider="GOOGLE",
+                provider_subject=provider_subject,
+                email=email,
+                email_verified=True,
+                provider_metadata={"name": name, "picture": picture},
+            )
+            self.db.add(new_identity)
+            self.log_audit_event(
+                "GOOGLE_IDENTITY_LINKED",
+                existing_user.id,
+                {"provider": "GOOGLE", "provider_subject": provider_subject, "ip": ip_address},
+                action="link_identity",
+            )
+
+            access_token, refresh_token_raw = self._create_user_session(
+                existing_user, ip_address=ip_address, user_agent=user_agent
+            )
+            self.log_audit_event(
+                "GOOGLE_LOGIN_SUCCESS",
+                existing_user.id,
+                {"provider": "GOOGLE", "provider_subject": provider_subject, "ip": ip_address},
+                action="login",
+            )
+            self.db.commit()
+            return existing_user, access_token, refresh_token_raw
+
+        # 3. Create new user with default role CLIENT
+        new_user = User(
+            id=generate_uuid7(),
+            email=email,
+            password_hash=None,
+            role=UserRole.CLIENT,
+            account_status=AccountStatus.ACTIVE,
+        )
+        self.db.add(new_user)
+        self.db.flush()
+
+        # Create ClientProfile
+        client_profile = ClientProfile(
+            id=generate_uuid7(),
+            user_id=new_user.id,
+            full_name=name,
+        )
+        self.db.add(client_profile)
+
+        # Create UserExternalIdentity
+        new_identity = UserExternalIdentity(
+            id=generate_uuid7(),
+            user_id=new_user.id,
+            provider="GOOGLE",
+            provider_subject=provider_subject,
+            email=email,
+            email_verified=True,
+            provider_metadata={"name": name, "picture": picture},
+        )
+        self.db.add(new_identity)
+
+        self.log_audit_event(
+            "GOOGLE_IDENTITY_CREATED",
+            new_user.id,
+            {"provider": "GOOGLE", "provider_subject": provider_subject, "ip": ip_address},
+            action="register",
+        )
+
+        access_token, refresh_token_raw = self._create_user_session(
+            new_user, ip_address=ip_address, user_agent=user_agent
+        )
+        self.log_audit_event(
+            "GOOGLE_LOGIN_SUCCESS",
+            new_user.id,
+            {"provider": "GOOGLE", "provider_subject": provider_subject, "ip": ip_address},
+            action="login",
+        )
+        self.db.commit()
+
+        return new_user, access_token, refresh_token_raw
+
+    def link_google_identity(
+        self,
+        current_user_id: uuid.UUID,
+        claims: dict[str, Any],
+        ip_address: str | None = None,
+    ) -> UserExternalIdentity:
+        """Explicitly links a verified Google identity to an existing authenticated user."""
+        provider_subject = str(claims["sub"]).strip()
+        email = normalize_email(str(claims["email"]).strip())
+        name = claims.get("name")
+        picture = claims.get("picture")
+
+        # Verify Google sub is not already linked to another user
+        existing_identity = (
+            self.db.query(UserExternalIdentity)
+            .filter(
+                UserExternalIdentity.provider == "GOOGLE",
+                UserExternalIdentity.provider_subject == provider_subject,
+            )
+            .first()
+        )
+        if existing_identity:
+            if existing_identity.user_id == current_user_id:
+                return existing_identity
+            raise ConflictError("Google account is already linked to another user")
+
+        # Verify user does not already have a Google identity linked
+        user_existing = (
+            self.db.query(UserExternalIdentity)
+            .filter(
+                UserExternalIdentity.user_id == current_user_id,
+                UserExternalIdentity.provider == "GOOGLE",
+            )
+            .first()
+        )
+        if user_existing:
+            raise ConflictError("User already has a linked Google account")
+
+        new_identity = UserExternalIdentity(
+            id=generate_uuid7(),
+            user_id=current_user_id,
+            provider="GOOGLE",
+            provider_subject=provider_subject,
+            email=email,
+            email_verified=True,
+            provider_metadata={"name": name, "picture": picture},
+        )
+        self.db.add(new_identity)
+        self.log_audit_event(
+            "GOOGLE_IDENTITY_LINKED",
+            current_user_id,
+            {"provider": "GOOGLE", "provider_subject": provider_subject, "ip": ip_address},
+            action="link_identity",
+        )
+        self.db.commit()
+        return new_identity
+
+    def unlink_google_identity(
+        self,
+        current_user_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> None:
+        """Unlinks Google identity from the current user.
+
+        Requires that the user has a password set or another external identity.
+        """
+        user = self.user_service.get_user_by_id(current_user_id)
+        if not user:
+            raise AuthenticationError("User not found")
+
+        identity = (
+            self.db.query(UserExternalIdentity)
+            .filter(
+                UserExternalIdentity.user_id == current_user_id,
+                UserExternalIdentity.provider == "GOOGLE",
+            )
+            .first()
+        )
+        if not identity:
+            raise AuthenticationError("No linked Google account found")
+
+        # Safety check: prevent account lockout
+        other_identities_count = (
+            self.db.query(UserExternalIdentity)
+            .filter(
+                UserExternalIdentity.user_id == current_user_id,
+                UserExternalIdentity.id != identity.id,
+            )
+            .count()
+        )
+        if not user.password_hash and other_identities_count == 0:
+            raise ConflictError(
+                "Cannot unlink Google account without setting a password first"
+            )
+
+        self.db.delete(identity)
+        self.log_audit_event(
+            "GOOGLE_IDENTITY_UNLINKED",
+            current_user_id,
+            {"provider": "GOOGLE", "ip": ip_address},
+            action="unlink_identity",
+        )
+        self.db.commit()
+
+    def refresh(
+        self, refresh_token_raw: str, ip_address: str | None = None
+    ) -> tuple[str, str]:
+        """Rotates token. Returns new access_token, new unhashed_refresh_token.
+
+        Expiry semantics (per 04_AUTHORIZATION_SECURITY.md):
+          - Absolute expiry: ``expires_at`` — hard deadline, cannot be extended.
+          - Inactivity expiry: ``last_used_at`` + REFRESH_TOKEN_INACTIVITY_DAYS —
+            session expires if not used within the inactivity window.
+          - Token reuse: If a revoked token is presented, the entire family is
+            revoked (replay / theft detection).
+        """
+        hashed_input = hash_refresh_token(refresh_token_raw)
+        now = datetime.now(UTC)
+
+        # Atomic rotation acquisition: lock & transition active token in one step
+        # This guarantees database-level isolation against concurrent refresh race conditions
+        updated_count = (
+            self.db.query(RefreshTokenSession)
+            .filter(
+                RefreshTokenSession.token_hash == hashed_input,
+                RefreshTokenSession.revoked_at.is_(None),
+            )
+            .update({"revoked_at": now}, synchronize_session="fetch")
+        )
+
+        if updated_count == 0:
+            # Token does not exist OR was already revoked (concurrent race loser or replay attack)
+            session = (
+                self.db.query(RefreshTokenSession)
+                .filter(RefreshTokenSession.token_hash == hashed_input)
+                .first()
+            )
+            if not session:
+                raise AuthenticationError("Invalid refresh token")
+
+            # Token was already revoked -> Token reuse detected! Revoke entire family
+            self.db.query(RefreshTokenSession).filter(
+                RefreshTokenSession.token_family_id == session.token_family_id,
+                RefreshTokenSession.revoked_at.is_(None),
+            ).update({"revoked_at": now}, synchronize_session=False)
+
+            self.log_audit_event(
+                "SECURITY_EVENT",
+                session.user_id,
+                {
+                    "event": "refresh_token_reuse_detected",
+                    "family_id": str(session.token_family_id),
+                    "ip": ip_address,
+                },
+                action="refresh",
+            )
+            self.db.commit()
+            raise AuthenticationError("Invalid refresh token")
+
+        # updated_count == 1: Successfully acquired active token for rotation
+        session = (
+            self.db.query(RefreshTokenSession)
+            .filter(RefreshTokenSession.token_hash == hashed_input)
+            .first()
+        )
+        if not session:
+            raise AuthenticationError("Invalid refresh token")
+
+        # Absolute expiry check
+        expires_at = (
+            session.expires_at.replace(tzinfo=UTC)
+            if session.expires_at.tzinfo is None
+            else session.expires_at
+        )
+        if expires_at < now:
+            self.db.commit()
+            raise AuthenticationError("Refresh token expired")
+
+        # Inactivity TTL check using last_used_at
+        last_used_at = (
+            session.last_used_at.replace(tzinfo=UTC)
+            if session.last_used_at.tzinfo is None
+            else session.last_used_at
+        )
+        inactivity_limit = now - timedelta(days=settings.REFRESH_TOKEN_INACTIVITY_DAYS)
+        if last_used_at < inactivity_limit:
+            self.db.commit()
+            raise AuthenticationError("Refresh token expired due to inactivity")
+
+        user = self.user_service.get_user_by_id(session.user_id)
+        if not user or user.account_status != AccountStatus.ACTIVE:
+            self.db.commit()
+            raise AuthenticationError("User is inactive or deleted")
+
+        # Issue new token in same family
+        new_refresh_token_raw = generate_refresh_token()
+        new_refresh_token_hashed = hash_refresh_token(new_refresh_token_raw)
+        new_access_token = create_access_token(str(user.id), user.role.value)
+
+        new_session = RefreshTokenSession(
+            id=generate_uuid7(),
+            user_id=user.id,
+            token_family_id=session.token_family_id,
+            token_hash=new_refresh_token_hashed,
+            created_at=now,
+            last_used_at=now,
+            expires_at=session.expires_at,  # Inherit absolute expiration
+            revoked_at=None,
+            ip_metadata=ip_address,
+        )
+        self.db.add(new_session)
+
+        self.log_audit_event(
+            "TOKEN_REFRESH",
+            user.id,
+            {"family_id": str(session.token_family_id), "ip": ip_address},
+            action="refresh",
+        )
+        self.db.commit()
+
+        return new_access_token, new_refresh_token_raw
+
+    def logout(self, refresh_token_raw: str, user_id: uuid.UUID):
+        """Revokes the current session"""
+        if not refresh_token_raw:
+            return
+
+        hashed_input = hash_refresh_token(refresh_token_raw)
+        session = (
+            self.db.query(RefreshTokenSession)
+            .filter(
+                RefreshTokenSession.token_hash == hashed_input,
+                RefreshTokenSession.user_id == user_id,
+            )
+            .first()
+        )
+
+        if session and session.revoked_at is None:
+            session.revoked_at = datetime.now(UTC)
+            self.log_audit_event(
+                "LOGOUT",
+                user_id,
+                {"family_id": str(session.token_family_id)},
+                action="logout",
+            )
+            self.db.commit()
+
+    def change_password(self, user_id: uuid.UUID, req: PasswordChangeRequest):
+        user = self.user_service.get_user_by_id(user_id)
+        if (
+            not user
+            or not user.password_hash
+            or not verify_password(req.current_password, user.password_hash)
+        ):
+            raise AuthenticationError("Invalid current password")
+
+        user.password_hash = hash_password(req.new_password)
+
+        # Revoke all sessions on password change
+        self.db.query(RefreshTokenSession).filter(
+            RefreshTokenSession.user_id == user.id,
+            RefreshTokenSession.revoked_at.is_(None),
+        ).update({"revoked_at": datetime.now(UTC)})
+
+        self.log_audit_event(
+            "PASSWORD_CHANGE",
+            user_id,
+            {"action": "password_changed_sessions_revoked"},
+            action="password_change",
+        )
+        self.db.commit()
+
+    def get_user_identities(self, user_id: uuid.UUID) -> list[UserExternalIdentity]:
+        """Returns all external identities linked to the specified user."""
+        return (
+            self.db.query(UserExternalIdentity)
+            .filter(UserExternalIdentity.user_id == user_id)
+            .all()
+        )
+
+    def request_password_reset(
+        self,
+        email: str,
+        ip_address: str | None = None,
+    ) -> None:
+        """Initiates a secure password reset request with anti-enumeration defense.
+
+        Always finishes cleanly without revealing whether the email exists.
+        """
+        try:
+            normalized = normalize_email(email)
+        except ValueError:
+            return
+
+        user = self.user_service.get_user_by_email(normalized)
+        if not user or user.account_status != AccountStatus.ACTIVE:
+            logger.info(
+                f"Password reset requested for non-existent or inactive user from IP {ip_address}"
+            )
+            return
+
+        # Invalidate any existing unused reset tokens for this user
+        now = datetime.now(UTC)
+        self.db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+        ).update({"used_at": now})
+
+        # Generate cryptographically secure high-entropy random token
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hash_refresh_token(raw_token)
+
+        reset_token_record = PasswordResetToken(
+            id=generate_uuid7(),
+            user_id=user.id,
+            token_hash=token_hash,
+            created_at=now,
+            expires_at=now + timedelta(minutes=15),
+            used_at=None,
+            ip_metadata=ip_address,
+        )
+        self.db.add(reset_token_record)
+
+        self.log_audit_event(
+            "PASSWORD_RESET_REQUESTED",
+            user.id,
+            {"ip": ip_address},
+            action="password_reset_request",
+        )
+        self.db.commit()
+
+        # Dispatch email notification containing the reset link
+        email_provider = get_email_provider()
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
+        email_body = f"""
+        <html>
+        <body>
+            <h2>Legal Case Companion — Password Reset</h2>
+            <p>A password reset was requested for your account. Click the link below to set a new password:</p>
+            <p><a href="{reset_link}">Reset My Password</a></p>
+            <p>This link is valid for 15 minutes and can only be used once.</p>
+            <p>If you did not request this password reset, please ignore this email.</p>
+        </body>
+        </html>
+        """
+        email_provider.send_email(
+            to_email=user.email,
+            subject="[Legal Case Companion] Password Reset Request",
+            html_body=email_body,
+        )
+
+    def confirm_password_reset(
+        self,
+        token: str,
+        new_password: str,
+        ip_address: str | None = None,
+    ) -> None:
+        """Validates the reset token, updates password, and revokes all active sessions."""
+        if not token or not token.strip():
+            raise AuthenticationError("Invalid or missing password reset token")
+
+        if not new_password or len(new_password) < 8:
+            raise ValidationError("Password must be at least 8 characters long")
+
+        token_hash = hash_refresh_token(token.strip())
+        reset_record = (
+            self.db.query(PasswordResetToken)
+            .filter(PasswordResetToken.token_hash == token_hash)
+            .first()
+        )
+
+        if not reset_record:
+            raise AuthenticationError("Invalid or expired password reset token")
+
+        if reset_record.used_at is not None:
+            raise AuthenticationError("Password reset token has already been used")
+
+        now = datetime.now(UTC)
+        expires_at = (
+            reset_record.expires_at.replace(tzinfo=UTC)
+            if reset_record.expires_at.tzinfo is None
+            else reset_record.expires_at
+        )
+        if expires_at < now:
+            raise AuthenticationError("Password reset token has expired")
+
+        user = self.user_service.get_user_by_id(reset_record.user_id)
+        if not user or user.account_status != AccountStatus.ACTIVE:
+            raise AuthenticationError("Account is inactive or deleted")
+
+        # Update password hash using Argon2id
+        user.password_hash = hash_password(new_password)
+        reset_record.used_at = now
+
+        # Mandatory: Revoke all active refresh sessions across all devices
+        self.db.query(RefreshTokenSession).filter(
+            RefreshTokenSession.user_id == user.id,
+            RefreshTokenSession.revoked_at.is_(None),
+        ).update({"revoked_at": now})
+
+        self.log_audit_event(
+            "PASSWORD_RESET_COMPLETED",
+            user.id,
+            {"ip": ip_address, "action": "password_reset_all_sessions_revoked"},
+            action="password_reset",
+        )
+        self.db.commit()
+
+        # Send security confirmation alert (no secrets included)
+        email_provider = get_email_provider()
+        alert_body = """
+        <html>
+        <body>
+            <h2>Legal Case Companion — Security Alert</h2>
+            <p>Your account password has been successfully reset. All active sessions have been invalidated.</p>
+            <p>If you did not initiate this change, please contact support immediately.</p>
+        </body>
+        </html>
+        """
+        email_provider.send_email(
+            to_email=user.email,
+            subject="[Legal Case Companion] Security Alert: Password Reset Completed",
+            html_body=alert_body,
+        )
+
+    def request_email_verification(
+        self,
+        email: str,
+        ip_address: str | None = None,
+    ) -> None:
+        """Dispatches an email verification token with anti-enumeration protection."""
+        try:
+            normalized = normalize_email(email)
+        except ValueError:
+            return
+
+        user = self.user_service.get_user_by_email(normalized)
+        if not user or user.account_status != AccountStatus.ACTIVE:
+            return
+
+        now = datetime.now(UTC)
+        # Invalidate old verification tokens
+        self.db.query(EmailVerificationToken).filter(
+            EmailVerificationToken.user_id == user.id,
+            EmailVerificationToken.used_at.is_(None),
+        ).update({"used_at": now})
+
+        # Generate 6-digit numeric OTP
+        otp_code = f"{secrets.randbelow(900000) + 100000}"
+        token_hash = hash_refresh_token(otp_code)
+
+        verif_record = EmailVerificationToken(
+            id=generate_uuid7(),
+            user_id=user.id,
+            email=user.email,
+            token_hash=token_hash,
+            created_at=now,
+            expires_at=now + timedelta(minutes=15),
+            used_at=None,
+            ip_metadata=ip_address,
+        )
+        self.db.add(verif_record)
+        self.db.commit()
+
+        email_provider = get_email_provider()
+        verif_link = f"{settings.FRONTEND_URL}/verify-email?token={otp_code}&email={user.email}"
+        email_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px; margin: 0;">
+            <div style="max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div style="background: #1e293b; color: #ffffff; padding: 24px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 20px; letter-spacing: 0.5px;">Legal Case Companion</h1>
+                </div>
+                <div style="padding: 32px 24px; text-align: center;">
+                    <h2 style="color: #0f172a; margin-top: 0; font-size: 22px;">Confirm Your Email Address</h2>
+                    <p style="color: #475569; font-size: 15px; line-height: 1.5; margin: 12px 0 24px;">
+                        Use the 6-digit verification code below to verify your account:
+                    </p>
+                    <div style="margin: 24px 0;">
+                        <span style="display: inline-block; font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #2563eb; background: #eff6ff; padding: 14px 28px; border-radius: 8px; border: 2px solid #bfdbfe; font-family: monospace;">
+                            {otp_code}
+                        </span>
+                    </div>
+                    <p style="color: #64748b; font-size: 13px; margin-bottom: 24px;">
+                        This code is valid for <b>15 minutes</b>. Enter it directly on the verification screen.
+                    </p>
+                    <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; margin-top: 20px;">
+                        <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                            Or verify by clicking this link: <br>
+                            <a href="{verif_link}" style="color: #2563eb; text-decoration: underline;">{verif_link}</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        email_provider.send_email(
+            to_email=user.email,
+            subject="[Legal Case Companion] Your Verification Code",
+            html_body=email_body,
+        )
+
+    def confirm_email_verification(self, token: str) -> None:
+        """Validates email verification token and marks email verified."""
+        if not token or not token.strip():
+            raise AuthenticationError("Invalid or missing email verification token")
+
+        token_hash = hash_refresh_token(token.strip())
+        record = (
+            self.db.query(EmailVerificationToken)
+            .filter(EmailVerificationToken.token_hash == token_hash)
+            .first()
+        )
+
+        if not record:
+            raise AuthenticationError("Invalid or expired email verification token")
+
+        if record.used_at is not None:
+            raise AuthenticationError("Email verification token has already been used")
+
+        now = datetime.now(UTC)
+        expires_at = (
+            record.expires_at.replace(tzinfo=UTC)
+            if record.expires_at.tzinfo is None
+            else record.expires_at
+        )
+        if expires_at < now:
+            raise AuthenticationError("Email verification token has expired")
+
+        user = self.user_service.get_user_by_id(record.user_id)
+        if not user or user.account_status != AccountStatus.ACTIVE:
+            raise AuthenticationError("Account is inactive or deleted")
+
+        record.used_at = now
+
+        # Update external identity email verification if present
+        for identity in user.external_identities:
+            if identity.email.lower() == record.email.lower():
+                identity.email_verified = True
+
+        self.log_audit_event(
+            "EMAIL_VERIFIED",
+            user.id,
+            {"email": record.email},
+            action="email_verification",
+        )
+        self.db.commit()
+
+    def verify_email_otp(
+        self,
+        email: str,
+        otp: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> tuple[User, str, str]:
+        """Validates a 6-digit OTP code, marks email verified, and returns an authenticated user session."""
+        if not email or not otp or not otp.strip():
+            raise AuthenticationError("Missing email or verification code")
+
+        normalized = normalize_email(email)
+        user = self.user_service.get_user_by_email(normalized)
+        if not user or user.account_status != AccountStatus.ACTIVE:
+            raise AuthenticationError("User account not found or inactive")
+
+        clean_otp = otp.strip()
+        token_hash = hash_refresh_token(clean_otp)
+
+        now = datetime.now(UTC)
+        record = (
+            self.db.query(EmailVerificationToken)
+            .filter(
+                EmailVerificationToken.user_id == user.id,
+                EmailVerificationToken.token_hash == token_hash,
+            )
+            .order_by(EmailVerificationToken.created_at.desc())
+            .first()
+        )
+
+        if not record:
+            raise AuthenticationError("Invalid verification code. Please check your email and try again.")
+
+        if record.used_at is not None:
+            raise AuthenticationError("This verification code has already been used. Please request a new one.")
+
+        expires_at = (
+            record.expires_at.replace(tzinfo=UTC)
+            if record.expires_at.tzinfo is None
+            else record.expires_at
+        )
+        if expires_at < now:
+            raise AuthenticationError("Verification code has expired. Please request a new code.")
+
+        record.used_at = now
+
+        # Update external identity email verification if present
+        for identity in user.external_identities:
+            if identity.email.lower() == record.email.lower():
+                identity.email_verified = True
+
+        self.log_audit_event(
+            "EMAIL_VERIFIED",
+            user.id,
+            {"email": record.email, "ip": ip_address},
+            action="email_verification",
+        )
+
+        # Create active login session so user goes straight to dashboard
+        access_token, refresh_token_raw = self._create_user_session(
+            user, ip_address=ip_address, user_agent=user_agent
+        )
+
+        self.log_audit_event(
+            "LOGIN_SUCCESS",
+            user.id,
+            {"ip": ip_address, "method": "email_otp"},
+            action="login",
+        )
+
+        self.db.commit()
+        return user, access_token, refresh_token_raw
