@@ -111,6 +111,7 @@ class CanonicalOpenAIProvider(AIProvider):
         candidate_chunks: list[Any] | None = None,
         authority_provisions: list[Any] | None = None,
         temperature: float = 0.1,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Generates structured JSON response, enforcing json_object response format."""
         attempts = 0

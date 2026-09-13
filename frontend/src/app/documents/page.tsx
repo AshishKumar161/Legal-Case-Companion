@@ -131,7 +131,7 @@ export default function DocumentWorkspacePage() {
 
       const casesList: CaseItem[] = Array.isArray(casesRes)
         ? casesRes
-        : (casesRes as any)?.items || [];
+        : (casesRes as { items?: CaseItem[] })?.items || [];
       setCases(casesList);
       setSharedDocuments(Array.isArray(sharedRes) ? sharedRes : []);
 
@@ -153,7 +153,7 @@ export default function DocumentWorkspacePage() {
 
             const docsList: DocumentItem[] = Array.isArray(docsRes)
               ? docsRes
-              : (docsRes as any)?.items || [];
+              : (docsRes as { items?: DocumentItem[] })?.items || [];
 
             for (const doc of docsList) {
               allDocs.push({
@@ -204,8 +204,8 @@ export default function DocumentWorkspacePage() {
   // Handle Download / Open
   const handleDownload = async (doc: EnrichedDoc) => {
     try {
-      const res: any = await apiClient.get(`/api/v1/cases/${doc.case_id}/documents/${doc.id}/download`);
-      if (res.download_url) {
+      const res = await apiClient.get<{ download_url?: string }>(`/api/v1/cases/${doc.case_id}/documents/${doc.id}/download`);
+      if (res?.download_url) {
         window.open(res.download_url, "_blank");
       }
     } catch {

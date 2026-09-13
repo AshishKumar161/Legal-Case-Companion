@@ -294,7 +294,7 @@ export default function AdminDashboard() {
     try {
       const res = (await apiClient.post("/api/v1/pilot/cohort-2/advance-stage", {
         target_stage: nextStage,
-      })) as any;
+      })) as Record<string, unknown>;
       alert(`Cohort 2 rollout stage updated to: ${res.current_stage}`);
       void fetchAdminData();
     } catch (err: unknown) {
@@ -1393,7 +1393,7 @@ export default function AdminDashboard() {
                   <span style={{ color: "#94a3b8" }}>Recurring Friction Hotspots:</span>
                   <span style={{ fontSize: "12px", color: "#cbd5e1" }}>
                     {supportAnalytics?.recurring_issues && supportAnalytics.recurring_issues.length > 0
-                      ? supportAnalytics.recurring_issues.map((r: any) => `${r.category} (${r.ticket_count})`).join(", ")
+                      ? supportAnalytics.recurring_issues.map((r: Record<string, unknown>) => `${r.category} (${r.ticket_count})`).join(", ")
                       : "None detected (Zero repeat friction)"}
                   </span>
                 </div>
@@ -1812,7 +1812,7 @@ export default function AdminDashboard() {
                     </td>
                   </tr>
                 ) : (
-                  marketplaceBalance.categories.map((cat: any) => (
+                  marketplaceBalance.categories.map((cat: { category: string; demand_count: number; advocate_count: number; balance_state: string; conversion_rate_pct: number }) => (
                     <tr key={cat.category} style={{ borderBottom: "1px solid #1f2536" }}>
                       <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f7f8fa" }}>{cat.category}</td>
                       <td style={{ padding: "12px 16px", color: "#60a5fa" }}>{cat.demand_count} matters</td>

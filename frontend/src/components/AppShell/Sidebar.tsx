@@ -19,6 +19,7 @@ import {
   PlusIcon,
   ArrowRightIcon,
   ArrowLeftIcon,
+  AssistantIcon,
 } from "@/components/ui/Icons";
 import styles from "./Sidebar.module.css";
 
@@ -53,6 +54,7 @@ export function Sidebar({
     { label: "Documents", href: "/documents", icon: <DocumentIcon size={18} /> },
     { label: "My Lawyer", href: "/lawyers", icon: <LawyerIcon size={18} /> },
     { label: "Messages", href: "/messages", icon: <ChatIcon size={18} /> },
+    { label: "AI Advisor", href: "/ai-advisor", icon: <AssistantIcon size={18} /> },
   ];
 
   const clientSecondaryNav = [
@@ -68,6 +70,7 @@ export function Sidebar({
     { label: "Clients", href: "/clients", icon: <LawyerIcon size={18} /> },
     { label: "Documents", href: "/documents", icon: <DocumentIcon size={18} /> },
     { label: "Consultations", href: "/consultations", icon: <ChatIcon size={18} /> },
+    { label: "AI Advisor", href: "/ai-advisor", icon: <AssistantIcon size={18} /> },
   ];
 
   const lawyerSecondaryNav = [
@@ -141,7 +144,7 @@ export function Sidebar({
                 alt="LCC Logo"
                 width={28}
                 height={28}
-                style={{ objectFit: "contain" }}
+                style={{ objectFit: "contain", width: "auto", height: "auto" }}
                 priority
               />
             </div>

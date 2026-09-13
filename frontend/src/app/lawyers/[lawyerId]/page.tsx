@@ -151,7 +151,7 @@ export default function LawyerPublicProfilePage({
 
     try {
       const schedDate = new Date(`${selectedDate}T10:00:00+05:30`);
-      const res: any = await apiClient.post("/api/v1/consultations", {
+      const res = await apiClient.post<ConsultationItem>("/api/v1/consultations", {
         lawyer_id: lawyer.id || lawyerId,
         scheduled_at: schedDate.toISOString(),
         duration_minutes: 30,

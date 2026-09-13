@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.identifiers import generate_uuid7
 from app.models.job import JobType
-from app.services.job_service import JobService
+from app.domain.jobs.job_service import JobService
 
 
 def _setup_bench_user(client: TestClient, email: str, role: str = "CLIENT"):

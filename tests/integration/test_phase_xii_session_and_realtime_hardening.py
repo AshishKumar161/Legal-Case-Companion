@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -20,7 +20,7 @@ from app.models.user import (
     VerificationStatus,
 )
 from app.domain.consultations.lawyer_call_channel import incoming_call_channel_manager
-from app.services.presence_service import presence_service
+from app.domain.consultations.presence_service import presence_service
 
 
 def _create_user_with_password(

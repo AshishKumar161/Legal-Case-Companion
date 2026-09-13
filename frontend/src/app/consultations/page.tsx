@@ -218,7 +218,7 @@ export default function ConsultationsPage() {
     setCaseActionMsg(null);
     try {
       const defaultTitle = `Legal Matter - Consultation #${linkCaseConsultation.id.slice(0, 8).toUpperCase()}`;
-      const res: any = await apiClient.post(`/api/v1/consultations/${linkCaseConsultation.id}/create-case`, {
+      const res: Record<string, unknown> = await apiClient.post(`/api/v1/consultations/${linkCaseConsultation.id}/create-case`, {
         title: defaultTitle,
         description: `Legal matter formally established following consultation with Advocate ${linkCaseConsultation.lawyer_name || "counsel"}.`,
       });

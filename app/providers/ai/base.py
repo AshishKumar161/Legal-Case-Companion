@@ -58,6 +58,7 @@ class AIProvider(Protocol):
         candidate_chunks: list[Any] | None = None,
         authority_provisions: list[Any] | None = None,
         temperature: float = 0.1,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Generates a structured JSON response verified against evidentiary sources."""
         ...

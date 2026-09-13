@@ -66,6 +66,7 @@ class CanonicalMockAIProvider(AIProvider):
         candidate_chunks: list[Any] | None = None,
         authority_provisions: list[Any] | None = None,
         temperature: float = 0.1,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         if self._error_to_raise:
             err = self._error_to_raise

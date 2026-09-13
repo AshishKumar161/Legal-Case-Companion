@@ -23,7 +23,7 @@ from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
 from app.schemas.presence import PresenceStatus
 from app.domain.consultations.consultation_service import ConsultationService
 from app.domain.consultations.lawyer_call_channel import incoming_call_channel_manager
-from app.services.presence_service import presence_service
+from app.domain.consultations.presence_service import presence_service
 
 
 def _create_lawyer(db: Session, email_prefix: str) -> tuple[User, LawyerProfile]:

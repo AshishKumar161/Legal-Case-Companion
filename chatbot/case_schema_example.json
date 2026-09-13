@@ -1,0 +1,53 @@
+{
+  "$comment": "One record = one district court case, 2023-2025 only, structured so a vector DB can filter (crime_category, state, year) AND semantic-search (embedding_text) at the same time. Fill placeholders per real case.",
+
+  "case_id": "DC-HP-2024-000123",
+  "court_name": "District & Sessions Court, Solan",
+  "state": "Himachal Pradesh",
+  "district": "Solan",
+  "court_level": "district",
+
+  "filing_date": "2024-02-11",
+  "judgment_date": "2024-09-03",
+  "year": 2024,
+
+  "case_type": "criminal",
+  "crime_category": "cyber_fraud",
+  "_crime_category_options": [
+    "cyber_fraud",
+    "crimes_against_women",
+    "cheating_forgery",
+    "theft_burglary",
+    "crimes_against_senior_citizens"
+  ],
+
+  "statute_sections": [
+    { "act": "BNS", "section": "318", "label": "Cheating" },
+    { "act": "IT Act", "section": "66D", "label": "Cheating by personation using computer resource" }
+  ],
+  "prior_regime_sections": [
+    { "act": "IPC", "section": "420", "note": "pre-BNS equivalent, for cases filed before transition" }
+  ],
+
+  "fact_summary": "Plain-language 2-4 sentence summary of what happened, written/paraphrased by a human reviewer — NOT copied verbatim from the judgment (copyright + quality control).",
+
+  "outcome": {
+    "disposal_type": "convicted",
+    "_disposal_type_options": ["convicted", "acquitted", "settled", "withdrawn", "pending"],
+    "sentence_or_relief": "short plain-language description, e.g. '2 years imprisonment + fine'"
+  },
+
+  "keywords": ["OTP fraud", "UPI", "phishing call", "bank impersonation"],
+
+  "source": {
+    "portal": "ecourts_judgment_search",
+    "_portal_options": ["ecourts_judgment_search", "indian_kanoon", "njdg", "manual_entry"],
+    "source_url": "https://judgments.ecourts.gov.in/...",
+    "retrieved_on": "2026-09-04"
+  },
+
+  "embedding_text": "AUTO-GENERATED - see dataset_pipeline.py build_embedding_text(). Concatenation of crime_category + statute labels + fact_summary + keywords, normalized, used as the actual text that gets embedded for similarity search.",
+
+  "full_text_available": true,
+  "full_text_local_path": "raw_judgments/DC-HP-2024-000123.txt"
+}

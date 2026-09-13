@@ -16,7 +16,7 @@ from app.models.document import (
 )
 from app.models.document_page import DocumentPage
 from app.models.user import LawyerProfile, LawyerVerification, VerificationStatus
-from app.services.document_processor import DocumentProcessor
+from app.domain.documents.document_processor import DocumentProcessor
 
 
 @pytest.fixture(autouse=True)

@@ -17,6 +17,7 @@ from app.api.v1.ai_conversations import router as ai_conversations_router
 from app.api.v1.ai_review import router as ai_review_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.assistant import router as assistant_router
+from app.api.v1.advisor import router as advisor_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.auth import limiter
 from app.api.v1.auth import router as auth_router
@@ -147,7 +148,7 @@ async def http_exception_handler(
         content={
             "error": {
                 "code": "HTTP_ERROR",
-                "message": str(exc.detail),
+                "message": exc.detail,
                 "details": None,
                 "request_id": request_id,
             }
@@ -227,6 +228,7 @@ app.include_router(lawyers_router, prefix=settings.API_V1_STR)
 app.include_router(ai_router, prefix=settings.API_V1_STR)
 app.include_router(assistant_router, prefix=settings.API_V1_STR)
 app.include_router(ai_conversations_router, prefix=settings.API_V1_STR)
+app.include_router(advisor_router, prefix=settings.API_V1_STR)
 app.include_router(feedback_router, prefix=settings.API_V1_STR)
 app.include_router(analytics_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)

@@ -53,7 +53,8 @@ export type ClientWorkspaceTab =
   | "people"
   | "messages"
   | "payments"
-  | "activity";
+  | "activity"
+  | "ai_advisor";
 
 const CLIENT_TABS: Array<{ id: ClientWorkspaceTab; label: string; icon: string }> = [
   { id: "overview", label: "Overview", icon: "📁" },
@@ -65,6 +66,7 @@ const CLIENT_TABS: Array<{ id: ClientWorkspaceTab; label: string; icon: string }
   { id: "messages", label: "Messages", icon: "💬" },
   { id: "payments", label: "Payments", icon: "💳" },
   { id: "activity", label: "Activity", icon: "📋" },
+  { id: "ai_advisor", label: "AI Advisor", icon: "🤖" },
 ];
 
 export type ClientDocCategory =
@@ -144,15 +146,22 @@ function formatDateTime(dateString?: string | null): string {
 export default function CaseDetail({ params }: { params: Promise<{ caseId: string }> }) {
   const unwrappedParams = use(params);
   const { caseId } = unwrappedParams;
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push(`/login?redirect=/cases/${caseId}`);
+    }
+  }, [authLoading, user, caseId, router]);
 
   interface LawyerCallStatus {
     lawyer_id: string;
     is_online: boolean;
     is_available: boolean;
     is_in_meeting: boolean;
+    is_meeting_with_me?: boolean;
     presence_status: string;
     status_label: string;
     reason?: string;
@@ -224,8 +233,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
   const [newTaskPriority, setNewTaskPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "URGENT">("MEDIUM");
   const [newTaskLinkedHearing, setNewTaskLinkedHearing] = useState<string>("");
   const [addingTask, setAddingTask] = useState(false);
-
-  // Payment checkout modal
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [checkoutConsultation, setCheckoutConsultation] = useState<ConsultationItem | null>(null);
 
   // Export Report State
@@ -233,9 +241,6 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
   const [exportFormat, setExportFormat] = useState<"markdown" | "json">("markdown");
   const [exporting, setExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
-
-  // LCC Legal Assistant Modal (Section 12)
-  const [copilotModalOpen, setCopilotModalOpen] = useState(false);
 
   // Quick Reply State for Case Overview
   const [quickReplyText, setQuickReplyText] = useState("");
@@ -252,7 +257,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
       });
       setQuickReplyText("");
       // Refresh case messages immediately
-      const msgs = (await apiClient.get(`/api/v1/cases/${caseId}/collaboration/messages?limit=20`)) as CaseMessageItem[];
+      const msgs = (await apiClient.get(`/api/v1/cases/${caseId}/collaboration/messages?limit=100`)) as CaseMessageItem[];
       if (Array.isArray(msgs)) setCaseMessages(msgs);
     } catch (err) {
       console.error("Failed to send quick reply:", err);
@@ -263,6 +268,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
 
   // Consolidated Parallel Data Fetcher (Eliminates Waterfalls & Duplicate Requests)
   const fetchCaseWorkspace = useCallback(async () => {
+    if (!user) return;
     try {
       setLoading(true);
       setError("");
@@ -291,7 +297,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
         apiClient.get(`/api/v1/cases/${caseId}/documents?limit=50`).catch(() => ({ items: [] })),
         apiClient.get(`/api/v1/cases/${caseId}/workflow`).catch(() => null),
         apiClient.get(`/api/v1/cases/${caseId}/collaboration/requests`).catch(() => []),
-        apiClient.get(`/api/v1/cases/${caseId}/collaboration/messages?limit=20`).catch(() => []),
+        apiClient.get(`/api/v1/cases/${caseId}/collaboration/messages?limit=100`).catch(() => []),
         apiClient.get(`/api/v1/cases/${caseId}/consultations`).catch(() => ({ items: [] })),
         apiClient.get(`/api/v1/court-cases?case_id=${caseId}`).catch(() => ({ items: [] })),
         apiClient.get(`/api/v1/cases/${caseId}/workflow/health-summary`).catch(() => null),
@@ -331,11 +337,13 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
     } finally {
       setLoading(false);
     }
-  }, [caseId]);
+  }, [caseId, user]);
 
   useEffect(() => {
-    void fetchCaseWorkspace();
-  }, [fetchCaseWorkspace]);
+    if (user) {
+      void fetchCaseWorkspace();
+    }
+  }, [fetchCaseWorkspace, user]);
 
   // Document Upload Handlers
   const handleFileUpload = async (fileToUpload: File, targetRequestId?: string | null) => {
@@ -641,7 +649,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
 
   // Periodic live check of assigned lawyer presence and call availability
   useEffect(() => {
-    if (!assignedLawyer) return;
+    if (!user || !assignedLawyer) return;
     const lid = assignedLawyer.user_id || assignedLawyer.id;
     if (!lid || lid === "counsel") return;
 
@@ -666,35 +674,39 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
     void checkCallStatus();
     const interval = setInterval(checkCallStatus, 15000);
     return () => clearInterval(interval);
-  }, [assignedLawyer, caseId]);
+  }, [assignedLawyer, caseId, user]);
 
   // Periodic background refresh for live meeting alerts and real-time case messages
   useEffect(() => {
-    if (!caseId) return;
+    if (!caseId || !user) return;
     const pollInterval = setInterval(async () => {
       try {
         const [messagesRes, consultRes] = await Promise.all([
-          apiClient.get(`/api/v1/cases/${caseId}/collaboration/messages?limit=20`).catch(() => []),
+          apiClient.get(`/api/v1/cases/${caseId}/collaboration/messages?limit=100`).catch(() => []),
           apiClient.get(`/api/v1/cases/${caseId}/consultations`).catch(() => ({ items: [] })),
         ]);
         if (Array.isArray(messagesRes)) {
           setCaseMessages(messagesRes);
         }
-        const consultItems = Array.isArray(consultRes) ? consultRes : (consultRes as any)?.items || [];
+        const consultItems = Array.isArray(consultRes) ? consultRes : (consultRes as { items?: ConsultationItem[] })?.items || [];
         setConsultations(consultItems);
       } catch {
         // silent polling
       }
     }, 4000);
     return () => clearInterval(pollInterval);
-  }, [caseId]);
+  }, [caseId, user]);
 
   // Instant Video Call trigger: client or lawyer can conduct video call at any time
   const handleStartInstantVideoCall = async () => {
+    if (lawyerCallStatus?.is_meeting_with_me && lawyerCallStatus?.active_consultation_id) {
+      router.push(`/consultations/${lawyerCallStatus.active_consultation_id}/room`);
+      return;
+    }
     setStartingCall(true);
     setCallError(null);
     try {
-      const lid = assignedLawyer?.user_id || assignedLawyer?.id || (workspaceData?.lawyer as any)?.id || "01a07113-f687-7363-8225-d2f8ec1c9763";
+      const lid = assignedLawyer?.user_id || assignedLawyer?.id || (workspaceData?.lawyer as { id?: string })?.id || "01a07113-f687-7363-8225-d2f8ec1c9763";
       const res = await apiClient.post<{ room_url: string; consultation_id: string }>(
         "/api/v1/consultations/instant-call",
         {
@@ -733,7 +745,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
       const meta = e.event_metadata || {};
 
       if (meta.provenance) {
-        prov = meta.provenance as any;
+        prov = meta.provenance as "OFFICIAL COURT DATA" | "LAWYER ENTERED" | "YOU ADDED" | "SYSTEM";
       } else if (descLower.includes("court") || descLower.includes("hearing") || descLower.includes("cause list")) {
         prov = "OFFICIAL COURT DATA";
       } else if (descLower.includes("lawyer") || descLower.includes("counsel") || descLower.includes("advocate")) {
@@ -898,7 +910,12 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                 <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--navy-primary, #0f1e36)" }}>
                   Adv. {assignedLawyer.full_name}
                 </span>
-                {lawyerCallStatus?.is_in_meeting ? (
+                {lawyerCallStatus?.is_meeting_with_me ? (
+                  <span style={{ fontSize: "11px", fontWeight: 600, color: "#1d4ed8", background: "#dbeafe", padding: "2px 8px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#2563eb" }}></span>
+                    Meeting Ready with You
+                  </span>
+                ) : lawyerCallStatus?.is_in_meeting ? (
                   <span style={{ fontSize: "11px", fontWeight: 600, color: "#d97706", background: "#fef3c7", padding: "2px 8px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
                     <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f59e0b" }}></span>
                     In Meeting
@@ -918,24 +935,32 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               <button
                 type="button"
                 onClick={handleStartInstantVideoCall}
-                disabled={startingCall || lawyerCallStatus?.is_in_meeting}
+                disabled={startingCall || (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me)}
                 style={{
-                  background: lawyerCallStatus?.is_in_meeting ? "#e2e8f0" : "linear-gradient(135deg, #0f1e36 0%, #1e293b 100%)",
-                  color: lawyerCallStatus?.is_in_meeting ? "#64748b" : "#ffffff",
+                  background: (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me) ? "#e2e8f0" : "linear-gradient(135deg, #0f1e36 0%, #1e293b 100%)",
+                  color: (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me) ? "#64748b" : "#ffffff",
                   border: "none",
                   borderRadius: "8px",
                   padding: "8px 14px",
                   fontSize: "12px",
                   fontWeight: 600,
-                  cursor: lawyerCallStatus?.is_in_meeting ? "not-allowed" : "pointer",
+                  cursor: (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me) ? "not-allowed" : "pointer",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
-                  boxShadow: lawyerCallStatus?.is_in_meeting ? "none" : "0 2px 4px rgba(15, 30, 54, 0.15)",
+                  boxShadow: (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me) ? "none" : "0 2px 4px rgba(15, 30, 54, 0.15)",
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                <span>{startingCall ? "Connecting..." : lawyerCallStatus?.is_in_meeting ? "Lawyer in another meet" : "Video Call Lawyer →"}</span>
+                <span>
+                  {startingCall 
+                    ? "Connecting..." 
+                    : lawyerCallStatus?.is_meeting_with_me 
+                    ? "Join Meeting Now →" 
+                    : (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me)
+                    ? "Lawyer in another meet" 
+                    : "Video Call Lawyer →"}
+                </span>
               </button>
             </div>
           )}
@@ -1162,8 +1187,8 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               <span>Updates</span>
             </button>
             <button
-              className={`${styles.sectionBtn} ${copilotModalOpen ? styles.sectionBtnActive : ""}`}
-              onClick={() => setCopilotModalOpen(true)}
+              className={`${styles.sectionBtn} ${activeTab === "ai_advisor" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("ai_advisor")}
             >
               <AssistantIcon size={16} color="var(--gold-accent)" />
               <span>Ask LCC Assistant</span>
@@ -2418,7 +2443,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
 
                   <select
                     value={newTaskPriority}
-                    onChange={(e) => setNewTaskPriority(e.target.value as any)}
+                    onChange={(e) => setNewTaskPriority(e.target.value as never)}
                     style={{
                       background: "#141722",
                       border: "1px solid #283042",
@@ -3424,56 +3449,17 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
           />
         )}
 
-        {/* LCC Legal Assistant Modal (Section 12) */}
-        {copilotModalOpen && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(15, 30, 54, 0.45)",
-              backdropFilter: "blur(4px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: "20px",
-            }}
-            onClick={() => setCopilotModalOpen(false)}
-          >
-            <div
-              style={{
-                width: "100%",
-                maxWidth: "960px",
-                maxHeight: "90vh",
-                background: "#FFFFFF",
-                borderRadius: "var(--radius-xl)",
-                overflow: "hidden",
-                boxShadow: "var(--shadow-xl)",
-                position: "relative",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ position: "absolute", top: "14px", right: "16px", zIndex: 10 }}>
-                <button
-                  onClick={() => setCopilotModalOpen(false)}
-                  style={{
-                    background: "#F1F5F9",
-                    border: "none",
-                    borderRadius: "50%",
-                    width: "32px",
-                    height: "32px",
-                    fontSize: "16px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "var(--navy-primary)",
-                  }}
-                  title="Close Legal Assistant"
-                >
-                  ✕
-                </button>
-              </div>
+        {/* LCC Legal Assistant Tab */}
+        {activeTab === "ai_advisor" && (
+          <div style={{ marginTop: "20px" }}>
+            <div style={{
+              background: "#FFFFFF",
+              borderRadius: "var(--radius-xl)",
+              overflow: "hidden",
+              boxShadow: "var(--shadow-sm)",
+              border: "1px solid var(--border-subtle)",
+              height: "700px"
+            }}>
               <CopilotChat
                 caseId={caseId}
                 conversations={[]}

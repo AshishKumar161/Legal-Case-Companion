@@ -1,5 +1,8 @@
 import os
 
+# Force test environment so AI provider factory returns mock instead of making real API calls.
+os.environ["ENVIRONMENT"] = "test"
+
 if not os.environ.get("JWT_PRIVATE_KEY") or not os.environ.get("JWT_PUBLIC_KEY"):
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey

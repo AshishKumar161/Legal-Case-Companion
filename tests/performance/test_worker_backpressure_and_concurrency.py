@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models import JobType
 from app.domain.jobs.job_scheduler import JobScheduler
-from app.services.job_service import JobService
+from app.domain.jobs.job_service import JobService
 
 
 def _setup_perf_user(client: TestClient, email: str = "perf_worker@example.com") -> tuple[str, dict[str, str]]:

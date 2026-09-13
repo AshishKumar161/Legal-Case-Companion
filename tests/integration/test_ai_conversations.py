@@ -93,8 +93,8 @@ def test_ai_conversation_creation_and_authorization(client: TestClient, db: Sess
     assert res_list2.status_code == 404
 
 
-@patch("app.services.document_processor.EmbeddingService.generate_embeddings")
-@patch("app.services.retrieval_service.EmbeddingService.generate_embeddings")
+@patch("app.domain.documents.document_processor.EmbeddingService.generate_embeddings")
+@patch("app.domain.ai.retrieval_service.EmbeddingService.generate_embeddings")
 def test_ai_conversation_message_flow_and_history(
     mock_retrieval_emb, mock_doc_emb, client: TestClient, db: Session
 ):
@@ -126,7 +126,7 @@ def test_ai_conversation_message_flow_and_history(
     db.add(doc)
     db.commit()
 
-    from app.services.document_processor import DocumentProcessor
+    from app.domain.documents.document_processor import DocumentProcessor
 
     dp = DocumentProcessor(db)
     dp.process_document(
@@ -176,8 +176,8 @@ def test_ai_conversation_message_flow_and_history(
     assert len(res_pag.json()) == 1
 
 
-@patch("app.services.document_processor.EmbeddingService.generate_embeddings")
-@patch("app.services.retrieval_service.EmbeddingService.generate_embeddings")
+@patch("app.domain.documents.document_processor.EmbeddingService.generate_embeddings")
+@patch("app.domain.ai.retrieval_service.EmbeddingService.generate_embeddings")
 def test_ai_conversation_prompt_injection_safety(
     mock_retrieval_emb, mock_doc_emb, client: TestClient, db: Session
 ):

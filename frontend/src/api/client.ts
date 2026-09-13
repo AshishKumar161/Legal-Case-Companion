@@ -208,6 +208,10 @@ async function fetchWithAuth(url: string, options: RequestOptions = {}): Promise
   if (typeof window !== "undefined") {
     if (requireAuth) {
       const token = getSessionAccessToken();
+      const refreshToken = getSessionRefreshToken();
+      if (!token && !refreshToken && !url.includes("/api/v1/auth/")) {
+        throw new AuthenticationError("No active session. Please sign in.");
+      }
       if (token) {
         headers.set("Authorization", `Bearer ${token}`);
       }
@@ -265,6 +269,7 @@ async function fetchWithAuth(url: string, options: RequestOptions = {}): Promise
         window.dispatchEvent(
           new CustomEvent("lcc:session-expired", { detail: { sessionId } })
         );
+        throw new AuthenticationError("Session expired. Please sign in again.");
       }
     } else {
       // Queue concurrent requests while token is actively refreshing

@@ -3,12 +3,13 @@ import type { NextConfig } from "next";
 
 // Patch fs.readlink and fs.readlinkSync on Windows filesystems where non-symlink files return EISDIR instead of EINVAL
 const origReadlinkSync = fs.readlinkSync;
-(fs as any).readlinkSync = function (...args: any[]) {
+(fs as any).readlinkSync = function (...args: [fs.PathLike, (fs.BufferEncodingOption | fs.EncodingOption)?]) {
   try {
-    return origReadlinkSync.apply(this, args as any);
-  } catch (err: any) {
-    if (err && err.code === "EISDIR") {
-      const einval: any = new Error(`EINVAL: invalid argument, readlink '${args[0]}'`);
+    return origReadlinkSync.apply(this, args as never);
+  } catch (err: unknown) {
+    const error = err as NodeJS.ErrnoException;
+    if (error && error.code === "EISDIR") {
+      const einval: NodeJS.ErrnoException = new Error(`EINVAL: invalid argument, readlink '${String(args[0])}'`);
       einval.code = "EINVAL";
       throw einval;
     }
@@ -17,27 +18,28 @@ const origReadlinkSync = fs.readlinkSync;
 };
 
 const origReadlink = fs.readlink;
-(fs as any).readlink = function (path: any, options: any, callback?: any) {
+(fs as any).readlink = function (path: fs.PathLike, options: any, callback?: any) {
   const cb = typeof options === "function" ? options : callback;
   const opt = typeof options === "function" ? {} : options;
-  return origReadlink(path, opt, (err: any, linkString: any) => {
+  return (origReadlink as any)(path, opt, (err: NodeJS.ErrnoException | null, linkString: string) => {
     if (err && err.code === "EISDIR") {
-      const einval: any = new Error(`EINVAL: invalid argument, readlink '${path}'`);
+      const einval: NodeJS.ErrnoException = new Error(`EINVAL: invalid argument, readlink '${String(path)}'`);
       einval.code = "EINVAL";
-      return cb(einval);
+      return cb ? cb(einval) : undefined;
     }
-    return cb(err, linkString);
+    return cb ? cb(err, linkString) : undefined;
   });
 };
 
 if (fs.promises && fs.promises.readlink) {
   const origPromisesReadlink = fs.promises.readlink;
-  (fs.promises as any).readlink = async function (path: any, options: any) {
+  (fs.promises as any).readlink = async function (path: fs.PathLike, options?: any) {
     try {
       return await origPromisesReadlink.call(this, path, options);
-    } catch (err: any) {
-      if (err && err.code === "EISDIR") {
-        const einval: any = new Error(`EINVAL: invalid argument, readlink '${path}'`);
+    } catch (err: unknown) {
+      const error = err as NodeJS.ErrnoException;
+      if (error && error.code === "EISDIR") {
+        const einval: NodeJS.ErrnoException = new Error(`EINVAL: invalid argument, readlink '${String(path)}'`);
         einval.code = "EINVAL";
         throw einval;
       }
@@ -118,3 +120,5 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+

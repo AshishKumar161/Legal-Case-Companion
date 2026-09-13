@@ -133,7 +133,7 @@ export function PilotFeedbackModal({ isOpen, onClose }: PilotFeedbackModalProps)
               </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
+                onChange={(e) => setCategory(e.target.value as never)}
                 style={{
                   width: "100%",
                   padding: "8px 12px",

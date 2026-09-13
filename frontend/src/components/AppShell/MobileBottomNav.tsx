@@ -9,9 +9,8 @@ import {
   CaseIcon,
   CalendarIcon,
   DocumentIcon,
-  LawyerIcon,
   CourthouseIcon,
-  ChatIcon,
+  AssistantIcon,
 } from "@/components/ui/Icons";
 import styles from "./MobileBottomNav.module.css";
 
@@ -33,14 +32,14 @@ export function MobileBottomNav() {
         { label: "Cases", href: "/cases", icon: <CaseIcon size={18} /> },
         { label: "Court", href: "/court-tracking", icon: <CourthouseIcon size={18} /> },
         { label: "Calendar", href: "/calendar", icon: <CalendarIcon size={18} /> },
-        { label: "Consults", href: "/consultations", icon: <ChatIcon size={18} /> },
+        { label: "AI", href: "/ai-advisor", icon: <AssistantIcon size={18} /> },
       ]
     : [
         { label: "Home", href: "/dashboard", icon: <HomeIcon size={18} /> },
         { label: "My Case", href: "/cases", icon: <CaseIcon size={18} /> },
         { label: "Hearings", href: "/calendar", icon: <CalendarIcon size={18} /> },
         { label: "Documents", href: "/documents", icon: <DocumentIcon size={18} /> },
-        { label: "My Lawyer", href: "/lawyers", icon: <LawyerIcon size={18} /> },
+        { label: "AI", href: "/ai-advisor", icon: <AssistantIcon size={18} /> },
       ];
 
   return (

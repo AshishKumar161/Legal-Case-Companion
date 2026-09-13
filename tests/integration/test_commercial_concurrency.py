@@ -33,7 +33,7 @@ from app.models.user import (
 )
 from app.models.webhook import ProcessedWebhookEvent
 from app.domain.payments.commercial_service import CommercialService
-from app.services.payment_service import PaymentService
+from app.domain.payments.payment_service import PaymentService
 from tests.conftest import TestingSessionLocal
 
 

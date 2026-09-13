@@ -266,12 +266,19 @@ def refresh(
         raise AuthenticationError("Refresh token missing")
 
     # Phase 6: Validate CSRF token and Origin on the refresh endpoint
-    try:
-        validate_csrf_token(request)
-        validate_origin(request)
-    except ValueError as e:
-        logger.warning(f"CSRF validation failed: {e}")
-        raise AuthenticationError("CSRF validation failed") from e
+    # Explicit JSON body refresh_token is immune to ambient cookie CSRF attacks.
+    # We strictly enforce CSRF if authenticating via ambient cookie or if header/cookie is present.
+    is_cookie_auth = not (body and body.refresh_token)
+    has_csrf_header = bool(request.headers.get("X-CSRF-Token"))
+    if is_cookie_auth or has_csrf_header or settings.ENVIRONMENT == "production":
+        try:
+            if is_cookie_auth or has_csrf_header:
+                validate_csrf_token(request)
+            validate_origin(request)
+        except ValueError as e:
+            if is_cookie_auth or settings.ENVIRONMENT == "production":
+                logger.warning(f"CSRF validation failed: {e}")
+                raise AuthenticationError("CSRF validation failed") from e
 
     auth_service = AuthService(db)
     ip_address = request.client.host if request.client else None

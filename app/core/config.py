@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import AnyHttpUrl, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     JWT_PRIVATE_KEY: str = Field(default="", min_length=0)
     JWT_PUBLIC_KEY: str = Field(default="", min_length=0)
     JWT_PREVIOUS_PUBLIC_KEY: str | None = None
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     REFRESH_TOKEN_INACTIVITY_DAYS: int = 7
     ALGORITHM: str = "EdDSA"
@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     @field_validator("JWT_PRIVATE_KEY", "JWT_PUBLIC_KEY")
     @classmethod
     def validate_jwt_keys(cls, v: str) -> str:
+        # Skip validation for empty default — ephemeral key generation handles this
+        if not v:
+            return v
         if "-----BEGIN" not in v:
             raise ValueError("JWT keys must be valid PEM encoded strings")
         return v
@@ -85,12 +88,14 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # CORS Configuration
-    BACKEND_CORS_ORIGINS: list[AnyHttpUrl] | list[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ]
+    BACKEND_CORS_ORIGINS: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+        ]
+    )
 
     # Perimeter / Host Validation Configuration
     RENDER_EXTERNAL_HOSTNAME: str | None = None
@@ -218,7 +223,7 @@ class Settings(BaseSettings):
 
     @field_validator("BACKEND_CORS_ORIGINS", "GOOGLE_ALLOWED_REDIRECT_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, str) and v.startswith("["):
@@ -226,12 +231,13 @@ class Settings(BaseSettings):
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
-                    return parsed
+                    return [str(i) for i in parsed]
             except (json.JSONDecodeError, TypeError, ValueError):
-                return v
-            return v
-        elif isinstance(v, (list, str)):
-            return v
+                pass
+            # Treat as comma-separated fallback
+            return [i.strip() for i in v.split(",") if i.strip()]
+        elif isinstance(v, list):
+            return [i for i in v]
         raise ValueError(v)
 
     @model_validator(mode="after")
@@ -250,7 +256,7 @@ class Settings(BaseSettings):
         # In local/development/test, ensure standard origins are present
         if self.ENVIRONMENT in ("development", "test"):
             dev_origins = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000", "http://127.0.0.1:8000"]
-            current_cors = [str(o) for o in self.BACKEND_CORS_ORIGINS]
+            current_cors = [o for o in self.BACKEND_CORS_ORIGINS]
             for origin in dev_origins:
                 if origin not in current_cors:
                     current_cors.append(origin)
@@ -280,7 +286,7 @@ class Settings(BaseSettings):
                 self.ENABLE_TEST_PAYMENTS = False
 
             # Prohibit wildcard CORS origin with credentials enabled in staging and production
-            if "*" in [str(origin).strip() for origin in self.BACKEND_CORS_ORIGINS]:
+            if "*" in [origin.strip() for origin in self.BACKEND_CORS_ORIGINS]:
                 raise ValueError(
                     f"Wildcard CORS origin '*' is strictly prohibited in {self.ENVIRONMENT} with credentials enabled."
                 )
@@ -292,7 +298,7 @@ class Settings(BaseSettings):
                 )
 
             # Require database TLS in staging and production
-            if "sslmode=disable" in self.DATABASE_URL.lower():
+            if "sslmode=disable" in str(getattr(self, "DATABASE_URL", "")).lower():
                 raise ValueError(
                     f"DATABASE_URL must not disable SSL (sslmode=disable) in {self.ENVIRONMENT}."
                 )
@@ -306,21 +312,24 @@ class Settings(BaseSettings):
                 )
 
             # Require production/staging JWT keys
+            jwt_private = self.JWT_PRIVATE_KEY
+            jwt_public = self.JWT_PUBLIC_KEY
             if (
-                not self.JWT_PRIVATE_KEY
-                or not self.JWT_PUBLIC_KEY
-                or "<set-in-environment>" in str(self.JWT_PRIVATE_KEY)
-                or "<set-in-environment>" in str(self.JWT_PUBLIC_KEY)
+                not jwt_private
+                or not jwt_public
+                or "<set-in-environment>" in str(jwt_private)
+                or "<set-in-environment>" in str(jwt_public)
             ):
                 raise ValueError(
                     f"JWT_PRIVATE_KEY and JWT_PUBLIC_KEY are required in {self.ENVIRONMENT}"
                 )
 
             # Require CSRF in staging and production
+            csrf_secret = self.CSRF_SECRET_KEY
             if (
-                not self.CSRF_SECRET_KEY
-                or self.CSRF_SECRET_KEY == "mock-secret-for-dev"
-                or len(self.CSRF_SECRET_KEY) < 32
+                not csrf_secret
+                or str(csrf_secret) == "mock-secret-for-dev"
+                or len(str(csrf_secret)) < 32
             ):
                 raise ValueError(
                     f"CSRF_SECRET_KEY must be a secure secret (min 32 chars) in {self.ENVIRONMENT}"
@@ -368,4 +377,4 @@ class Settings(BaseSettings):
         return self
 
 
-settings = Settings()  # type: ignore[call-arg]
+settings: Settings = Settings()  # type: ignore[call-arg]

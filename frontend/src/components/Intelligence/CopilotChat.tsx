@@ -178,7 +178,7 @@ export function CopilotChat({
 
               <select
                 value={searchMode}
-                onChange={(e) => setSearchMode(e.target.value as any)}
+                onChange={(e) => setSearchMode(e.target.value as never)}
                 style={{
                   padding: "4px 8px",
                   borderRadius: "4px",

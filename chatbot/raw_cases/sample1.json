@@ -1,0 +1,18 @@
+{
+  "case_id": "DC-HP-2024-000123",
+  "court_name": "District & Sessions Court, Solan",
+  "state": "Himachal Pradesh",
+  "district": "Solan",
+  "court_level": "district",
+  "filing_date": "2024-02-11",
+  "judgment_date": "2024-09-03",
+  "year": 2024,
+  "case_type": "criminal",
+  "crime_category": "",
+  "statute_sections": [{"act": "IT Act", "section": "66D", "label": "Cheating by personation using computer resource"}],
+  "fact_summary": "Victim received a call impersonating a customs official demanding money to avoid arrest, and transferred funds via UPI before realizing it was a scam.",
+  "outcome": {"disposal_type": "convicted", "sentence_or_relief": "1 year imprisonment + fine"},
+  "keywords": ["digital arrest scam", "UPI", "phone fraud"],
+  "source": {"portal": "manual_entry", "source_url": "", "retrieved_on": "2026-09-04"},
+  "full_text_available": false
+}

@@ -34,7 +34,7 @@ from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
 from app.schemas.assistant import CaseAssistantQueryRequest
 from app.schemas.document import DocumentCreate
 from app.domain.ai.assistant_service import CaseAssistantService
-from app.services.document_processor import DocumentProcessor
+from app.domain.documents.document_processor import DocumentProcessor
 from app.domain.documents.document_service import DocumentService
 from app.domain.evidence.scanner_service import EICAR_SIGNATURE, ScannerService
 from app.domain.consultations.video_meeting_service import VideoMeetingService, get_video_provider

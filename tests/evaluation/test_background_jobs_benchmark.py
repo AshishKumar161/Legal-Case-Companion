@@ -9,7 +9,7 @@ from app.models.case import CaseParticipant, ParticipantRole, ParticipantStatus
 from app.models.job import JobType
 from app.models.notification import Notification
 from app.models.workflow import CaseDeadline, DeadlineStatus, DeadlineType
-from app.services.job_service import JobService
+from app.domain.jobs.job_service import JobService
 from app.domain.jobs.job_worker import JobWorker
 
 

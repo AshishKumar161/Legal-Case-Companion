@@ -283,7 +283,7 @@ def test_room_access_bypass_time_parameter(client: TestClient, db: Session):
 
 def test_room_access_when_lawyer_online(client: TestClient, db: Session):
     """When a lawyer is online (heartbeat active), client can join without waiting for scheduled time."""
-    from app.services.presence_service import PresenceService
+    from app.domain.consultations.presence_service import PresenceService
 
     client_headers, client_id, client_user = _create_user(client, db, f"client_{uuid.uuid4().hex[:6]}@example.com", UserRole.CLIENT)
     lawyer_headers, lawyer_id, lawyer_user = _create_user(client, db, f"lawyer_{uuid.uuid4().hex[:6]}@example.com", UserRole.LAWYER)

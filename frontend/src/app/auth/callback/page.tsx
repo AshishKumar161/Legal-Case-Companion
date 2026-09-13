@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/api/client";
 import { useAuth, UserRole } from "@/providers/AuthProvider";
@@ -13,6 +13,7 @@ function AuthCallbackContent() {
   const { login } = useAuth();
   const [status, setStatus] = useState<"loading" | "error" | "success">("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const requestSentRef = useRef(false);
 
   useEffect(() => {
     const processCallback = async () => {
@@ -38,6 +39,9 @@ function AuthCallbackContent() {
         setErrorMessage("Missing required authorization code or state parameter.");
         return;
       }
+
+      if (requestSentRef.current) return;
+      requestSentRef.current = true;
 
       try {
         const redirectUri = `${window.location.origin}/auth/callback`;

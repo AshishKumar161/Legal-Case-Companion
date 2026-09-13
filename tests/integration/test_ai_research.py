@@ -26,8 +26,8 @@ def _setup_user(
 from unittest.mock import patch
 
 
-@patch("app.services.document_processor.EmbeddingService.generate_embeddings")
-@patch("app.services.retrieval_service.EmbeddingService.generate_embeddings")
+@patch("app.domain.documents.document_processor.EmbeddingService.generate_embeddings")
+@patch("app.domain.ai.retrieval_service.EmbeddingService.generate_embeddings")
 def test_ai_research_flow(mock_retrieval_emb, mock_doc_emb, client: TestClient, db):
     from app.core.config import settings
 
@@ -80,7 +80,7 @@ def test_ai_research_flow(mock_retrieval_emb, mock_doc_emb, client: TestClient, 
         db.refresh(doc)
 
         # Run DocumentProcessor
-        from app.services.document_processor import DocumentProcessor
+        from app.domain.documents.document_processor import DocumentProcessor
 
         dp = DocumentProcessor(db)
 

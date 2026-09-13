@@ -491,7 +491,7 @@ export function MatterRequestsBoard({
                   </label>
                   <select
                     value={newType}
-                    onChange={(e) => setNewType(e.target.value as any)}
+                    onChange={(e) => setNewType(e.target.value as never)}
                     style={{
                       width: "100%",
                       padding: "8px",

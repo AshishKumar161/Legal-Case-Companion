@@ -423,12 +423,13 @@ def get_lawyer_call_status(
             active_con = query.order_by(Consultation.created_at.desc()).first()
             if active_con:
                 active_con_id = str(active_con.id)
+                is_meeting_with_me = True
 
     is_online = p_status in (PresenceStatus.ONLINE, PresenceStatus.AVAILABLE, PresenceStatus.BUSY)
     is_in_meeting = p_status == PresenceStatus.BUSY and not is_meeting_with_me
 
     if is_meeting_with_me:
-        status_label = "Call In Progress with You"
+        status_label = "Meeting Ready with You"
         can_call = True
     elif is_in_meeting:
         status_label = "In Another Meeting"

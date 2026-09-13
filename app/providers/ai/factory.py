@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.providers.ai.base import AIProvider
 from app.providers.ai.mock import CanonicalMockAIProvider
 from app.providers.ai.openai import CanonicalOpenAIProvider
+from app.providers.ai.lcc_pipeline import CanonicalLCCPipelineProvider
 
 logger = logging.getLogger(__name__)
 
@@ -21,17 +22,14 @@ def get_canonical_ai_provider() -> AIProvider:
     """
     if (
         getattr(settings, "AI_INTEGRATION_ENABLED", True)
-        and settings.OPENAI_API_KEY
-        and settings.OPENAI_API_KEY
-        not in ("<set-in-environment>", "", "dummy-key", "test-key", "dummy-test-key")
-        and not settings.OPENAI_API_KEY.startswith("dummy")
         and settings.ENVIRONMENT not in ("test", "testing")
     ):
+        # Return the LCC Pipeline Provider by default
         try:
-            return CanonicalOpenAIProvider()
+            return CanonicalLCCPipelineProvider()
         except Exception as e:
             logger.warning(
-                "Failed to initialize CanonicalOpenAIProvider, falling back to mock provider: %s",
+                "Failed to initialize CanonicalLCCPipelineProvider, falling back to mock provider: %s",
                 e,
             )
             return CanonicalMockAIProvider()

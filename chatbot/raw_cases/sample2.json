@@ -1,0 +1,18 @@
+{
+  "case_id": "DC-HP-2023-000045",
+  "court_name": "District Court, Shimla",
+  "state": "Himachal Pradesh",
+  "district": "Shimla",
+  "court_level": "district",
+  "filing_date": "2023-05-01",
+  "judgment_date": "2023-11-20",
+  "year": 2023,
+  "case_type": "criminal",
+  "crime_category": "",
+  "statute_sections": [{"act": "IPC", "section": "379", "label": "Theft"}],
+  "fact_summary": "Two-wheeler stolen from outside a residence, accused apprehended with stolen vehicle a week later.",
+  "outcome": {"disposal_type": "convicted", "sentence_or_relief": "6 months imprisonment"},
+  "keywords": ["vehicle theft"],
+  "source": {"portal": "manual_entry", "source_url": "", "retrieved_on": "2026-09-04"},
+  "full_text_available": false
+}

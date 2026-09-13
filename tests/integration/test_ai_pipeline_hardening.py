@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.identifiers import generate_uuid7
 from app.models.ai import DocumentChunk
 from app.models.document import Document, DocumentSecurityStatus
-from app.services.document_processor import DocumentProcessor
+from app.domain.documents.document_processor import DocumentProcessor
 from app.domain.evidence.scanner_service import ScannerService
 
 
@@ -183,8 +183,8 @@ def test_authorization_matrix_inactive_participant_and_deleted_case(
 # ============================================================================
 
 
-@patch("app.services.document_processor.EmbeddingService.generate_embeddings")
-@patch("app.services.retrieval_service.EmbeddingService.generate_embeddings")
+@patch("app.domain.documents.document_processor.EmbeddingService.generate_embeddings")
+@patch("app.domain.ai.retrieval_service.EmbeddingService.generate_embeddings")
 def test_document_security_states_in_rag(
     mock_retrieval_emb, mock_doc_emb, client: TestClient, db: Session
 ):
@@ -299,7 +299,7 @@ def test_document_security_states_in_rag(
 # ============================================================================
 
 
-@patch("app.services.document_processor.EmbeddingService.generate_embeddings")
+@patch("app.domain.documents.document_processor.EmbeddingService.generate_embeddings")
 def test_complete_document_processing_pipeline(
     mock_embeddings, client: TestClient, db: Session
 ):
@@ -351,7 +351,7 @@ def test_complete_document_processing_pipeline(
 # ============================================================================
 
 
-@patch("app.services.document_processor.EmbeddingService.generate_embeddings")
+@patch("app.domain.documents.document_processor.EmbeddingService.generate_embeddings")
 def test_pdf_and_text_extraction_edge_cases(
     mock_embeddings, client: TestClient, db: Session
 ):
@@ -426,8 +426,8 @@ def test_pdf_and_text_extraction_edge_cases(
 # ============================================================================
 
 
-@patch("app.services.document_processor.EmbeddingService.generate_embeddings")
-@patch("app.services.retrieval_service.EmbeddingService.generate_embeddings")
+@patch("app.domain.documents.document_processor.EmbeddingService.generate_embeddings")
+@patch("app.domain.ai.retrieval_service.EmbeddingService.generate_embeddings")
 def test_prompt_injection_obfuscated_and_document_attacks(
     mock_retrieval_emb, mock_doc_emb, client: TestClient, db: Session
 ):
@@ -510,8 +510,8 @@ def test_prompt_injection_obfuscated_and_document_attacks(
 # ============================================================================
 
 
-@patch("app.services.document_processor.EmbeddingService.generate_embeddings")
-@patch("app.services.retrieval_service.EmbeddingService.generate_embeddings")
+@patch("app.domain.documents.document_processor.EmbeddingService.generate_embeddings")
+@patch("app.domain.ai.retrieval_service.EmbeddingService.generate_embeddings")
 def test_citation_verification_removes_unretrieved_citations(
     mock_retrieval_emb, mock_doc_emb, client: TestClient, db: Session
 ):

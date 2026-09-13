@@ -260,7 +260,7 @@ export default function Register() {
                   alt="Legal Case Companion Logo"
                   width={56}
                   height={56}
-                  style={{ objectFit: "contain" }}
+                  style={{ objectFit: "contain", width: "auto", height: "auto" }}
                   priority
                 />
               </div>

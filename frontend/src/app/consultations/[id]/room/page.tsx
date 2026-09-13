@@ -141,10 +141,10 @@ export default function VideoConsultationRoomPage() {
   const fetchLinkedCaseData = useCallback(async (caseIdToLoad: string) => {
     try {
       setLoadingCaseData(true);
-      const caseData = (await apiClient.get(`/api/v1/cases/${caseIdToLoad}`)) as any;
+      const caseData = (await apiClient.get(`/api/v1/cases/${caseIdToLoad}`)) as Record<string, unknown>;
       setLinkedCase(caseData);
       setLinkedCaseId(caseIdToLoad);
-      const msgs = (await apiClient.get(`/api/v1/cases/${caseIdToLoad}/collaboration/messages?limit=25`)) as any;
+      const msgs = (await apiClient.get(`/api/v1/cases/${caseIdToLoad}/collaboration/messages?limit=25`)) as Record<string, unknown>;
       if (Array.isArray(msgs)) setLinkedCaseMessages(msgs);
     } catch (err) {
       console.warn("Failed to load linked case workspace data in room:", err);
@@ -163,7 +163,7 @@ export default function VideoConsultationRoomPage() {
         message_type: "GENERAL",
       });
       setNewCaseMessageText("");
-      const updated = (await apiClient.get(`/api/v1/cases/${linkedCaseId}/collaboration/messages?limit=25`)) as any;
+      const updated = (await apiClient.get(`/api/v1/cases/${linkedCaseId}/collaboration/messages?limit=25`)) as Record<string, unknown>;
       if (Array.isArray(updated)) setLinkedCaseMessages(updated);
     } catch (err) {
       console.error("Failed to post case message from video room:", err);
@@ -714,7 +714,7 @@ export default function VideoConsultationRoomPage() {
         // Fetch consultation details to get associated client case
         try {
           let targetCaseId: string | null = null;
-          const consultDetails = (await apiClient.get(`/api/v1/consultations/${consultationId}`)) as any;
+          const consultDetails = (await apiClient.get(`/api/v1/consultations/${consultationId}`)) as { case_id?: string };
           if (consultDetails?.case_id) {
             targetCaseId = consultDetails.case_id;
           } else if (urlParams?.get("case_id")) {
@@ -1060,6 +1060,26 @@ export default function VideoConsultationRoomPage() {
                 if (mounted) setRemotePeerActive(true);
                 // Broadcast our media state back to the existing peer
                 broadcastMediaStatus(isMutedRef.current, isVideoOffRef.current, isScreenSharingRef.current);
+
+                // Impolite peer initiates offer negotiation upon discovering existing peer
+                if (!isPoliteRef.current && pc.signalingState === "stable") {
+                  try {
+                    makingOfferRef.current = true;
+                    const offer = await pc.createOffer({
+                      offerToReceiveAudio: true,
+                      offerToReceiveVideo: true,
+                    });
+                    await pc.setLocalDescription(offer);
+                    if (ws.readyState === WebSocket.OPEN) {
+                      ws.send(JSON.stringify({ type: "offer", sdp: pc.localDescription?.sdp }));
+                      console.log("[LCC-Video] Impolite peer sent initial offer to existing peer");
+                    }
+                  } catch (offerErr) {
+                    console.error("[LCC-Video] Error creating/setting local offer:", offerErr);
+                  } finally {
+                    makingOfferRef.current = false;
+                  }
+                }
               } else if (msg.type === "offer" && msg.sdp) {
                 console.log(`[LCC-Video] Received offer from peer, signalingState: ${pc.signalingState}, isPolite: ${isPoliteRef.current}`);
                 if (mounted) setRemotePeerActive(true);
@@ -2357,7 +2377,7 @@ export default function VideoConsultationRoomPage() {
                 alt="LCC Logo"
                 width={28}
                 height={28}
-                style={{ objectFit: "contain" }}
+                style={{ objectFit: "contain", width: "auto", height: "auto" }}
               />
             </div>
             <div>

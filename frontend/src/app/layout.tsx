@@ -21,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <body data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false">
         <AuthProvider>
           <Navbar />
           <AppShell>{children}</AppShell>

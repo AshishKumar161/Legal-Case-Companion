@@ -9,7 +9,7 @@ from app.core.identifiers import generate_uuid7
 from app.models.job import BackgroundJob, JobStatus, JobType
 from app.core.security import hash_password
 from app.models.user import AccountStatus, User, UserRole
-from app.services.job_service import JobService
+from app.domain.jobs.job_service import JobService
 from app.domain.jobs.job_worker import JobWorker
 
 

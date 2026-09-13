@@ -22,7 +22,7 @@ from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
 from app.models.video_recording import VideoRecording, VideoRecordingStatus
 from app.models.webhook import ProcessedWebhookEvent, WebhookProcessingStatus
 from app.domain.jobs.job_scheduler import JobScheduler
-from app.services.job_service import JobService
+from app.domain.jobs.job_service import JobService
 from app.domain.jobs.job_worker import JobWorker
 from app.domain.consultations.recording_storage import LocalRecordingStorageProvider, get_recording_storage_provider
 from app.domain.consultations.video_recording_service import VideoRecordingService

@@ -512,7 +512,7 @@ export default function LawyerDiscoveryPage() {
                     key={key}
                     type="button"
                     className={`${styles.choicePill} ${urgencyPreference === key ? styles.choicePillActive : ""}`}
-                    onClick={() => setUrgencyPreference(key as any)}
+                    onClick={() => setUrgencyPreference(key as never)}
                   >
                     ⏱️ {label}
                   </button>

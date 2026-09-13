@@ -22,7 +22,7 @@ from app.models.consultation import Consultation, ConsultationStatus
 from app.models.document import Document, DocumentSecurityStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.user import AccountStatus, ClientProfile, LawyerProfile, User, UserRole
-from app.services.payment_service import PaymentService
+from app.domain.payments.payment_service import PaymentService
 from app.domain.evidence.scanner_service import (
     ClamAVScanner,
     DefaultMalwareScanner,

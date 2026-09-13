@@ -23,7 +23,7 @@ from app.models.court_case import CourtCase, UserFollowedCase
 from app.models.document import Document, DocumentSecurityStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.user import AccountStatus, ClientProfile, User, UserRole
-from app.services.payment_service import PaymentService
+from app.domain.payments.payment_service import PaymentService
 from app.domain.evidence.scanner_service import HeuristicSignatureScanner, ScannerService
 
 
@@ -336,7 +336,7 @@ def test_stripe_webhook_idempotency(db: Session):
     raw_payload = json.dumps(payload_dict).encode("utf-8")
 
     # Monkeypatch verify_stripe_webhook_signature
-    import app.services.payment_service as ps_mod
+    import app.domain.payments.payment_service as ps_mod
     orig_verify = ps_mod.verify_stripe_webhook_signature
     ps_mod.verify_stripe_webhook_signature = lambda raw_payload, signature_header, secret: payload_dict
     try:

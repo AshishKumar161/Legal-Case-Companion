@@ -90,7 +90,7 @@ export function Navbar() {
               alt="LCC Logo"
               width={24}
               height={24}
-              style={{ objectFit: "contain" }}
+              style={{ objectFit: "contain", width: "auto", height: "auto" }}
               priority
             />
           </span>

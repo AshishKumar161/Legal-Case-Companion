@@ -389,5 +389,5 @@ def test_pilot_status_diagnostics_and_release_manifest(client: TestClient, db: S
     manifest = generate_release_manifest()
     assert manifest["release_id"] == settings.RELEASE_ID
     assert manifest["version"] == settings.APP_VERSION
-    assert manifest["database_migration_head"] == "w1a2b3c4d5e6"
+    assert manifest["database_migration_head"] == "8b5b923063b9"
     assert manifest["approval_record"]["security_officer_approval"] == "APPROVED"

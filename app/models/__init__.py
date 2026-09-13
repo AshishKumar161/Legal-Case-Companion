@@ -1,3 +1,4 @@
+from app.models.advisor import AdvisorMessage, AdvisorSession
 from app.models.ai import (
     AIConversation,
     AIMessage,
@@ -248,7 +249,6 @@ __all__ = [
     "ConsultationNote",
     "ConsultationStatus",
     "DatePrecision",
-    "DayOfWeek",
     "DeadlineSourceType",
     "DeadlineStatus",
     "DeadlineType",
@@ -292,7 +292,6 @@ __all__ = [
     "IssueStatus",
     "JobStatus",
     "JobType",
-    "LawyerAvailability",
     "LawyerProfile",
     "LawyerVerification",
     "LegalAuthorityType",
@@ -367,4 +366,6 @@ __all__ = [
     "TranslationStatus",
     "ProcessedWebhookEvent",
     "WebhookProcessingStatus",
+    "AdvisorSession",
+    "AdvisorMessage",
 ]

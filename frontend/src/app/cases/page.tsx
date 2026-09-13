@@ -78,7 +78,7 @@ export default function CasesPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const res: any = await apiClient.post("/api/v1/cases", {
+      const res: Record<string, unknown> = await apiClient.post("/api/v1/cases", {
         title: newTitle.trim(),
         description: newDesc.trim(),
       });
@@ -270,7 +270,7 @@ export default function CasesPage() {
 
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as never)}
               className="input-field"
               style={{ width: "auto" }}
             >

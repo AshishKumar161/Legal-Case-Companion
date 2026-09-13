@@ -191,3 +191,24 @@ We implemented and verified seamless bidirectional case document sharing between
    - `npm run lint`: 0 errors
    - `npm run build`: PASS (36/36 routes)
 
+---
+
+# AI Legal Assistant Backend - Integration of Personalized Legal Domains
+
+We successfully implemented the client's request to integrate a 10-domain legal classification framework along with personalized, domain-specific templates.
+
+### 1. Architectural Changes
+- **Expanded Category Schema**: Replaced the original 5 `CrimeCategory` prototype with 10 comprehensive `LegalCategory` domains (Criminal, Civil, Family/Matrimonial, Property/Land, Consumer, Cheque Bounce, Labour/Employment, Cybercrime, Motor Accident, Constitutional/Administrative).
+- **Personalization Integration**: The `IntakeAgent` now identifies these 10 categories. Instead of returning generic clarification questions, the `LegalAssistant` pipeline dynamically injects predefined, domain-specific `PERSONALIZED_REPLIES_BY_CATEGORY` if further clarification is required.
+- **Universal Greeting**: Implemented the `UNIVERSAL_CHATBOT_OPENING` template for all conversational requests ("Hi", "Hello") mapped directly to the `SafetyGuard`.
+
+### 2. File Updates & Refactoring
+- **`schemas.py`**: Updated `LegalCategory` Enum to 10 classes.
+- **`prompts.py`**: Embedded the personalized response dictionary mapping `LegalCategory` to specific chatbot responses.
+- **`pipeline.py`**: Patched `LegalAssistant.ask()` (Stage 2) to override `clarification_questions` using the new personalized templates.
+- **`answer_generator.py`**: Updated `docs_by_category` and `steps_by_category` fallback content for robust offline mock generation across all 10 legal domains.
+- **`llama_model.py`**: Updated `_mock_generate` heuristics to accurately tag user queries with the new 10 categories.
+
+### 3. Verification & Validation
+- **Unit & Integration Testing**: Validated by updating and executing `test_backend.py`.
+- **Outcome**: The entire `pytest chatbot/model_backend/test_backend.py` suite passed perfectly (6/6 tests passed successfully) against the new category framework.

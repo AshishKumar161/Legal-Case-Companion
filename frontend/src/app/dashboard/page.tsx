@@ -157,7 +157,7 @@ export default function Dashboard() {
             case_id: String(ev.case_id || ""),
             title: String(ev.title || "Legal Deadline"),
             deadline_at: String(ev.start_time || ev.event_date || new Date().toISOString()),
-            deadline_type: "PROCEDURAL" as any,
+            deadline_type: "PROCEDURAL" as never,
             is_confirmed: true,
             status: "UPCOMING",
             description: ev.description ? String(ev.description) : undefined,
@@ -228,7 +228,7 @@ export default function Dashboard() {
     if (!newTitle.trim() || creating) return;
     try {
       setCreating(true);
-      const res: any = await apiClient.post("/api/v1/cases", {
+      const res: Record<string, unknown> = await apiClient.post("/api/v1/cases", {
         title: newTitle.trim(),
         description: newDesc.trim(),
       });

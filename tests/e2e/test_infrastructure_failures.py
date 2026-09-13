@@ -25,9 +25,9 @@ from app.models.user import AccountStatus, User, UserRole
 from app.schemas.evidence import EvidenceUploadInitRequest
 from app.domain.ai.ai_provider import StubAIProvider
 from app.domain.evidence.evidence_service import EvidenceService
-from app.services.job_service import JobService
+from app.domain.jobs.job_service import JobService
 from app.domain.jobs.outbox_service import OutboxService
-from app.services.presence_service import PresenceService
+from app.domain.consultations.presence_service import PresenceService
 
 
 class BrokenStorageProvider(StorageProvider):
@@ -74,7 +74,7 @@ def test_redis_failure_fails_closed_and_degrades_safely(monkeypatch):
     """Verify that when Redis is down, presence fails safe (OFFLINE), tickets fail closed, and health reports degraded."""
     broken_redis = BrokenRedisClient()
     monkeypatch.setattr("app.core.redis.get_redis_client", lambda: broken_redis)
-    monkeypatch.setattr("app.services.presence_service.get_redis_client", lambda: broken_redis)
+    monkeypatch.setattr("app.domain.consultations.presence_service.get_redis_client", lambda: broken_redis)
     monkeypatch.setattr("app.api.v1.health.get_redis_client", lambda: broken_redis)
 
     presence_service = PresenceService()
@@ -282,7 +282,7 @@ def test_outbox_durability_on_dispatch_failure(db: Session):
     db.commit()
 
     # Dispatch failure simulation
-    with patch("app.services.job_service.JobService.enqueue_job", side_effect=RuntimeError("Job queue unavailable")):
+    with patch("app.domain.jobs.job_service.JobService.enqueue_job", side_effect=RuntimeError("Job queue unavailable")):
         outbox_service.dispatch_event(event)
 
     db.refresh(event)

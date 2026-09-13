@@ -205,12 +205,14 @@ class CollaborationService:
         if user.role != UserRole.ADMIN and (not participant or participant.participant_role != ParticipantRole.LAWYER):
             query = query.filter(CaseMessage.is_counsel_only.is_(False))
 
+        # Order by created_at.desc() to get the latest messages up to limit, then reverse to chronological order
         messages = (
-            query.order_by(CaseMessage.created_at.asc())
+            query.order_by(CaseMessage.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
         )
+        messages.reverse()
 
         results: list[CaseMessageResponse] = []
         for m in messages:

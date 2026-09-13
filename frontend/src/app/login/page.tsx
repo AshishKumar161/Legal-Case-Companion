@@ -184,7 +184,7 @@ function LoginForm() {
               alt="Legal Case Companion Logo"
               width={56}
               height={56}
-              style={{ objectFit: "contain" }}
+              style={{ objectFit: "contain", width: "auto", height: "auto" }}
               priority
             />
           </div>
@@ -196,18 +196,19 @@ function LoginForm() {
         {error && <div className={styles.errorAlert}>{error}</div>}
 
         {/* 1-Click Demo Persona Access Panel */}
-        <div className={styles.demoSection}>
-          <div className={styles.demoHeader}>
+        <div className={styles.demoSection} suppressHydrationWarning>
+          <div className={styles.demoHeader} suppressHydrationWarning>
             <span className={styles.demoBadge}>⚡ 1-Click Demo Personas</span>
             <span className={styles.demoSubtext}>Immediate test access</span>
           </div>
-          <div className={styles.demoGrid}>
+          <div className={styles.demoGrid} suppressHydrationWarning>
             <button
               type="button"
               id="demo-client-btn"
               onClick={() => handleDemoLogin('client@lcc.test', 'client')}
               disabled={loading || !!demoLoadingRole || googleLoading}
               className={`${styles.demoBtn} ${styles.demoClient}`}
+              suppressHydrationWarning
             >
               <div className={styles.demoBtnContent}>
                 <div className={styles.demoRoleIcon}>👤</div>
@@ -230,6 +231,7 @@ function LoginForm() {
               onClick={() => handleDemoLogin('advocate@lcc.test', 'lawyer')}
               disabled={loading || !!demoLoadingRole || googleLoading}
               className={`${styles.demoBtn} ${styles.demoLawyer}`}
+              suppressHydrationWarning
             >
               <div className={styles.demoBtnContent}>
                 <div className={styles.demoRoleIcon}>⚖</div>
@@ -252,6 +254,7 @@ function LoginForm() {
               onClick={() => handleDemoLogin('admin@lcc.test', 'admin')}
               disabled={loading || !!demoLoadingRole || googleLoading}
               className={`${styles.demoBtn} ${styles.demoAdmin}`}
+              suppressHydrationWarning
             >
               <div className={styles.demoBtnContent}>
                 <div className={styles.demoRoleIcon}>🛡</div>
@@ -275,8 +278,9 @@ function LoginForm() {
           onClick={handleGoogleLogin}
           disabled={googleLoading || loading || !!demoLoadingRole}
           className={styles.googleBtn}
+          suppressHydrationWarning
         >
-          <svg width="18" height="18" viewBox="0 0 24 24">
+          <svg width="18" height="18" viewBox="0 0 24 24" suppressHydrationWarning>
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -301,8 +305,8 @@ function LoginForm() {
           <span>or log in with email</span>
         </div>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className="input-group">
+        <form onSubmit={handleSubmit} className={styles.form} suppressHydrationWarning>
+          <div className="input-group" suppressHydrationWarning>
             <label className="input-label" htmlFor="email-input">Email Address</label>
             <input
               id="email-input"
@@ -312,10 +316,11 @@ function LoginForm() {
               onChange={e => setEmail(e.target.value)}
               placeholder="advocate@example.com"
               required
+              suppressHydrationWarning
             />
           </div>
 
-          <div className="input-group">
+          <div className="input-group" suppressHydrationWarning>
             <label className="input-label" htmlFor="password-input">Password</label>
             <input
               id="password-input"
@@ -325,6 +330,7 @@ function LoginForm() {
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              suppressHydrationWarning
             />
           </div>
 
@@ -332,6 +338,7 @@ function LoginForm() {
             type="submit"
             className={`btn btn-primary ${styles.submitBtn} ${loading ? 'btn-disabled' : ''}`}
             disabled={loading || googleLoading}
+            suppressHydrationWarning
           >
             {loading ? 'Authenticating...' : 'Log In'}
           </button>
@@ -347,6 +354,20 @@ function LoginForm() {
 }
 
 export default function Login() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className={styles.authContainer}>
+        <div className={styles.authCard}>Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <Suspense fallback={<div className={styles.authContainer}><div className={styles.authCard}>Loading...</div></div>}>
       <LoginForm />

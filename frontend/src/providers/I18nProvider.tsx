@@ -67,17 +67,26 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const dict = dictionaries[locale] || dictionaries["en-IN"];
     const fallback = dictionaries["en-IN"];
 
-    const resolve = (obj: any, p: string) => {
-      return p.split(".").reduce((prev, curr) => (prev && prev[curr] !== undefined ? prev[curr] : null), obj);
+    const resolve = (obj: Record<string, unknown>, p: string): unknown => {
+      let current: unknown = obj;
+      for (const segment of p.split(".")) {
+        if (current && typeof current === "object" && segment in current) {
+          current = (current as Record<string, unknown>)[segment];
+        } else {
+          return null;
+        }
+      }
+      return current;
     };
 
-    let val = resolve(dict, path) || resolve(fallback, path) || path;
-    if (typeof val === "string" && params) {
+    const rawVal = resolve(dict, path) || resolve(fallback, path) || path;
+    let strVal = typeof rawVal === "string" ? rawVal : path;
+    if (params) {
       Object.entries(params).forEach(([k, v]) => {
-        val = val.replace(`{${k}}`, String(v));
+        strVal = strVal.replace(`{${k}}`, String(v));
       });
     }
-    return typeof val === "string" ? val : path;
+    return strVal;
   };
 
   return (

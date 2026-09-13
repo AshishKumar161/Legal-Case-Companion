@@ -34,10 +34,10 @@ from app.models.user import (
 from app.models.video_meeting import VideoMeeting, VideoMeetingStatus
 from app.models.webhook import ProcessedWebhookEvent, WebhookProcessingStatus
 from app.domain.consultations.consultation_service import ConsultationService
-from app.services.job_service import JobService
+from app.domain.jobs.job_service import JobService
 from app.domain.jobs.job_worker import JobWorker
 from app.domain.jobs.outbox_service import OutboxService
-from app.services.payment_service import PaymentService
+from app.domain.payments.payment_service import PaymentService
 
 
 def _create_registered_client(client: TestClient, db: Session, email: str) -> tuple[dict[str, str], User]:

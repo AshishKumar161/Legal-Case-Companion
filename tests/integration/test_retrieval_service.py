@@ -6,7 +6,7 @@ from app.models.case import Case, CaseParticipant, ParticipantRole, ParticipantS
 from app.models.document import Document, DocumentSecurityStatus
 from app.models.user import User
 from app.schemas.ai import AIResearchRequest
-from app.services.retrieval_service import RetrievalService, cosine_similarity
+from app.domain.ai.retrieval_service import RetrievalService, cosine_similarity
 
 
 def test_cosine_similarity():

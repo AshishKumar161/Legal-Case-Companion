@@ -16,7 +16,7 @@ import styles from "./CaseAttentionCard.module.css";
 interface AttentionDimension {
   state: string;
   reason: string;
-  data?: any;
+  data?: unknown;
 }
 
 interface CaseAttentionResponse {

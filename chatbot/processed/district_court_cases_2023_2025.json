@@ -1,0 +1,193 @@
+[
+  {
+    "case_id": "DC-HP-2024-000123",
+    "court_name": "District & Sessions Court, Solan",
+    "state": "Himachal Pradesh",
+    "district": "Solan",
+    "court_level": "district",
+    "filing_date": "2024-02-11",
+    "judgment_date": "2024-09-03",
+    "year": 2024,
+    "case_type": "criminal",
+    "crime_category": "cyber_fraud",
+    "statute_sections": [
+      {
+        "act": "IT Act",
+        "section": "66D",
+        "label": "Cheating by personation using computer resource"
+      }
+    ],
+    "fact_summary": "Victim received a call impersonating a customs official demanding money to avoid arrest, and transferred funds via UPI before realizing it was a scam.",
+    "outcome": {
+      "disposal_type": "convicted",
+      "sentence_or_relief": "1 year imprisonment + fine"
+    },
+    "keywords": [
+      "digital arrest scam",
+      "UPI",
+      "phone fraud"
+    ],
+    "source": {
+      "portal": "manual_entry",
+      "source_url": "",
+      "retrieved_on": "2026-09-04"
+    },
+    "full_text_available": false,
+    "embedding_text": "Crime category: cyber_fraud. Relevant sections: IT Act 66D (Cheating by personation using computer resource). Facts: Victim received a call impersonating a customs official demanding money to avoid arrest, and transferred funds via UPI before realizing it was a scam.. Keywords: digital arrest scam, UPI, phone fraud. Outcome: convicted."
+  },
+  {
+    "case_id": "DC-HP-2023-000045",
+    "court_name": "District Court, Shimla",
+    "state": "Himachal Pradesh",
+    "district": "Shimla",
+    "court_level": "district",
+    "filing_date": "2023-05-01",
+    "judgment_date": "2023-11-20",
+    "year": 2023,
+    "case_type": "criminal",
+    "crime_category": "theft_burglary",
+    "statute_sections": [
+      {
+        "act": "IPC",
+        "section": "379",
+        "label": "Theft"
+      }
+    ],
+    "fact_summary": "Two-wheeler stolen from outside a residence, accused apprehended with stolen vehicle a week later.",
+    "outcome": {
+      "disposal_type": "convicted",
+      "sentence_or_relief": "6 months imprisonment"
+    },
+    "keywords": [
+      "vehicle theft"
+    ],
+    "source": {
+      "portal": "manual_entry",
+      "source_url": "",
+      "retrieved_on": "2026-09-04"
+    },
+    "full_text_available": false,
+    "embedding_text": "Crime category: theft_burglary. Relevant sections: IPC 379 (Theft). Facts: Two-wheeler stolen from outside a residence, accused apprehended with stolen vehicle a week later.. Keywords: vehicle theft. Outcome: convicted."
+  },
+  {
+    "case_id": "DC-DL-2024-000889",
+    "court_name": "District Court, Saket",
+    "state": "Delhi",
+    "district": "South Delhi",
+    "court_level": "district",
+    "filing_date": "2024-01-15",
+    "judgment_date": "2024-08-20",
+    "year": 2024,
+    "case_type": "criminal",
+    "crime_category": "cheating_forgery",
+    "statute_sections": [
+      {
+        "act": "BNS",
+        "section": "318",
+        "label": "Cheating"
+      },
+      {
+        "act": "IPC",
+        "section": "468",
+        "label": "Forgery for purpose of cheating"
+      }
+    ],
+    "fact_summary": "Accused created forged appointment letters pretending to be a recruitment director for government railway employment, taking advance cash payments from multiple job seekers.",
+    "outcome": {
+      "disposal_type": "convicted",
+      "sentence_or_relief": "2 years rigorous imprisonment + fine of INR 50,000"
+    },
+    "keywords": [
+      "job racket",
+      "forged appointment letter",
+      "cheating",
+      "fake government stamp"
+    ],
+    "source": {
+      "portal": "manual_entry",
+      "source_url": "",
+      "retrieved_on": "2026-09-04"
+    },
+    "full_text_available": false,
+    "embedding_text": "Crime category: cheating_forgery. Relevant sections: BNS 318 (Cheating), IPC 468 (Forgery for purpose of cheating). Facts: Accused created forged appointment letters pretending to be a recruitment director for government railway employment, taking advance cash payments from multiple job seekers.. Keywords: job racket, forged appointment letter, cheating, fake government stamp. Outcome: convicted."
+  },
+  {
+    "case_id": "DC-MH-2023-001244",
+    "court_name": "District & Sessions Court, Pune",
+    "state": "Maharashtra",
+    "district": "Pune",
+    "court_level": "district",
+    "filing_date": "2023-03-10",
+    "judgment_date": "2023-10-18",
+    "year": 2023,
+    "case_type": "criminal",
+    "crime_category": "crimes_against_women",
+    "statute_sections": [
+      {
+        "act": "IPC",
+        "section": "354",
+        "label": "Assault on woman with intent to outrage modesty"
+      },
+      {
+        "act": "IPC",
+        "section": "354D",
+        "label": "Stalking"
+      }
+    ],
+    "fact_summary": "Accused repeatedly followed complainant on her daily commute and used abusive force when confronted. Witness testimony and CCTV footage corroborated the incident.",
+    "outcome": {
+      "disposal_type": "convicted",
+      "sentence_or_relief": "1 year rigorous imprisonment"
+    },
+    "keywords": [
+      "stalking",
+      "outraging modesty",
+      "cctv footage",
+      "commute harassment"
+    ],
+    "source": {
+      "portal": "manual_entry",
+      "source_url": "",
+      "retrieved_on": "2026-09-04"
+    },
+    "full_text_available": false,
+    "embedding_text": "Crime category: crimes_against_women. Relevant sections: IPC 354 (Assault on woman with intent to outrage modesty), IPC 354D (Stalking). Facts: Accused repeatedly followed complainant on her daily commute and used abusive force when confronted. Witness testimony and CCTV footage corroborated the incident.. Keywords: stalking, outraging modesty, cctv footage, commute harassment. Outcome: convicted."
+  },
+  {
+    "case_id": "DC-KA-2024-000412",
+    "court_name": "District Court, Bengaluru Rural",
+    "state": "Karnataka",
+    "district": "Bengaluru Rural",
+    "court_level": "district",
+    "filing_date": "2024-02-19",
+    "judgment_date": "2024-09-12",
+    "year": 2024,
+    "case_type": "criminal",
+    "crime_category": "crimes_against_senior_citizens",
+    "statute_sections": [
+      {
+        "act": "Senior Citizens Act",
+        "section": "23",
+        "label": "Transfer of property declared void"
+      }
+    ],
+    "fact_summary": "76-year-old retired complainant gifted his residential house to his son on the express promise of maintenance and medical care. Son abandoned parent and evicted him. Tribunal declared gift deed void and restored possession.",
+    "outcome": {
+      "disposal_type": "settled",
+      "sentence_or_relief": "Gift deed declared void; property possession restored to senior citizen"
+    },
+    "keywords": [
+      "elder abuse",
+      "gift deed void",
+      "senior citizens maintenance",
+      "eviction"
+    ],
+    "source": {
+      "portal": "manual_entry",
+      "source_url": "",
+      "retrieved_on": "2026-09-04"
+    },
+    "full_text_available": false,
+    "embedding_text": "Crime category: crimes_against_senior_citizens. Relevant sections: Senior Citizens Act 23 (Transfer of property declared void). Facts: 76-year-old retired complainant gifted his residential house to his son on the express promise of maintenance and medical care. Son abandoned parent and evicted him. Tribunal declared gift deed void and restored possession.. Keywords: elder abuse, gift deed void, senior citizens maintenance, eviction. Outcome: settled."
+  }
+]

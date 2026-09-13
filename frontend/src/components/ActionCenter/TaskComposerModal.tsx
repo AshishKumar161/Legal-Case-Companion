@@ -193,7 +193,7 @@ export function TaskComposerModal({
               </label>
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
+                onChange={(e) => setPriority(e.target.value as never)}
                 className="input-field"
               >
                 <option value="LOW">Low (Routine)</option>

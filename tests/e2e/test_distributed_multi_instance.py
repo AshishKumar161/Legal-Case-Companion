@@ -21,7 +21,7 @@ from app.models.evidence import (
 )
 from app.models.user import AccountStatus, User, UserRole
 from app.domain.auth.auth_service import AuthService
-from app.services.presence_service import PresenceService
+from app.domain.consultations.presence_service import PresenceService
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def multi_instance_redis(monkeypatch):
     """Shared simulated Redis cluster across multiple application instances."""
     shared_redis = InMemoryRedisClient()
     monkeypatch.setattr("app.core.redis.get_redis_client", lambda: shared_redis)
-    monkeypatch.setattr("app.services.presence_service.get_redis_client", lambda: shared_redis)
+    monkeypatch.setattr("app.domain.consultations.presence_service.get_redis_client", lambda: shared_redis)
     return shared_redis
 
 

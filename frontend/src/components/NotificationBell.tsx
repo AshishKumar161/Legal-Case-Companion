@@ -5,9 +5,12 @@ import { apiClient } from "@/api/client";
 import { NotificationItem } from "@/types";
 import Link from "next/link";
 
+import { useAuth } from "@/providers/AuthProvider";
+
 type FilterTab = "ALL" | "ACTION_REQUIRED" | "HEARINGS_DEADLINES" | "DOCUMENTS";
 
 export function NotificationBell() {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -15,6 +18,11 @@ export function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = useCallback(async () => {
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
     try {
       const res = await apiClient.get("/api/v1/notifications?limit=25");
       const items = res?.items || (Array.isArray(res) ? res : []);
@@ -25,14 +33,15 @@ export function NotificationBell() {
     } catch {
       // Silently catch in polling / unauthenticated state
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
+    if (!user) return;
     void fetchNotifications();
     const handleFocus = () => void fetchNotifications();
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [fetchNotifications]);
+  }, [fetchNotifications, user]);
 
   // Click outside to close
   useEffect(() => {

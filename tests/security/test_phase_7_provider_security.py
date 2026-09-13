@@ -55,7 +55,7 @@ from app.domain.notifications.email_service import (
     sanitize_email_subject,
     validate_email_recipient,
 )
-from app.services.payment_service import (
+from app.domain.payments.payment_service import (
     MockPaymentProvider,
     PaymentService,
     StripePaymentProvider,

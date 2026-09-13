@@ -47,7 +47,8 @@ interface ThreadDetailsResponse {
 }
 
 export default function MessagesPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const isLawyer = user?.role === "LAWYER";
 
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -66,6 +67,12 @@ export default function MessagesPage() {
   const activePartnerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login?redirect=/messages");
+    }
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
     activePartnerIdRef.current = activePartnerId;
   }, [activePartnerId]);
 
@@ -81,14 +88,18 @@ export default function MessagesPage() {
 
   // Fetch threads list
   const fetchThreads = useCallback(async (silent = false) => {
+    if (!user) return;
     try {
       if (!silent) setLoadingThreads(true);
       const data = (await apiClient.get("/api/v1/messages/threads")) as Thread[];
       if (Array.isArray(data)) {
-        setThreads(data);
+        const uniqueThreads = data.filter(
+          (t, idx, arr) => arr.findIndex((o) => (o.partnerId || o.id) === (t.partnerId || t.id)) === idx
+        );
+        setThreads(uniqueThreads);
         // Default to first thread if none active yet
-        if (!activePartnerIdRef.current && data.length > 0) {
-          setActivePartnerId(data[0].partnerId || data[0].id);
+        if (!activePartnerIdRef.current && uniqueThreads.length > 0) {
+          setActivePartnerId(uniqueThreads[0].partnerId || uniqueThreads[0].id);
         }
       }
     } catch (err) {
@@ -96,12 +107,11 @@ export default function MessagesPage() {
     } finally {
       if (!silent) setLoadingThreads(false);
     }
-  }, []);
-
-  const router = useRouter();
+  }, [user]);
 
   // Fetch messages for active thread
   const fetchActiveMessages = useCallback(async (partnerId: string, silent = false) => {
+    if (!user) return;
     try {
       if (!silent) setLoadingMessages(true);
       const res = (await apiClient.get(
@@ -121,7 +131,10 @@ export default function MessagesPage() {
         }
       }
       if (res && Array.isArray(res.messages)) {
-        setMessages(res.messages);
+        const uniqueMessages = res.messages.filter(
+          (m, idx, arr) => arr.findIndex((x) => x.id === m.id) === idx
+        );
+        setMessages(uniqueMessages);
         setTimeout(() => scrollToBottom(!silent), 50);
       }
     } catch (err) {
@@ -129,24 +142,27 @@ export default function MessagesPage() {
     } finally {
       if (!silent) setLoadingMessages(false);
     }
-  }, [scrollToBottom]);
+  }, [scrollToBottom, user]);
 
   // Initial load
   useEffect(() => {
-    fetchThreads();
-  }, [fetchThreads]);
+    if (user) {
+      fetchThreads();
+    }
+  }, [fetchThreads, user]);
 
   // Load messages when active partner changes
   useEffect(() => {
-    if (activePartnerId) {
+    if (activePartnerId && user) {
       fetchActiveMessages(activePartnerId);
     } else {
       setMessages([]);
     }
-  }, [activePartnerId, fetchActiveMessages]);
+  }, [activePartnerId, fetchActiveMessages, user]);
 
   // Background polling every 3.5s for real-time responsiveness
   useEffect(() => {
+    if (!user) return;
     const interval = setInterval(() => {
       fetchThreads(true);
       if (activePartnerIdRef.current) {
@@ -155,7 +171,7 @@ export default function MessagesPage() {
     }, 3500);
 
     return () => clearInterval(interval);
-  }, [fetchThreads, fetchActiveMessages]);
+  }, [fetchThreads, fetchActiveMessages, user]);
 
   // Send message
   const handleSendMessage = async () => {
@@ -170,7 +186,12 @@ export default function MessagesPage() {
       )) as MessageItem;
 
       setMessageInput("");
-      setMessages((prev) => [...prev, newMsg]);
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === newMsg.id)) {
+          return prev;
+        }
+        return [...prev, newMsg];
+      });
 
       // Update the thread list snippet immediately
       setThreads((prev) =>
@@ -290,12 +311,12 @@ export default function MessagesPage() {
                 {searchQuery ? "No matching conversations found." : "No conversations yet."}
               </div>
             ) : (
-              filteredThreads.map((t) => {
+              filteredThreads.map((t, tIdx) => {
                 const threadPartnerId = t.partnerId || t.id;
                 const isActive = threadPartnerId === activePartnerId;
                 return (
                   <div
-                    key={t.id}
+                    key={t.id ? `${t.id}-${tIdx}` : `thread-${tIdx}`}
                     onClick={() => setActivePartnerId(threadPartnerId)}
                     style={{
                       display: "flex",
@@ -559,12 +580,12 @@ export default function MessagesPage() {
                     No messages yet. Send a message to start this discussion.
                   </div>
                 ) : (
-                  messages.map((m) => {
+                  messages.map((m, idx) => {
                     const isOut = m.isOutgoing;
                     const isMeetingMsg = m.content.includes("/consultations/") && (m.content.includes("/room") || m.content.includes("Video Call"));
                     return (
                       <div
-                        key={m.id}
+                        key={m.id ? `${m.id}-${idx}` : `msg-${idx}`}
                         style={{
                           alignSelf: isOut ? "flex-end" : "flex-start",
                           maxWidth: "75%",
@@ -580,9 +601,9 @@ export default function MessagesPage() {
                               ? "linear-gradient(135deg, #064e3b 0%, #0f172a 100%)"
                               : isOut
                               ? "linear-gradient(135deg, #0F1E36 0%, #1E3A8A 100%)"
-                              : "#F8FAFC",
-                            color: isOut || isMeetingMsg ? "#FFFFFF" : "var(--text-primary)",
-                            border: `1px solid ${isMeetingMsg ? "#059669" : isOut ? "#1E3A8A" : "var(--border-subtle)"}`,
+                              : "#F1F5F9",
+                            color: isOut || isMeetingMsg ? "#FFFFFF" : "#0F172A",
+                            border: `1px solid ${isMeetingMsg ? "#059669" : isOut ? "#1E3A8A" : "#CBD5E1"}`,
                             borderRadius: isOut
                               ? "16px 16px 2px 16px"
                               : "16px 16px 16px 2px",
@@ -591,7 +612,7 @@ export default function MessagesPage() {
                             lineHeight: 1.55,
                             boxShadow: isOut || isMeetingMsg
                               ? "0 2px 8px rgba(15, 30, 54, 0.15)"
-                              : "0 1px 3px rgba(0, 0, 0, 0.04)",
+                              : "0 1px 3px rgba(0, 0, 0, 0.06)",
                             wordBreak: "break-word",
                           }}
                         >
@@ -599,7 +620,7 @@ export default function MessagesPage() {
                             <div
                               style={{
                                 fontSize: "11px",
-                                color: isMeetingMsg ? "#34d399" : "var(--brand-secondary)",
+                                color: isMeetingMsg ? "#34d399" : "#1E3A8A",
                                 marginBottom: "4px",
                                 fontWeight: 700,
                               }}
@@ -644,7 +665,7 @@ export default function MessagesPage() {
                               })()}
                             </div>
                           ) : (
-                            <div>{m.content}</div>
+                            <div style={{ color: isOut ? "#FFFFFF" : "#0F172A", wordBreak: "break-word" }}>{m.content}</div>
                           )}
                         </div>
 

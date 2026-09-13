@@ -39,7 +39,7 @@ function VerifyEmailContent() {
           );
           if (res?.access_token) {
             let userId = "";
-            let userRole: any = "CLIENT";
+            let userRole: "CLIENT" | "LAWYER" | "ADMIN" = "CLIENT";
             try {
               const payload = JSON.parse(atob(res.access_token.split(".")[1]));
               if (payload.sub) userId = payload.sub;

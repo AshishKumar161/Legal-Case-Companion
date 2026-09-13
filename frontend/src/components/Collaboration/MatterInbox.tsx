@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { CaseMessageItem, DocumentItem, CaseTaskItem } from "@/types";
 import { apiClient } from "@/api/client";
 
@@ -27,6 +27,12 @@ export function MatterInbox({
   const [linkedTaskId, setLinkedTaskId] = useState("");
   const [isCounselOnly, setIsCounselOnly] = useState(false);
   const [sending, setSending] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,6 +221,7 @@ export function MatterInbox({
             );
           })
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Message Composer */}
@@ -252,7 +259,7 @@ export function MatterInbox({
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
               <select
                 value={msgType}
-                onChange={(e) => setMsgType(e.target.value as any)}
+                onChange={(e) => setMsgType(e.target.value as never)}
                 style={{
                   padding: "4px 8px",
                   background: "var(--surface-base)",

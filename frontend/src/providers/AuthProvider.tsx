@@ -117,9 +117,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             clearTabSession();
             setUser(null);
           }
-        } catch (meErr: any) {
+        } catch (meErr: unknown) {
           console.warn("[LCC-Auth] Could not fetch authoritative identity:", meErr);
-          if (meErr?.status === 401 || meErr?.status === 403) {
+          const status = typeof meErr === "object" && meErr !== null && "status" in meErr ? (meErr as { status?: number }).status : undefined;
+          if (status === 401 || status === 403) {
             clearTabSession();
             setUser(null);
           }

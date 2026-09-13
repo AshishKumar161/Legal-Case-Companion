@@ -25,7 +25,7 @@ from app.models.job import BackgroundJob, JobStatus, JobType
 from app.models.outbox import OutboxEvent, OutboxStatus
 from app.models.user import AccountStatus, ClientProfile, User, UserRole
 from app.domain.evidence.evidence_service import EvidenceService
-from app.services.job_service import JobService
+from app.domain.jobs.job_service import JobService
 from app.domain.jobs.job_worker import JobWorker
 from app.domain.jobs.outbox_service import OutboxService
 from app.domain.evidence.scanner_service import MalwareScanner

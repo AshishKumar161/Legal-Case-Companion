@@ -29,7 +29,7 @@ export default function Home() {
                 alt="LCC Logo"
                 width={32}
                 height={32}
-                style={{ objectFit: "contain" }}
+                style={{ objectFit: "contain", width: "auto", height: "auto" }}
                 priority
               />
             </div>

@@ -15,7 +15,7 @@ from app.models.task import CaseTask, TaskStatus
 from app.models.user import User, UserRole
 from app.models.workflow import CaseDeadline, DeadlineStatus, DeadlineType
 from app.domain.jobs.job_scheduler import JobScheduler
-from app.services.job_service import JobService
+from app.domain.jobs.job_service import JobService
 from app.domain.jobs.job_worker import JobWorker
 
 
