@@ -354,20 +354,6 @@ function LoginForm() {
 }
 
 export default function Login() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className={styles.authContainer}>
-        <div className={styles.authCard}>Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <Suspense fallback={<div className={styles.authContainer}><div className={styles.authCard}>Loading...</div></div>}>
       <LoginForm />

@@ -51,6 +51,13 @@ if (fs.promises && fs.promises.readlink) {
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
+  allowedDevOrigins: [
+    "*.trycloudflare.com",
+    "indiana-controversial-hub-memorabilia.trycloudflare.com",
+    "*.loca.lt",
+    "*.ngrok-free.app",
+    "*.pinggy.link",
+  ],
   experimental: {
     webpackBuildWorker: false,
   },

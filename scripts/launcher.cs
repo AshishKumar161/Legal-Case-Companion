@@ -3,6 +3,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Threading;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace LegalCaseCompanion
 {
@@ -10,6 +11,8 @@ namespace LegalCaseCompanion
     {
         private static Process backendProcess = null;
         private static Process frontendProcess = null;
+        private static Process tunnelProcess = null;
+        private static string publicTunnelUrl = null;
         private static bool isExiting = false;
         private static readonly object exitLock = new object();
 
@@ -54,6 +57,17 @@ namespace LegalCaseCompanion
             }
             PrintSuccess("npm Executable: " + npmExe);
 
+            // Locate cloudflared
+            string cloudflaredExe = FindCloudflared();
+            if (!string.IsNullOrEmpty(cloudflaredExe))
+            {
+                PrintSuccess("Cloudflare Tunnel: " + cloudflaredExe);
+            }
+            else
+            {
+                PrintWarning("cloudflared.exe not found. Public dual-device URL will not be created.");
+            }
+
             // Hook exit handlers
             Console.CancelKeyPress += new ConsoleCancelEventHandler(OnCancelKeyPress);
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
@@ -66,8 +80,15 @@ namespace LegalCaseCompanion
             PrintSection("2. Starting Frontend (Next.js on Port 3000)...");
             StartFrontend(npmExe, Path.Combine(projectRoot, "frontend"));
 
+            // Start Cloudflare Tunnel
+            if (!string.IsNullOrEmpty(cloudflaredExe))
+            {
+                PrintSection("3. Starting Cloudflare Tunnel for Cross-Device Access...");
+                StartTunnel(cloudflaredExe, "http://localhost:3000");
+            }
+
             // Wait for services to be ready
-            PrintSection("3. Waiting for services to become healthy...");
+            PrintSection("4. Waiting for services to become healthy...");
             bool backendReady = WaitForUrl("http://127.0.0.1:8000/api/v1/health", 30);
             if (backendReady)
             {
@@ -88,19 +109,31 @@ namespace LegalCaseCompanion
                 PrintWarning("Frontend server timed out or is still building pages...");
             }
 
-            // Open browser
+            if (!string.IsNullOrEmpty(cloudflaredExe) && tunnelProcess != null)
+            {
+                PrintInfo("Waiting for public tunnel URL to generate...");
+                int waitCount = 0;
+                while (string.IsNullOrEmpty(publicTunnelUrl) && waitCount < 15)
+                {
+                    Thread.Sleep(1000);
+                    waitCount++;
+                }
+            }
+
+            // Open browser with public URL
             if (frontendReady || backendReady)
             {
-                PrintSection("4. Launching Application in Default Browser...");
+                string launchUrl = !string.IsNullOrEmpty(publicTunnelUrl) ? publicTunnelUrl : "http://localhost:3000";
+                PrintSection("5. Launching Application in Default Browser (" + launchUrl + ")...");
                 try
                 {
-                    Process.Start("http://localhost:3000");
+                    Process.Start(launchUrl);
                 }
                 catch
                 {
                     try
                     {
-                        Process.Start(new ProcessStartInfo("cmd", "/c start http://localhost:3000") { CreateNoWindow = true });
+                        Process.Start(new ProcessStartInfo("cmd", "/c start " + launchUrl) { CreateNoWindow = true });
                     }
                     catch { }
                 }
@@ -121,6 +154,18 @@ namespace LegalCaseCompanion
                             Console.WriteLine("\n[EXIT] Quit command received. Shutting down...");
                             Shutdown();
                             break;
+                        }
+                        else if (key.Key == ConsoleKey.U)
+                        {
+                            if (!string.IsNullOrEmpty(publicTunnelUrl))
+                            {
+                                Console.WriteLine("\n[NAV] Opening Public URL: " + publicTunnelUrl);
+                                Process.Start(publicTunnelUrl);
+                            }
+                            else
+                            {
+                                Console.WriteLine("\n[WARN] Public URL not available.");
+                            }
                         }
                         else if (key.Key == ConsoleKey.B)
                         {
@@ -241,6 +286,95 @@ namespace LegalCaseCompanion
             {
                 PrintError("Failed to start frontend: " + ex.Message);
             }
+        }
+
+        private static void StartTunnel(string cloudflaredExe, string localUrl)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = cloudflaredExe;
+                psi.Arguments = "tunnel --url " + localUrl;
+                psi.UseShellExecute = false;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                psi.CreateNoWindow = true;
+
+                tunnelProcess = new Process();
+                tunnelProcess.StartInfo = psi;
+
+                DataReceivedEventHandler handler = new DataReceivedEventHandler(delegate(object s, DataReceivedEventArgs e)
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        if (publicTunnelUrl == null && e.Data.Contains(".trycloudflare.com"))
+                        {
+                            Match m = Regex.Match(e.Data, @"https://[a-zA-Z0-9-]+\.trycloudflare\.com");
+                            if (m.Success)
+                            {
+                                publicTunnelUrl = m.Value;
+                                PrintSuccess("Public Tunnel Created: " + publicTunnelUrl);
+                            }
+                        }
+                    }
+                });
+
+                tunnelProcess.OutputDataReceived += handler;
+                tunnelProcess.ErrorDataReceived += handler;
+
+                tunnelProcess.Start();
+                tunnelProcess.BeginOutputReadLine();
+                tunnelProcess.BeginErrorReadLine();
+                PrintSuccess("Cloudflare tunnel process spawned (PID: " + tunnelProcess.Id + ")");
+            }
+            catch (Exception ex)
+            {
+                PrintWarning("Failed to start Cloudflare tunnel: " + ex.Message);
+            }
+        }
+
+        private static string FindCloudflared()
+        {
+            string[] possiblePaths = new string[]
+            {
+                @"C:\Program Files (x86)\cloudflared\cloudflared.exe",
+                @"C:\Program Files\cloudflared\cloudflared.exe",
+                Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\cloudflared\cloudflared.exe"),
+                Environment.ExpandEnvironmentVariables(@"%ProgramFiles(x86)%\cloudflared\cloudflared.exe"),
+                Environment.ExpandEnvironmentVariables(@"%ProgramFiles%\cloudflared\cloudflared.exe"),
+                "cloudflared.exe"
+            };
+
+            foreach (string p in possiblePaths)
+            {
+                try
+                {
+                    if (File.Exists(p)) return Path.GetFullPath(p);
+                }
+                catch { }
+            }
+
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("cmd", "/c where cloudflared.exe")
+                {
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using (Process proc = Process.Start(psi))
+                {
+                    string outStr = proc.StandardOutput.ReadLine();
+                    proc.WaitForExit(1000);
+                    if (!string.IsNullOrEmpty(outStr) && File.Exists(outStr.Trim()))
+                    {
+                        return outStr.Trim();
+                    }
+                }
+            }
+            catch { }
+
+            return null;
         }
 
         private static bool WaitForUrl(string url, int timeoutSeconds)
@@ -382,6 +516,7 @@ namespace LegalCaseCompanion
 
                 KillProcessTree(backendProcess);
                 KillProcessTree(frontendProcess);
+                KillProcessTree(tunnelProcess);
 
                 PrintSuccess("All server processes stopped cleanly.");
             }
@@ -436,15 +571,27 @@ namespace LegalCaseCompanion
             Console.WriteLine(" [ONLINE] FULL-STACK SYSTEM READY & OPERATIONAL");
             Console.WriteLine("===============================================================================");
             Console.ResetColor();
-            Console.WriteLine("  • Frontend Web Application : http://localhost:3000");
-            Console.WriteLine("  • Lawyer / Client Messages : http://localhost:3000/messages");
-            Console.WriteLine("  • Backend REST API         : http://127.0.0.1:8000");
-            Console.WriteLine("  • OpenAPI Swagger Docs     : http://127.0.0.1:8000/docs");
+            if (!string.IsNullOrEmpty(publicTunnelUrl))
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("  • Public Device URL (Any Device) : " + publicTunnelUrl);
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                Console.WriteLine("  • Public Device URL              : [Connecting or Not Installed]");
+                Console.ResetColor();
+            }
+            Console.WriteLine("  • Localhost Web Application      : http://localhost:3000");
+            Console.WriteLine("  • Lawyer / Client Messages       : http://localhost:3000/messages");
+            Console.WriteLine("  • Backend REST API               : http://127.0.0.1:8000");
+            Console.WriteLine("  • OpenAPI Swagger Docs           : http://127.0.0.1:8000/docs");
             Console.WriteLine("-------------------------------------------------------------------------------");
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine(" Hotkeys:");
-            Console.WriteLine("  [F] Open Frontend    [M] Open Messages    [B] Open Backend Docs");
-            Console.WriteLine("  [C] Clear Console    [Q] Stop & Exit");
+            Console.WriteLine("  [U] Open Public URL   [F] Open Localhost   [B] Open Backend Docs");
+            Console.WriteLine("  [M] Open Messages     [C] Clear Console    [Q] Stop & Exit");
             Console.WriteLine("===============================================================================");
             Console.ResetColor();
             Console.WriteLine();
