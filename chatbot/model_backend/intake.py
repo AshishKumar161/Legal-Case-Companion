@@ -128,12 +128,37 @@ Analyze the situation and return a JSON object strictly conforming to this forma
             return False
 
         category = "other"
-        if _matches(["murder", "theft", "fir", "assault", "arrest", "stolen", "stole", "steal", "burglary", "bike", "car", "robbery", "robbed", "cheating", "fraud", "forgery"]):
-            category = "criminal"
-        elif _matches(["agreement", "recovery", "damages", "breach", "civil", "legal notice"]):
-            category = "civil"
-        elif _matches(["divorce", "maintenance", "custody", "domestic violence", "alimony", "dowry", "husband", "wife", "marriage", "cruelty", "senior", "elderly"]):
-            category = "family_matrimonial"
+        if _matches([
+            "digital arrest", "customs officer", "upi fraud", "online fraud", "hacked account",
+            "cyberstalking", "identity theft", "otp", "phishing", "hacked", "hacking", "malware",
+            "scam", "scammed", "fraudulent", "cybercrime", "sim", "kyc", "spoofed", "spoofing"
+        ]):
+            category = "cyber_fraud"
+        elif _matches([
+            "fake appointment", "job fraud", "forged document", "fake agreement", "cheated",
+            "forgery", "counterfeit", "impersonation", "duped", "swindled", "cheating", "forged"
+        ]):
+            category = "cheating_forgery"
+        elif _matches([
+            "stolen vehicle", "bike theft", "car theft", "burglary", "theft", "stolen",
+            "robbery", "pickpocket", "snatched", "looted", "robbed", "stole", "steal"
+        ]):
+            category = "theft_burglary"
+        elif _matches([
+            "domestic violence", "beating", "outraging modesty", "assault", "abused", "abuse",
+            "cruelty", "cruel", "dowry", "molested", "stalking", "harassed", "threatened", "threats"
+        ]):
+            category = "crimes_against_women"
+        elif _matches([
+            "divorce", "maintenance", "mutual consent", "separation", "alimony", "custody",
+            "annulment", "desertion", "estranged", "estrangement", "remarriage", "infidelity"
+        ]):
+            category = "matrimonial_disputes"
+        elif _matches([
+            "senior citizen", "parents maintenance", "eviction of son", "gift deed", "elder abuse",
+            "elderly", "neglect", "neglected", "abandoned", "abandonment", "pension"
+        ]):
+            category = "crimes_against_senior_citizens"
         elif _matches(["land", "ownership", "possession", "inheritance", "partition", "encroachment", "registry"]):
             category = "property_land"
         elif _matches(["defective product", "refund", "warranty", "online shopping", "poor service", "consumer"]):
@@ -142,12 +167,14 @@ Analyze the situation and return a JSON object strictly conforming to this forma
             category = "cheque_bounce"
         elif _matches(["salary", "termination", "gratuity", "harassment", "pf", "employee", "labour"]):
             category = "labour_employment"
-        elif _matches(["upi fraud", "online fraud", "hacked account", "phishing", "cyberstalking", "identity theft", "digital arrest", "otp"]):
-            category = "cybercrime"
         elif _matches(["accident", "crash", "hit and run", "injury compensation", "insurance", "mact", "vehicle accident"]):
             category = "motor_accident"
         elif _matches(["fundamental rights", "government order", "writ", "public authority", "administrative decision", "constitution"]):
             category = "constitutional_administrative"
+        elif _matches(["agreement", "recovery", "damages", "breach", "civil", "legal notice"]):
+            category = "civil"
+        elif _matches(["murder", "fir", "arrest"]):
+            category = "criminal"
 
         missing = []
         questions = []
