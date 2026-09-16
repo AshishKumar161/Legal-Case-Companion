@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false">
+      <body data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" suppressHydrationWarning>
         <AuthProvider>
           <Navbar />
           <AppShell>{children}</AppShell>

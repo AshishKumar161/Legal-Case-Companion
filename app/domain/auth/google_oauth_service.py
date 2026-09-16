@@ -164,6 +164,7 @@ class GoogleOAuthService:
                 algorithms=["RS256"],
                 audience=client_id if client_id else None,
                 issuer=settings.GOOGLE_ISSUERS,
+                leeway=300,  # 5 minutes leeway to handle clock skew between local machine and Google time servers
                 options={
                     "verify_aud": bool(client_id),
                     "verify_iss": True,
@@ -172,6 +173,8 @@ class GoogleOAuthService:
             )
         except jwt.ExpiredSignatureError as e:
             raise AuthenticationError("Google ID token has expired") from e
+        except jwt.ImmatureSignatureError as e:
+            raise AuthenticationError("Google ID token is not yet valid (clock skew)") from e
         except jwt.InvalidIssuerError as e:
             raise AuthenticationError("Invalid Google token issuer") from e
         except jwt.InvalidAudienceError as e:
