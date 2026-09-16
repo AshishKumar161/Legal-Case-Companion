@@ -290,7 +290,12 @@ async function fetchWithAuth(url: string, options: RequestOptions = {}): Promise
     try {
       errorData = await response.json();
     } catch {
-      errorData = { message: "An unexpected error occurred" };
+      errorData = {
+        message:
+          response.status >= 500
+            ? "Backend service is unreachable. Please ensure the backend server is running on port 8000."
+            : "An unexpected error occurred",
+      };
     }
     throw createSpecificApiError(response.status, errorData);
   }

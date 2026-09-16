@@ -184,7 +184,7 @@ function LoginForm() {
               alt="Legal Case Companion Logo"
               width={56}
               height={56}
-              style={{ objectFit: "contain", width: "auto", height: "auto" }}
+              style={{ objectFit: "contain", width: "56px", height: "56px" }}
               priority
             />
           </div>
