@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { Card, Button, Avatar, Badge, EmptyState } from "@/components/ui";
 import { apiClient } from "@/api/client";
+import { DocumentIcon, VideoIcon, PaperclipIcon } from "@/components/ui/Icons";
 
 interface Thread {
   id: string;
@@ -65,6 +66,7 @@ export default function MessagesPage() {
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const activePartnerIdRef = useRef<string | null>(null);
+  const messageFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -264,7 +266,7 @@ export default function MessagesPage() {
           style={{
             display: "flex",
             flexDirection: "column",
-            background: "#FFFFFF",
+            background: "var(--surface-card, #FFFFFF)",
             border: "1px solid var(--border-subtle)",
             borderRadius: "var(--radius-xl)",
             overflow: "hidden",
@@ -371,7 +373,7 @@ export default function MessagesPage() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        ⚖ {t.caseTitle || t.caseRef || "Active Matter"}
+                        Case: {t.caseTitle || t.caseRef || "Active Matter"}
                       </div>
 
                       <p
@@ -421,7 +423,7 @@ export default function MessagesPage() {
           style={{
             display: "flex",
             flexDirection: "column",
-            background: "#FFFFFF",
+            background: "var(--surface-card, #FFFFFF)",
             border: "1px solid var(--border-subtle)",
             borderRadius: "var(--radius-xl)",
             overflow: "hidden",
@@ -535,20 +537,22 @@ export default function MessagesPage() {
                           }
                         }}
                         style={{
-                          fontSize: "11px",
-                          fontWeight: 700,
-                          color: "#059669",
-                          background: "rgba(5, 150, 105, 0.1)",
-                          border: "1px solid rgba(5, 150, 105, 0.25)",
-                          padding: "3px 10px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          color: "#166534",
+                          background: "#DCFCE7",
+                          border: "1px solid #86EFAC",
+                          padding: "5px 12px",
                           borderRadius: "6px",
                           cursor: "pointer",
                           display: "inline-flex",
                           alignItems: "center",
-                          gap: "4px",
+                          gap: "6px",
+                          minHeight: "36px",
                         }}
                       >
-                        📹 Video Call
+                        <VideoIcon size={14} color="#166534" />
+                        Start Video Call
                       </button>
                     </div>
                   </div>
@@ -631,8 +635,8 @@ export default function MessagesPage() {
                           {isMeetingMsg ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 700, color: "#34d399", fontSize: "13px" }}>
-                                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px #10b981" }} />
-                                📹 Live Video Meeting Invitation
+                                <VideoIcon size={16} color="#34d399" />
+                                Live Video Meeting Invitation
                               </div>
                               <p style={{ margin: 0, fontSize: "13px", color: "#e2e8f0" }}>
                                 {m.content.split("Click to join")[0]}
@@ -659,7 +663,8 @@ export default function MessagesPage() {
                                       boxShadow: "0 2px 6px rgba(5, 150, 105, 0.3)",
                                     }}
                                   >
-                                    📹 Join Video Meeting Now →
+                                    <VideoIcon size={14} color="#ffffff" />
+                                    Join Video Meeting Now &rarr;
                                   </Link>
                                 ) : null;
                               })()}
@@ -704,12 +709,49 @@ export default function MessagesPage() {
               <div
                 style={{
                   display: "flex",
+                  alignItems: "center",
                   gap: "10px",
                   paddingTop: "14px",
                   borderTop: "1px solid var(--border-subtle)",
                   flexShrink: 0,
                 }}
               >
+                <input
+                  type="file"
+                  ref={messageFileInputRef}
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setMessageInput((prev) =>
+                        prev ? `${prev} [Attached file: ${file.name}]` : `[Attached file: ${file.name}]`
+                      );
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => messageFileInputRef.current?.click()}
+                  title="Attach file or document"
+                  style={{
+                    minWidth: "44px",
+                    minHeight: "44px",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--border-subtle)",
+                    background: "#F8FAFC",
+                    color: "var(--text-secondary)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    transition: "background var(--transition-fast)",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.background = "#EDF2F7")}
+                  onMouseOut={(e) => (e.currentTarget.style.background = "#F8FAFC")}
+                >
+                  <PaperclipIcon size={18} color="var(--text-secondary)" />
+                </button>
                 <input
                   type="text"
                   placeholder={
@@ -742,6 +784,7 @@ export default function MessagesPage() {
                   variant="primary"
                   onClick={handleSendMessage}
                   disabled={isSending || !messageInput.trim()}
+                  style={{ minHeight: "44px" }}
                 >
                   {isSending ? "Sending..." : "Send Message"}
                 </Button>
@@ -749,7 +792,7 @@ export default function MessagesPage() {
             </>
           ) : (
             <EmptyState
-              icon="💬"
+              icon={<DocumentIcon size={28} color="var(--navy-600)" />}
               title="Select a conversation"
               description="Choose a conversation from the left to read or send direct messages."
             />

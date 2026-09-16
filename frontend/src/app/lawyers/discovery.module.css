@@ -25,7 +25,7 @@
 
 /* Search and Filter Row */
 .filterBar {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 16px 20px;
@@ -52,7 +52,7 @@
 
 .searchBox:focus-within {
   border-color: var(--navy-primary);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
 }
 
 .searchInput {
@@ -90,7 +90,7 @@
   gap: 6px;
   padding: 8px 16px;
   border-radius: var(--radius-full);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   font-size: 13px;
@@ -119,7 +119,7 @@
 }
 
 .lawyerCard {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   padding: 24px;
@@ -228,7 +228,7 @@
   justify-content: center;
   padding: 10px 14px;
   border-radius: var(--radius-md);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   color: var(--navy-primary);
   font-size: 13px;
@@ -267,7 +267,7 @@
 
 /* Empty State */
 .emptyState {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px dashed var(--border-subtle);
   border-radius: var(--radius-xl);
   padding: 48px 24px;

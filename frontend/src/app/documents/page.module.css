@@ -56,7 +56,7 @@
 }
 
 .secondaryBtn {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   padding: 10px 18px;
@@ -80,7 +80,7 @@
 
 /* Security Notice */
 .securityBanner {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 14px 20px;
@@ -127,7 +127,7 @@
 .searchBox {
   display: flex;
   align-items: center;
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 8px 14px;
@@ -164,7 +164,7 @@
   gap: 6px;
   padding: 8px 16px;
   border-radius: var(--radius-full);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   font-size: 13px;
@@ -193,7 +193,7 @@
 }
 
 .docCard {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 22px;
@@ -309,7 +309,7 @@
 
 /* Empty State */
 .emptyContainer {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px dashed var(--border-subtle);
   border-radius: var(--radius-xl);
   padding: 48px 24px;
@@ -358,7 +358,7 @@
 }
 
 .modalBox {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   max-width: 600px;

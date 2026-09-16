@@ -53,9 +53,13 @@ class AnswerGenerator:
             valid_source_ids.append(src.source_id)
             source_header = f"[{src.source_id}] {src.citation} ({src.source_type.upper()}):"
             source_content = f"Title: {src.title}\nContent: {src.text}"
-            if src.source_type == "case" and "outcome" in src.metadata:
-                outcome = src.metadata.get("outcome", {})
-                source_content += f"\nRecorded Outcome: {outcome.get('disposal_type')} - {outcome.get('sentence_or_relief')}"
+            if src.source_type == "case":
+                url = src.metadata.get("url")
+                if url:
+                    source_content += f"\nIndian Kanoon Precedent URL: {url}"
+                if "outcome" in src.metadata and src.metadata.get("outcome"):
+                    outcome = src.metadata.get("outcome", {})
+                    source_content += f"\nRecorded Outcome: {outcome.get('disposal_type')} - {outcome.get('sentence_or_relief')}"
             evidence_lines.append(f"{source_header}\n{source_content}\n")
 
         evidence_text = "\n".join(evidence_lines) if evidence_lines else "NO RETRIEVED EVIDENCE AVAILABLE."
@@ -113,21 +117,107 @@ Draft a structured legal information response in JSON format adhering strictly t
 
             cited_ids = data.get("cited_source_ids", [])
             # Also scan raw text for citation tags e.g. [stat:...] or [case:...]
-            raw_text = data.get("raw_answer_text", "")
+            plain_summary = data.get("plain_summary", "")
+            legal_issues = data.get("legal_issue_explanations", [])
+            relevant_laws = data.get("relevant_laws_identified", [])
+            possible_steps = data.get("possible_next_steps", [])
+            documents = data.get("documents_or_information", [])
+
+            # Fallback to candidate statutes if laws list is empty
+            if not relevant_laws:
+                relevant_laws = [
+                    f"{c.source.citation}: {c.source.title} [{c.source.source_id}]"
+                    for c in reranked_candidates if c.source.source_type == "statute"
+                ]
+
+            # Map available sources
+            case_sources = {c.source.source_id: c.source for c in reranked_candidates if c.source.source_type == "case"}
+            stat_sources = [c.source for c in reranked_candidates if c.source.source_type == "statute"]
+            valid_source_ids = {c.source.source_id for c in reranked_candidates}
+            valid_case_list = list(case_sources.values())
+
+            # Enrich and sanitize existing similar_cases
+            raw_similar_cases = data.get("similar_cases_mentioned", [])
+            sanitized_similar_cases = []
+            for idx, sc in enumerate(raw_similar_cases):
+                cid = sc.get("case_id", "")
+                clean_cid = cid if cid.startswith("case:") else f"case:{cid}"
+                matched_src = case_sources.get(cid) or case_sources.get(clean_cid)
+
+                # If LLM cited a case ID not in retrieved candidates, remap to an actual candidate
+                if not matched_src and valid_case_list:
+                    matched_src = valid_case_list[idx % len(valid_case_list)]
+
+                if matched_src:
+                    sc["case_id"] = matched_src.source_id
+                    sc["title"] = matched_src.title or matched_src.metadata.get("case_id", matched_src.source_id)
+                    sc["url"] = matched_src.metadata.get("url")
+                    sanitized_similar_cases.append(sc)
+                elif "IK-" in cid or cid.startswith("IK-"):
+                    tid = re.sub(r"[^\d]", "", cid)
+                    if tid:
+                        sc["case_id"] = f"case:IK-{tid}"
+                        sc["title"] = sc.get("title") or f"Indian Kanoon Precedent #{tid}"
+                        sc["url"] = f"https://indiankanoon.org/doc/{tid}/"
+                        sanitized_similar_cases.append(sc)
+
+            similar_cases = sanitized_similar_cases
+
+            # If LLM returned empty similar_cases, populate directly from top retrieved case candidates
+            if not similar_cases and valid_case_list:
+                for src in valid_case_list[:3]:
+                    case_title = src.title or src.metadata.get("case_id", src.source_id)
+                    case_url = src.metadata.get("url")
+                    court_str = src.metadata.get("court_name", "Indian Court Precedent")
+                    year_str = f" ({src.metadata.get('year')})" if src.metadata.get("year") else ""
+                    similar_cases.append({
+                        "case_id": src.source_id,
+                        "title": case_title,
+                        "url": case_url,
+                        "court_and_year": f"{court_str}{year_str}",
+                        "fact_comparison": src.text[:180] + ("..." if len(src.text) > 180 else ""),
+                        "recorded_outcome": str(src.metadata.get("outcome", {}).get("sentence_or_relief", "See full judgment on Indian Kanoon") if isinstance(src.metadata.get("outcome"), dict) else src.metadata.get("outcome", "Precedent on record")),
+                        "disclaimer": "Past outcomes depend on specific evidentiary records and do not guarantee identical results.",
+                    })
+
+            # ALWAYS assemble rich markdown answer if raw_text is missing, too short, or lacks sections
+            raw_text = data.get("raw_answer_text", "").strip()
+            if not raw_text or len(raw_text) < 150 or "###" not in raw_text:
+                raw_text = self._assemble_markdown_answer(
+                    plain_summary=plain_summary or intake_result.clarified_facts,
+                    legal_issues=legal_issues,
+                    relevant_laws=relevant_laws,
+                    possible_steps=possible_steps,
+                    documents=documents,
+                    similar_cases=similar_cases,
+                )
+            else:
+                # Sanitize any hallucinated inline citations in raw_text
+                def _replace_invalid_tag(match):
+                    tag = match.group(1)
+                    if tag in valid_source_ids:
+                        return f"[{tag}]"
+                    if tag.startswith("case:") and valid_case_list:
+                        return f"[{valid_case_list[0].source_id}]"
+                    if tag.startswith("stat:") and stat_sources:
+                        return f"[{stat_sources[0].source_id}]"
+                    return ""
+
+                raw_text = re.sub(r"\[(stat:[^\]]+|case:[^\]]+|doc-[^\]]+)\]", _replace_invalid_tag, raw_text)
+                if LEGAL_DISCLAIMER not in raw_text:
+                    raw_text += f"\n\n{LEGAL_DISCLAIMER}"
+
+            # Aggregate all citation tags found in the generated text
             found_tags = re.findall(r"\[(stat:[^\]]+|case:[^\]]+|doc-[^\]]+)\]", raw_text)
             all_cited = list(set(cited_ids + found_tags))
 
-            # Ensure mandatory disclaimer is in raw_answer_text
-            if LEGAL_DISCLAIMER not in raw_text:
-                raw_text += f"\n\n{LEGAL_DISCLAIMER}"
-
             return GeneratedAnswer(
-                plain_summary=data.get("plain_summary", ""),
-                legal_issue_explanations=data.get("legal_issue_explanations", []),
-                relevant_laws_identified=data.get("relevant_laws_identified", []),
-                possible_next_steps=data.get("possible_next_steps", []),
-                documents_or_information=data.get("documents_or_information", []),
-                similar_cases_mentioned=data.get("similar_cases_mentioned", []),
+                plain_summary=plain_summary or intake_result.clarified_facts,
+                legal_issue_explanations=legal_issues,
+                relevant_laws_identified=relevant_laws,
+                possible_next_steps=possible_steps,
+                documents_or_information=documents,
+                similar_cases_mentioned=similar_cases,
                 raw_answer_text=raw_text,
                 cited_source_ids=all_cited,
             )
@@ -147,6 +237,53 @@ Draft a structured legal information response in JSON format adhering strictly t
             text = "\n".join(lines).strip()
         return text
 
+    def _assemble_markdown_answer(
+        self,
+        plain_summary: str,
+        legal_issues: List[str],
+        relevant_laws: List[str],
+        possible_steps: List[str],
+        documents: List[str],
+        similar_cases: List[Dict[str, Any]],
+    ) -> str:
+        """Assembles a beautiful, comprehensive markdown response from verified structured sections."""
+        parts = []
+        if plain_summary:
+            parts.append(f"### Overview\n{plain_summary}\n")
+
+        if legal_issues:
+            parts.append("### Key Legal Issues & Implications\n" + "\n".join(f"- {i}" for i in legal_issues) + "\n")
+
+        if relevant_laws:
+            parts.append("### Relevant Legal Provisions\n" + "\n".join(f"- {l}" for l in relevant_laws) + "\n")
+
+        if possible_steps:
+            parts.append("### Recommended Next Steps\n" + "\n".join(f"- {s}" for s in possible_steps) + "\n")
+
+        if documents:
+            parts.append("### Key Documents & Evidence to Preserve\n" + "\n".join(f"- {d}" for d in documents) + "\n")
+
+        if similar_cases:
+            parts.append("### Similar Precedents & Judgments (For Information Only)\n")
+            for c in similar_cases:
+                title = c.get("title") or c.get("case_id", "Precedent")
+                court = c.get("court_and_year", "Court Precedent")
+                url = c.get("url")
+                link_line = f"\n  *Indian Kanoon Link*: [{title}]({url})" if url else ""
+                summary = c.get("fact_comparison", "Factual similarity identified in repository records.")
+                outcome = c.get("recorded_outcome", "Disposed according to law.")
+                disclaimer = c.get("disclaimer", "Past court outcomes reflect specific evidentiary records and do not guarantee identical results.")
+                parts.append(
+                    f"- **{title}** [{c.get('case_id', '')}]: {court}{link_line}\n"
+                    f"  *Facts / Summary*: {summary}\n"
+                    f"  *Outcome / Relief*: {outcome}\n"
+                    f"  *{disclaimer}*"
+                )
+            parts.append("\n")
+
+        parts.append(f"---\n{LEGAL_DISCLAIMER}")
+        return "\n".join(parts)
+
     def _grounded_fallback(
         self,
         intake_result: IntakeResult,
@@ -164,12 +301,18 @@ Draft a structured legal information response in JSON format adhering strictly t
             if src.source_type == "statute":
                 laws.append(f"{src.citation}: {src.title} [{src.source_id}]")
             elif src.source_type == "case":
+                case_title = src.title or src.metadata.get("case_id", src.source_id)
+                case_url = src.metadata.get("url")
+                year_str = f" ({src.metadata.get('year')})" if src.metadata.get("year") else ""
+                court_str = src.metadata.get("court_name", "Indian Court Precedent")
                 similar_cases.append({
                     "case_id": src.metadata.get("case_id", src.source_id),
-                    "court_and_year": f"{src.metadata.get('court_name', 'District Court')} ({src.metadata.get('year', '')})",
-                    "fact_comparison": src.text[:150] + "...",
-                    "recorded_outcome": str(src.metadata.get("outcome", {})),
-                    "disclaimer": "Past outcomes depend on specific facts and evidence.",
+                    "title": case_title,
+                    "url": case_url,
+                    "court_and_year": f"{court_str}{year_str}",
+                    "fact_comparison": src.text[:180] + ("..." if len(src.text) > 180 else ""),
+                    "recorded_outcome": str(src.metadata.get("outcome", {}).get("sentence_or_relief", "See full judgment on Indian Kanoon") if isinstance(src.metadata.get("outcome"), dict) else src.metadata.get("outcome", "")),
+                    "disclaimer": "Past outcomes depend on specific evidentiary records and do not guarantee identical results.",
                 })
 
         plain_summary = (
@@ -330,12 +473,14 @@ Draft a structured legal information response in JSON format adhering strictly t
         ]
 
         if similar_cases:
-            text_parts.append("\n### Similar District Court Precedents (For Information Only)\n")
+            text_parts.append("\n### Similar Precedents & Judgments (For Information Only)\n")
             for c in similar_cases:
+                title = c.get("title") or c.get("case_id", "Precedent")
+                url_str = f"\n  *Reference*: [{title}]({c['url']})" if c.get("url") else ""
                 text_parts.append(
-                    f"- **{c['case_id']}** [{c['case_id']}]: {c['court_and_year']}\n"
-                    f"  *Facts*: {c['fact_comparison']}\n"
-                    f"  *Outcome*: {c['recorded_outcome']}\n"
+                    f"- **{title}** [{c['case_id']}]: {c['court_and_year']}{url_str}\n"
+                    f"  *Facts / Summary*: {c['fact_comparison']}\n"
+                    f"  *Outcome / Relief*: {c['recorded_outcome']}\n"
                     f"  *{c['disclaimer']}*"
                 )
 

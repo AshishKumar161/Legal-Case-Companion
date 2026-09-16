@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { ConsultationItem, PaymentIntentResponse } from "@/types";
 import { apiClient } from "@/api/client";
 import { StatusBadge } from "@/components/StatusBadge";
+import { CheckCircleIcon, ClockIcon, VideoIcon, AlertTriangleIcon } from "@/components/ui/Icons";
 
 interface PaymentCheckoutModalProps {
   consultation: ConsultationItem;
@@ -71,8 +72,8 @@ export function PaymentCheckoutModal({
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.75)",
-        backdropFilter: "blur(6px)",
+        backgroundColor: "rgba(15, 23, 42, 0.6)",
+        backdropFilter: "blur(4px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -83,14 +84,14 @@ export function PaymentCheckoutModal({
     >
       <div
         style={{
-          background: "#141721",
-          border: "1px solid #232838",
+          background: "var(--surface-card, #ffffff)",
+          border: "1px solid var(--border-subtle, #e2e8f0)",
           borderRadius: "14px",
           width: "100%",
           maxWidth: "480px",
           overflow: "hidden",
-          boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
-          color: "#f7f8fa",
+          boxShadow: "var(--shadow-xl)",
+          color: "var(--text-primary, #0f172a)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -98,15 +99,17 @@ export function PaymentCheckoutModal({
         <div
           style={{
             padding: "18px 22px",
-            borderBottom: "1px solid #232838",
+            borderBottom: "1px solid #e2e8f0",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "18px" }}>💳</span>
-            <h3 style={{ fontSize: "16px", fontWeight: 600, margin: 0 }}>
+            <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <CheckCircleIcon size={18} color="#2563eb" />
+            </div>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "#0f172a" }}>
               Consultation Checkout
             </h3>
           </div>
@@ -115,7 +118,7 @@ export function PaymentCheckoutModal({
             style={{
               background: "transparent",
               border: "none",
-              color: "#94a3b8",
+              color: "#64748b",
               cursor: "pointer",
               fontSize: "18px",
               padding: "4px",
@@ -132,18 +135,18 @@ export function PaymentCheckoutModal({
             style={{
               padding: "14px 16px",
               borderRadius: "8px",
-              background: "#1a1e2e",
-              border: "1px solid #282f44",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
               marginBottom: "18px",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "13px", color: "#94a3b8" }}>Session Status</span>
+              <span style={{ fontSize: "13px", color: "#64748b" }}>Session Status</span>
               <StatusBadge status={consultation.status} />
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "13px", color: "#94a3b8" }}>Scheduled Date (IST)</span>
-              <span style={{ fontSize: "13px", fontWeight: 500 }}>
+              <span style={{ fontSize: "13px", color: "#64748b" }}>Scheduled Date (IST)</span>
+              <span style={{ fontSize: "13px", fontWeight: 600, color: "#0f172a" }}>
                 {new Date(consultation.scheduled_start).toLocaleDateString("en-IN", {
                   timeZone: "Asia/Kolkata",
                   weekday: "short",
@@ -154,8 +157,8 @@ export function PaymentCheckoutModal({
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: "13px", color: "#94a3b8" }}>Time Window (IST)</span>
-              <span style={{ fontSize: "13px", fontWeight: 500 }}>
+              <span style={{ fontSize: "13px", color: "#64748b" }}>Time Window (IST)</span>
+              <span style={{ fontSize: "13px", fontWeight: 600, color: "#0f172a" }}>
                 {new Date(consultation.scheduled_start).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
                 {" - "}
                 {new Date(consultation.scheduled_end).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
@@ -169,15 +172,15 @@ export function PaymentCheckoutModal({
             style={{
               padding: "16px",
               borderRadius: "8px",
-              background: "rgba(59, 130, 246, 0.06)",
-              border: "1px solid rgba(59, 130, 246, 0.2)",
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
               marginBottom: "20px",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Authoritative Fee ({currency})</div>
-                <div style={{ fontSize: "24px", fontWeight: 700, color: "#60a5fa", marginTop: "2px" }}>
+                <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Authoritative Fee ({currency})</div>
+                <div style={{ fontSize: "24px", fontWeight: 800, color: "#1d4ed8", marginTop: "2px" }}>
                   ₹{feeAmount.toLocaleString("en-IN")}
                 </div>
               </div>
@@ -185,14 +188,15 @@ export function PaymentCheckoutModal({
                 style={{
                   fontSize: "11px",
                   padding: "4px 8px",
-                  borderRadius: "4px",
-                  background: "rgba(16, 185, 129, 0.15)",
-                  color: "#10b981",
-                  border: "1px solid rgba(16, 185, 129, 0.3)",
-                  fontWeight: 600,
+                  borderRadius: "6px",
+                  background: "#ecfdf5",
+                  color: "#059669",
+                  border: "1px solid #a7f3d0",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
                 }}
               >
-                100% SECURE
+                100% SECURE ESCROW
               </div>
             </div>
           </div>
@@ -200,7 +204,7 @@ export function PaymentCheckoutModal({
           {/* STEP: DETAILS / INITIAL STATE */}
           {step === "DETAILS" && (
             <div>
-              <p style={{ fontSize: "13px", color: "#94a3b8", lineHeight: "1.5", marginBottom: "18px" }}>
+              <p style={{ fontSize: "13px", color: "#64748b", lineHeight: "1.5", marginBottom: "18px" }}>
                 Payment is authoritatively processed through our verified payment gateway. Upon confirmed payment, your legal consultation session will be scheduled and confirmed on the counsel&apos;s calendar.
               </p>
               <button
@@ -210,12 +214,13 @@ export function PaymentCheckoutModal({
                   width: "100%",
                   padding: "12px",
                   borderRadius: "8px",
-                  background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                  background: "#2563eb",
                   color: "#ffffff",
                   border: "none",
                   fontWeight: 600,
                   fontSize: "14px",
                   cursor: "pointer",
+                  transition: "background 0.15s ease",
                 }}
               >
                 {loading ? "Creating Payment Intent..." : `Proceed to Pay ₹${feeAmount}`}
@@ -228,18 +233,18 @@ export function PaymentCheckoutModal({
             <div>
               <div
                 style={{
-                  padding: "12px",
-                  borderRadius: "6px",
-                  background: "#1e2336",
-                  border: "1px solid #2e3650",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   fontSize: "12px",
-                  color: "#94a3b8",
+                  color: "#475569",
                   marginBottom: "16px",
                 }}
               >
-                <div><strong>Payment Reference:</strong> {paymentIntent.payment_id.slice(0, 16)}...</div>
-                <div style={{ marginTop: "4px" }}><strong>Currency:</strong> {paymentIntent.currency}</div>
-                <div style={{ marginTop: "4px" }}><strong>Status:</strong> Ready for Authorization</div>
+                <div><strong style={{ color: "#0f172a" }}>Payment Reference:</strong> {paymentIntent.payment_id.slice(0, 16)}...</div>
+                <div style={{ marginTop: "4px" }}><strong style={{ color: "#0f172a" }}>Currency:</strong> {paymentIntent.currency}</div>
+                <div style={{ marginTop: "4px" }}><strong style={{ color: "#0f172a" }}>Status:</strong> Ready for Authorization</div>
               </div>
 
               <button
@@ -249,7 +254,7 @@ export function PaymentCheckoutModal({
                   width: "100%",
                   padding: "12px",
                   borderRadius: "8px",
-                  background: "linear-gradient(135deg, #10b981, #059669)",
+                  background: "#059669",
                   color: "#ffffff",
                   border: "none",
                   fontWeight: 600,
@@ -265,11 +270,13 @@ export function PaymentCheckoutModal({
           {/* STEP: PROCESSING */}
           {step === "PROCESSING" && (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <div style={{ fontSize: "28px", marginBottom: "12px" }}>⏳</div>
-              <div style={{ fontSize: "14px", fontWeight: 600, color: "#f7f8fa" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: "12px" }}>
+                <ClockIcon size={32} color="#2563eb" />
+              </div>
+              <div style={{ fontSize: "15px", fontWeight: 700, color: "#0f172a" }}>
                 Verifying Payment with Gateway...
               </div>
-              <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "6px" }}>
+              <p style={{ fontSize: "12px", color: "#64748b", marginTop: "6px" }}>
                 Please do not close this window while we verify the transaction with the provider webhook.
               </p>
             </div>
@@ -278,31 +285,36 @@ export function PaymentCheckoutModal({
           {/* STEP: SUCCESS */}
           {step === "SUCCESS" && (
             <div style={{ textAlign: "center", padding: "16px 0" }}>
-              <div style={{ fontSize: "36px", marginBottom: "10px" }}>✅</div>
-              <h4 style={{ fontSize: "16px", fontWeight: 700, color: "#10b981", margin: "0 0 6px 0" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+                <CheckCircleIcon size={36} color="#059669" />
+              </div>
+              <h4 style={{ fontSize: "17px", fontWeight: 700, color: "#059669", margin: "0 0 6px 0" }}>
                 Payment Confirmed!
               </h4>
-              <p style={{ fontSize: "13px", color: "#94a3b8", margin: "0 0 18px 0" }}>
+              <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 18px 0" }}>
                 Your consultation fee of ₹{feeAmount} has been verified. The consultation is now confirmed.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 <a
                   href={`/consultations/${consultation.id}/room`}
                   style={{
-                    display: "block",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
                     width: "100%",
                     padding: "12px",
                     borderRadius: "8px",
-                    background: "linear-gradient(135deg, #10b981, #059669)",
+                    background: "#059669",
                     color: "#ffffff",
                     textAlign: "center",
-                    fontWeight: 700,
+                    fontWeight: 600,
                     fontSize: "14px",
                     textDecoration: "none",
-                    boxShadow: "0 4px 14px rgba(16, 185, 129, 0.4)",
                   }}
                 >
-                  Enter Video Consultation Room 🎥
+                  <VideoIcon size={16} color="#ffffff" />
+                  <span>Enter Video Consultation Room</span>
                 </a>
                 <button
                   onClick={onClose}
@@ -310,9 +322,9 @@ export function PaymentCheckoutModal({
                     width: "100%",
                     padding: "10px",
                     borderRadius: "8px",
-                    background: "#1f293d",
-                    color: "#f7f8fa",
-                    border: "1px solid #3b82f6",
+                    background: "#f8fafc",
+                    color: "#334155",
+                    border: "1px solid #e2e8f0",
                     fontWeight: 600,
                     fontSize: "13px",
                     cursor: "pointer",
@@ -330,15 +342,21 @@ export function PaymentCheckoutModal({
               <div
                 style={{
                   padding: "12px 14px",
-                  borderRadius: "6px",
-                  background: "rgba(239, 68, 68, 0.12)",
-                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                  color: "#ef4444",
+                  borderRadius: "8px",
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#dc2626",
                   fontSize: "13px",
                   marginBottom: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
               >
-                <strong>Payment Error:</strong> {errorMessage || "An unexpected error occurred."}
+                <AlertTriangleIcon size={18} color="#dc2626" />
+                <div>
+                  <strong>Payment Error:</strong> {errorMessage || "An unexpected error occurred."}
+                </div>
               </div>
 
               <div style={{ display: "flex", gap: "10px" }}>
@@ -348,7 +366,7 @@ export function PaymentCheckoutModal({
                     flex: 1,
                     padding: "10px",
                     borderRadius: "8px",
-                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                    background: "#2563eb",
                     color: "#ffffff",
                     border: "none",
                     fontWeight: 600,
@@ -363,9 +381,9 @@ export function PaymentCheckoutModal({
                   style={{
                     padding: "10px 16px",
                     borderRadius: "8px",
-                    background: "transparent",
-                    color: "#94a3b8",
-                    border: "1px solid #232838",
+                    background: "#f8fafc",
+                    color: "#475569",
+                    border: "1px solid #e2e8f0",
                     fontWeight: 500,
                     fontSize: "13px",
                     cursor: "pointer",

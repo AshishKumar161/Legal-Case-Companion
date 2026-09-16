@@ -280,12 +280,12 @@ export default function AIAdvisorPage() {
         {/* Header */}
         <header className={styles.chatHeader}>
           <div className={styles.chatHeaderIcon}>
-            <AssistantIcon size={22} />
+            <AssistantIcon size={24} color="#102A43" />
           </div>
           <div className={styles.chatHeaderInfo}>
-            <h1 className={styles.chatHeaderTitle}>Lex — Legal AI Advisor</h1>
+            <h1 className={styles.chatHeaderTitle}>Lex</h1>
             <p className={styles.chatHeaderSub}>
-              Powered by Legal Case Companion · Indian Law · General Information Only
+              Plain-language legal information and guidance for everyday Indian legal matters
             </p>
           </div>
           <div className={styles.headerActions}>
@@ -297,12 +297,12 @@ export default function AIAdvisorPage() {
                 disabled={deletingId === activeSessionId}
               >
                 <TrashIcon size={14} />
-                <span>Delete chat</span>
+                <span>Delete conversation</span>
               </button>
             )}
             <div className={styles.modelBadge}>
               <span className={styles.modelDot} />
-              <span>AI Model</span>
+              <span>Lex Legal Assistant</span>
             </div>
           </div>
         </header>
@@ -312,13 +312,12 @@ export default function AIAdvisorPage() {
           {showWelcome ? (
             <div className={styles.welcomeState}>
               <div className={styles.welcomeIcon}>
-                <AssistantIcon size={34} />
+                <AssistantIcon size={44} color="#102A43" />
               </div>
               <div>
-                <h2 className={styles.welcomeTitle}>Ask Lex anything about Indian law</h2>
+                <h2 className={styles.welcomeTitle}>Ask Lex anything about your legal matter</h2>
                 <p className={styles.welcomeSub}>
-                  Get clear, plain-language answers on legal procedures, rights, and remedies.
-                  Always powered by verified Indian legal sources.
+                  Get clear, calm, plain-language answers on court procedures, rights, documents, and next steps.
                 </p>
               </div>
               <div className={styles.suggestions}>
@@ -349,7 +348,7 @@ export default function AIAdvisorPage() {
                   <div
                     className={`${styles.avatar} ${msg.role === "user" ? styles.avatarUser : styles.avatarAI}`}
                   >
-                    {msg.role === "user" ? initials : <AssistantIcon size={16} />}
+                    {msg.role === "user" ? initials : <AssistantIcon size={18} color="#102A43" />}
                   </div>
                   <div
                     className={`${styles.bubble} ${msg.role === "user" ? styles.bubbleUser : styles.bubbleAI}`}
@@ -371,7 +370,7 @@ export default function AIAdvisorPage() {
               {loading && (
                 <div className={styles.typingRow}>
                   <div className={`${styles.avatar} ${styles.avatarAI}`}>
-                    <AssistantIcon size={16} />
+                    <AssistantIcon size={18} color="#102A43" />
                   </div>
                   <div className={styles.typingBubble}>
                     <div className={styles.typingDot} />
@@ -389,7 +388,7 @@ export default function AIAdvisorPage() {
         <div className={styles.inputArea}>
           {error && <div className={styles.errorBanner}>{error}</div>}
           <p className={styles.inputDisclaimer}>
-            ⚠️ Lex provides general legal information, not formal legal advice. For your specific case, consult a verified advocate.
+            Lex helps you organize and understand your case. It does not replace professional legal advice from an advocate.
           </p>
           <div className={styles.inputRow}>
             <textarea

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { Navbar } from "@/components/Navbar";
 import { AppShell } from "@/components/AppShell/AppShell";
@@ -22,12 +23,44 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem('lcc_theme');
+                  var theme = stored || 'light';
+                  if (theme === 'system') {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  }
+                  document.documentElement.setAttribute('data-theme', theme);
+                } catch(e) {}
+
+                if (typeof window !== 'undefined') {
+                  const origError = console.error;
+                  console.error = function(...args) {
+                    const msg = typeof args[0] === 'string' ? args[0] : '';
+                    if (msg.includes('bis_skin_checked') || msg.includes('browser extension') || msg.includes('did not match')) {
+                      return;
+                    }
+                    origError.apply(console, args);
+                  };
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" suppressHydrationWarning>
-        <AuthProvider>
-          <Navbar />
-          <AppShell>{children}</AppShell>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <Navbar />
+            <AppShell>{children}</AppShell>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
+

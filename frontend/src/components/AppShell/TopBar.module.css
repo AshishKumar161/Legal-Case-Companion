@@ -1,6 +1,6 @@
 .topBar {
   height: 60px;
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -72,7 +72,7 @@
 }
 
 .searchTriggerBtn:hover {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border-color: var(--border-hover);
   color: var(--navy-primary);
 }
@@ -90,7 +90,7 @@
 .searchTriggerKbd {
   font-size: 10px;
   font-family: inherit;
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   padding: 1px 6px;
   border-radius: 4px;
@@ -119,7 +119,7 @@
   padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid var(--border-subtle);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   font-weight: 500;
   transition: all 0.15s ease;
 }

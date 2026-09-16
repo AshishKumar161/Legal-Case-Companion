@@ -123,19 +123,20 @@ function NewCaseIntakeContent() {
               My Cases
             </Link>
             <span>/</span>
-            <span style={{ color: "#fff", fontWeight: 600 }}>Guided Legal Intake</span>
+            <span style={{ color: "#0f172a", fontWeight: 600 }}>Guided Legal Intake</span>
           </div>
 
           <button
             type="button"
             onClick={saveDraft}
             style={{
-              background: "transparent",
-              border: "1px solid var(--border-subtle)",
-              color: "var(--text-secondary)",
-              padding: "4px 12px",
+              background: "#ffffff",
+              border: "1px solid #cbd5e1",
+              color: "#475569",
+              padding: "5px 14px",
               borderRadius: "6px",
-              fontSize: "11px",
+              fontSize: "12px",
+              fontWeight: 500,
               cursor: "pointer",
             }}
           >
@@ -154,16 +155,16 @@ function NewCaseIntakeContent() {
               fontWeight: 700,
               textTransform: "uppercase",
               letterSpacing: "0.1em",
-              color: "var(--accent-secondary, #818cf8)",
+              color: "#2563eb",
               marginBottom: "8px",
             }}
           >
             <span>●</span> Plain-Language Case Setup
           </div>
-          <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", margin: "0 0 6px 0" }}>
+          <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em", margin: "0 0 6px 0" }}>
             Let&apos;s understand your situation.
           </h1>
-          <p style={{ color: "var(--text-secondary, #94a3b8)", fontSize: "14px", lineHeight: 1.5, margin: 0 }}>
+          <p style={{ color: "#475569", fontSize: "14px", lineHeight: 1.5, margin: 0 }}>
             No legal terms needed. Answer a few simple questions and we&apos;ll organize your case file, identify deadlines, and prepare for your lawyer.
           </p>
         </div>
@@ -185,12 +186,12 @@ function NewCaseIntakeContent() {
                   style={{
                     height: "4px",
                     borderRadius: "2px",
-                    background: isDone ? "#10b981" : isActive ? "var(--accent-primary, #6366f1)" : "rgba(255,255,255,0.08)",
+                    background: isDone ? "#10b981" : isActive ? "#2563eb" : "#e2e8f0",
                     marginBottom: "6px",
                     transition: "all 0.3s ease",
                   }}
                 />
-                <div style={{ fontSize: "11px", color: isActive ? "#fff" : isDone ? "#34d399" : "var(--text-muted)", fontWeight: isActive ? 700 : 500 }}>
+                <div style={{ fontSize: "11px", color: isActive ? "#0f172a" : isDone ? "#059669" : "#64748b", fontWeight: isActive ? 700 : 500 }}>
                   {stepNum}. {label}
                 </div>
               </div>
@@ -201,9 +202,9 @@ function NewCaseIntakeContent() {
         {error && (
           <div
             style={{
-              color: "#fca5a5",
-              background: "rgba(239, 68, 68, 0.12)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
+              color: "#dc2626",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
               padding: "12px 16px",
               borderRadius: "8px",
               fontSize: "13px",
@@ -218,16 +219,17 @@ function NewCaseIntakeContent() {
         {step === 1 && (
           <div
             style={{
-              background: "var(--surface-card, #0e121a)",
-              border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
               borderRadius: "12px",
               padding: "28px",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
             }}
           >
-            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#fff", margin: "0 0 8px 0" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#0f172a", margin: "0 0 8px 0" }}>
               What kind of problem are you facing?
             </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "0 0 20px 0" }}>
+            <p style={{ color: "#475569", fontSize: "13px", margin: "0 0 20px 0" }}>
               Choose the category that best matches your situation:
             </p>
 
@@ -239,8 +241,8 @@ function NewCaseIntakeContent() {
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
                     style={{
-                      background: isSelected ? "rgba(99, 102, 241, 0.15)" : "rgba(255,255,255,0.02)",
-                      border: isSelected ? "2px solid #6366f1" : "1px solid rgba(255,255,255,0.08)",
+                      background: isSelected ? "#eff6ff" : "#ffffff",
+                      border: isSelected ? "2px solid #2563eb" : "1px solid #e2e8f0",
                       borderRadius: "10px",
                       padding: "16px",
                       cursor: "pointer",
@@ -248,10 +250,10 @@ function NewCaseIntakeContent() {
                     }}
                   >
                     <div style={{ fontSize: "24px", marginBottom: "6px" }}>{cat.icon}</div>
-                    <strong style={{ display: "block", fontSize: "14px", color: isSelected ? "#fff" : "#e2e8f0" }}>
+                    <strong style={{ display: "block", fontSize: "14px", color: isSelected ? "#1d4ed8" : "#0f172a" }}>
                       {cat.label}
                     </strong>
-                    <span style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+                    <span style={{ fontSize: "11px", color: isSelected ? "#2563eb" : "#64748b", marginTop: "4px", display: "block" }}>
                       {cat.hint}
                     </span>
                   </div>
@@ -264,7 +266,7 @@ function NewCaseIntakeContent() {
                 type="button"
                 onClick={handleNext}
                 style={{
-                  background: "var(--accent-gradient, linear-gradient(135deg, #6366f1, #8b5cf6))",
+                  background: "#2563eb",
                   color: "#fff",
                   border: "none",
                   padding: "12px 28px",
@@ -284,16 +286,17 @@ function NewCaseIntakeContent() {
         {step === 2 && (
           <div
             style={{
-              background: "var(--surface-card, #0e121a)",
-              border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
               borderRadius: "12px",
               padding: "28px",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
             }}
           >
-            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#fff", margin: "0 0 8px 0" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#0f172a", margin: "0 0 8px 0" }}>
               What happened? Tell us in your own words.
             </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "0 0 20px 0" }}>
+            <p style={{ color: "#475569", fontSize: "13px", margin: "0 0 20px 0" }}>
               Describe the situation simply. Include roughly when it started, what the other party did or failed to do, and if any money or property is involved.
             </p>
 
@@ -304,10 +307,10 @@ function NewCaseIntakeContent() {
               placeholder="e.g. In January 2025, I signed a commercial lease agreement for my retail shop in Saket, New Delhi. The landlord has refused to hand over possession despite taking ₹5,00,000 security deposit. Last week I received a legal notice demanding more rent..."
               style={{
                 width: "100%",
-                background: "rgba(10, 13, 20, 0.9)",
-                border: "1px solid var(--border-subtle, rgba(255,255,255,0.12))",
+                background: "#ffffff",
+                border: "1px solid #cbd5e1",
                 borderRadius: "8px",
-                color: "#fff",
+                color: "#0f172a",
                 padding: "14px",
                 fontSize: "14px",
                 lineHeight: 1.6,
@@ -323,12 +326,13 @@ function NewCaseIntakeContent() {
                 type="button"
                 onClick={handleBack}
                 style={{
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "#cbd5e1",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  color: "#334155",
                   padding: "10px 20px",
                   borderRadius: "8px",
                   fontSize: "13px",
+                  fontWeight: 500,
                   cursor: "pointer",
                 }}
               >
@@ -339,8 +343,8 @@ function NewCaseIntakeContent() {
                 onClick={handleNext}
                 disabled={!whatHappened.trim()}
                 style={{
-                  background: whatHappened.trim() ? "var(--accent-gradient)" : "rgba(255,255,255,0.1)",
-                  color: "#fff",
+                  background: whatHappened.trim() ? "#2563eb" : "#e2e8f0",
+                  color: whatHappened.trim() ? "#fff" : "#94a3b8",
                   border: "none",
                   padding: "12px 28px",
                   borderRadius: "8px",
@@ -359,22 +363,23 @@ function NewCaseIntakeContent() {
         {step === 3 && (
           <div
             style={{
-              background: "var(--surface-card, #0e121a)",
-              border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
               borderRadius: "12px",
               padding: "28px",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
             }}
           >
-            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#fff", margin: "0 0 8px 0" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#0f172a", margin: "0 0 8px 0" }}>
               Where did this happen & who is the other side?
             </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "0 0 20px 0" }}>
+            <p style={{ color: "#475569", fontSize: "13px", margin: "0 0 20px 0" }}>
               This helps your lawyer understand jurisdiction and court rules.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "24px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#cbd5e1", marginBottom: "6px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
                   City or State where this happened
                 </label>
                 <input
@@ -384,10 +389,10 @@ function NewCaseIntakeContent() {
                   placeholder="e.g. New Delhi, Mumbai, Bengaluru, Lucknow"
                   style={{
                     width: "100%",
-                    background: "rgba(10, 13, 20, 0.9)",
-                    border: "1px solid var(--border-subtle, rgba(255,255,255,0.12))",
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
                     borderRadius: "8px",
-                    color: "#fff",
+                    color: "#0f172a",
                     padding: "10px 14px",
                     fontSize: "14px",
                     outline: "none",
@@ -397,7 +402,7 @@ function NewCaseIntakeContent() {
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#cbd5e1", marginBottom: "6px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
                   Name of the Opposite Party (Person or Company)
                 </label>
                 <input
@@ -407,10 +412,10 @@ function NewCaseIntakeContent() {
                   placeholder="e.g. Mehta Trading Corporation / Ramesh Kumar"
                   style={{
                     width: "100%",
-                    background: "rgba(10, 13, 20, 0.9)",
-                    border: "1px solid var(--border-subtle, rgba(255,255,255,0.12))",
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
                     borderRadius: "8px",
-                    color: "#fff",
+                    color: "#0f172a",
                     padding: "10px 14px",
                     fontSize: "14px",
                     outline: "none",
@@ -418,13 +423,13 @@ function NewCaseIntakeContent() {
                 />
               </div>
 
-              <div style={{ background: "rgba(255,255,255,0.02)", padding: "14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#e2e8f0" }}>
+              <div style={{ background: "#f8fafc", padding: "14px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#334155", fontWeight: 500 }}>
                   <input
                     type="checkbox"
                     checked={existingCourtCase}
                     onChange={(e) => setExistingCourtCase(e.target.checked)}
-                    style={{ width: "16px", height: "16px", accentColor: "#6366f1" }}
+                    style={{ width: "16px", height: "16px", accentColor: "#2563eb" }}
                   />
                   <span>Is there already a court case, FIR, or legal notice number?</span>
                 </label>
@@ -438,17 +443,17 @@ function NewCaseIntakeContent() {
                       placeholder="Enter CNR number, Case number, or Notice reference..."
                       style={{
                         width: "100%",
-                        background: "rgba(10, 13, 20, 0.9)",
-                        border: "1px solid var(--border-subtle, rgba(255,255,255,0.12))",
+                        background: "#ffffff",
+                        border: "1px solid #cbd5e1",
                         borderRadius: "8px",
-                        color: "#fff",
+                        color: "#0f172a",
                         padding: "10px 14px",
                         fontSize: "13px",
                         fontFamily: "var(--font-mono, monospace)",
                         outline: "none",
                       }}
                     />
-                    <span style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+                    <span style={{ fontSize: "11px", color: "#64748b", marginTop: "4px", display: "block" }}>
                       Tip: We can automatically pull details and daily cause lists using your 16-digit CNR.
                     </span>
                   </div>
@@ -456,7 +461,7 @@ function NewCaseIntakeContent() {
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#cbd5e1", marginBottom: "6px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
                   What do you want to achieve?
                 </label>
                 <select
@@ -464,10 +469,10 @@ function NewCaseIntakeContent() {
                   onChange={(e) => setGoal(e.target.value)}
                   style={{
                     width: "100%",
-                    background: "rgba(10, 13, 20, 0.9)",
-                    border: "1px solid var(--border-subtle, rgba(255,255,255,0.12))",
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
                     borderRadius: "8px",
-                    color: "#fff",
+                    color: "#0f172a",
                     padding: "10px 14px",
                     fontSize: "14px",
                     outline: "none",
@@ -487,12 +492,13 @@ function NewCaseIntakeContent() {
                 type="button"
                 onClick={handleBack}
                 style={{
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "#cbd5e1",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  color: "#334155",
                   padding: "10px 20px",
                   borderRadius: "8px",
                   fontSize: "13px",
+                  fontWeight: 500,
                   cursor: "pointer",
                 }}
               >
@@ -502,7 +508,7 @@ function NewCaseIntakeContent() {
                 type="button"
                 onClick={handleNext}
                 style={{
-                  background: "var(--accent-gradient)",
+                  background: "#2563eb",
                   color: "#fff",
                   border: "none",
                   padding: "12px 28px",
@@ -522,47 +528,48 @@ function NewCaseIntakeContent() {
         {step === 4 && (
           <div
             style={{
-              background: "var(--surface-card, #0e121a)",
-              border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
               borderRadius: "12px",
               padding: "28px",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
             }}
           >
-            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#fff", margin: "0 0 8px 0" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#0f172a", margin: "0 0 8px 0" }}>
               Review your case summary
             </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "0 0 20px 0" }}>
+            <p style={{ color: "#475569", fontSize: "13px", margin: "0 0 20px 0" }}>
               We will set up your secure matter workspace with these details:
             </p>
 
-            <div style={{ background: "rgba(15, 23, 42, 0.8)", borderRadius: "8px", padding: "18px", marginBottom: "24px", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "20px", marginBottom: "24px", border: "1px solid #e2e8f0" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
                 <div>
-                  <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Dispute Type</span>
-                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#fff" }}>
+                  <span style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Dispute Type</span>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>
                     {DISPUTE_CATEGORIES.find((c) => c.id === selectedCategory)?.label}
                   </div>
                 </div>
 
                 <div>
-                  <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Location</span>
-                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#fff" }}>{locationCity}</div>
+                  <span style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Location</span>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>{locationCity}</div>
                 </div>
 
                 <div>
-                  <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Opposite Party</span>
-                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#fff" }}>{oppositeParty || "Not specified yet"}</div>
+                  <span style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Opposite Party</span>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>{oppositeParty || "Not specified yet"}</div>
                 </div>
 
                 <div>
-                  <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Primary Goal</span>
-                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#818cf8" }}>{goal}</div>
+                  <span style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Primary Goal</span>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#2563eb", marginTop: "2px" }}>{goal}</div>
                 </div>
               </div>
 
               <div>
-                <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Your Description</span>
-                <p style={{ fontSize: "13px", color: "#cbd5e1", lineHeight: 1.6, margin: "4px 0 0 0" }}>
+                <span style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Your Description</span>
+                <p style={{ fontSize: "13px", color: "#334155", lineHeight: 1.6, margin: "4px 0 0 0" }}>
                   {whatHappened}
                 </p>
               </div>
@@ -573,12 +580,13 @@ function NewCaseIntakeContent() {
                 type="button"
                 onClick={handleBack}
                 style={{
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "#cbd5e1",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  color: "#334155",
                   padding: "10px 20px",
                   borderRadius: "8px",
                   fontSize: "13px",
+                  fontWeight: 500,
                   cursor: "pointer",
                 }}
               >
@@ -590,7 +598,7 @@ function NewCaseIntakeContent() {
                 onClick={handleSubmit}
                 disabled={loading}
                 style={{
-                  background: "var(--accent-gradient, linear-gradient(135deg, #6366f1, #8b5cf6))",
+                  background: "#2563eb",
                   color: "#fff",
                   border: "none",
                   padding: "14px 32px",
@@ -598,7 +606,7 @@ function NewCaseIntakeContent() {
                   fontSize: "15px",
                   fontWeight: 700,
                   cursor: loading ? "wait" : "pointer",
-                  boxShadow: "0 4px 14px rgba(99, 102, 241, 0.4)",
+                  boxShadow: "0 2px 8px rgba(37, 99, 235, 0.25)",
                 }}
               >
                 {loading ? "Opening Your Workspace..." : "Establish Case Workspace →"}
@@ -611,25 +619,26 @@ function NewCaseIntakeContent() {
         {step === 5 && createdCaseId && (
           <div
             style={{
-              background: "var(--surface-card, #0e121a)",
-              border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
               borderRadius: "12px",
               padding: "36px 28px",
               textAlign: "center",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
             }}
           >
             <div style={{ fontSize: "40px", marginBottom: "12px" }}>🎉</div>
-            <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#fff", margin: "0 0 8px 0" }}>
+            <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>
               Your case workspace is ready
             </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "14px", maxWidth: "520px", margin: "0 auto 24px", lineHeight: 1.6 }}>
+            <p style={{ color: "#475569", fontSize: "14px", maxWidth: "520px", margin: "0 auto 24px", lineHeight: 1.6 }}>
               We have organized your facts, created your case file, and set up your private document vault. What would you like to do next?
             </p>
 
             <div
               style={{
-                background: "rgba(99, 102, 241, 0.08)",
-                border: "1px solid rgba(99, 102, 241, 0.25)",
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
                 borderRadius: "10px",
                 padding: "20px",
                 maxWidth: "560px",
@@ -637,16 +646,16 @@ function NewCaseIntakeContent() {
                 textAlign: "left",
               }}
             >
-              <div style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#818cf8", fontWeight: 700, marginBottom: "6px" }}>
+              <div style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#1d4ed8", fontWeight: 700, marginBottom: "6px" }}>
                 Recommended Next Step
               </div>
-              <h3 style={{ fontSize: "16px", color: "#fff", margin: "0 0 6px 0", fontWeight: 700 }}>
+              <h3 style={{ fontSize: "16px", color: "#1e3a8a", margin: "0 0 6px 0", fontWeight: 700 }}>
                 Connect with an Advocate for this matter
               </h3>
-              <p style={{ fontSize: "13px", color: "#cbd5e1", margin: "0 0 16px 0", lineHeight: 1.5 }}>
+              <p style={{ fontSize: "13px", color: "#334155", margin: "0 0 16px 0", lineHeight: 1.5 }}>
                 Find verified High Court and District advocates specializing in{" "}
-                <strong>{DISPUTE_CATEGORIES.find((c) => c.id === selectedCategory)?.label || "your legal issue"}</strong>{" "}
-                in <strong>{locationCity}</strong>.
+                <strong style={{ color: "#0f172a" }}>{DISPUTE_CATEGORIES.find((c) => c.id === selectedCategory)?.label || "your legal issue"}</strong>{" "}
+                in <strong style={{ color: "#0f172a" }}>{locationCity}</strong>.
               </p>
 
               <Link
@@ -654,7 +663,7 @@ function NewCaseIntakeContent() {
                   DISPUTE_CATEGORIES.find((c) => c.id === selectedCategory)?.label || ""
                 )}&location=${encodeURIComponent(locationCity)}`}
                 className="btn btn-primary"
-                style={{ display: "inline-block", padding: "10px 20px", fontSize: "13px", fontWeight: 700 }}
+                style={{ display: "inline-block", padding: "10px 20px", fontSize: "13px", fontWeight: 700, background: "#2563eb", color: "#ffffff", borderRadius: "8px", textDecoration: "none" }}
               >
                 Browse Matching Advocates →
               </Link>
@@ -663,7 +672,7 @@ function NewCaseIntakeContent() {
             <div>
               <Link
                 href={`/cases/${createdCaseId}`}
-                style={{ color: "#94a3b8", fontSize: "13px", textDecoration: "underline" }}
+                style={{ color: "#64748b", fontSize: "13px", textDecoration: "underline" }}
               >
                 Skip advocate search and go directly to Case Workspace →
               </Link>

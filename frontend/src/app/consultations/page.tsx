@@ -290,50 +290,19 @@ export default function ConsultationsPage() {
           }}
         >
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "8px" }}>
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  color: "var(--accent-secondary)",
-                }}
-              >
-                <span>●</span> Direct Counsel Consultations
-              </div>
-              {istClock && (
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "3px 10px",
-                    borderRadius: "14px",
-                    background: "rgba(79, 91, 247, 0.12)",
-                    border: "1px solid rgba(79, 91, 247, 0.3)",
-                    color: "#a5b4fc",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                  }}
-                >
-                  <span>🕒</span> Indian Standard Time: <strong>{istClock}</strong>
-                </div>
-              )}
-            </div>
-            <h1 style={{ fontSize: "28px", fontWeight: 700, color: "var(--text-primary)" }}>
-              Consultations & Sessions
+            <span style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--navy-primary, #17324D)", display: "block", marginBottom: "4px" }}>
+              Lawyer Appointments
+            </span>
+            <h1 style={{ fontSize: "28px", fontWeight: 800, color: "var(--navy-primary, #17324D)", margin: 0 }}>
+              Appointments
             </h1>
-            <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginTop: "6px" }}>
-              Secure video consultations, fee disbursements, and post-session matter transitions.
+            <p style={{ color: "var(--text-secondary, #52606D)", fontSize: "15px", marginTop: "6px" }}>
+              Schedule and manage video consultations with your lawyer.
             </p>
           </div>
 
           <Link href="/lawyers" className="btn btn-primary">
-            🔍 Find & Retain Counsel
+            Talk to a Lawyer
           </Link>
         </div>
 
@@ -342,63 +311,42 @@ export default function ConsultationsPage() {
           <div
             id="active-call-quick-banner"
             style={{
-              background: "linear-gradient(135deg, rgba(37, 99, 235, 0.16) 0%, rgba(16, 185, 129, 0.14) 100%)",
-              border: "1px solid rgba(59, 130, 246, 0.35)",
-              borderRadius: "var(--radius-md)",
-              padding: "18px 24px",
+              background: "var(--surface-card, #FFFFFF)",
+              border: "2px solid var(--status-safe-text, #2F855A)",
+              borderRadius: "14px",
+              padding: "20px 24px",
               marginBottom: "24px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               flexWrap: "wrap",
               gap: "16px",
-              boxShadow: "0 4px 20px -2px rgba(37, 99, 235, 0.2)",
+              boxShadow: "var(--shadow-md)",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <div
-                style={{
-                  width: "48px",
-                  height: "48px",
-                  borderRadius: "50%",
-                  backgroundColor: "#2563eb",
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "24px",
-                  boxShadow: "0 0 15px rgba(37, 99, 235, 0.6)",
-                }}
-              >
-                🎥
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    backgroundColor: "rgba(47, 133, 90, 0.1)",
+                    color: "var(--status-safe-text, #2F855A)",
+                    padding: "2px 8px",
+                    borderRadius: "4px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Active Session Ready
+                </span>
               </div>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      backgroundColor: "#10b981",
-                      color: "#fff",
-                      padding: "2px 8px",
-                      borderRadius: "12px",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Active Session Ready
-                  </span>
-                  <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                    #{activeConsultation.id.slice(0, 8).toUpperCase()}
-                  </span>
-                </div>
-                <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
-                  {user?.role === "LAWYER"
-                    ? `Consultation with Client: ${activeConsultation.client_name || "Client"}`
-                    : `Video Consultation with Advocate: ${activeConsultation.lawyer_name || "Retained Counsel"}`}
-                </div>
-                <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
-                  Video meeting room is open. You can join now and exchange legal documents in real time.
-                </div>
+              <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-primary, #17324D)" }}>
+                {user?.role === "LAWYER"
+                  ? `Consultation with: ${activeConsultation.client_name || "Client"}`
+                  : `Video Consultation with: ${activeConsultation.lawyer_name || "Advocate"}`}
+              </div>
+              <div style={{ fontSize: "14px", color: "var(--text-secondary, #52606D)", marginTop: "2px" }}>
+                Your video meeting room is open. You can join now to discuss your matter face-to-face.
               </div>
             </div>
 
@@ -410,13 +358,9 @@ export default function ConsultationsPage() {
                 padding: "12px 24px",
                 fontSize: "15px",
                 fontWeight: 700,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                boxShadow: "0 4px 15px rgba(37, 99, 235, 0.4)",
               }}
             >
-              🎥 Join Video Consultation Now →
+              Join Video Meeting Now →
             </Link>
           </div>
         )}
@@ -495,46 +439,49 @@ export default function ConsultationsPage() {
                 <div
                   key={con.id}
                   style={{
-                    background: "var(--surface-card)",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "var(--radius-md)",
+                    background: "var(--surface-card, #FFFFFF)",
+                    border: "1px solid var(--border-subtle, #D9E2EC)",
+                    borderRadius: "14px",
                     padding: "24px",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                     flexWrap: "wrap",
                     gap: "20px",
+                    boxShadow: "var(--shadow-sm)",
                   }}
                 >
                   {/* Left Column: Metadata */}
                   <div style={{ maxWidth: "560px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
-                      <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
-                        SESSION #{con.id.slice(0, 8).toUpperCase()}
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted, #7B8794)", textTransform: "uppercase" }}>
+                        Session #{con.id.slice(0, 8).toUpperCase()}
                       </span>
                       <StatusBadge status={con.status} />
                     </div>
 
-                    <h3 style={{ fontSize: "18px", fontWeight: 600, color: "var(--text-primary)" }}>
-                      {isLawyer ? `Client: ${con.client_name || "Confidential Client"}` : `Advocate: ${con.lawyer_name || "Retained Counsel"}`}
+                    <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-primary, #17324D)", margin: "0 0 6px 0" }}>
+                      {isLawyer ? `Client: ${con.client_name || "Client"}` : `Lawyer: ${con.lawyer_name || "Advocate"}`}
                     </h3>
 
-                    <div style={{ display: "flex", gap: "18px", marginTop: "10px", flexWrap: "wrap", fontSize: "13px", color: "var(--text-secondary)" }}>
+                    <div style={{ display: "flex", gap: "16px", marginTop: "8px", flexWrap: "wrap", fontSize: "13px", color: "var(--text-secondary, #52606D)" }}>
                       <span>
-                        📅{" "}
-                        {con.scheduled_at
-                          ? new Date(con.scheduled_at).toLocaleString("en-IN", {
-                              timeZone: "Asia/Kolkata",
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            }) + " IST"
-                          : "Pending scheduling"}
+                        Date:{" "}
+                        <strong style={{ color: "var(--text-primary, #17212B)" }}>
+                          {con.scheduled_at
+                            ? new Date(con.scheduled_at).toLocaleString("en-IN", {
+                                timeZone: "Asia/Kolkata",
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              }) + " IST"
+                            : "To be scheduled"}
+                        </strong>
                       </span>
-                      <span>⏱️ {con.duration_minutes || 30} mins</span>
-                      <span>💰 ₹{con.fee_amount || 2500}</span>
+                      <span>Duration: {con.duration_minutes || 30} mins</span>
+                      <span>Fee: ₹{con.fee_amount || 2500}</span>
                       {con.case_id && (
-                        <Link href={`/cases/${con.case_id}`} style={{ color: "var(--accent-secondary)", textDecoration: "underline" }}>
-                          📁 Linked Case
+                        <Link href={`/cases/${con.case_id}`} style={{ color: "var(--blue-soft, #3B82B6)", textDecoration: "underline" }}>
+                          Linked Case
                         </Link>
                       )}
                     </div>
@@ -545,7 +492,7 @@ export default function ConsultationsPage() {
                     {/* Video Entry */}
                     {eligible && (
                       <Link href={`/consultations/${con.id}/room?bypass_time=true`} className="btn btn-primary" style={{ padding: "8px 16px" }}>
-                        🎥 Join Video Room →
+                        Join Video Meeting →
                       </Link>
                     )}
 
@@ -556,9 +503,9 @@ export default function ConsultationsPage() {
                           onClick={() => handleAcceptAndEnter(con.id)}
                           disabled={acceptingId === con.id}
                           className="btn btn-primary"
-                          style={{ padding: "8px 16px", backgroundColor: "#10b981", borderColor: "#10b981", opacity: acceptingId === con.id ? 0.6 : 1 }}
+                          style={{ padding: "8px 16px", opacity: acceptingId === con.id ? 0.6 : 1 }}
                         >
-                          {acceptingId === con.id ? "Entering..." : "⚡ Accept & Enter Room"}
+                          {acceptingId === con.id ? "Entering..." : "Accept & Enter"}
                         </button>
                         <button
                           onClick={() => handleAcceptConsultation(con.id)}
@@ -566,12 +513,12 @@ export default function ConsultationsPage() {
                           className="btn btn-secondary"
                           style={{ padding: "8px 14px", opacity: acceptingId === con.id ? 0.6 : 1 }}
                         >
-                          {acceptingId === con.id ? "Accepting..." : "✓ Accept Only"}
+                          {acceptingId === con.id ? "Accepting..." : "Accept"}
                         </button>
                         <button
                           onClick={() => setActionModal({ type: "REJECT", consultation: con })}
                           className="btn btn-secondary"
-                          style={{ padding: "8px 14px", color: "#ef4444" }}
+                          style={{ padding: "8px 14px", color: "var(--status-urgent, #C53030)" }}
                         >
                           Reject
                         </button>
@@ -585,7 +532,7 @@ export default function ConsultationsPage() {
                         className="btn btn-primary"
                         style={{ padding: "8px 16px" }}
                       >
-                        💳 Pay ₹{con.fee_amount || 2500} →
+                        Pay ₹{con.fee_amount || 2500} →
                       </button>
                     )}
 
@@ -595,14 +542,14 @@ export default function ConsultationsPage() {
                         <button
                           onClick={() => setActionModal({ type: "RESCHEDULE", consultation: con })}
                           className="btn btn-secondary"
-                          style={{ padding: "8px 14px", fontSize: "12px" }}
+                          style={{ padding: "8px 14px", fontSize: "13px" }}
                         >
                           Reschedule
                         </button>
                         <button
                           onClick={() => setActionModal({ type: "CANCEL", consultation: con })}
                           className="btn btn-secondary"
-                          style={{ padding: "8px 14px", fontSize: "12px", color: "#ef4444" }}
+                          style={{ padding: "8px 14px", fontSize: "13px", color: "var(--status-urgent, #C53030)" }}
                         >
                           Cancel
                         </button>
@@ -615,24 +562,24 @@ export default function ConsultationsPage() {
                         <button
                           onClick={() => setRecordingsConsultation(con)}
                           className="btn btn-secondary"
-                          style={{ padding: "8px 14px", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}
+                          style={{ padding: "8px 14px", fontSize: "13px" }}
                         >
-                          📹 Recordings
+                          Recordings
                         </button>
                         <button
                           onClick={() => openNotesModal(con)}
                           className="btn btn-secondary"
-                          style={{ padding: "8px 14px", fontSize: "12px" }}
+                          style={{ padding: "8px 14px", fontSize: "13px" }}
                         >
-                          📝 Consultation Notes
+                          Meeting Notes
                         </button>
                         {!con.case_id && (
                           <button
                             onClick={() => openCaseModal(con)}
                             className="btn btn-secondary"
-                            style={{ padding: "8px 14px", fontSize: "12px" }}
+                            style={{ padding: "8px 14px", fontSize: "13px" }}
                           >
-                            📁 Create / Link Case
+                            Create / Link Case
                           </button>
                         )}
                       </>

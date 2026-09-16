@@ -1,9 +1,21 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { apiClient } from "@/api/client";
 import styles from "./WhatChangedBanner.module.css";
+import {
+  BellIcon,
+  CalendarIcon,
+  CourthouseIcon,
+  DocumentIcon,
+  ChatIcon,
+  LawyerIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  ArrowRightIcon,
+  ScalesIcon,
+} from "@/components/ui/Icons";
 
 interface DeltaEvent {
   id: string;
@@ -25,6 +37,21 @@ interface WhatChangedResponse {
   has_unacknowledged_changes: boolean;
 }
 
+function cleanDescription(desc: string): string {
+  if (!desc) return "";
+  // Strip emojis and unneeded raw delimiters
+  let text = desc.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "").trim();
+  // Strip quotes wrapping around messages like '...'
+  text = text.replace(/^['"]|['"]$/g, "").trim();
+  // Format video call notifications cleanly
+  if (text.toLowerCase().includes("video call started") || text.toLowerCase().includes("joined the video room")) {
+    const match = text.match(/for case ['"]?([^'"]+)['"]?/i);
+    const caseName = match ? match[1] : "matter";
+    return `Live video consultation initiated for case '${caseName}'. Click below to join the room.`;
+  }
+  return text;
+}
+
 export function WhatChangedBanner() {
   const [data, setData] = useState<WhatChangedResponse | null>(null);
   const [acknowledging, setAcknowledging] = useState(false);
@@ -32,7 +59,7 @@ export function WhatChangedBanner() {
 
   const fetchChanges = useCallback(async () => {
     try {
-      const res = (await apiClient.get("/api/v1/feed/what-changed?limit=5")) as WhatChangedResponse;
+      const res = (await apiClient.get("/api/v1/feed/what-changed?limit=8")) as WhatChangedResponse;
       setData(res);
     } catch {
       // Graceful degradation if feed is temporarily unreachable
@@ -57,7 +84,22 @@ export function WhatChangedBanner() {
     }
   };
 
-  if (dismissed || !data || !data.has_unacknowledged_changes || data.events.length === 0) {
+  // Deduplicate identical consecutive events (e.g. repeated ping webhooks)
+  const displayEvents = useMemo(() => {
+    if (!data?.events) return [];
+    const seen = new Set<string>();
+    const unique: DeltaEvent[] = [];
+    for (const ev of data.events) {
+      const key = `${ev.category}-${ev.title}-${ev.description.slice(0, 40)}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(ev);
+      }
+    }
+    return unique;
+  }, [data?.events]);
+
+  if (dismissed || !data || !data.has_unacknowledged_changes || displayEvents.length === 0) {
     return null;
   }
 
@@ -80,20 +122,20 @@ export function WhatChangedBanner() {
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case "HEARING":
-        return "📅";
+        return <CalendarIcon size={16} color="#2563EB" />;
       case "COURT_TRACKING":
-        return "🏛️";
+        return <CourthouseIcon size={16} color="#7C3AED" />;
       case "DOCUMENT":
       case "DOCUMENT_REQUEST":
-        return "📄";
+        return <DocumentIcon size={16} color="#059669" />;
       case "COMMUNICATION":
-        return "💬";
+        return <ChatIcon size={16} color="#D97706" />;
       case "CONSULTATION":
-        return "🧑‍⚖️";
+        return <LawyerIcon size={16} color="#2563EB" />;
       case "DEADLINE":
-        return "⏳";
+        return <ClockIcon size={16} color="#DC2626" />;
       default:
-        return "⚡";
+        return <ScalesIcon size={16} color="#475569" />;
     }
   };
 
@@ -115,14 +157,16 @@ export function WhatChangedBanner() {
     <aside className={styles.bannerContainer} aria-label="What changed since your last visit">
       <div className={styles.headerRow}>
         <div className={styles.titleArea}>
-          <span className={styles.sparkleIcon} aria-hidden="true">🔔</span>
+          <div className={styles.sparkleIcon} aria-hidden="true">
+            <BellIcon size={18} color="#2563eb" />
+          </div>
           <div>
             <h3 className={styles.heading}>
               What changed since your last visit?
               <span className={styles.newBadge}>{data.total_new_changes} new</span>
             </h3>
             <p className={styles.subtext}>
-              Real-time court updates, orders, evidence, and messages since your last session.
+              Real-time court updates, orders, evidence, and client messages since your last session.
             </p>
           </div>
         </div>
@@ -134,17 +178,18 @@ export function WhatChangedBanner() {
           className={styles.ackButton}
           title="Mark all as seen"
         >
-          {acknowledging ? "Acknowledging..." : "✓ Mark All Seen"}
+          <CheckCircleIcon size={14} color="currentColor" />
+          <span>{acknowledging ? "Acknowledging..." : "Mark All Seen"}</span>
         </button>
       </div>
 
       <div className={styles.eventList}>
-        {data.events.map((ev) => (
+        {displayEvents.map((ev) => (
           <div key={ev.id} className={styles.eventCard}>
             <div className={styles.eventLeft}>
-              <span className={styles.eventIcon} aria-hidden="true">
+              <div className={styles.eventIcon} aria-hidden="true">
                 {getCategoryIcon(ev.category)}
-              </span>
+              </div>
               <div className={styles.eventInfo}>
                 <div className={styles.eventMetaRow}>
                   <span className={`${styles.categoryTag} ${getCategoryTagClass(ev.category)}`}>
@@ -154,12 +199,13 @@ export function WhatChangedBanner() {
                   <span className={styles.eventTime}>{formatEventTime(ev.timestamp)}</span>
                 </div>
                 <div className={styles.eventTitle}>{ev.title}</div>
-                <div className={styles.eventDesc}>{ev.description}</div>
+                <div className={styles.eventDesc}>{cleanDescription(ev.description)}</div>
               </div>
             </div>
 
             <Link href={ev.source_url} className={styles.actionLink}>
-              Take Action →
+              <span>Take Action</span>
+              <ArrowRightIcon size={12} color="currentColor" />
             </Link>
           </div>
         ))}

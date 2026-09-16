@@ -179,7 +179,7 @@ export default function CasesPage() {
         >
           <div
             style={{
-              background: "#FFFFFF",
+              background: "var(--surface-card, #FFFFFF)",
               border: "1px solid var(--border-subtle)",
               borderRadius: "var(--radius-lg)",
               padding: "16px 20px",
@@ -196,7 +196,7 @@ export default function CasesPage() {
 
           <div
             style={{
-              background: "#FFFFFF",
+              background: "var(--surface-card, #FFFFFF)",
               border: "1px solid var(--border-subtle)",
               borderRadius: "var(--radius-lg)",
               padding: "16px 20px",
@@ -213,7 +213,7 @@ export default function CasesPage() {
 
           <div
             style={{
-              background: "#FFFFFF",
+              background: "var(--surface-card, #FFFFFF)",
               border: "1px solid var(--border-subtle)",
               borderRadius: "var(--radius-lg)",
               padding: "16px 20px",
@@ -303,7 +303,7 @@ export default function CasesPage() {
           cases.length === 0 ? (
             <div
               style={{
-                background: "#FFFFFF",
+                background: "var(--surface-card, #FFFFFF)",
                 border: "1px dashed var(--border-subtle)",
                 borderRadius: "16px",
                 padding: "48px 24px",
@@ -321,8 +321,8 @@ export default function CasesPage() {
                   width: "56px",
                   height: "56px",
                   borderRadius: "50%",
-                  background: "#EFF6FF",
-                  border: "1px solid #DBEAFE",
+                  background: "var(--surface-subtle)",
+                  border: "1px solid var(--border-subtle)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -379,7 +379,7 @@ export default function CasesPage() {
                 <div
                   key={c.id}
                   style={{
-                    background: "#FFFFFF",
+                    background: "var(--surface-card, #FFFFFF)",
                     border: "1px solid var(--border-subtle)",
                     borderRadius: "var(--radius-xl)",
                     padding: "24px",
@@ -405,7 +405,7 @@ export default function CasesPage() {
                     </div>
 
                     <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-primary)", marginBottom: "8px" }}>
-                      {c.title}
+                      {c.title ? (c.title.charAt(0).toUpperCase() + c.title.slice(1)) : ""}
                     </h3>
 
                     <div style={{ marginBottom: "12px" }}>
@@ -414,7 +414,7 @@ export default function CasesPage() {
 
                     <div
                       style={{
-                        background: "#F8FAFC",
+                        background: "var(--surface-subtle)",
                         border: "1px solid var(--border-subtle)",
                         borderRadius: "8px",
                         padding: "8px 12px",
@@ -496,7 +496,7 @@ export default function CasesPage() {
           >
             <div
               style={{
-                background: "#FFFFFF",
+                background: "var(--surface-card, #FFFFFF)",
                 border: "1px solid var(--border-subtle)",
                 borderRadius: "var(--radius-xl)",
                 padding: "28px",

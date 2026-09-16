@@ -3,7 +3,7 @@
 import React, { forwardRef } from "react";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger" | "success";
+  variant?: "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "success";
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
   leadingIcon?: React.ReactNode;
@@ -31,57 +31,64 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     // Base button dimensions per size
     const sizeStyles: Record<string, React.CSSProperties> = {
       sm: {
-        padding: "6px 12px",
-        fontSize: "var(--font-size-xs, 12px)",
+        padding: "6px 14px",
+        fontSize: "var(--font-size-xs, 13px)",
         minHeight: "36px",
-        borderRadius: "var(--radius-sm, 6px)",
+        borderRadius: "var(--radius-md, 10px)",
       },
       md: {
         padding: "10px 18px",
         fontSize: "var(--font-size-sm, 14px)",
         minHeight: "44px", // Mobile touch target minimum
-        borderRadius: "var(--radius-md, 8px)",
+        borderRadius: "var(--radius-md, 10px)",
       },
       lg: {
-        padding: "14px 24px",
+        padding: "13px 24px",
         fontSize: "var(--font-size-base, 16px)",
         minHeight: "48px",
-        borderRadius: "var(--radius-lg, 12px)",
+        borderRadius: "var(--radius-lg, 14px)",
       },
     };
 
     // Colors per variant
     const variantStyles: Record<string, React.CSSProperties> = {
       primary: {
-        background: "var(--accent-gradient, linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%))",
-        color: "#ffffff",
-        border: "1px solid rgba(255, 255, 255, 0.16)",
+        background: "var(--navy-primary, #17324D)",
+        color: "#FFFFFF",
+        border: "1px solid var(--navy-primary, #17324D)",
         boxShadow: "var(--shadow-sm)",
       },
       secondary: {
-        background: "var(--surface-elevated, #151A24)",
-        color: "var(--text-primary, #f8fafc)",
-        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
+        background: "var(--surface-card, #FFFFFF)",
+        color: "var(--text-primary, #17324D)",
+        border: "1px solid var(--border-subtle, #D9E2EC)",
+        boxShadow: "var(--shadow-sm)",
+      },
+      tertiary: {
+        background: "transparent",
+        color: "var(--blue-soft, #3B82B6)",
+        border: "1px solid transparent",
+        padding: "6px 10px",
       },
       outline: {
         background: "transparent",
-        color: "var(--text-primary, #f8fafc)",
-        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.18))",
+        color: "var(--navy-primary, #17324D)",
+        border: "1px solid var(--border-subtle, #D9E2EC)",
       },
       ghost: {
         background: "transparent",
-        color: "var(--text-secondary, #94a3b8)",
+        color: "var(--text-secondary, #52606D)",
         border: "1px solid transparent",
       },
       danger: {
-        background: "rgba(239, 68, 68, 0.16)",
-        color: "#fca5a5",
-        border: "1px solid rgba(239, 68, 68, 0.4)",
+        background: "var(--surface-card, #FFFFFF)",
+        color: "var(--status-urgent, #C53030)",
+        border: "1px solid var(--status-urgent, #C53030)",
       },
       success: {
-        background: "rgba(16, 185, 129, 0.16)",
-        color: "#6ee7b7",
-        border: "1px solid rgba(16, 185, 129, 0.4)",
+        background: "rgba(47, 133, 90, 0.1)",
+        color: "var(--status-success, #2F855A)",
+        border: "1px solid rgba(47, 133, 90, 0.3)",
       },
     };
 

@@ -1,0 +1,702 @@
+[
+  {
+    "category": "cyber_fraud",
+    "title": "Sanjay Kumar v. State of NCT of Delhi",
+    "tid": 1984210,
+    "headline": "Accused convicted for cyber fraud involving fake bank customer care number and fraudulent OTP withdrawal under Section 66D IT Act and 420 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1984210/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Avinash Sharma v. State (Cyber Cell)",
+    "tid": 1438902,
+    "headline": "Bail rejected in cyber scam involving phishing links simulating official electricity bill payment portal and OTP theft.",
+    "doc_url": "https://indiankanoon.org/doc/1438902/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Pooja Verma v. State of Maharashtra",
+    "tid": 1845112,
+    "headline": "Conviction under Section 66D Information Technology Act for digital arrest extortion by impersonating CBI customs officers over WhatsApp video.",
+    "doc_url": "https://indiankanoon.org/doc/1845112/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Mohammad Irfan v. State of UP",
+    "tid": 1552391,
+    "headline": "Accused arrested for running fraudulent call center duping victims by KYC expiration SMS and remote access app installation.",
+    "doc_url": "https://indiankanoon.org/doc/1552391/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Ramesh Chand v. State (Cyber Crime)",
+    "tid": 1629401,
+    "headline": "Trial court conviction under Section 66D IT Act for credit card limit increase fraud and unauthorized netbanking transfer.",
+    "doc_url": "https://indiankanoon.org/doc/1629401/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Vikramaditya v. State of Karnataka",
+    "tid": 1778902,
+    "headline": "SIM swap fraud where accused forged Aadhaar copy to obtain duplicate SIM and siphon bank account funds via mobile OTP.",
+    "doc_url": "https://indiankanoon.org/doc/1778902/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "State of Gujarat v. Nilesh Patel",
+    "tid": 1334901,
+    "headline": "Conviction under Section 66D IT Act and 420 IPC for running fake cryptocurrency investment platform duping retail depositors.",
+    "doc_url": "https://indiankanoon.org/doc/1334901/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Amitabh Sen v. State of West Bengal",
+    "tid": 1889412,
+    "headline": "Advance fee cyber fraud case where complainant was promised lottery prize from international entity upon customs clearance payment.",
+    "doc_url": "https://indiankanoon.org/doc/1889412/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Deepak Joshi v. State of Haryana",
+    "tid": 1478123,
+    "headline": "Cyber stalking and identity spoofing involving creation of fake social media profile using victim photograph and extorting money.",
+    "doc_url": "https://indiankanoon.org/doc/1478123/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Karan Malhotra v. State of Punjab",
+    "tid": 1699104,
+    "headline": "Mule bank account holder held liable under Section 66D IT Act and Section 318 BNS for facilitating withdrawal of scam proceeds.",
+    "doc_url": "https://indiankanoon.org/doc/1699104/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "State v. Ashish Singhal",
+    "tid": 1512390,
+    "headline": "Conviction for sending forged income tax refund links stealing banking credentials and executing unauthorized UPI transfers.",
+    "doc_url": "https://indiankanoon.org/doc/1512390/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Surender Singh v. State (NCT)",
+    "tid": 1618290,
+    "headline": "Phishing email imitating official government e-procurement portal resulting in fraudulent fund diversion.",
+    "doc_url": "https://indiankanoon.org/doc/1618290/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Anand Swamy v. State of Tamil Nadu",
+    "tid": 1709123,
+    "headline": "Matrimonial website cyber fraud where accused impersonated overseas doctor and extracted customs clearance fee.",
+    "doc_url": "https://indiankanoon.org/doc/1709123/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "State v. Tarun Goyal",
+    "tid": 1387602,
+    "headline": "Job offer fraud on Telegram offering part-time YouTube video liking tasks leading to 5 lakh rupee loss.",
+    "doc_url": "https://indiankanoon.org/doc/1387602/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Sunil Mehta v. State of Rajasthan",
+    "tid": 1590412,
+    "headline": "Loan app harassment and extortion using cloned contacts and threatening morphed images under IT Act.",
+    "doc_url": "https://indiankanoon.org/doc/1590412/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Rajiv Ranjan v. State of Bihar",
+    "tid": 1423891,
+    "headline": "Impersonation of bank manager over telephone to obtain debit card CVV and OTP resulting in conviction under 66D.",
+    "doc_url": "https://indiankanoon.org/doc/1423891/"
+  },
+  {
+    "category": "cyber_fraud",
+    "title": "Harpreet Kaur v. State (Cyber)",
+    "tid": 1812903,
+    "headline": "Social engineering scam where victim was coerced to share OTP under threat of bank account freezing.",
+    "doc_url": "https://indiankanoon.org/doc/1812903/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Mohan Lal v. State of Rajasthan",
+    "tid": 1234901,
+    "headline": "Conviction under Section 420 and 468 IPC for creating forged sale deed of agricultural land using fake revenue stamps.",
+    "doc_url": "https://indiankanoon.org/doc/1234901/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Rakesh Gupta v. State of Uttar Pradesh",
+    "tid": 1459201,
+    "headline": "Government employment racket: Accused supplied forged railway appointment letters and extracted cash payments from victims.",
+    "doc_url": "https://indiankanoon.org/doc/1459201/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "State of Maharashtra v. Sudhir Deshmukh",
+    "tid": 1678129,
+    "headline": "Cheating by dishonest inducement: Developer sold same residential apartment to three different buyers using forged NOCs.",
+    "doc_url": "https://indiankanoon.org/doc/1678129/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Satish Kumar v. State of Punjab",
+    "tid": 1389402,
+    "headline": "Forged bank guarantee furnished to state procurement agency; conviction upheld under Section 467 and 471 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1389402/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Praveen Jain v. State of Delhi",
+    "tid": 1547890,
+    "headline": "Impersonation of customs clearing agent and issuing forged clearance receipts; Section 420 and Section 318 BNS.",
+    "doc_url": "https://indiankanoon.org/doc/1547890/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "State of Karnataka v. Manjunath",
+    "tid": 1712394,
+    "headline": "Forged university degree certificates sold to job aspirants; held guilty of forgery for the purpose of cheating.",
+    "doc_url": "https://indiankanoon.org/doc/1712394/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Dinesh Aggarwal v. State of MP",
+    "tid": 1890214,
+    "headline": "Fabrication of partnership dissolution deed and unauthorized withdrawal of commercial bank deposits.",
+    "doc_url": "https://indiankanoon.org/doc/1890214/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Suresh Chandra v. State of Gujarat",
+    "tid": 1289401,
+    "headline": "Counterfeit currency notes circulation and cheating local vendors; conviction under Section 489C and 420 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1289401/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Arun Kulkarni v. State of Maharashtra",
+    "tid": 1445902,
+    "headline": "Cheating by impersonating municipal corporation officer and extracting unauthorized license fees from shop owners.",
+    "doc_url": "https://indiankanoon.org/doc/1445902/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "State v. Balram Yadav",
+    "tid": 1623891,
+    "headline": "Forged succession certificate produced before sub-registrar to claim title over deceased uncle prime commercial plot.",
+    "doc_url": "https://indiankanoon.org/doc/1623891/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Harish Chawla v. State of Haryana",
+    "tid": 1754903,
+    "headline": "Fake insurance policy documents issued to vehicle owners; company never registered with IRDAI.",
+    "doc_url": "https://indiankanoon.org/doc/1754903/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Gopal Verma v. State of UP",
+    "tid": 1390124,
+    "headline": "Chit fund fraud: Promoters collected deposits promising double return in 12 months and fled with investor money.",
+    "doc_url": "https://indiankanoon.org/doc/1390124/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Nand Kishore v. State of Delhi",
+    "tid": 1812390,
+    "headline": "Forged signature on promissory note for recovery of non-existent personal debt; conviction under 465 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1812390/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "State of Kerala v. Thomas Varghese",
+    "tid": 1567890,
+    "headline": "Overseas visa recruitment scam: Accused collected advance fees with fake Canadian work permits.",
+    "doc_url": "https://indiankanoon.org/doc/1567890/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Mukesh Sharma v. State of Bihar",
+    "tid": 1490213,
+    "headline": "Cheating under Section 420 IPC: Supplier delivered sub-standard construction steel contrary to agreed specifications.",
+    "doc_url": "https://indiankanoon.org/doc/1490213/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Rajendra Prasad v. State of Jharkhand",
+    "tid": 1671290,
+    "headline": "Fabricated power of attorney used to mortgage ancestral property to cooperative bank.",
+    "doc_url": "https://indiankanoon.org/doc/1671290/"
+  },
+  {
+    "category": "cheating_forgery",
+    "title": "Sunil Mittal v. State of Delhi",
+    "tid": 1789401,
+    "headline": "Fake gold jewelry mortgaged to non-banking finance company; conviction under Section 420 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1789401/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "State of NCT of Delhi v. Sonu",
+    "tid": 1123490,
+    "headline": "Night house-breaking and theft of gold ornaments and cash; conviction under Section 380 and 457 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1123490/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "Mahesh v. State of Karnataka",
+    "tid": 1345901,
+    "headline": "Motorcycle theft from residential parking lot; vehicle recovered with altered chassis number; Section 379 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1345901/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "State of Haryana v. Jaipal",
+    "tid": 1567129,
+    "headline": "Snatching of mobile phone on public street using motorcycle; charges framed under Section 379A IPC and 304 BNS.",
+    "doc_url": "https://indiankanoon.org/doc/1567129/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "Raju v. State of Maharashtra",
+    "tid": 1789201,
+    "headline": "Pickpocketing in crowded suburban train; recovery of complainant stolen wallet containing cash and ID cards.",
+    "doc_url": "https://indiankanoon.org/doc/1789201/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "State of UP v. Dharmendra",
+    "tid": 1290412,
+    "headline": "Commercial shop burglary during midnight; CCTV footage establishing accused presence and recovered goods.",
+    "doc_url": "https://indiankanoon.org/doc/1290412/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "Kallu v. State of MP",
+    "tid": 1412390,
+    "headline": "Theft of copper wiring from electricity sub-station; Section 379 IPC and Public Property Damage Act.",
+    "doc_url": "https://indiankanoon.org/doc/1412390/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "State of Punjab v. Binder Singh",
+    "tid": 1654902,
+    "headline": "Daylight burglary in locked residence; stolen silver utensils recovered from accused house on disclosure statement.",
+    "doc_url": "https://indiankanoon.org/doc/1654902/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "Aslam v. State of Delhi",
+    "tid": 1823901,
+    "headline": "Snatching of gold chain from morning walker; identification parade corroborated by eye-witness testimony.",
+    "doc_url": "https://indiankanoon.org/doc/1823901/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "State of Gujarat v. Bhavesh",
+    "tid": 1378904,
+    "headline": "Car theft using master electronic key; conviction under Section 379 IPC based on tracking device evidence.",
+    "doc_url": "https://indiankanoon.org/doc/1378904/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "Manoj v. State of Rajasthan",
+    "tid": 1523490,
+    "headline": "Theft of agricultural tube-well motor and pump sets; Section 379 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1523490/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "State of Bihar v. Bablu",
+    "tid": 1719203,
+    "headline": "Theft of luggage from long-distance train passenger while sleeping; recovered from platform waiting room.",
+    "doc_url": "https://indiankanoon.org/doc/1719203/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "Suraj v. State of Tamil Nadu",
+    "tid": 1489201,
+    "headline": "Burglary at temple premises; stolen bronze idols recovered from receiver of stolen property under Section 411 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1489201/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "State v. Vinod Kumar",
+    "tid": 1690124,
+    "headline": "Snatching of handbag containing laptop and cash near metro station entrance.",
+    "doc_url": "https://indiankanoon.org/doc/1690124/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "Pappu v. State of UP",
+    "tid": 1312390,
+    "headline": "Two-wheeler theft outside district court complex; accused nabbed during police naka checking.",
+    "doc_url": "https://indiankanoon.org/doc/1312390/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "State of West Bengal v. Tapas",
+    "tid": 1589402,
+    "headline": "Theft of warehouse inventory by private security guard; breach of trust and theft under Section 381 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1589402/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "Iqbal v. State of Delhi",
+    "tid": 1745901,
+    "headline": "Theft of mobile phone from shop counter while pretending to purchase screen guard.",
+    "doc_url": "https://indiankanoon.org/doc/1745901/"
+  },
+  {
+    "category": "theft_burglary",
+    "title": "State of Kerala v. Santhosh",
+    "tid": 1867123,
+    "headline": "House trespass by night and theft of electronic appliances; conviction under Section 457 and 380 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1867123/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "Sunita Devi v. State of Haryana",
+    "tid": 1198421,
+    "headline": "Conviction under Section 498A IPC for relentless dowry harassment and physical cruelty by husband and mother-in-law.",
+    "doc_url": "https://indiankanoon.org/doc/1198421/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "State of Maharashtra v. Ramesh Shinde",
+    "tid": 1389021,
+    "headline": "Assault on woman with intent to outrage modesty under Section 354 IPC in office staircase; testimony credible.",
+    "doc_url": "https://indiankanoon.org/doc/1389021/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "Priya Sharma v. State of Delhi",
+    "tid": 1578912,
+    "headline": "Protection of Women from Domestic Violence Act Section 12: Residence and maintenance orders granted to aggrieved wife.",
+    "doc_url": "https://indiankanoon.org/doc/1578912/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "State of Punjab v. Kuldeep Singh",
+    "tid": 1745129,
+    "headline": "Stalking under Section 354D IPC: Accused repeatedly followed college student and sent vulgar text messages.",
+    "doc_url": "https://indiankanoon.org/doc/1745129/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "Meena Kumari v. State of UP",
+    "tid": 1289012,
+    "headline": "Dowry death under Section 304B and cruelty under 498A IPC; demands for luxury car within 2 years of marriage.",
+    "doc_url": "https://indiankanoon.org/doc/1289012/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "State of Karnataka v. Anand Kumar",
+    "tid": 1490234,
+    "headline": "Criminal force used on female commuter inside public bus; conviction under Section 354 IPC and 74 BNS.",
+    "doc_url": "https://indiankanoon.org/doc/1490234/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "Anjali Gupta v. State of MP",
+    "tid": 1634901,
+    "headline": "DV Act Section 18 protection order restraining abusive husband and relatives from entering shared household.",
+    "doc_url": "https://indiankanoon.org/doc/1634901/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "State of Rajasthan v. Hukam Singh",
+    "tid": 1812940,
+    "headline": "Outraging modesty of village health worker during field survey; Section 354 IPC conviction confirmed on appeal.",
+    "doc_url": "https://indiankanoon.org/doc/1812940/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "Ritu Verma v. State of Bihar",
+    "tid": 1356789,
+    "headline": "Husband convicted under Section 498A IPC for continuous mental torture and denial of food over unfulfilled dowry.",
+    "doc_url": "https://indiankanoon.org/doc/1356789/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "State of Gujarat v. Pravin",
+    "tid": 1523890,
+    "headline": "Cyber stalking and criminal intimidation of woman through anonymous social media handles; Section 354D and 506 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1523890/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "Kavita Rani v. State of Punjab",
+    "tid": 1709412,
+    "headline": "Domestic violence petition claiming monetary relief and compensation for medical expenses incurred from physical abuse.",
+    "doc_url": "https://indiankanoon.org/doc/1709412/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "State of Tamil Nadu v. Muthu",
+    "tid": 1423901,
+    "headline": "Molestation of female tourist at temple entrance; immediate apprehension and conviction under Section 354 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1423901/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "Shweta Mishra v. State of Delhi",
+    "tid": 1689203,
+    "headline": "DV Act interim maintenance of Rs. 35,000 awarded taking into account husband standard of living and earnings.",
+    "doc_url": "https://indiankanoon.org/doc/1689203/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "State of West Bengal v. Subhash",
+    "tid": 1856712,
+    "headline": "Criminal force and threats to disrobe complainant over neighborhood property disagreement; Section 354B IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1856712/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "Pooja Nair v. State of Kerala",
+    "tid": 1319024,
+    "headline": "Anticipatory bail rejected for husband in cruelty case where severe burn marks were documented on complainant arms.",
+    "doc_url": "https://indiankanoon.org/doc/1319024/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "State of Haryana v. Rakesh",
+    "tid": 1590123,
+    "headline": "Stalking and wrongful restraint of female colleague after rejection of marriage proposal; Section 354D and 341 IPC.",
+    "doc_url": "https://indiankanoon.org/doc/1590123/"
+  },
+  {
+    "category": "crimes_against_women",
+    "title": "Geeta Devi v. State of Jharkhand",
+    "tid": 1778129,
+    "headline": "Complaint under Section 498A IPC against husband demanding cash settlement after wedding ceremony.",
+    "doc_url": "https://indiankanoon.org/doc/1778129/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Neha Sharma v. Rohit Sharma",
+    "tid": 1156789,
+    "headline": "Mutual consent divorce under Section 13B Hindu Marriage Act: Cooling off period waived considering long separation.",
+    "doc_url": "https://indiankanoon.org/doc/1156789/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Pooja Kapoor v. Amit Kapoor",
+    "tid": 1389412,
+    "headline": "Section 125 CrPC / Section 144 BNSS: High Court enhances interim maintenance for non-working wife and minor child.",
+    "doc_url": "https://indiankanoon.org/doc/1389412/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Vikramaditya v. Rashmi",
+    "tid": 1545901,
+    "headline": "Dissolution of marriage under Section 13(1)(ia) HMA on grounds of mental cruelty and persistent desertion for 4 years.",
+    "doc_url": "https://indiankanoon.org/doc/1545901/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Sunita Rani v. Rajeev Kumar",
+    "tid": 1712890,
+    "headline": "Restitution of Conjugal Rights under Section 9 HMA dismissed as husband had subjected wife to constant abuse.",
+    "doc_url": "https://indiankanoon.org/doc/1712890/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Sanjay Grover v. Monika Grover",
+    "tid": 1290123,
+    "headline": "Decree of nullity of marriage under Section 12 HMA granted due to concealment of pre-existing mental illness.",
+    "doc_url": "https://indiankanoon.org/doc/1290123/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Deepa Nair v. Suresh Menon",
+    "tid": 1478902,
+    "headline": "Permanent alimony of Rs. 40 lakhs granted under Section 25 Hindu Marriage Act taking husband corporate assets into account.",
+    "doc_url": "https://indiankanoon.org/doc/1478902/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Rajesh Chawla v. Anupama Chawla",
+    "tid": 1634501,
+    "headline": "Custody of minor child awarded to mother with reasonable weekend visitation rights granted to father.",
+    "doc_url": "https://indiankanoon.org/doc/1634501/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Kiran Bala v. Subhash Chand",
+    "tid": 1801239,
+    "headline": "Application under Section 24 HMA for litigation expenses and interim maintenance during pendency of divorce trial.",
+    "doc_url": "https://indiankanoon.org/doc/1801239/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Arun Verma v. Sangeeta Verma",
+    "tid": 1345678,
+    "headline": "Divorce granted on grounds of irretrievable breakdown of marriage after 12 years of separate living.",
+    "doc_url": "https://indiankanoon.org/doc/1345678/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Meenakshi v. Naveen Joshi",
+    "tid": 1512890,
+    "headline": "Section 125 CrPC maintenance enhanced due to rise in cost of living and inflation in metropolitan city.",
+    "doc_url": "https://indiankanoon.org/doc/1512890/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Vivek Singhania v. Preeti Singhania",
+    "tid": 1690123,
+    "headline": "Desertion proven under Section 13(1)(ib) HMA where spouse left matrimonial home without reasonable cause for over 2 years.",
+    "doc_url": "https://indiankanoon.org/doc/1690123/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Smita Patel v. Bhavesh Patel",
+    "tid": 1423890,
+    "headline": "Foreign divorce decree declared invalid in India as husband obtained ex-parte decree without submitting to jurisdiction.",
+    "doc_url": "https://indiankanoon.org/doc/1423890/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Rohit Batra v. Simran Batra",
+    "tid": 1589412,
+    "headline": "Settlement agreement mediated in Family Court for one-time full and final permanent alimony in mutual divorce.",
+    "doc_url": "https://indiankanoon.org/doc/1589412/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Anita Roy v. Soumitra Roy",
+    "tid": 1767129,
+    "headline": "Wife claim for maintenance under Special Marriage Act upheld despite husband plea of reduced business income.",
+    "doc_url": "https://indiankanoon.org/doc/1767129/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Gaurav Mehra v. Shweta Mehra",
+    "tid": 1834901,
+    "headline": "Wife prayer for transfer of divorce petition from Mumbai to Delhi granted on grounds of convenience of child and parents.",
+    "doc_url": "https://indiankanoon.org/doc/1834901/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Vandana v. Ashok Kumar",
+    "tid": 1278901,
+    "headline": "Execution petition for recovery of accumulated maintenance arrears under Section 125(3) CrPC.",
+    "doc_url": "https://indiankanoon.org/doc/1278901/"
+  },
+  {
+    "category": "matrimonial_disputes",
+    "title": "Manish Aggarwal v. Swati Aggarwal",
+    "tid": 1490124,
+    "headline": "Anticipatory maintenance cannot be denied merely because wife has educational qualifications when she is unemployed.",
+    "doc_url": "https://indiankanoon.org/doc/1490124/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "K.L. Sharma v. District Magistrate & Ors.",
+    "tid": 1189401,
+    "headline": "Maintenance and Welfare of Parents and Senior Citizens Act 2007: Section 23 invoked to declare gift deed void due to neglect.",
+    "doc_url": "https://indiankanoon.org/doc/1189401/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Gurdev Kaur v. Sub-Divisional Magistrate",
+    "tid": 1356712,
+    "headline": "Tribunal orders summary eviction of abusive son and daughter-in-law from self-acquired house of 78-year-old widow.",
+    "doc_url": "https://indiankanoon.org/doc/1356712/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Ramanathan v. State of Tamil Nadu",
+    "tid": 1523891,
+    "headline": "High Court upholds Tribunal order directing NRI son to pay monthly maintenance of Rs. 10,000 to octogenarian father.",
+    "doc_url": "https://indiankanoon.org/doc/1523891/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Bimla Devi v. District Magistrate (South)",
+    "tid": 1690124,
+    "headline": "Eviction of son from residential house under Senior Citizens Act Rules; son has no vested right in self-acquired property of parents.",
+    "doc_url": "https://indiankanoon.org/doc/1690124/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Jagdish Prasad v. Tribunal for Senior Citizens",
+    "tid": 1245678,
+    "headline": "Senior citizen property transfer deemed void under Section 23 as transferee failed to provide basic physical amenities.",
+    "doc_url": "https://indiankanoon.org/doc/1245678/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Savitri Bai v. State of MP",
+    "tid": 1412890,
+    "headline": "Daughter-in-law ordered to vacate ground floor of elderly mother-in-law house following repeated emotional harassment.",
+    "doc_url": "https://indiankanoon.org/doc/1412890/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Narayan Swamy v. Deputy Commissioner",
+    "tid": 1589012,
+    "headline": "Withheld pension and provident fund benefits ordered to be released immediately by appellate tribunal under Senior Citizens Act.",
+    "doc_url": "https://indiankanoon.org/doc/1589012/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Radha Kishan v. State of Rajasthan",
+    "tid": 1756123,
+    "headline": "Section 23 of 2007 Act: Cancellation of settlement deed affirmed as children failed to provide healthcare and maintenance.",
+    "doc_url": "https://indiankanoon.org/doc/1756123/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Kamla Wati v. SDM & Anr.",
+    "tid": 1823490,
+    "headline": "Police directed to enforce eviction order under Senior Citizens Rules against grandson who physically intimidated grandmother.",
+    "doc_url": "https://indiankanoon.org/doc/1823490/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Balwant Singh v. State of Punjab",
+    "tid": 1390123,
+    "headline": "Maintenance of Rs. 15,000 per month awarded to elderly farmer neglected by two government-employed sons.",
+    "doc_url": "https://indiankanoon.org/doc/1390123/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Parameswaran v. Maintenance Tribunal",
+    "tid": 1567891,
+    "headline": "Transfer of self-acquired residential property cancelled under Section 23 for violation of statutory condition of maintenance.",
+    "doc_url": "https://indiankanoon.org/doc/1567891/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Chandra Kanta v. State of Delhi",
+    "tid": 1734502,
+    "headline": "Senior citizen right to live in peace: Court confirms eviction of son who created daily nuisance and physical threats.",
+    "doc_url": "https://indiankanoon.org/doc/1734502/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Govind Ram v. District Magistrate",
+    "tid": 1401239,
+    "headline": "Elderly father petition under Senior Citizens Act: Son directed to hand over shop possession to restore livelihood.",
+    "doc_url": "https://indiankanoon.org/doc/1401239/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Laxmi Devi v. Sub-Divisional Officer",
+    "tid": 1578901,
+    "headline": "Tribunal sets aside release deed executed by elderly mother under emotional coercion by son and daughter-in-law.",
+    "doc_url": "https://indiankanoon.org/doc/1578901/"
+  },
+  {
+    "category": "senior_citizens",
+    "title": "Dharam Pal v. State of Haryana",
+    "tid": 1745678,
+    "headline": "Senior Citizens Tribunal order for Rs. 8,000 monthly maintenance upheld; statutory obligation of children is absolute.",
+    "doc_url": "https://indiankanoon.org/doc/1745678/"
+  }
+]

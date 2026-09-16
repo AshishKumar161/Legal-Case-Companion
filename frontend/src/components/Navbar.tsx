@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import Image from "next/image";
 
 export function Navbar() {
@@ -40,7 +41,7 @@ export function Navbar() {
         position: "sticky",
         top: 0,
         zIndex: 900,
-        background: "#FFFFFF",
+        background: "var(--navbar-bg, var(--surface-card, #FFFFFF))",
         borderBottom: "1px solid var(--border-subtle)",
         height: "64px",
         display: "flex",
@@ -76,7 +77,8 @@ export function Navbar() {
               width: "36px",
               height: "36px",
               borderRadius: "8px",
-              background: "var(--navy-primary)",
+              background: "#102A43",
+              border: "1px solid rgba(255, 255, 255, 0.18)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -90,7 +92,7 @@ export function Navbar() {
               alt="LCC Logo"
               width={24}
               height={24}
-              style={{ objectFit: "contain", width: "auto", height: "auto" }}
+              style={{ objectFit: "contain" }}
               priority
             />
           </span>
@@ -164,17 +166,13 @@ export function Navbar() {
 
         {/* Public Auth Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+          <ThemeToggle />
           <Link
             href="/login"
+            className="btn btn-secondary"
             style={{
               fontSize: "13px",
-              color: "var(--text-primary)",
               padding: "7px 16px",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--border-subtle)",
-              background: "#FFFFFF",
-              fontWeight: 600,
-              transition: "all var(--transition-fast)",
               whiteSpace: "nowrap",
             }}
           >

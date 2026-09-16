@@ -50,6 +50,7 @@ if (fs.promises && fs.promises.readlink) {
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  devIndicators: false,
   productionBrowserSourceMaps: false,
   allowedDevOrigins: [
     "*.trycloudflare.com",

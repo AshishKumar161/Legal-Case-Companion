@@ -76,7 +76,7 @@ export function Skeleton({
         <div
           key={i}
           style={{
-            background: "linear-gradient(90deg, #0e121a 25%, #151a24 50%, #0e121a 75%)",
+            background: "linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)",
             backgroundSize: "200% 100%",
             animation: "lccSkeletonPulse 1.6s ease-in-out infinite",
             ...getVariantStyles(),
@@ -96,7 +96,7 @@ export function Skeleton({
         @media (prefers-reduced-motion: reduce) {
           div {
             animation: none !important;
-            background: #151a24 !important;
+            background: #e2e8f0 !important;
           }
         }
       `}</style>

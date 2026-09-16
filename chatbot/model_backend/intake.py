@@ -131,22 +131,27 @@ Analyze the situation and return a JSON object strictly conforming to this forma
         if _matches([
             "digital arrest", "customs officer", "upi fraud", "online fraud", "hacked account",
             "cyberstalking", "identity theft", "otp", "phishing", "hacked", "hacking", "malware",
-            "scam", "scammed", "fraudulent", "cybercrime", "sim", "kyc", "spoofed", "spoofing"
+            "scam", "scammed", "fraudulent", "cybercrime", "sim", "kyc", "spoofed", "spoofing",
+            "unauthorized transaction", "bank account", "unauthorized debit", "money deducted",
+            "netbanking", "66d", "credit card fraud", "debit card fraud"
         ]):
             category = "cyber_fraud"
         elif _matches([
             "fake appointment", "job fraud", "forged document", "fake agreement", "cheated",
-            "forgery", "counterfeit", "impersonation", "duped", "swindled", "cheating", "forged"
+            "forgery", "counterfeit", "impersonation", "duped", "swindled", "cheating", "forged",
+            "420 ipc", "420"
         ]):
             category = "cheating_forgery"
         elif _matches([
             "stolen vehicle", "bike theft", "car theft", "burglary", "theft", "stolen",
-            "robbery", "pickpocket", "snatched", "looted", "robbed", "stole", "steal"
+            "robbery", "pickpocket", "snatched", "looted", "robbed", "stole", "steal",
+            "379 ipc", "379"
         ]):
             category = "theft_burglary"
         elif _matches([
             "domestic violence", "beating", "outraging modesty", "assault", "abused", "abuse",
-            "cruelty", "cruel", "dowry", "molested", "stalking", "harassed", "threatened", "threats"
+            "cruelty", "cruel", "dowry", "molested", "stalking", "harassed", "threatened", "threats",
+            "498a", "498-a"
         ]):
             category = "crimes_against_women"
         elif _matches([
@@ -155,8 +160,8 @@ Analyze the situation and return a JSON object strictly conforming to this forma
         ]):
             category = "matrimonial_disputes"
         elif _matches([
-            "senior citizen", "parents maintenance", "eviction of son", "gift deed", "elder abuse",
-            "elderly", "neglect", "neglected", "abandoned", "abandonment", "pension"
+            "senior citizen", "senior citizens act", "parents maintenance", "eviction of son", "gift deed", "elder abuse",
+            "elder neglect", "section 23", "elderly", "neglect", "neglected", "abandoned", "abandonment", "pension"
         ]):
             category = "crimes_against_senior_citizens"
         elif _matches(["land", "ownership", "possession", "inheritance", "partition", "encroachment", "registry"]):

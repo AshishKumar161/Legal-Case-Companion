@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiClient } from "@/api/client";
 import styles from "../login/auth.module.css";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -38,8 +39,18 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className={styles.authContainer}>
-      <div className={`glass-panel ${styles.authCard} animate-fade-in`}>
-        <h1 className="text-gradient">Reset Password</h1>
+      <div className={`${styles.authCard} animate-fade-in`}>
+        <div className={styles.logoBadge}>
+          <Image
+            src="/logo-icon-white.png"
+            alt="Legal Case Companion"
+            width={38}
+            height={38}
+            style={{ objectFit: "contain", width: "38px", height: "38px" }}
+            priority
+          />
+        </div>
+        <h1 className={styles.title}>Reset Password</h1>
         <p className={styles.subtitle}>
           Enter your registered email address and we will dispatch a recovery link.
         </p>
@@ -52,9 +63,9 @@ export default function ForgotPasswordPage() {
               style={{
                 padding: "16px",
                 borderRadius: "8px",
-                background: "rgba(16, 185, 129, 0.12)",
-                border: "1px solid rgba(16, 185, 129, 0.3)",
-                color: "#10b981",
+                background: "#ecfdf5",
+                border: "1px solid #a7f3d0",
+                color: "#065f46",
                 fontSize: "14px",
                 lineHeight: 1.5,
                 marginBottom: "20px",
@@ -65,13 +76,13 @@ export default function ForgotPasswordPage() {
               The link will expire in 15 minutes.
             </div>
 
-            <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+            <p style={{ fontSize: "13px", color: "#64748b", lineHeight: 1.5 }}>
               Did not receive an email? Check your spam folder or ensure you entered the exact email
               address used during registration.
             </p>
 
             <div style={{ marginTop: "24px", textAlign: "center" }}>
-              <Link href="/login" className="btn btn-primary" style={{ display: "inline-block", width: "100%", padding: "12px" }}>
+              <Link href="/login" className={styles.submitBtn} style={{ display: "inline-block", textAlign: "center", textDecoration: "none" }}>
                 Return to Login
               </Link>
             </div>

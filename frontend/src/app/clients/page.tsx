@@ -66,14 +66,14 @@ export default function ClientsPage() {
             style={{
               fontSize: "var(--font-size-2xl, 24px)",
               fontWeight: 700,
-              color: "var(--text-primary, #f8fafc)",
+              color: "var(--text-primary, #0f172a)",
               fontFamily: "var(--font-display, sans-serif)",
               margin: "0 0 6px 0",
             }}
           >
             Client Directory & Retainers
           </h1>
-          <p style={{ fontSize: "var(--font-size-sm, 14px)", color: "var(--text-secondary, #94a3b8)", margin: 0 }}>
+          <p style={{ fontSize: "var(--font-size-sm, 14px)", color: "var(--text-secondary, #475569)", margin: 0 }}>
             Manage active client rosters, vakalatnama authorizations, and direct matter communications.
           </p>
         </div>

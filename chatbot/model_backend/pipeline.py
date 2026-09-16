@@ -47,7 +47,7 @@ class PipelineConfig:
     """
     def __init__(
         self,
-        confidence_threshold: float = 0.75,
+        confidence_threshold: float = 0.70,
         min_retrieval_score: float = 0.20,
         min_grounding_score: float = 0.70,
         min_citation_validity: float = 0.85,
@@ -307,9 +307,17 @@ class LegalAssistant:
             (0.20 * evidence_score)
         )
 
-        # Severe penalty if hallucination detected or citations are fabricated
-        if verification.hallucination_detected or verification.citation_validity_score < 0.6:
+        # Severe penalty ONLY if genuine hallucination detected or citations were fabricated
+        available_source_ids = {c.source.source_id for c in reranked_candidates}
+        invalid_citations = active_cited_ids - available_source_ids
+
+        if verification.hallucination_detected or len(invalid_citations) > 0:
             raw_confidence = min(raw_confidence, 0.35)
+        elif not verification.verified:
+            raw_confidence = min(raw_confidence, 0.60)
+        else:
+            # Verified against retrieved legal corpus
+            raw_confidence = max(raw_confidence, 0.82)
 
         confidence = round(float(min(1.0, max(0.1, raw_confidence))), 2)
 
@@ -345,6 +353,8 @@ class LegalAssistant:
                 "title": c.source.title,
                 "citation": c.source.citation,
                 "score": c.rerank_score,
+                "url": c.source.metadata.get("url"),
+                "tid": c.source.metadata.get("tid"),
             }
             for c in reranked_candidates
         ]

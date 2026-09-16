@@ -420,12 +420,76 @@ def load_raw_cases_from_disk(raw_dir: str) -> List[Dict[str, Any]]:
     return cases
 
 
+def load_indian_kanoon_cases(file_path: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Loads compiled Indian Kanoon cases from JSON (default: chatbot/data/indian_cases_100.json or indian_cases_100.json).
+    Normalizes category names and structures records for vector store indexing.
+    """
+    candidates = [
+        file_path,
+        os.path.join(os.path.dirname(__file__), "..", "data", "indian_cases_100.json"),
+        os.path.join(os.path.dirname(__file__), "..", "..", "indian_cases_100.json"),
+        "chatbot/data/indian_cases_100.json",
+        "indian_cases_100.json",
+    ]
+    target_path = None
+    for c in candidates:
+        if c and os.path.isfile(c):
+            target_path = c
+            break
+
+    if not target_path:
+        return []
+
+    try:
+        with open(target_path, "r", encoding="utf-8") as f:
+            raw_data = json.load(f)
+    except Exception as e:
+        logger.warning(f"Failed reading Indian Kanoon cases from {target_path}: {e}")
+        return []
+
+    cases: List[Dict[str, Any]] = []
+    category_map = {
+        "senior_citizens": "crimes_against_senior_citizens",
+    }
+
+    for item in raw_data:
+        tid = item.get("tid") or item.get("id")
+        raw_cat = item.get("category", "other")
+        category = category_map.get(raw_cat, raw_cat)
+        title = item.get("title", f"Indian Kanoon Case {tid}")
+        headline = item.get("headline", "")
+        doc_url = item.get("doc_url") or (f"https://indiankanoon.org/doc/{tid}/" if tid else "")
+
+        case_id = f"IK-{tid}" if tid else f"IK-{len(cases)+1}"
+        record: Dict[str, Any] = {
+            "case_id": case_id,
+            "court_name": "Indian Kanoon Precedent",
+            "court_level": "precedent",
+            "title": title,
+            "crime_category": category,
+            "fact_summary": headline or title,
+            "statute_sections": [],
+            "keywords": [w.strip() for w in title.lower().split() if len(w) > 3],
+            "outcome": {"disposal_type": "judgment", "sentence_or_relief": "See full judgment on Indian Kanoon"},
+            "tid": tid,
+            "url": doc_url,
+            "source_type": "case",
+            "source_id": f"case:{case_id}",
+            "embedding_text": f"Precedent: {title}. Category: {category}. Facts and Headline: {headline}. Source: Indian Kanoon ({doc_url}).",
+        }
+        cases.append(record)
+
+    logger.info(f"Loaded {len(cases)} Indian Kanoon precedent cases from {target_path}.")
+    return cases
+
+
 def load_and_index_default_data(
     vector_store: BaseVectorStore,
     raw_dir: Optional[str] = None,
 ):
     """
-    Loads both default statutes and case law records (from disk and seeds),
+    Loads default statutes, raw cases from disk, and Indian Kanoon precedent records,
     attaches standard embedding_text, and populates the vector store.
     """
     docs_to_index: List[Dict[str, Any]] = []
@@ -441,9 +505,12 @@ def load_and_index_default_data(
         disk_cases = load_raw_cases_from_disk(raw_dir)
         logger.info(f"Loaded {len(disk_cases)} raw cases from directory: {raw_dir}")
 
-    # Combine disk cases and seed cases (avoid duplicate case_ids)
+    # 3. Ingest Indian Kanoon precedent cases (from indian_cases_100.json)
+    kanoon_cases = load_indian_kanoon_cases()
+
+    # Combine disk cases, Indian Kanoon cases, and prototype seed cases (avoid duplicate case_ids)
     seen_ids = set()
-    for c in disk_cases + DEFAULT_CASE_RECORDS:
+    for c in disk_cases + kanoon_cases + DEFAULT_CASE_RECORDS:
         case_id = c.get("case_id")
         if case_id in seen_ids:
             continue

@@ -1,22 +1,12 @@
 .bannerContainer {
   margin-bottom: 24px;
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-left: 4px solid #2563eb;
   border-radius: 12px;
   padding: 20px 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 16px rgba(56, 189, 248, 0.1);
+  box-shadow: var(--shadow-sm);
   position: relative;
-  overflow: hidden;
-}
-
-.bannerContainer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #38bdf8, #818cf8, #3b82f6);
 }
 
 .headerRow {
@@ -35,25 +25,35 @@
 }
 
 .sparkleIcon {
-  font-size: 22px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  flex-shrink: 0;
 }
 
 .heading {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text-primary, #0f172a);
   display: flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: -0.01em;
 }
 
 .newBadge {
-  background: rgba(56, 189, 248, 0.2);
+  background: rgba(37, 99, 235, 0.15);
   color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.4);
+  border: 1px solid rgba(37, 99, 235, 0.3);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 2px 8px;
   border-radius: 12px;
   text-transform: uppercase;
@@ -62,29 +62,29 @@
 
 .subtext {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted, #64748b);
   margin: 4px 0 0 0;
 }
 
 .ackButton {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #e2e8f0;
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-default, #cbd5e1);
+  color: var(--text-secondary, #334155);
   padding: 6px 14px;
   border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
 .ackButton:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--surface-subtle, #f8fafc);
+  color: var(--text-primary, #0f172a);
+  border-color: var(--border-hover, #94a3b8);
 }
 
 .eventList {
@@ -94,20 +94,20 @@
 }
 
 .eventCard {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface-subtle, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
   border-radius: 8px;
   padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .eventCard:hover {
-  background: rgba(30, 41, 59, 0.7);
-  border-color: rgba(56, 189, 248, 0.3);
+  background: var(--surface-card, #f1f5f9);
+  border-color: var(--border-default, #cbd5e1);
 }
 
 .eventLeft {
@@ -115,15 +115,25 @@
   align-items: flex-start;
   gap: 12px;
   flex: 1;
+  min-width: 0;
 }
 
 .eventIcon {
-  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   margin-top: 2px;
 }
 
 .eventInfo {
   flex: 1;
+  min-width: 0;
 }
 
 .eventMetaRow {
@@ -144,76 +154,85 @@
 }
 
 .tagHearing {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(37, 99, 235, 0.15);
   color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
 .tagCourt {
-  background: rgba(168, 85, 247, 0.2);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.4);
+  background: rgba(109, 40, 217, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(109, 40, 217, 0.3);
 }
 
 .tagDocument {
-  background: rgba(16, 185, 129, 0.2);
+  background: rgba(5, 150, 105, 0.15);
   color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  border: 1px solid rgba(5, 150, 105, 0.3);
 }
 
 .tagMessage {
-  background: rgba(245, 158, 11, 0.2);
+  background: rgba(217, 119, 6, 0.15);
   color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  border: 1px solid rgba(217, 119, 6, 0.3);
 }
 
 .tagGeneral {
-  background: rgba(148, 163, 184, 0.2);
-  color: #cbd5e1;
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
 }
 
 .provenanceBadge {
-  font-size: 10px;
-  color: #94a3b8;
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
   font-weight: 500;
 }
 
 .eventTime {
   font-size: 11px;
-  color: #64748b;
+  color: var(--text-subtle, #94a3b8);
   margin-left: auto;
 }
 
 .eventTitle {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: var(--text-primary, #0f172a);
   margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .eventDesc {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-secondary, #475569);
   line-height: 1.4;
+  word-break: break-word;
 }
 
 .actionLink {
   white-space: nowrap;
-  background: rgba(56, 189, 248, 0.15);
+  background: var(--surface-card, #ffffff);
   color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  padding: 6px 12px;
+  border: 1px solid var(--border-default, #cbd5e1);
+  padding: 6px 14px;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .actionLink:hover {
-  background: #38bdf8;
-  color: #0f172a;
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
 }
 
 @media (max-width: 640px) {
@@ -224,6 +243,7 @@
   .actionLink {
     width: 100%;
     text-align: center;
+    justify-content: center;
     margin-top: 6px;
   }
 }

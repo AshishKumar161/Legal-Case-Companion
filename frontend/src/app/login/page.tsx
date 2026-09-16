@@ -7,6 +7,7 @@ import styles from './auth.module.css';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { UserIcon, ScalesIcon, ShieldIcon } from '@/components/ui/Icons';
 
 function getSafeRedirectUrl(url: string | null): string | null {
   if (!url) return null;
@@ -163,34 +164,20 @@ function LoginForm() {
 
   return (
     <div className={styles.authContainer}>
-      <div className={`glass-panel ${styles.authCard} animate-fade-in`}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
-          <div
-            style={{
-              width: "72px",
-              height: "72px",
-              borderRadius: "16px",
-              background: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.12)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "8px",
-              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.3)",
-            }}
-          >
-            <Image
-              src="/logo-icon-white.png"
-              alt="Legal Case Companion Logo"
-              width={56}
-              height={56}
-              style={{ objectFit: "contain", width: "56px", height: "56px" }}
-              priority
-            />
-          </div>
+      <div className={`${styles.authCard} animate-fade-in`}>
+        {/* Brand Emblem */}
+        <div className={styles.logoBadge}>
+          <Image
+            src="/logo-icon-white.png"
+            alt="Legal Case Companion"
+            width={38}
+            height={38}
+            style={{ objectFit: "contain", width: "38px", height: "38px" }}
+            priority
+          />
         </div>
-        <h1 className="text-gradient">Welcome Back</h1>
-        <p className={styles.subtitle}>Log in to access your Legal Case Companion</p>
+        <h1 className={styles.title}>Welcome Back</h1>
+        <p className={styles.subtitle}>Sign in to access your Legal Case Companion workspace</p>
 
         {info && <div className={styles.infoAlert}>{info}</div>}
         {error && <div className={styles.errorAlert}>{error}</div>}
@@ -198,8 +185,8 @@ function LoginForm() {
         {/* 1-Click Demo Persona Access Panel */}
         <div className={styles.demoSection} suppressHydrationWarning>
           <div className={styles.demoHeader} suppressHydrationWarning>
-            <span className={styles.demoBadge}>⚡ 1-Click Demo Personas</span>
-            <span className={styles.demoSubtext}>Immediate test access</span>
+            <span className={styles.demoBadge}>Quick Demo Access</span>
+            <span className={styles.demoSubtext}>Instant sandbox evaluation</span>
           </div>
           <div className={styles.demoGrid} suppressHydrationWarning>
             <button
@@ -211,17 +198,19 @@ function LoginForm() {
               suppressHydrationWarning
             >
               <div className={styles.demoBtnContent}>
-                <div className={styles.demoRoleIcon}>👤</div>
+                <div className={styles.demoRoleIcon}>
+                  <UserIcon size={18} color="#2563eb" />
+                </div>
                 <div className={styles.demoRoleInfo}>
                   <div className={styles.demoRoleTitle}>
-                    <strong>Vikram Sharma</strong>
+                    <span>Vikram Sharma</span>
                     <span className={styles.demoTagClient}>Client</span>
                   </div>
-                  <div className={styles.demoRoleDesc}>Client Dashboard & Cases</div>
+                  <div className={styles.demoRoleDesc}>Citizen Dashboard & Matters</div>
                 </div>
               </div>
               <div className={styles.demoAction}>
-                {demoLoadingRole === 'client' ? 'Authenticating...' : 'Instant Login →'}
+                {demoLoadingRole === 'client' ? 'Signing in...' : 'Sign In →'}
               </div>
             </button>
 
@@ -234,17 +223,19 @@ function LoginForm() {
               suppressHydrationWarning
             >
               <div className={styles.demoBtnContent}>
-                <div className={styles.demoRoleIcon}>⚖</div>
+                <div className={styles.demoRoleIcon}>
+                  <ScalesIcon size={18} color="#059669" />
+                </div>
                 <div className={styles.demoRoleInfo}>
                   <div className={styles.demoRoleTitle}>
-                    <strong>Adv. Ananya Roy</strong>
+                    <span>Adv. Ananya Roy</span>
                     <span className={styles.demoTagLawyer}>Advocate</span>
                   </div>
-                  <div className={styles.demoRoleDesc}>Verified Bar Counsel Portal</div>
+                  <div className={styles.demoRoleDesc}>Bar Council Counsel Chambers</div>
                 </div>
               </div>
               <div className={styles.demoAction}>
-                {demoLoadingRole === 'lawyer' ? 'Authenticating...' : 'Instant Login →'}
+                {demoLoadingRole === 'lawyer' ? 'Signing in...' : 'Sign In →'}
               </div>
             </button>
 
@@ -257,17 +248,19 @@ function LoginForm() {
               suppressHydrationWarning
             >
               <div className={styles.demoBtnContent}>
-                <div className={styles.demoRoleIcon}>🛡</div>
+                <div className={styles.demoRoleIcon}>
+                  <ShieldIcon size={18} color="#7c3aed" />
+                </div>
                 <div className={styles.demoRoleInfo}>
                   <div className={styles.demoRoleTitle}>
-                    <strong>Platform Admin</strong>
+                    <span>Platform Admin</span>
                     <span className={styles.demoTagAdmin}>Admin</span>
                   </div>
-                  <div className={styles.demoRoleDesc}>Verifications & System Control</div>
+                  <div className={styles.demoRoleDesc}>Control Plane & Oversight</div>
                 </div>
               </div>
               <div className={styles.demoAction}>
-                {demoLoadingRole === 'admin' ? 'Authenticating...' : 'Instant Login →'}
+                {demoLoadingRole === 'admin' ? 'Signing in...' : 'Sign In →'}
               </div>
             </button>
           </div>
@@ -306,26 +299,31 @@ function LoginForm() {
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form} suppressHydrationWarning>
-          <div className="input-group" suppressHydrationWarning>
-            <label className="input-label" htmlFor="email-input">Email Address</label>
+          <div className={styles.inputGroup} suppressHydrationWarning>
+            <label className={styles.inputLabel} htmlFor="email-input">Email Address</label>
             <input
               id="email-input"
               type="email"
-              className="input-field"
+              className={styles.inputField}
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="advocate@example.com"
+              placeholder="name@example.com"
               required
               suppressHydrationWarning
             />
           </div>
 
-          <div className="input-group" suppressHydrationWarning>
-            <label className="input-label" htmlFor="password-input">Password</label>
+          <div className={styles.inputGroup} suppressHydrationWarning>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <label className={styles.inputLabel} htmlFor="password-input" style={{ margin: 0 }}>Password</label>
+              <Link href="/forgot-password" style={{ fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
+                Forgot password?
+              </Link>
+            </div>
             <input
               id="password-input"
               type="password"
-              className="input-field"
+              className={styles.inputField}
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -336,17 +334,21 @@ function LoginForm() {
 
           <button
             type="submit"
-            className={`btn btn-primary ${styles.submitBtn} ${loading ? 'btn-disabled' : ''}`}
+            className={styles.submitBtn}
             disabled={loading || googleLoading}
             suppressHydrationWarning
           >
-            {loading ? 'Authenticating...' : 'Log In'}
+            {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
 
-        <div className={styles.authLinks} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          <Link href="/forgot-password" style={{ color: "#8d98ff" }}>Forgot your password?</Link>
-          <Link href="/register">Don&apos;t have an account? Sign up</Link>
+        <div className={styles.authLinks}>
+          <div>
+            Don&apos;t have an account? <Link href="/register">Create an account</Link>
+          </div>
+          <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
+            🔒 Protected by 256-bit SSL encryption • Bar Council Compliant
+          </div>
         </div>
       </div>
     </div>
@@ -360,4 +362,3 @@ export default function Login() {
     </Suspense>
   );
 }
-

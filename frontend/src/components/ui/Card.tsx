@@ -19,39 +19,39 @@ export function Card({
     none: "0",
     sm: "12px",
     md: "20px",
-    lg: "28px",
+    lg: "24px",
   };
 
   const variantStyles: Record<string, React.CSSProperties> = {
     default: {
-      background: "var(--surface-card, #0E121A)",
-      border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
+      background: "var(--surface-card, #FFFFFF)",
+      border: "1px solid var(--border-subtle, #D9E2EC)",
       boxShadow: "var(--shadow-sm)",
     },
     elevated: {
-      background: "var(--surface-elevated, #151A24)",
-      border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.12))",
+      background: "var(--surface-elevated, #FFFFFF)",
+      border: "1px solid var(--border-subtle, #D9E2EC)",
       boxShadow: "var(--shadow-md)",
     },
     subtle: {
-      background: "var(--surface-subtle, #141824)",
-      border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.06))",
+      background: "var(--surface-subtle, #EAF4FB)",
+      border: "1px solid rgba(59, 130, 182, 0.2)",
     },
     interactive: {
-      background: "var(--surface-card, #0E121A)",
-      border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
+      background: "var(--surface-card, #FFFFFF)",
+      border: "1px solid var(--border-subtle, #D9E2EC)",
       boxShadow: "var(--shadow-sm)",
       cursor: "pointer",
-      transition: "var(--transition-normal, 0.25s ease)",
+      transition: "all var(--transition-fast, 0.15s ease)",
     },
   };
 
   return (
     <div
       style={{
-        borderRadius: "var(--radius-lg, 12px)",
+        borderRadius: "var(--radius-lg, 14px)",
         padding: paddingStyles[padding],
-        color: "var(--text-primary, #f8fafc)",
+        color: "var(--text-primary, #17212B)",
         ...variantStyles[variant],
         ...style,
       }}
@@ -97,7 +97,7 @@ export function CardHeader({
               margin: 0,
               fontSize: "var(--font-size-base, 16px)",
               fontWeight: 600,
-              color: "var(--text-primary, #f8fafc)",
+              color: "var(--text-primary, #17212B)",
               fontFamily: "var(--font-display, sans-serif)",
             }}
           >
@@ -108,8 +108,8 @@ export function CardHeader({
           <p
             style={{
               margin: "4px 0 0 0",
-              fontSize: "var(--font-size-xs, 12px)",
-              color: "var(--text-secondary, #94a3b8)",
+              fontSize: "var(--font-size-xs, 13px)",
+              color: "var(--text-secondary, #52606D)",
             }}
           >
             {subtitle}
@@ -152,7 +152,7 @@ export function CardFooter({
       style={{
         marginTop: "16px",
         paddingTop: "14px",
-        borderTop: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.06))",
+        borderTop: "1px solid var(--border-subtle, #D9E2EC)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",

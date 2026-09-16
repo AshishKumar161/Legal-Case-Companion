@@ -27,7 +27,7 @@ export function TimelineItem({
   provenance,
   eventCategory,
   action,
-  icon = "⚖",
+  icon,
   isLast = false,
   className,
   style,
@@ -53,21 +53,30 @@ export function TimelineItem({
       >
         <div
           style={{
-            width: "32px",
-            height: "32px",
+            width: "28px",
+            height: "28px",
             borderRadius: "50%",
-            background: "var(--surface-elevated, #151A24)",
-            border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.12))",
+            background: "var(--surface-subtle, #EAF4FB)",
+            border: "2px solid var(--navy-primary, #17324D)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "14px",
-            color: "var(--brand-primary, #6366f1)",
+            fontSize: "12px",
+            color: "var(--navy-primary, #17324D)",
             zIndex: 1,
           }}
           aria-hidden="true"
         >
-          {icon}
+          {icon || (
+            <span
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: "var(--navy-primary, #17324D)",
+              }}
+            />
+          )}
         </div>
 
         {!isLast && (
@@ -75,7 +84,7 @@ export function TimelineItem({
             style={{
               width: "2px",
               flex: 1,
-              background: "var(--border-subtle, rgba(255, 255, 255, 0.08))",
+              background: "var(--border-subtle, #D9E2EC)",
               margin: "4px 0",
               minHeight: "36px",
             }}
@@ -103,13 +112,13 @@ export function TimelineItem({
           {eventCategory && (
             <span
               style={{
-                fontSize: "10px",
-                fontWeight: 800,
-                letterSpacing: "0.06em",
+                fontSize: "11px",
+                fontWeight: 600,
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
-                color: "var(--brand-primary, #818cf8)",
-                background: "rgba(99, 102, 241, 0.12)",
-                padding: "1px 6px",
+                color: "var(--navy-primary, #17324D)",
+                background: "var(--surface-subtle, #EAF4FB)",
+                padding: "1px 8px",
                 borderRadius: "var(--radius-xs, 4px)",
               }}
             >
@@ -120,9 +129,9 @@ export function TimelineItem({
           <h4
             style={{
               margin: 0,
-              fontSize: "var(--font-size-sm, 14px)",
+              fontSize: "var(--font-size-base, 15px)",
               fontWeight: 600,
-              color: "var(--text-primary, #f8fafc)",
+              color: "var(--text-primary, #17212B)",
             }}
           >
             {title}
@@ -133,36 +142,15 @@ export function TimelineItem({
           {provenance && (
             <span
               style={{
-                fontSize: "9px",
-                fontWeight: 700,
-                letterSpacing: "0.05em",
+                fontSize: "11px",
+                fontWeight: 600,
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
-                padding: "2px 6px",
+                padding: "2px 8px",
                 borderRadius: "4px",
-                background:
-                  provenance.includes("COURT")
-                    ? "rgba(56, 189, 248, 0.15)"
-                    : provenance.includes("LAWYER")
-                    ? "rgba(129, 140, 248, 0.15)"
-                    : provenance.includes("YOU")
-                    ? "rgba(52, 211, 153, 0.15)"
-                    : "rgba(148, 163, 184, 0.15)",
-                color:
-                  provenance.includes("COURT")
-                    ? "#38bdf8"
-                    : provenance.includes("LAWYER")
-                    ? "#a5b4fc"
-                    : provenance.includes("YOU")
-                    ? "#34d399"
-                    : "#94a3b8",
-                border:
-                  provenance.includes("COURT")
-                    ? "1px solid rgba(56, 189, 248, 0.3)"
-                    : provenance.includes("LAWYER")
-                    ? "1px solid rgba(129, 140, 248, 0.3)"
-                    : provenance.includes("YOU")
-                    ? "1px solid rgba(52, 211, 153, 0.3)"
-                    : "1px solid rgba(148, 163, 184, 0.25)",
+                background: "var(--surface-subtle, #EAF4FB)",
+                color: "var(--navy-primary, #17324D)",
+                border: "1px solid var(--border-subtle, #D9E2EC)",
               }}
             >
               {provenance}
@@ -185,7 +173,7 @@ export function TimelineItem({
           {actor && (
             <>
               <span aria-hidden="true">•</span>
-              <span style={{ color: "var(--text-secondary, #94a3b8)" }}>By {actor}</span>
+              <span style={{ color: "var(--text-secondary, #52606D)" }}>By {actor}</span>
             </>
           )}
         </div>
@@ -194,11 +182,11 @@ export function TimelineItem({
           <div
             style={{
               fontSize: "var(--font-size-sm, 14px)",
-              color: "var(--text-secondary, #cbd5e1)",
+              color: "var(--text-secondary, #52606D)",
               lineHeight: 1.5,
-              background: "var(--surface-card, #0E121A)",
-              border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.06))",
-              borderRadius: "var(--radius-md, 8px)",
+              background: "var(--surface-base, #F7F9FC)",
+              border: "1px solid var(--border-subtle, #D9E2EC)",
+              borderRadius: "var(--radius-md, 10px)",
               padding: "10px 14px",
               marginTop: "6px",
             }}

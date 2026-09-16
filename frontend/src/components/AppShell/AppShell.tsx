@@ -15,14 +15,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // If public route or unauthenticated, render children directly without the shell
+  // If public route, unauthenticated, or active video room, render children directly without the shell
   const isPublicRoute =
     pathname === "/" ||
     pathname === "/login" ||
     pathname === "/register" ||
     pathname?.startsWith("/auth/callback");
 
-  if (isPublicRoute || !user) {
+  const isRoomRoute =
+    Boolean(pathname?.includes("/consultations/") && pathname?.includes("/room"));
+
+  if (isPublicRoute || isRoomRoute || !user) {
     return <>{children}</>;
   }
 

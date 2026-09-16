@@ -136,6 +136,45 @@ def test_hybrid_retrieval_and_reranking():
     logger.info("✓ Hybrid retrieval & reranking passed.")
 
 
+def test_indian_kanoon_integration():
+    logger.info("--- 4b. Testing Indian Kanoon Precedents Integration ---")
+    from model_backend.dataset_loader import load_indian_kanoon_cases
+    cases = load_indian_kanoon_cases()
+    assert len(cases) >= 100, f"Expected at least 100 cases, got {len(cases)}"
+
+    # Check categories coverage
+    categories = {c.get("crime_category") for c in cases}
+    expected_categories = {
+        "cyber_fraud",
+        "cheating_forgery",
+        "theft_burglary",
+        "crimes_against_women",
+        "matrimonial_disputes",
+        "crimes_against_senior_citizens",
+    }
+    assert expected_categories.issubset(categories), f"Missing categories: {expected_categories - categories}"
+
+    # Verify URLs and metadata structure
+    for c in cases[:10]:
+        assert "url" in c, "Missing URL in case metadata"
+        assert c["url"].startswith("https://indiankanoon.org/doc/"), f"Invalid Indian Kanoon URL: {c['url']}"
+        assert "tid" in c, "Missing tid in case metadata"
+        assert c["source_id"].startswith("case:IK-"), f"Invalid source_id: {c['source_id']}"
+
+    # Verify retrieval
+    embedder = get_embedding_model(model_type="local_tfidf")
+    vs = LocalVectorStore(embedding_model=embedder)
+    load_and_index_default_data(vs)
+    retriever = HybridRetriever(vs, embedder)
+
+    ik_hits = retriever.retrieve("elderly father maintenance eviction senior citizen", top_k=3, category_filter="senior_citizens")
+    assert len(ik_hits) > 0, "Should retrieve hits for senior citizens"
+    ik_case = next((h for h in ik_hits if h.metadata.get("url")), None)
+    assert ik_case is not None, "Expected an Indian Kanoon case with URL in search results"
+    logger.info(f"Retrieved Indian Kanoon case: {ik_case.title} -> {ik_case.metadata.get('url')}")
+    logger.info("✓ Indian Kanoon integration test passed.")
+
+
 def test_safety():
     logger.info("--- 5. Testing Safety Guardrails ---")
     guard = SafetyGuard()
@@ -222,6 +261,7 @@ if __name__ == "__main__":
     test_embeddings()
     test_vector_store()
     test_hybrid_retrieval_and_reranking()
+    test_indian_kanoon_integration()
     test_safety()
     test_end_to_end_legal_assistant()
     logger.info("\n🎉 ALL TESTS PASSED SUCCESSFULLY! 🎉")

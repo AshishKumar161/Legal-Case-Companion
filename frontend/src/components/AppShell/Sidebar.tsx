@@ -46,20 +46,20 @@ export function Sidebar({
 
   const role = user?.role;
 
-  // Canonical Simple Client Navigation (Section 4)
+  // Canonical Simple Citizen Navigation (Section 9 & 21)
   const clientPrimaryNav = [
     { label: "Home", href: "/dashboard", icon: <HomeIcon size={18} /> },
-    { label: "My Case", href: "/cases", icon: <CaseIcon size={18} /> },
-    { label: "Hearings", href: "/calendar", icon: <CalendarIcon size={18} /> },
+    { label: "My Cases", href: "/cases", icon: <CaseIcon size={18} /> },
     { label: "Documents", href: "/documents", icon: <DocumentIcon size={18} /> },
-    { label: "My Lawyer", href: "/lawyers", icon: <LawyerIcon size={18} /> },
+    { label: "Appointments", href: "/consultations", icon: <CalendarIcon size={18} /> },
     { label: "Messages", href: "/messages", icon: <ChatIcon size={18} /> },
-    { label: "AI Advisor", href: "/ai-advisor", icon: <AssistantIcon size={18} /> },
   ];
 
   const clientSecondaryNav = [
-    { label: "Notifications", href: "/notifications", icon: <BellIcon size={18} /> },
-    { label: "Settings", href: "/settings", icon: <SettingsIcon size={18} /> },
+    { label: "Lex AI Advisor", href: "/ai-advisor", icon: <AssistantIcon size={18} /> },
+    { label: "Find a Lawyer", href: "/lawyers", icon: <LawyerIcon size={18} /> },
+    { label: "Help", href: "/support", icon: <ShieldIcon size={18} /> },
+    { label: "Profile", href: "/profile", icon: <SettingsIcon size={18} /> },
   ];
 
   const lawyerPrimaryNav = [
@@ -70,7 +70,7 @@ export function Sidebar({
     { label: "Clients", href: "/clients", icon: <LawyerIcon size={18} /> },
     { label: "Documents", href: "/documents", icon: <DocumentIcon size={18} /> },
     { label: "Consultations", href: "/consultations", icon: <ChatIcon size={18} /> },
-    { label: "AI Advisor", href: "/ai-advisor", icon: <AssistantIcon size={18} /> },
+    { label: "Lex AI Advisor", href: "/ai-advisor", icon: <AssistantIcon size={18} /> },
   ];
 
   const lawyerSecondaryNav = [

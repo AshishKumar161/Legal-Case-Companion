@@ -237,35 +237,20 @@ export default function Register() {
 
   return (
     <div className={styles.authContainer}>
-      <div className={`glass-panel ${styles.authCard} animate-fade-in`}>
+      <div className={`${styles.authCard} animate-fade-in`}>
         {step === "form" && (
           <>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
-              <div
-                style={{
-                  width: "72px",
-                  height: "72px",
-                  borderRadius: "16px",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: "1px solid rgba(255, 255, 255, 0.12)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: "8px",
-                  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.3)",
-                }}
-              >
-                <Image
-                  src="/logo-icon-white.png"
-                  alt="Legal Case Companion Logo"
-                  width={56}
-                  height={56}
-                  style={{ objectFit: "contain", width: "auto", height: "auto" }}
-                  priority
-                />
-              </div>
+            <div className={styles.logoBadge}>
+              <Image
+                src="/logo-icon-white.png"
+                alt="Legal Case Companion"
+                width={38}
+                height={38}
+                style={{ objectFit: "contain", width: "38px", height: "38px" }}
+                priority
+              />
             </div>
-            <h1 className="text-gradient">Create Account</h1>
+            <h1 className={styles.title}>Create Account</h1>
             <p className={styles.subtitle}>Join Legal Case Companion</p>
 
             {error && <div className={styles.errorAlert}>{error}</div>}

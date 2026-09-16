@@ -9,6 +9,7 @@ import { GlobalSearchModal } from "@/components/GlobalSearchModal";
 import { PilotFeedbackModal } from "@/components/PilotFeedbackModal";
 import { useI18n, SUPPORTED_LOCALES, SupportedLocale } from "@/providers/I18nProvider";
 import { SearchIcon } from "@/components/ui/Icons";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import styles from "./TopBar.module.css";
 
 interface TopBarProps {
@@ -55,35 +56,47 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
       const parts = pathname.split("/");
       if (parts[2] === "new") {
         return [
-          { label: "My Case", href: "/cases" },
+          { label: "My Cases", href: "/cases" },
           { label: "Start a New Case", href: "/cases/new" },
         ];
       }
       return [
-        { label: "My Case", href: "/cases" },
-        { label: `Case #${parts[2].slice(0, 8).toUpperCase()}`, href: `/cases/${parts[2]}` },
+        { label: "My Cases", href: "/cases" },
+        { label: "Case Details", href: `/cases/${parts[2]}` },
       ];
     }
     if (pathname === "/cases") {
-      return [{ label: "My Case", href: "/cases" }];
+      return [{ label: "My Cases", href: "/cases" }];
     }
     if (pathname.startsWith("/court-tracking")) {
-      return [{ label: "Court / Location", href: "/court-tracking" }];
+      return [{ label: "Court Tracking", href: "/court-tracking" }];
     }
     if (pathname.startsWith("/calendar")) {
-      return [{ label: "Hearings", href: "/calendar" }];
+      return [{ label: "Hearings & Calendar", href: "/calendar" }];
+    }
+    if (pathname.startsWith("/consultations")) {
+      return [{ label: "Appointments", href: "/consultations" }];
     }
     if (pathname.startsWith("/documents")) {
-      return [{ label: "My Documents", href: "/documents" }];
+      return [{ label: "Documents", href: "/documents" }];
     }
     if (pathname.startsWith("/messages")) {
-      return [{ label: "Talk to My Lawyer", href: "/messages" }];
+      return [{ label: "Messages", href: "/messages" }];
+    }
+    if (pathname.startsWith("/ai-advisor")) {
+      return [{ label: "Lex AI Advisor", href: "/ai-advisor" }];
     }
     if (pathname.startsWith("/lawyer/dashboard")) {
       return [{ label: "Practice Hub", href: "/lawyer/dashboard" }];
     }
-    if (pathname.startsWith("/settings") || pathname.startsWith("/profile")) {
+    if (pathname.startsWith("/settings")) {
       return [{ label: "Settings", href: "/settings" }];
+    }
+    if (pathname.startsWith("/profile")) {
+      return [{ label: "Profile", href: "/profile" }];
+    }
+    if (pathname.startsWith("/support")) {
+      return [{ label: "Help", href: "/support" }];
     }
     if (pathname.startsWith("/admin/dashboard")) {
       return [{ label: "Admin", href: "/admin/dashboard" }];
@@ -178,7 +191,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
               padding: "4px 8px",
               borderRadius: "6px",
               border: "1px solid var(--border-subtle)",
-              background: "#FFFFFF",
+              background: "var(--surface-card, #FFFFFF)",
               color: "var(--text-secondary)",
               fontSize: "12px",
               fontWeight: 500,
@@ -190,6 +203,9 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
               </option>
             ))}
           </select>
+
+          {/* Theme Toggle */}
+          <ThemeToggle />
 
           {/* Notifications */}
           <NotificationBell />

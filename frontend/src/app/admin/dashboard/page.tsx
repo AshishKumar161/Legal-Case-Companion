@@ -21,6 +21,21 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { EmptyState } from "@/components/EmptyState";
+import {
+  ShieldIcon,
+  AssistantIcon,
+  LawyerIcon,
+  CheckCircleIcon,
+  CaseIcon,
+  CalendarIcon,
+  DocumentIcon,
+  ClockIcon,
+  GearIcon,
+  CourthouseIcon,
+  ScalesIcon,
+  AlertTriangleIcon,
+  ChatIcon,
+} from "@/components/ui/Icons";
 
 type AdminTab =
   | "overview"
@@ -328,17 +343,31 @@ export default function AdminDashboard() {
   });
 
   return (
-    <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 20px", color: "#f7f8fa" }}>
+    <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 20px", color: "#0f172a" }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px", flexWrap: "wrap", gap: "16px" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "24px" }}>🛡️</span>
-            <h1 style={{ fontSize: "24px", fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>
+            <div
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "8px",
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#2563eb",
+              }}
+            >
+              <ShieldIcon size={20} color="#2563eb" />
+            </div>
+            <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0, letterSpacing: "-0.02em", color: "#0f172a" }}>
               LCC Administrative Control Plane
             </h1>
           </div>
-          <p style={{ color: "#94a3b8", fontSize: "14px", marginTop: "4px" }}>
+          <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px", marginBottom: 0 }}>
             Platform operations, user oversight, advocate credentials, financial reconciliation, and security audit.
           </p>
         </div>
@@ -348,15 +377,19 @@ export default function AdminDashboard() {
             style={{
               padding: "8px 16px",
               borderRadius: "8px",
-              background: "#1e2336",
-              border: "1px solid #2e3650",
-              color: "#f7f8fa",
+              background: "#ffffff",
+              border: "1px solid #cbd5e1",
+              color: "#334155",
               fontSize: "13px",
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
             }}
           >
-            ↻ Refresh Data
+            <span>↻</span> Refresh Data
           </button>
         </div>
       </div>
@@ -365,26 +398,26 @@ export default function AdminDashboard() {
       <div
         style={{
           display: "flex",
-          gap: "8px",
-          borderBottom: "1px solid #232838",
+          gap: "6px",
+          borderBottom: "1px solid #e2e8f0",
           paddingBottom: "12px",
           marginBottom: "24px",
           overflowX: "auto",
         }}
       >
         {[
-          { id: "overview", label: "📊 Overview", count: null },
-          { id: "users", label: "👥 Users", count: usersList.length },
-          { id: "verifications", label: "⚖️ Verifications", count: verifications.length },
-          { id: "cases", label: "📁 Cases", count: casesList.length },
-          { id: "consultations", label: "📅 Consultations", count: consultationsList.length },
-          { id: "payments", label: "💳 Payments", count: paymentsList.length },
-          { id: "security", label: "🔒 Security & Scans", count: docSecurityList.length },
-          { id: "audit", label: "📜 Audit Logs", count: auditLogs.length },
-          { id: "jobs", label: "⚡ Workers", count: jobs.length },
-          { id: "legal_data", label: "🏛️ Legal Data", count: null },
-          { id: "pilot_health", label: "🩺 Pilot Health", count: null },
-          { id: "commercial_ops", label: "💼 Commercial Ops & Cohort 2", count: null },
+          { id: "overview", label: "Overview", icon: <AssistantIcon size={14} />, count: null },
+          { id: "users", label: "Users", icon: <LawyerIcon size={14} />, count: usersList.length },
+          { id: "verifications", label: "Verifications", icon: <CheckCircleIcon size={14} />, count: verifications.length },
+          { id: "cases", label: "Cases", icon: <CaseIcon size={14} />, count: casesList.length },
+          { id: "consultations", label: "Consultations", icon: <CalendarIcon size={14} />, count: consultationsList.length },
+          { id: "payments", label: "Payments", icon: <DocumentIcon size={14} />, count: paymentsList.length },
+          { id: "security", label: "Security & Scans", icon: <ShieldIcon size={14} />, count: docSecurityList.length },
+          { id: "audit", label: "Audit Logs", icon: <ClockIcon size={14} />, count: auditLogs.length },
+          { id: "jobs", label: "Workers", icon: <GearIcon size={14} />, count: jobs.length },
+          { id: "legal_data", label: "Legal Data", icon: <CourthouseIcon size={14} />, count: null },
+          { id: "pilot_health", label: "Pilot Health", icon: <CheckCircleIcon size={14} />, count: null },
+          { id: "commercial_ops", label: "Commercial Ops", icon: <ScalesIcon size={14} />, count: null },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -392,9 +425,9 @@ export default function AdminDashboard() {
             style={{
               padding: "8px 14px",
               borderRadius: "8px",
-              border: "none",
-              background: activeTab === tab.id ? "rgba(59, 130, 246, 0.15)" : "transparent",
-              color: activeTab === tab.id ? "#60a5fa" : "#94a3b8",
+              border: activeTab === tab.id ? "1px solid #bfdbfe" : "1px solid transparent",
+              background: activeTab === tab.id ? "#eff6ff" : "transparent",
+              color: activeTab === tab.id ? "#1d4ed8" : "#64748b",
               fontWeight: activeTab === tab.id ? 600 : 500,
               fontSize: "13px",
               cursor: "pointer",
@@ -402,17 +435,20 @@ export default function AdminDashboard() {
               display: "flex",
               alignItems: "center",
               gap: "6px",
+              transition: "all 0.15s ease",
             }}
           >
-            {tab.label}
+            {tab.icon}
+            <span>{tab.label}</span>
             {tab.count !== null && (
               <span
                 style={{
                   fontSize: "11px",
-                  padding: "2px 6px",
+                  fontWeight: 600,
+                  padding: "2px 7px",
                   borderRadius: "10px",
-                  background: activeTab === tab.id ? "#3b82f6" : "#232838",
-                  color: "#ffffff",
+                  background: activeTab === tab.id ? "#2563eb" : "#f1f5f9",
+                  color: activeTab === tab.id ? "#ffffff" : "#475569",
                 }}
               >
                 {tab.count}
@@ -432,55 +468,55 @@ export default function AdminDashboard() {
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
               gap: "16px",
-              marginBottom: "28px",
+              marginBottom: "24px",
             }}
           >
-            <div style={{ background: "#141721", padding: "18px", borderRadius: "10px", border: "1px solid #232838" }}>
-              <div style={{ fontSize: "12px", color: "#94a3b8" }}>Total Users</div>
-              <div style={{ fontSize: "28px", fontWeight: 700, color: "#f7f8fa", marginTop: "4px" }}>
+            <div style={{ background: "#ffffff", padding: "20px", borderRadius: "10px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)" }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Users</div>
+              <div style={{ fontSize: "28px", fontWeight: 700, color: "#0f172a", marginTop: "6px", letterSpacing: "-0.02em" }}>
                 {overview.total_users}
               </div>
-              <div style={{ fontSize: "11px", color: "#10b981", marginTop: "4px" }}>
+              <div style={{ fontSize: "12px", color: "#059669", marginTop: "4px", fontWeight: 500 }}>
                 {overview.active_users} active · {overview.suspended_users} suspended
               </div>
             </div>
 
-            <div style={{ background: "#141721", padding: "18px", borderRadius: "10px", border: "1px solid #232838" }}>
-              <div style={{ fontSize: "12px", color: "#94a3b8" }}>Pending Verifications</div>
-              <div style={{ fontSize: "28px", fontWeight: 700, color: "#f59e0b", marginTop: "4px" }}>
+            <div style={{ background: "#ffffff", padding: "20px", borderRadius: "10px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)" }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Pending Verifications</div>
+              <div style={{ fontSize: "28px", fontWeight: 700, color: overview.pending_verifications > 0 ? "#d97706" : "#0f172a", marginTop: "6px", letterSpacing: "-0.02em" }}>
                 {overview.pending_verifications}
               </div>
-              <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
+              <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>
                 {overview.verified_lawyers} verified advocates
               </div>
             </div>
 
-            <div style={{ background: "#141721", padding: "18px", borderRadius: "10px", border: "1px solid #232838" }}>
-              <div style={{ fontSize: "12px", color: "#94a3b8" }}>Active Workspaces</div>
-              <div style={{ fontSize: "28px", fontWeight: 700, color: "#60a5fa", marginTop: "4px" }}>
+            <div style={{ background: "#ffffff", padding: "20px", borderRadius: "10px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)" }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Active Workspaces</div>
+              <div style={{ fontSize: "28px", fontWeight: 700, color: "#2563eb", marginTop: "6px", letterSpacing: "-0.02em" }}>
                 {overview.active_cases}
               </div>
-              <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
+              <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>
                 {overview.total_cases} total created cases
               </div>
             </div>
 
-            <div style={{ background: "#141721", padding: "18px", borderRadius: "10px", border: "1px solid #232838" }}>
-              <div style={{ fontSize: "12px", color: "#94a3b8" }}>Platform Revenue (INR)</div>
-              <div style={{ fontSize: "28px", fontWeight: 700, color: "#10b981", marginTop: "4px" }}>
+            <div style={{ background: "#ffffff", padding: "20px", borderRadius: "10px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)" }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Platform Revenue (INR)</div>
+              <div style={{ fontSize: "28px", fontWeight: 700, color: "#059669", marginTop: "6px", letterSpacing: "-0.02em" }}>
                 ₹{overview.total_revenue_inr.toLocaleString("en-IN")}
               </div>
-              <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
+              <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>
                 {overview.succeeded_payments} settled transactions
               </div>
             </div>
 
-            <div style={{ background: "#141721", padding: "18px", borderRadius: "10px", border: "1px solid #232838" }}>
-              <div style={{ fontSize: "12px", color: "#94a3b8" }}>Security Flags</div>
-              <div style={{ fontSize: "28px", fontWeight: 700, color: overview.rejected_documents > 0 ? "#ef4444" : "#10b981", marginTop: "4px" }}>
+            <div style={{ background: "#ffffff", padding: "20px", borderRadius: "10px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)" }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Security Flags</div>
+              <div style={{ fontSize: "28px", fontWeight: 700, color: overview.rejected_documents > 0 ? "#dc2626" : "#059669", marginTop: "6px", letterSpacing: "-0.02em" }}>
                 {overview.rejected_documents}
               </div>
-              <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
+              <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>
                 {overview.quarantined_documents} in quarantine · {overview.security_event_count} audit flags
               </div>
             </div>
@@ -489,38 +525,42 @@ export default function AdminDashboard() {
           {metrics && (
             <div
               style={{
-                background: "#141721",
-                padding: "20px",
+                background: "#ffffff",
+                padding: "20px 24px",
                 borderRadius: "10px",
-                border: "1px solid #232838",
+                border: "1px solid #e2e8f0",
                 marginBottom: "24px",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
               }}
             >
-              <h3 style={{ fontSize: "14px", fontWeight: 600, margin: "0 0 14px 0", color: "#94a3b8" }}>
-                ⚡ Operational Throughput & System Metrics
-              </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+                <GearIcon size={16} color="#2563eb" />
+                <h3 style={{ fontSize: "14px", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                  Operational Throughput & System Metrics
+                </h3>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "20px" }}>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Total API Requests</div>
-                  <div style={{ fontSize: "18px", fontWeight: 700, marginTop: "2px" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Total API Requests</div>
+                  <div style={{ fontSize: "20px", fontWeight: 700, color: "#0f172a", marginTop: "4px" }}>
                     {metrics.total_http_requests?.toLocaleString() || 0}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Avg API Latency</div>
-                  <div style={{ fontSize: "18px", fontWeight: 700, color: "#60a5fa", marginTop: "2px" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Avg API Latency</div>
+                  <div style={{ fontSize: "20px", fontWeight: 700, color: "#2563eb", marginTop: "4px" }}>
                     {metrics.latency_ms?.avg ? `${metrics.latency_ms.avg.toFixed(1)} ms` : "14.5 ms"}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Success Rate (2xx)</div>
-                  <div style={{ fontSize: "18px", fontWeight: 700, color: "#10b981", marginTop: "2px" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Success Rate (2xx)</div>
+                  <div style={{ fontSize: "20px", fontWeight: 700, color: "#059669", marginTop: "4px" }}>
                     99.8%
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Background Worker Leases</div>
-                  <div style={{ fontSize: "18px", fontWeight: 700, color: "#f59e0b", marginTop: "2px" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>Background Worker Leases</div>
+                  <div style={{ fontSize: "20px", fontWeight: 700, color: "#0f172a", marginTop: "4px" }}>
                     {jobs.length} processed
                   </div>
                 </div>
@@ -545,9 +585,9 @@ export default function AdminDashboard() {
                 flex: 1,
                 padding: "10px 14px",
                 borderRadius: "8px",
-                background: "#141721",
-                border: "1px solid #232838",
-                color: "#f7f8fa",
+                background: "#ffffff",
+                border: "1px solid #e2e8f0",
+                color: "#0f172a",
                 fontSize: "13px",
               }}
             />
@@ -557,9 +597,9 @@ export default function AdminDashboard() {
               style={{
                 padding: "10px 14px",
                 borderRadius: "8px",
-                background: "#141721",
-                border: "1px solid #232838",
-                color: "#f7f8fa",
+                background: "#ffffff",
+                border: "1px solid #e2e8f0",
+                color: "#0f172a",
                 fontSize: "13px",
               }}
             >
@@ -570,10 +610,10 @@ export default function AdminDashboard() {
             </select>
           </div>
 
-          <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden" }}>
+          <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
               <thead>
-                <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                   <th style={{ padding: "12px 16px" }}>User</th>
                   <th style={{ padding: "12px 16px" }}>Role</th>
                   <th style={{ padding: "12px 16px" }}>Account Status</th>
@@ -590,7 +630,7 @@ export default function AdminDashboard() {
                   </tr>
                 ) : (
                   filteredUsers.map((u) => (
-                    <tr key={u.id} style={{ borderBottom: "1px solid #1f2536" }}>
+                    <tr key={u.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "12px 16px" }}>
                         <div style={{ fontWeight: 600 }}>{u.full_name}</div>
                         <div style={{ fontSize: "11px", color: "#94a3b8" }}>{u.email}</div>
@@ -668,10 +708,10 @@ export default function AdminDashboard() {
       {/* TAB: VERIFICATIONS */}
       {/* ========================================================================= */}
       {activeTab === "verifications" && (
-        <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden" }}>
+        <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
             <thead>
-              <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                 <th style={{ padding: "12px 16px" }}>Advocate</th>
                 <th style={{ padding: "12px 16px" }}>Enrollment No.</th>
                 <th style={{ padding: "12px 16px" }}>State Bar Council</th>
@@ -691,7 +731,7 @@ export default function AdminDashboard() {
                 </tr>
               ) : (
                 verifications.map((v) => (
-                  <tr key={v.id} style={{ borderBottom: "1px solid #1f2536" }}>
+                  <tr key={v.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                     <td style={{ padding: "12px 16px", fontWeight: 600 }}>{v.lawyer_name || "Advocate Applicant"}</td>
                     <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>{v.enrollment_number}</td>
                     <td style={{ padding: "12px 16px" }}>{v.state_bar_council}</td>
@@ -755,18 +795,18 @@ export default function AdminDashboard() {
                 width: "100%",
                 padding: "10px 14px",
                 borderRadius: "8px",
-                background: "#141721",
-                border: "1px solid #232838",
-                color: "#f7f8fa",
+                background: "#ffffff",
+                border: "1px solid #e2e8f0",
+                color: "#0f172a",
                 fontSize: "13px",
               }}
             />
           </div>
 
-          <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden" }}>
+          <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
               <thead>
-                <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                   <th style={{ padding: "12px 16px" }}>Case Title</th>
                   <th style={{ padding: "12px 16px" }}>Status</th>
                   <th style={{ padding: "12px 16px" }}>Client Owner</th>
@@ -784,7 +824,7 @@ export default function AdminDashboard() {
                   </tr>
                 ) : (
                   filteredCases.map((c) => (
-                    <tr key={c.id} style={{ borderBottom: "1px solid #1f2536" }}>
+                    <tr key={c.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "12px 16px", fontWeight: 600 }}>{c.title}</td>
                       <td style={{ padding: "12px 16px" }}>
                         <StatusBadge status={c.status} />
@@ -808,10 +848,10 @@ export default function AdminDashboard() {
       {/* TAB: CONSULTATIONS */}
       {/* ========================================================================= */}
       {activeTab === "consultations" && (
-        <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden" }}>
+        <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
             <thead>
-              <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                 <th style={{ padding: "12px 16px" }}>Consultation ID</th>
                 <th style={{ padding: "12px 16px" }}>Status</th>
                 <th style={{ padding: "12px 16px" }}>Fee (INR)</th>
@@ -828,7 +868,7 @@ export default function AdminDashboard() {
                 </tr>
               ) : (
                 consultationsList.map((con) => (
-                  <tr key={con.id} style={{ borderBottom: "1px solid #1f2536" }}>
+                  <tr key={con.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                     <td style={{ padding: "12px 16px", fontFamily: "monospace", fontSize: "12px" }}>
                       {con.id.slice(0, 13)}...
                     </td>
@@ -857,10 +897,10 @@ export default function AdminDashboard() {
       {/* TAB: PAYMENTS */}
       {/* ========================================================================= */}
       {activeTab === "payments" && (
-        <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden" }}>
+        <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
             <thead>
-              <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                 <th style={{ padding: "12px 16px" }}>Transaction ID</th>
                 <th style={{ padding: "12px 16px" }}>Amount</th>
                 <th style={{ padding: "12px 16px" }}>Status</th>
@@ -878,7 +918,7 @@ export default function AdminDashboard() {
                 </tr>
               ) : (
                 paymentsList.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: "1px solid #1f2536" }}>
+                  <tr key={p.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                     <td style={{ padding: "12px 16px", fontFamily: "monospace", fontSize: "12px" }}>
                       {p.id.slice(0, 13)}...
                     </td>
@@ -910,13 +950,16 @@ export default function AdminDashboard() {
       {/* ========================================================================= */}
       {activeTab === "security" && (
         <div>
-          <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "14px" }}>
-            🛡️ Malware & Evidence Vault Security Status
-          </h3>
-          <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden", marginBottom: "28px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+            <ShieldIcon size={18} color="#2563eb" />
+            <h3 style={{ fontSize: "16px", fontWeight: 600, margin: 0 }}>
+              Malware & Evidence Vault Security Status
+            </h3>
+          </div>
+          <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "28px" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
               <thead>
-                <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                   <th style={{ padding: "12px 16px" }}>Document Filename</th>
                   <th style={{ padding: "12px 16px" }}>MIME Type</th>
                   <th style={{ padding: "12px 16px" }}>Size</th>
@@ -933,7 +976,7 @@ export default function AdminDashboard() {
                   </tr>
                 ) : (
                   docSecurityList.map((d) => (
-                    <tr key={d.id} style={{ borderBottom: "1px solid #1f2536" }}>
+                    <tr key={d.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "12px 16px", fontWeight: 600 }}>{d.filename}</td>
                       <td style={{ padding: "12px 16px", color: "#94a3b8", fontSize: "11px" }}>{d.mime_type}</td>
                       <td style={{ padding: "12px 16px" }}>{(d.file_size / 1024).toFixed(1)} KB</td>
@@ -950,13 +993,16 @@ export default function AdminDashboard() {
             </table>
           </div>
 
-          <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "14px" }}>
-            🚨 Critical Security Events & Access Denials
-          </h3>
-          <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+            <AlertTriangleIcon size={18} color="#ef4444" />
+            <h3 style={{ fontSize: "16px", fontWeight: 600, margin: 0 }}>
+              Critical Security Events & Access Denials
+            </h3>
+          </div>
+          <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
               <thead>
-                <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                   <th style={{ padding: "12px 16px" }}>Event Type</th>
                   <th style={{ padding: "12px 16px" }}>Actor / Target</th>
                   <th style={{ padding: "12px 16px" }}>Action</th>
@@ -972,7 +1018,7 @@ export default function AdminDashboard() {
                   </tr>
                 ) : (
                   securityEvents.map((ev) => (
-                    <tr key={ev.id} style={{ borderBottom: "1px solid #1f2536" }}>
+                    <tr key={ev.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f59e0b" }}>{ev.event_type}</td>
                       <td style={{ padding: "12px 16px", fontFamily: "monospace", fontSize: "11px", color: "#94a3b8" }}>
                         {ev.actor_user_id ? `User: ${ev.actor_user_id.slice(0, 8)}` : "System / Gateway"}
@@ -994,10 +1040,10 @@ export default function AdminDashboard() {
       {/* TAB: AUDIT LOGS */}
       {/* ========================================================================= */}
       {activeTab === "audit" && (
-        <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden" }}>
+        <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
             <thead>
-              <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                 <th style={{ padding: "12px 16px" }}>Event Type</th>
                 <th style={{ padding: "12px 16px" }}>Action</th>
                 <th style={{ padding: "12px 16px" }}>Entity</th>
@@ -1013,7 +1059,7 @@ export default function AdminDashboard() {
                 </tr>
               ) : (
                 auditLogs.map((log) => (
-                  <tr key={log.id} style={{ borderBottom: "1px solid #1f2536" }}>
+                  <tr key={log.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                     <td style={{ padding: "12px 16px", fontWeight: 600 }}>{log.event_type}</td>
                     <td style={{ padding: "12px 16px", color: "#94a3b8" }}>{log.action}</td>
                     <td style={{ padding: "12px 16px", fontSize: "11px", color: "#94a3b8" }}>
@@ -1034,10 +1080,10 @@ export default function AdminDashboard() {
       {/* TAB: WORKER JOBS */}
       {/* ========================================================================= */}
       {activeTab === "jobs" && (
-        <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden" }}>
+        <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
             <thead>
-              <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                 <th style={{ padding: "12px 16px" }}>Job ID</th>
                 <th style={{ padding: "12px 16px" }}>Type</th>
                 <th style={{ padding: "12px 16px" }}>Status</th>
@@ -1054,7 +1100,7 @@ export default function AdminDashboard() {
                 </tr>
               ) : (
                 jobs.map((j) => (
-                  <tr key={j.id} style={{ borderBottom: "1px solid #1f2536" }}>
+                  <tr key={j.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                     <td style={{ padding: "12px 16px", fontFamily: "monospace", fontSize: "12px" }}>
                       {j.id.slice(0, 13)}...
                     </td>
@@ -1079,7 +1125,7 @@ export default function AdminDashboard() {
       {/* ========================================================================= */}
       {activeTab === "legal_data" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-          <div style={{ background: "#141721", padding: "24px", borderRadius: "10px", border: "1px solid #232838" }}>
+          <div style={{ background: "#ffffff", padding: "24px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 600, margin: "0 0 12px 0" }}>
               Sync Curated Indian Statutory Fixtures
             </h3>
@@ -1103,13 +1149,13 @@ export default function AdminDashboard() {
               {syncingFixtures ? "Synchronizing Fixtures..." : "Sync Verified Legal Fixtures"}
             </button>
             {syncResult && (
-              <div style={{ marginTop: "14px", padding: "10px", borderRadius: "6px", background: "#1a1e2e", fontSize: "12px", color: "#60a5fa" }}>
+              <div style={{ marginTop: "14px", padding: "10px", borderRadius: "6px", background: "#f8fafc", fontSize: "12px", color: "#60a5fa" }}>
                 {syncResult}
               </div>
             )}
           </div>
 
-          <div style={{ background: "#141721", padding: "24px", borderRadius: "10px", border: "1px solid #232838" }}>
+          <div style={{ background: "#ffffff", padding: "24px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 600, margin: "0 0 12px 0" }}>
               Ingest Raw Legal Source
             </h3>
@@ -1123,9 +1169,9 @@ export default function AdminDashboard() {
                   width: "100%",
                   padding: "10px",
                   borderRadius: "8px",
-                  background: "#1a1e2e",
-                  border: "1px solid #282f44",
-                  color: "#f7f8fa",
+                  background: "#f8fafc",
+                  border: "1px solid #cbd5e1",
+                  color: "#0f172a",
                   fontSize: "12px",
                   fontFamily: "monospace",
                   marginBottom: "12px",
@@ -1137,9 +1183,9 @@ export default function AdminDashboard() {
                 style={{
                   padding: "10px 18px",
                   borderRadius: "8px",
-                  background: "#1f293d",
-                  color: "#f7f8fa",
-                  border: "1px solid #3b82f6",
+                  background: "#eff6ff",
+                  color: "#1d4ed8",
+                  border: "1px solid #bfdbfe",
                   fontWeight: 600,
                   fontSize: "13px",
                   cursor: "pointer",
@@ -1166,7 +1212,7 @@ export default function AdminDashboard() {
               marginBottom: "24px",
             }}
           >
-            <div style={{ background: "#141721", padding: "18px", borderRadius: "10px", border: "1px solid #232838" }}>
+            <div style={{ background: "#ffffff", padding: "18px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
               <div style={{ fontSize: "12px", color: "#94a3b8" }}>Pilot Cohort Advocates</div>
               <div style={{ fontSize: "26px", fontWeight: 700, color: "#60a5fa", marginTop: "4px" }}>
                 {overview?.verified_lawyers || 0} <span style={{ fontSize: "14px", color: "#64748b" }}>/ 10 Max</span>
@@ -1176,7 +1222,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div style={{ background: "#141721", padding: "18px", borderRadius: "10px", border: "1px solid #232838" }}>
+            <div style={{ background: "#ffffff", padding: "18px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
               <div style={{ fontSize: "12px", color: "#94a3b8" }}>Pilot Cohort Clients</div>
               <div style={{ fontSize: "26px", fontWeight: 700, color: "#10b981", marginTop: "4px" }}>
                 {overview?.active_users ? Math.max(overview.active_users - (overview.verified_lawyers || 0), 0) : 0}{" "}
@@ -1187,7 +1233,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div style={{ background: "#141721", padding: "18px", borderRadius: "10px", border: "1px solid #232838" }}>
+            <div style={{ background: "#ffffff", padding: "18px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
               <div style={{ fontSize: "12px", color: "#94a3b8" }}>Consultation Booking Rate</div>
               <div style={{ fontSize: "26px", fontWeight: 700, color: "#f59e0b", marginTop: "4px" }}>
                 {conversionFunnel?.overall_conversion_pct ?? 0}%
@@ -1197,9 +1243,9 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div style={{ background: "#141721", padding: "18px", borderRadius: "10px", border: "1px solid #232838" }}>
+            <div style={{ background: "#ffffff", padding: "18px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
               <div style={{ fontSize: "12px", color: "#94a3b8" }}>Supported Court Jurisdictions</div>
-              <div style={{ fontSize: "15px", fontWeight: 700, color: "#f7f8fa", marginTop: "6px", lineHeight: "1.3" }}>
+              <div style={{ fontSize: "15px", fontWeight: 700, color: "#0f172a", marginTop: "6px", lineHeight: "1.3" }}>
                 Delhi, Bombay, Allahabad
               </div>
               <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
@@ -1212,19 +1258,19 @@ export default function AdminDashboard() {
           {conversionFunnel && (
             <div
               style={{
-                background: "#141721",
+                background: "#ffffff",
                 padding: "20px",
                 borderRadius: "10px",
-                border: "1px solid #232838",
+                border: "1px solid #e2e8f0",
                 marginBottom: "24px",
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <div>
-                  <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#fff", margin: 0 }}>
-                    📈 Commercial Consultation Conversion Funnel
+                  <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+                    Commercial Consultation Conversion Funnel
                   </h3>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: "4px 0 0 0" }}>
+                  <p style={{ fontSize: "12px", color: "#64748b", margin: "4px 0 0 0" }}>
                     Calculated from empirical product telemetry events (zero fabricated metrics)
                   </p>
                 </div>
@@ -1235,10 +1281,10 @@ export default function AdminDashboard() {
                     padding: "4px 10px",
                     borderRadius: "6px",
                     background: conversionFunnel.sample_confidence === "SUFFICIENT" ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                    color: conversionFunnel.sample_confidence === "SUFFICIENT" ? "#34d399" : "#fbbf24",
+                    color: conversionFunnel.sample_confidence === "SUFFICIENT" ? "#059669" : "#d97706",
                   }}
                 >
-                  {conversionFunnel.sample_confidence === "SUFFICIENT" ? "✓ Sufficient Sample Confidence" : "⏳ Early Pilot Sample"}
+                  {conversionFunnel.sample_confidence === "SUFFICIENT" ? "Sufficient Sample Confidence" : "Early Pilot Sample"}
                 </span>
               </div>
 
@@ -1246,14 +1292,14 @@ export default function AdminDashboard() {
                 {(conversionFunnel.funnel_steps || []).map((step, idx) => (
                   <div key={step.key} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                      <span style={{ fontWeight: 600, color: "#f8fafc" }}>
+                      <span style={{ fontWeight: 600, color: "#0f172a" }}>
                         {idx + 1}. {step.step}
                       </span>
-                      <span style={{ color: "#94a3b8" }}>
-                        <strong style={{ color: "#fff" }}>{step.count}</strong> events · {step.step_conversion_pct}% step conversion
+                      <span style={{ color: "#64748b" }}>
+                        <strong style={{ color: "#0f172a" }}>{step.count}</strong> events · {step.step_conversion_pct}% step conversion
                       </span>
                     </div>
-                    <div style={{ width: "100%", height: "8px", background: "rgba(255,255,255,0.06)", borderRadius: "4px", overflow: "hidden" }}>
+                    <div style={{ width: "100%", height: "8px", background: "#f1f5f9", borderRadius: "4px", overflow: "hidden" }}>
                       <div
                         style={{
                           width: `${Math.max(step.overall_conversion_pct, 4)}%`,
@@ -1273,125 +1319,125 @@ export default function AdminDashboard() {
           {/* Phase 9: Product Intelligence & Retention Grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px", marginBottom: "24px" }}>
             {/* Client Retention */}
-            <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", padding: "20px" }}>
-              <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#fff", margin: "0 0 4px 0" }}>
-                👥 Client Retention & Activation
+            <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "20px" }}>
+              <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#0f172a", margin: "0 0 4px 0" }}>
+                Client Retention & Activation
               </h3>
-              <p style={{ fontSize: "12px", color: "#94a3b8", margin: "0 0 16px 0" }}>
+              <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 16px 0" }}>
                 Empirical user cohorts under zero-trust privacy controls
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "13px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Day 1 Activation:</span>
-                  <strong style={{ color: "#34d399" }}>{retentionMetrics?.client_retention?.day1_activation_rate_pct ?? 85.0}%</strong>
+                  <span style={{ color: "#64748b" }}>Day 1 Activation:</span>
+                  <strong style={{ color: "#059669" }}>{retentionMetrics?.client_retention?.day1_activation_rate_pct ?? 85.0}%</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Day 7 Retention:</span>
-                  <strong style={{ color: "#60a5fa" }}>{retentionMetrics?.client_retention?.day7_retention_rate_pct ?? 61.2}%</strong>
+                  <span style={{ color: "#64748b" }}>Day 7 Retention:</span>
+                  <strong style={{ color: "#2563eb" }}>{retentionMetrics?.client_retention?.day7_retention_rate_pct ?? 61.2}%</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Day 30 Retention:</span>
-                  <strong style={{ color: "#818cf8" }}>{retentionMetrics?.client_retention?.day30_retention_rate_pct ?? 45.9}%</strong>
+                  <span style={{ color: "#64748b" }}>Day 30 Retention:</span>
+                  <strong style={{ color: "#4f46e5" }}>{retentionMetrics?.client_retention?.day30_retention_rate_pct ?? 45.9}%</strong>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #232838", paddingTop: "8px" }}>
-                  <span style={{ color: "#94a3b8" }}>Return after Hearing Update:</span>
-                  <strong style={{ color: "#fbbf24" }}>{retentionMetrics?.client_retention?.return_after_hearing_update_pct ?? 78.5}%</strong>
+                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "8px" }}>
+                  <span style={{ color: "#64748b" }}>Return after Hearing Update:</span>
+                  <strong style={{ color: "#d97706" }}>{retentionMetrics?.client_retention?.return_after_hearing_update_pct ?? 78.5}%</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Return after Counsel Message:</span>
-                  <strong style={{ color: "#fbbf24" }}>{retentionMetrics?.client_retention?.return_after_lawyer_message_pct ?? 82.0}%</strong>
+                  <span style={{ color: "#64748b" }}>Return after Counsel Message:</span>
+                  <strong style={{ color: "#d97706" }}>{retentionMetrics?.client_retention?.return_after_lawyer_message_pct ?? 82.0}%</strong>
                 </div>
               </div>
             </div>
 
             {/* Marketplace Quality */}
-            <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", padding: "20px" }}>
-              <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#fff", margin: "0 0 4px 0" }}>
-                ⚖️ Marketplace Quality Indicators
+            <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "20px" }}>
+              <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#0f172a", margin: "0 0 4px 0" }}>
+                Marketplace Quality Indicators
               </h3>
-              <p style={{ fontSize: "12px", color: "#94a3b8", margin: "0 0 16px 0" }}>
+              <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 16px 0" }}>
                 Objective transaction metrics (zero fabricated ratings)
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "13px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Advocate Verification Rate:</span>
-                  <strong style={{ color: "#34d399" }}>{marketplaceQuality?.verification_rate_pct ?? 100}%</strong>
+                  <span style={{ color: "#64748b" }}>Advocate Verification Rate:</span>
+                  <strong style={{ color: "#059669" }}>{marketplaceQuality?.verification_rate_pct ?? 100}%</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Booking Completion Rate:</span>
-                  <strong style={{ color: "#34d399" }}>{marketplaceQuality?.booking_completion_rate_pct ?? 88.5}%</strong>
+                  <span style={{ color: "#64748b" }}>Booking Completion Rate:</span>
+                  <strong style={{ color: "#059669" }}>{marketplaceQuality?.booking_completion_rate_pct ?? 88.5}%</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Cancellation Rate:</span>
-                  <strong style={{ color: "#60a5fa" }}>{marketplaceQuality?.cancellation_rate_pct ?? 5.2}%</strong>
+                  <span style={{ color: "#64748b" }}>Cancellation Rate:</span>
+                  <strong style={{ color: "#2563eb" }}>{marketplaceQuality?.cancellation_rate_pct ?? 5.2}%</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>No-Show Rate:</span>
-                  <strong style={{ color: "#a78bfa" }}>{marketplaceQuality?.no_show_rate_pct ?? 0}%</strong>
+                  <span style={{ color: "#64748b" }}>No-Show Rate:</span>
+                  <strong style={{ color: "#7c3aed" }}>{marketplaceQuality?.no_show_rate_pct ?? 0}%</strong>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #232838", paddingTop: "8px" }}>
-                  <span style={{ color: "#94a3b8" }}>Median Response Latency:</span>
-                  <strong style={{ color: "#38bdf8" }}>{marketplaceQuality?.median_counsel_response_minutes ?? 45} mins</strong>
+                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "8px" }}>
+                  <span style={{ color: "#64748b" }}>Median Response Latency:</span>
+                  <strong style={{ color: "#0284c7" }}>{marketplaceQuality?.median_counsel_response_minutes ?? 45} mins</strong>
                 </div>
               </div>
             </div>
 
             {/* Court Data Quality */}
-            <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", padding: "20px" }}>
-              <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#fff", margin: "0 0 4px 0" }}>
-                🏛️ Court Data Quality (Pilot Jurisdictions)
+            <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "20px" }}>
+              <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#0f172a", margin: "0 0 4px 0" }}>
+                Court Data Quality (Pilot Jurisdictions)
               </h3>
-              <p style={{ fontSize: "12px", color: "#94a3b8", margin: "0 0 16px 0" }}>
+              <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 16px 0" }}>
                 High Courts of Delhi, Bombay, and Allahabad
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "13px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Docket Sync Success:</span>
-                  <strong style={{ color: "#34d399" }}>{courtQuality?.sync_success_rate_pct ?? 100}%</strong>
+                  <span style={{ color: "#64748b" }}>Docket Sync Success:</span>
+                  <strong style={{ color: "#059669" }}>{courtQuality?.sync_success_rate_pct ?? 100}%</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Total Tracked Dockets:</span>
-                  <strong style={{ color: "#fff" }}>{courtQuality?.total_tracked_cases ?? 6}</strong>
+                  <span style={{ color: "#64748b" }}>Total Tracked Dockets:</span>
+                  <strong style={{ color: "#0f172a" }}>{courtQuality?.total_tracked_cases ?? 6}</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Stale Dockets (&gt;24h):</span>
-                  <strong style={{ color: "#34d399" }}>{courtQuality?.stale_cases ?? 0}</strong>
+                  <span style={{ color: "#64748b" }}>Stale Dockets (&gt;24h):</span>
+                  <strong style={{ color: "#059669" }}>{courtQuality?.stale_cases ?? 0}</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Provider Latency (p95):</span>
-                  <strong style={{ color: "#38bdf8" }}>{courtQuality?.provider_latency_p95_ms ?? 380} ms</strong>
+                  <span style={{ color: "#64748b" }}>Provider Latency (p95):</span>
+                  <strong style={{ color: "#0284c7" }}>{courtQuality?.provider_latency_p95_ms ?? 380} ms</strong>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #232838", paddingTop: "8px" }}>
-                  <span style={{ color: "#94a3b8" }}>Status:</span>
-                  <strong style={{ color: "#34d399" }}>{courtQuality?.reliability_status ?? "RELIABLE"}</strong>
+                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "8px" }}>
+                  <span style={{ color: "#64748b" }}>Status:</span>
+                  <strong style={{ color: "#059669" }}>{courtQuality?.reliability_status ?? "RELIABLE"}</strong>
                 </div>
               </div>
             </div>
 
             {/* Support Analytics & Error Loop */}
-            <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", padding: "20px" }}>
-              <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#fff", margin: "0 0 4px 0" }}>
-                🎧 Support Analytics & Error Loop
+            <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "20px" }}>
+              <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#0f172a", margin: "0 0 4px 0" }}>
+                Support Analytics & Error Loop
               </h3>
-              <p style={{ fontSize: "12px", color: "#94a3b8", margin: "0 0 16px 0" }}>
+              <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 16px 0" }}>
                 SLA compliance and recurring friction detection
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "13px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>First Response Time:</span>
-                  <strong style={{ color: "#34d399" }}>{supportAnalytics?.first_response_hours ?? 1.2} hrs (SLA: &lt;4 hrs)</strong>
+                  <span style={{ color: "#64748b" }}>First Response Time:</span>
+                  <strong style={{ color: "#059669" }}>{supportAnalytics?.first_response_hours ?? 1.2} hrs (SLA: &lt;4 hrs)</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>SLA Compliance Rate:</span>
-                  <strong style={{ color: "#34d399" }}>{supportAnalytics?.sla_compliance_rate_pct ?? 100}%</strong>
+                  <span style={{ color: "#64748b" }}>SLA Compliance Rate:</span>
+                  <strong style={{ color: "#059669" }}>{supportAnalytics?.sla_compliance_rate_pct ?? 100}%</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#94a3b8" }}>Escalated Cases:</span>
-                  <strong style={{ color: "#fbbf24" }}>{supportAnalytics?.escalated_cases_count ?? 0}</strong>
+                  <span style={{ color: "#64748b" }}>Escalated Cases:</span>
+                  <strong style={{ color: "#d97706" }}>{supportAnalytics?.escalated_cases_count ?? 0}</strong>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #232838", paddingTop: "8px" }}>
-                  <span style={{ color: "#94a3b8" }}>Recurring Friction Hotspots:</span>
-                  <span style={{ fontSize: "12px", color: "#cbd5e1" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "8px" }}>
+                  <span style={{ color: "#64748b" }}>Recurring Friction Hotspots:</span>
+                  <span style={{ fontSize: "12px", color: "#64748b" }}>
                     {supportAnalytics?.recurring_issues && supportAnalytics.recurring_issues.length > 0
                       ? supportAnalytics.recurring_issues.map((r: Record<string, unknown>) => `${r.category} (${r.ticket_count})`).join(", ")
                       : "None detected (Zero repeat friction)"}
@@ -1402,16 +1448,16 @@ export default function AdminDashboard() {
           </div>
 
           {/* Pilot User Feedback Review */}
-          <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden" }}>
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid #232838", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ fontSize: "14px", fontWeight: 700, margin: 0, color: "#fff" }}>
-                💬 Pilot Litigant & Advocate Feedback
+          <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                Pilot Litigant & Advocate Feedback
               </h3>
               <span style={{ fontSize: "12px", color: "#94a3b8" }}>{feedbackList.length} submissions</span>
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
               <thead>
-                <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                   <th style={{ padding: "12px 16px" }}>Category</th>
                   <th style={{ padding: "12px 16px" }}>User</th>
                   <th style={{ padding: "12px 16px" }}>Description</th>
@@ -1427,7 +1473,7 @@ export default function AdminDashboard() {
                   </tr>
                 ) : (
                   feedbackList.map((fb) => (
-                    <tr key={fb.id} style={{ borderBottom: "1px solid #1f2536" }}>
+                    <tr key={fb.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "12px 16px", fontWeight: 600 }}>{fb.category}</td>
                       <td style={{ padding: "12px 16px", color: "#94a3b8" }}>{fb.user_email || "Anonymous"}</td>
                       <td style={{ padding: "12px 16px" }}>{fb.description}</td>
@@ -1451,8 +1497,9 @@ export default function AdminDashboard() {
           {/* Source-of-Truth & Governance Banner */}
           <div
             style={{
-              background: "linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%)",
-              border: "1px solid #334155",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
               borderRadius: "12px",
               padding: "20px 24px",
               display: "flex",
@@ -1464,12 +1511,14 @@ export default function AdminDashboard() {
           >
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "20px" }}>💼</span>
-                <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0, color: "#fff" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <CaseIcon size={20} color="#2563eb" />
+                </div>
+                <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0, color: "#0f172a" }}>
                   Cohort 2 Commercial Operating System & Settlement Reconciliation
                 </h2>
               </div>
-              <p style={{ color: "#94a3b8", fontSize: "13px", margin: "6px 0 0 0" }}>
+              <p style={{ color: "#64748b", fontSize: "13px", margin: "6px 0 0 0" }}>
                 Server-authoritative billing, double-payout protection, SAC 9982 GST compliance, and deterministic marketplace gating.
               </p>
             </div>
@@ -1479,7 +1528,7 @@ export default function AdminDashboard() {
                   padding: "4px 10px",
                   borderRadius: "6px",
                   background: "rgba(16, 185, 129, 0.15)",
-                  color: "#34d399",
+                  color: "#059669",
                   border: "1px solid rgba(16, 185, 129, 0.3)",
                   fontSize: "11px",
                   fontWeight: 600,
@@ -1493,7 +1542,7 @@ export default function AdminDashboard() {
                   padding: "4px 10px",
                   borderRadius: "6px",
                   background: "rgba(59, 130, 246, 0.15)",
-                  color: "#60a5fa",
+                  color: "#2563eb",
                   border: "1px solid rgba(59, 130, 246, 0.3)",
                   fontSize: "11px",
                   fontWeight: 600,
@@ -1505,12 +1554,12 @@ export default function AdminDashboard() {
           </div>
 
           {/* Section 1: Financial Settlement Reconciliation Grid */}
-          <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", padding: "20px" }}>
+          <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h3 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#fff" }}>
-                💳 Financial Settlement & Escrow Reconciliation (Rule 12 & 13)
+              <h3 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                Financial Settlement & Escrow Reconciliation (Rule 12 & 13)
               </h3>
-              <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+              <span style={{ fontSize: "12px", color: "#64748b" }}>
                 Total Transactions: <strong>{settlementReconciliation?.transaction_count ?? 0}</strong>
               </span>
             </div>
@@ -1522,57 +1571,57 @@ export default function AdminDashboard() {
                 gap: "16px",
               }}
             >
-              <div style={{ background: "#1a1e2e", padding: "16px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Gross Consultation Volume</div>
-                <div style={{ fontSize: "22px", fontWeight: 700, color: "#f7f8fa", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Gross Consultation Volume</div>
+                <div style={{ fontSize: "22px", fontWeight: 700, color: "#0f172a", marginTop: "4px" }}>
                   ₹{(settlementReconciliation?.gross_consultation_inr ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>Litigant payments captured</div>
               </div>
 
-              <div style={{ background: "#1a1e2e", padding: "16px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>GST 18% (SAC 9982)</div>
-                <div style={{ fontSize: "22px", fontWeight: 700, color: "#fbbf24", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>GST 18% (SAC 9982)</div>
+                <div style={{ fontSize: "22px", fontWeight: 700, color: "#d97706", marginTop: "4px" }}>
                   ₹{(settlementReconciliation?.tax_gst_inr ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>Statutory tax remittance reserve</div>
               </div>
 
-              <div style={{ background: "#1a1e2e", padding: "16px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Platform Commission (15-20%)</div>
-                <div style={{ fontSize: "22px", fontWeight: 700, color: "#60a5fa", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Platform Commission (15-20%)</div>
+                <div style={{ fontSize: "22px", fontWeight: 700, color: "#2563eb", marginTop: "4px" }}>
                   ₹{(settlementReconciliation?.platform_fee_inr ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>LCC gross operating revenue</div>
               </div>
 
-              <div style={{ background: "#1a1e2e", padding: "16px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Advocate Payouts Settled</div>
-                <div style={{ fontSize: "22px", fontWeight: 700, color: "#10b981", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Advocate Payouts Settled</div>
+                <div style={{ fontSize: "22px", fontWeight: 700, color: "#059669", marginTop: "4px" }}>
                   ₹{(settlementReconciliation?.advocate_payouts_completed_inr ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>Bank transfers disbursed</div>
               </div>
 
-              <div style={{ background: "#1a1e2e", padding: "16px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Advocate Payouts Pending</div>
-                <div style={{ fontSize: "22px", fontWeight: 700, color: "#38bdf8", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Advocate Payouts Pending</div>
+                <div style={{ fontSize: "22px", fontWeight: 700, color: "#0284c7", marginTop: "4px" }}>
                   ₹{(settlementReconciliation?.advocate_payouts_pending_inr ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>Escrow awaiting batch payout</div>
               </div>
 
-              <div style={{ background: "#1a1e2e", padding: "16px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Refunds Disbursed</div>
-                <div style={{ fontSize: "22px", fontWeight: 700, color: "#f87171", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Refunds Disbursed</div>
+                <div style={{ fontSize: "22px", fontWeight: 700, color: "#ef4444", marginTop: "4px" }}>
                   ₹{(settlementReconciliation?.refunds_completed_inr ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>Client cancellations & no-shows</div>
               </div>
 
-              <div style={{ background: "#1a1e2e", padding: "16px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Net Liquid Escrow Balance</div>
-                <div style={{ fontSize: "22px", fontWeight: 700, color: "#34d399", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Net Liquid Escrow Balance</div>
+                <div style={{ fontSize: "22px", fontWeight: 700, color: "#059669", marginTop: "4px" }}>
                   ₹{(settlementReconciliation?.net_cash_balance_inr ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>Verified reconciliation equality</div>
@@ -1581,13 +1630,13 @@ export default function AdminDashboard() {
           </div>
 
           {/* Section 2: Cohort 2 Staged Rollout & Operational Gates */}
-          <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", padding: "20px" }}>
+          <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <div>
-                <h3 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#fff" }}>
-                  🎯 Cohort 2 Staged Rollout & Scale Gates (Target: 25 Advocates / 150 Matters)
+                <h3 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                  Cohort 2 Staged Rollout & Scale Gates (Target: 25 Advocates / 150 Matters)
                 </h3>
-                <p style={{ color: "#94a3b8", fontSize: "12px", margin: "4px 0 0 0" }}>
+                <p style={{ color: "#64748b", fontSize: "12px", margin: "4px 0 0 0" }}>
                   Controlled expansion preventing premature enrollment before operational gates pass.
                 </p>
               </div>
@@ -1652,10 +1701,10 @@ export default function AdminDashboard() {
             {/* Current Stage Indicator */}
             <div
               style={{
-                background: "#1a1e2e",
+                background: "#f8fafc",
                 padding: "14px 18px",
                 borderRadius: "8px",
-                border: "1px solid #282f44",
+                border: "1px solid #e2e8f0",
                 marginBottom: "20px",
                 display: "flex",
                 justifyContent: "space-between",
@@ -1663,21 +1712,21 @@ export default function AdminDashboard() {
               }}
             >
               <div>
-                <span style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase" }}>Current Operating Stage</span>
-                <div style={{ fontSize: "18px", fontWeight: 700, color: "#60a5fa", marginTop: "2px" }}>
+                <span style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase" }}>Current Operating Stage</span>
+                <div style={{ fontSize: "18px", fontWeight: 700, color: "#2563eb", marginTop: "2px" }}>
                   {cohort2Status?.current_stage || "PHASE_A_SMALL_EXPANSION"}
                 </div>
               </div>
               <div style={{ display: "flex", gap: "24px", textAlign: "right" }}>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Active Advocates</div>
-                  <div style={{ fontSize: "16px", fontWeight: 700, color: "#f7f8fa" }}>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>Active Advocates</div>
+                  <div style={{ fontSize: "16px", fontWeight: 700, color: "#0f172a" }}>
                     {cohort2Status?.active_advocates ?? overview?.verified_lawyers ?? 0} / 25
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Active Matters</div>
-                  <div style={{ fontSize: "16px", fontWeight: 700, color: "#f7f8fa" }}>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>Active Matters</div>
+                  <div style={{ fontSize: "16px", fontWeight: 700, color: "#0f172a" }}>
                     {cohort2Status?.active_matters ?? casesList.length} / 150
                   </div>
                 </div>
@@ -1688,76 +1737,76 @@ export default function AdminDashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "14px" }}>
               <div
                 style={{
-                  background: "#141721",
+                  background: "#ffffff",
                   padding: "14px",
                   borderRadius: "8px",
-                  border: `1px solid ${cohort2Status?.gates?.gate_a_passed ? "#10b981" : "#2e3650"}`,
+                  border: `1px solid ${cohort2Status?.gates?.gate_a_passed ? "#10b981" : "#e2e8f0"}`,
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, fontSize: "13px", color: "#fff" }}>Gate A: Small Expansion</span>
-                  <span style={{ fontSize: "11px", color: cohort2Status?.gates?.gate_a_passed ? "#34d399" : "#fbbf24" }}>
+                  <span style={{ fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>Gate A: Small Expansion</span>
+                  <span style={{ fontSize: "11px", color: cohort2Status?.gates?.gate_a_passed ? "#059669" : "#d97706" }}>
                     {cohort2Status?.gates?.gate_a_passed ? "PASSED" : "EVALUATING"}
                   </span>
                 </div>
-                <p style={{ fontSize: "12px", color: "#94a3b8", margin: "6px 0 0 0" }}>
+                <p style={{ fontSize: "12px", color: "#64748b", margin: "6px 0 0 0" }}>
                   Initial 5 advocates verified, 10 real matters active, basic intake and consultation flows stable.
                 </p>
               </div>
 
               <div
                 style={{
-                  background: "#141721",
+                  background: "#ffffff",
                   padding: "14px",
                   borderRadius: "8px",
-                  border: `1px solid ${cohort2Status?.gates?.gate_b_passed ? "#10b981" : "#2e3650"}`,
+                  border: `1px solid ${cohort2Status?.gates?.gate_b_passed ? "#10b981" : "#e2e8f0"}`,
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, fontSize: "13px", color: "#fff" }}>Gate B: Operational Review</span>
-                  <span style={{ fontSize: "11px", color: cohort2Status?.gates?.gate_b_passed ? "#34d399" : "#fbbf24" }}>
+                  <span style={{ fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>Gate B: Operational Review</span>
+                  <span style={{ fontSize: "11px", color: cohort2Status?.gates?.gate_b_passed ? "#059669" : "#d97706" }}>
                     {cohort2Status?.gates?.gate_b_passed ? "PASSED" : "PENDING"}
                   </span>
                 </div>
-                <p style={{ fontSize: "12px", color: "#94a3b8", margin: "6px 0 0 0" }}>
+                <p style={{ fontSize: "12px", color: "#64748b", margin: "6px 0 0 0" }}>
                   Zero payment reconciliation discrepancies, support SLA &lt; 2h, court sync latency verified.
                 </p>
               </div>
 
               <div
                 style={{
-                  background: "#141721",
+                  background: "#ffffff",
                   padding: "14px",
                   borderRadius: "8px",
-                  border: `1px solid ${cohort2Status?.gates?.gate_c_passed ? "#10b981" : "#2e3650"}`,
+                  border: `1px solid ${cohort2Status?.gates?.gate_c_passed ? "#10b981" : "#e2e8f0"}`,
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, fontSize: "13px", color: "#fff" }}>Gate C: Continued Expansion</span>
-                  <span style={{ fontSize: "11px", color: cohort2Status?.gates?.gate_c_passed ? "#34d399" : "#fbbf24" }}>
+                  <span style={{ fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>Gate C: Continued Expansion</span>
+                  <span style={{ fontSize: "11px", color: cohort2Status?.gates?.gate_c_passed ? "#059669" : "#d97706" }}>
                     {cohort2Status?.gates?.gate_c_passed ? "PASSED" : "PENDING"}
                   </span>
                 </div>
-                <p style={{ fontSize: "12px", color: "#94a3b8", margin: "6px 0 0 0" }}>
+                <p style={{ fontSize: "12px", color: "#64748b", margin: "6px 0 0 0" }}>
                   Expansion to 15 advocates, 60 active matters across Delhi, Bombay, and Allahabad registries.
                 </p>
               </div>
 
               <div
                 style={{
-                  background: "#141721",
+                  background: "#ffffff",
                   padding: "14px",
                   borderRadius: "8px",
-                  border: `1px solid ${cohort2Status?.gates?.gate_d_passed ? "#10b981" : "#2e3650"}`,
+                  border: `1px solid ${cohort2Status?.gates?.gate_d_passed ? "#10b981" : "#e2e8f0"}`,
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, fontSize: "13px", color: "#fff" }}>Gate D: Full Cohort 2</span>
-                  <span style={{ fontSize: "11px", color: cohort2Status?.gates?.gate_d_passed ? "#34d399" : "#fbbf24" }}>
+                  <span style={{ fontWeight: 600, fontSize: "13px", color: "#0f172a" }}>Gate D: Full Cohort 2</span>
+                  <span style={{ fontSize: "11px", color: cohort2Status?.gates?.gate_d_passed ? "#059669" : "#d97706" }}>
                     {cohort2Status?.gates?.gate_d_passed ? "PASSED" : "PENDING"}
                   </span>
                 </div>
-                <p style={{ fontSize: "12px", color: "#94a3b8", margin: "6px 0 0 0" }}>
+                <p style={{ fontSize: "12px", color: "#64748b", margin: "6px 0 0 0" }}>
                   Full cohort scale to 25 verified advocates, 150 active matters with automated settlement & payouts.
                 </p>
               </div>
@@ -1765,11 +1814,11 @@ export default function AdminDashboard() {
           </div>
 
           {/* Section 3: Marketplace Category Supply & Demand Balance */}
-          <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", overflow: "hidden" }}>
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid #232838", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h3 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#fff" }}>
-                  ⚖️ Marketplace Balance & Advocate Supply (Rule 5)
+                <h3 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                  Marketplace Balance & Advocate Supply (Rule 5)
                 </h3>
                 <p style={{ color: "#94a3b8", fontSize: "12px", margin: "2px 0 0 0" }}>
                   Identifying undersupplied categories vs oversupplied categories deterministically.
@@ -1796,7 +1845,7 @@ export default function AdminDashboard() {
 
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
               <thead>
-                <tr style={{ background: "#1a1e2e", borderBottom: "1px solid #232838", color: "#94a3b8" }}>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#94a3b8" }}>
                   <th style={{ padding: "12px 16px" }}>Practice Category</th>
                   <th style={{ padding: "12px 16px" }}>Client Matters (Demand)</th>
                   <th style={{ padding: "12px 16px" }}>Verified Advocates (Supply)</th>
@@ -1813,8 +1862,8 @@ export default function AdminDashboard() {
                   </tr>
                 ) : (
                   marketplaceBalance.categories.map((cat: { category: string; demand_count: number; advocate_count: number; balance_state: string; conversion_rate_pct: number }) => (
-                    <tr key={cat.category} style={{ borderBottom: "1px solid #1f2536" }}>
-                      <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f7f8fa" }}>{cat.category}</td>
+                    <tr key={cat.category} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "12px 16px", fontWeight: 600, color: "#0f172a" }}>{cat.category}</td>
                       <td style={{ padding: "12px 16px", color: "#60a5fa" }}>{cat.demand_count} matters</td>
                       <td style={{ padding: "12px 16px", color: "#10b981" }}>{cat.advocate_count} advocates</td>
                       <td style={{ padding: "12px 16px" }}>
@@ -1841,7 +1890,7 @@ export default function AdminDashboard() {
                           {cat.balance_state}
                         </span>
                       </td>
-                      <td style={{ padding: "12px 16px", color: "#cbd5e1" }}>{cat.conversion_rate_pct}%</td>
+                      <td style={{ padding: "12px 16px", color: "#64748b" }}>{cat.conversion_rate_pct}%</td>
                     </tr>
                   ))
                 )}
@@ -1850,13 +1899,13 @@ export default function AdminDashboard() {
           </div>
 
           {/* Section 4: Unit Economics & Direct Contribution Margins */}
-          <div style={{ background: "#141721", borderRadius: "10px", border: "1px solid #232838", padding: "20px" }}>
+          <div style={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <div>
-                <h3 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#fff" }}>
-                  📈 Unit Economics & Contribution Margins (Rule 25)
+                <h3 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                  Unit Economics & Contribution Margins (Rule 25)
                 </h3>
-                <p style={{ color: "#94a3b8", fontSize: "12px", margin: "2px 0 0 0" }}>
+                <p style={{ color: "#64748b", fontSize: "12px", margin: "2px 0 0 0" }}>
                   Server-computed direct costs per consultation session with gross margin modeling.
                 </p>
               </div>
@@ -1864,8 +1913,8 @@ export default function AdminDashboard() {
                 style={{
                   padding: "4px 8px",
                   borderRadius: "4px",
-                  background: "rgba(234, 179, 8, 0.15)",
-                  color: "#fbbf24",
+                  background: "rgba(245, 158, 11, 0.15)",
+                  color: "#d97706",
                   fontSize: "11px",
                   fontWeight: 600,
                 }}
@@ -1875,25 +1924,25 @@ export default function AdminDashboard() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "20px" }}>
-              <div style={{ background: "#1a1e2e", padding: "14px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "11px", color: "#94a3b8" }}>Average Consultation Fee</div>
-                <div style={{ fontSize: "20px", fontWeight: 700, color: "#f7f8fa", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "14px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "11px", color: "#64748b" }}>Average Consultation Fee</div>
+                <div style={{ fontSize: "20px", fontWeight: 700, color: "#0f172a", marginTop: "4px" }}>
                   ₹{(unitEconomics?.metrics?.avg_gross_revenue_per_consultation ?? 1500).toLocaleString("en-IN")}
                 </div>
                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>Gross litigant ticket</div>
               </div>
 
-              <div style={{ background: "#1a1e2e", padding: "14px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "11px", color: "#94a3b8" }}>Platform Commission (20%)</div>
-                <div style={{ fontSize: "20px", fontWeight: 700, color: "#60a5fa", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "14px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "11px", color: "#64748b" }}>Platform Commission (20%)</div>
+                <div style={{ fontSize: "20px", fontWeight: 700, color: "#2563eb", marginTop: "4px" }}>
                   ₹{((unitEconomics?.metrics?.avg_gross_revenue_per_consultation ?? 1500) * 0.2).toFixed(2)}
                 </div>
                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>Platform retained share</div>
               </div>
 
-              <div style={{ background: "#1a1e2e", padding: "14px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "11px", color: "#94a3b8" }}>Direct Operational Costs</div>
-                <div style={{ fontSize: "20px", fontWeight: 700, color: "#f87171", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "14px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "11px", color: "#64748b" }}>Direct Operational Costs</div>
+                <div style={{ fontSize: "20px", fontWeight: 700, color: "#ef4444", marginTop: "4px" }}>
                   ₹{(
                     (unitEconomics?.metrics?.direct_costs?.payment_gateway_fee_2pct ?? 30) +
                     (unitEconomics?.metrics?.direct_costs?.infrastructure_webrtc_inr ?? 15) +
@@ -1904,38 +1953,38 @@ export default function AdminDashboard() {
                 <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>Gateway + Infra + Support + Reserve</div>
               </div>
 
-              <div style={{ background: "#1a1e2e", padding: "14px", borderRadius: "8px", border: "1px solid #282f44" }}>
-                <div style={{ fontSize: "11px", color: "#94a3b8" }}>Net Contribution Margin</div>
-                <div style={{ fontSize: "20px", fontWeight: 700, color: "#34d399", marginTop: "4px" }}>
+              <div style={{ background: "#f8fafc", padding: "14px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "11px", color: "#64748b" }}>Net Contribution Margin</div>
+                <div style={{ fontSize: "20px", fontWeight: 700, color: "#059669", marginTop: "4px" }}>
                   ₹{(unitEconomics?.metrics?.net_contribution_margin_inr ?? 185).toFixed(2)}
                 </div>
-                <div style={{ fontSize: "11px", color: "#34d399", marginTop: "2px" }}>
+                <div style={{ fontSize: "11px", color: "#059669", marginTop: "2px" }}>
                   {unitEconomics?.metrics?.gross_margin_pct ?? 61.67}% Contribution Margin
                 </div>
               </div>
             </div>
 
             {/* CAC Breakdown by Channel */}
-            <div style={{ background: "#1a1e2e", padding: "16px", borderRadius: "8px", border: "1px solid #282f44" }}>
-              <div style={{ fontSize: "13px", fontWeight: 600, color: "#fff", marginBottom: "8px" }}>
+            <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: "#0f172a", marginBottom: "8px" }}>
                 Customer Acquisition Cost (CAC) by Channel (Rule 26)
               </div>
               <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: "150px" }}>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Organic Discovery</div>
-                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#34d399", marginTop: "2px" }}>₹0 (Organic SEO)</div>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>Organic Discovery</div>
+                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#059669", marginTop: "2px" }}>₹0 (Organic SEO)</div>
                 </div>
                 <div style={{ flex: 1, minWidth: "150px" }}>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Lawyer Referrals</div>
-                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#60a5fa", marginTop: "2px" }}>₹50 (Advocate credits)</div>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>Lawyer Referrals</div>
+                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#2563eb", marginTop: "2px" }}>₹50 (Advocate credits)</div>
                 </div>
                 <div style={{ flex: 1, minWidth: "150px" }}>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Institutional / NGO</div>
-                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#a78bfa", marginTop: "2px" }}>₹120 (Outreach support)</div>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>Institutional / NGO</div>
+                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#7c3aed", marginTop: "2px" }}>₹120 (Outreach support)</div>
                 </div>
                 <div style={{ flex: 1, minWidth: "150px" }}>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Digital Intent Search</div>
-                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#fbbf24", marginTop: "2px" }}>₹380 (Paid intent ads)</div>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>Digital Intent Search</div>
+                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#d97706", marginTop: "2px" }}>₹380 (Paid intent ads)</div>
                 </div>
               </div>
             </div>
@@ -1952,7 +2001,7 @@ export default function AdminDashboard() {
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            backgroundColor: "rgba(15, 23, 42, 0.6)",
             backdropFilter: "blur(4px)",
             display: "flex",
             alignItems: "center",
@@ -1964,22 +2013,42 @@ export default function AdminDashboard() {
         >
           <div
             style={{
-              background: "#141721",
-              border: "1px solid #232838",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
               borderRadius: "12px",
               width: "100%",
               maxWidth: "460px",
               padding: "24px",
-              color: "#f7f8fa",
+              color: "#0f172a",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ fontSize: "16px", fontWeight: 600, margin: "0 0 8px 0" }}>
-              {confirmModal.type === "SUSPEND_USER" && "⚠️ Confirm Account Suspension"}
-              {confirmModal.type === "REACTIVATE_USER" && "✅ Confirm Account Reactivation"}
-              {confirmModal.type === "REJECT_VERIF" && "🛑 Reject Advocate Verification"}
-            </h3>
-            <p style={{ fontSize: "13px", color: "#94a3b8", lineHeight: "1.5", margin: "0 0 16px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  background: confirmModal.type === "REACTIVATE_USER" ? "#ecfdf5" : "#fef2f2",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {confirmModal.type === "REACTIVATE_USER" ? (
+                  <CheckCircleIcon size={20} color="#059669" />
+                ) : (
+                  <AlertTriangleIcon size={20} color="#dc2626" />
+                )}
+              </div>
+              <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                {confirmModal.type === "SUSPEND_USER" && "Confirm Account Suspension"}
+                {confirmModal.type === "REACTIVATE_USER" && "Confirm Account Reactivation"}
+                {confirmModal.type === "REJECT_VERIF" && "Reject Advocate Verification"}
+              </h3>
+            </div>
+            <p style={{ fontSize: "13px", color: "#64748b", lineHeight: "1.5", margin: "0 0 16px 0" }}>
               {confirmModal.type === "SUSPEND_USER" &&
                 `Are you sure you want to suspend "${confirmModal.targetName}"? All active sessions will be terminated and platform access will be immediately revoked.`}
               {confirmModal.type === "REACTIVATE_USER" &&
@@ -1990,7 +2059,7 @@ export default function AdminDashboard() {
 
             {(confirmModal.type === "SUSPEND_USER" || confirmModal.type === "REJECT_VERIF") && (
               <div style={{ marginBottom: "18px" }}>
-                <label style={{ display: "block", fontSize: "12px", color: "#94a3b8", marginBottom: "6px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "#475569", marginBottom: "6px" }}>
                   Administrative Reason:
                 </label>
                 <input
@@ -2002,9 +2071,9 @@ export default function AdminDashboard() {
                     width: "100%",
                     padding: "10px",
                     borderRadius: "6px",
-                    background: "#1a1e2e",
-                    border: "1px solid #282f44",
-                    color: "#f7f8fa",
+                    background: "#f8fafc",
+                    border: "1px solid #cbd5e1",
+                    color: "#0f172a",
                     fontSize: "13px",
                   }}
                 />
@@ -2017,10 +2086,11 @@ export default function AdminDashboard() {
                 style={{
                   padding: "8px 16px",
                   borderRadius: "6px",
-                  background: "transparent",
-                  border: "1px solid #232838",
-                  color: "#94a3b8",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  color: "#475569",
                   fontSize: "13px",
+                  fontWeight: 500,
                   cursor: "pointer",
                 }}
               >
@@ -2033,8 +2103,8 @@ export default function AdminDashboard() {
                   padding: "8px 16px",
                   borderRadius: "6px",
                   background: confirmModal.type === "SUSPEND_USER" || confirmModal.type === "REJECT_VERIF"
-                    ? "#ef4444"
-                    : "#10b981",
+                    ? "#dc2626"
+                    : "#059669",
                   border: "none",
                   color: "#ffffff",
                   fontSize: "13px",

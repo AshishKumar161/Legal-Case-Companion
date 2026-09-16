@@ -86,7 +86,7 @@
   gap: 8px;
   padding: 10px 16px;
   border-radius: var(--radius-md);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   font-size: 14px;
@@ -139,7 +139,7 @@
 }
 
 .attentionCard {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 22px 24px;
@@ -154,22 +154,22 @@
 
 .attentionCardUrgent {
   border-left-color: var(--status-urgent);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
 }
 
 .attentionCardWarning {
   border-left-color: var(--status-warning);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
 }
 
 .attentionCardSuccess {
   border-left-color: var(--status-success);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
 }
 
 .attentionCardInfo {
   border-left-color: var(--status-info);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
 }
 
 .attentionCard:hover {
@@ -312,7 +312,7 @@
 .searchBox {
   display: flex;
   align-items: center;
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 6px 12px;
@@ -334,7 +334,7 @@
 }
 
 .filterSelect {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 8px 12px;
@@ -351,7 +351,7 @@
 }
 
 .caseCard {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 22px;
@@ -425,7 +425,7 @@
 
 /* Empty States */
 .emptyContainer {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px dashed var(--border-subtle);
   border-radius: var(--radius-xl);
   padding: 48px 24px;
@@ -481,7 +481,7 @@
 }
 
 .modalBox {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   max-width: 480px;

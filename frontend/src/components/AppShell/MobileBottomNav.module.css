@@ -11,7 +11,7 @@
     right: 0;
     min-height: 62px;
     height: calc(62px + env(safe-area-inset-bottom, 0px));
-    background: #FFFFFF;
+    background: var(--surface-card, #FFFFFF);
     border-top: 1px solid var(--border-subtle);
     z-index: var(--z-sticky, 1100);
     justify-content: space-around;

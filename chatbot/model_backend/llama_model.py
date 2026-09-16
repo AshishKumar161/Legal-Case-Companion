@@ -43,7 +43,7 @@ class LLaMAConfig:
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,         # e.g. 'http://localhost:11434/v1' for Ollama
         temperature: float = 0.1,
-        max_tokens: int = 1500,
+        max_tokens: int = 4096,
         timeout: float = 30.0,
     ):
         self.api_key = api_key or os.getenv("GROQ_API_KEY") or os.getenv("LLAMA_API_KEY") or os.getenv("OPENAI_API_KEY")
@@ -140,7 +140,7 @@ class LLaMAModel:
                     "model": self.config.model_name,
                     "messages": messages,
                     "temperature": temp,
-                    "max_tokens": tokens,
+                    "max_tokens": min(tokens, 950) if "qwen" in (self.config.model_name or "").lower() else tokens,
                 }
                 if json_mode:
                     kwargs["response_format"] = {"type": "json_object"}
@@ -513,16 +513,28 @@ class LLaMAModel:
                     issue_explanations.append(f"Potential consideration of offences relating to criminal force or outraging modesty [{cid}].")
                 elif "case:" in cid:
                     clean_id = cid.replace("case:", "")
-                    outcome_str = "convicted (imprisonment and fine)"
+                    outcome_str = "Precedent on record"
                     if "000412" in clean_id:
                         outcome_str = "settled (gift deed declared void; property possession restored to senior citizen)"
                     elif "000781" in clean_id:
                         outcome_str = "decreed (divorce granted by mutual consent; permanent alimony settled)"
                     elif "001042" in clean_id:
                         outcome_str = "convicted (2 years imprisonment + interim maintenance granted)"
+                    elif clean_id.startswith("IK-"):
+                        outcome_str = "Disposed / Documented on Indian Kanoon"
+
+                    case_title = f"Court Precedent {clean_id}"
+                    case_url = None
+                    if clean_id.startswith("IK-"):
+                        tid = clean_id.replace("IK-", "")
+                        case_title = f"Indian Kanoon Precedent #{tid}"
+                        case_url = f"https://indiankanoon.org/doc/{tid}/"
+
                     similar_cases.append({
                         "case_id": clean_id,
-                        "court_and_year": f"District Court precedent [{cid}]",
+                        "title": case_title,
+                        "url": case_url,
+                        "court_and_year": f"Court precedent [{cid}]",
                         "fact_comparison": f"Involved matter related to {cat_name}.",
                         "recorded_outcome": outcome_str,
                         "disclaimer": "Note: Past court outcomes reflect specific evidentiary records and do not guarantee identical results."

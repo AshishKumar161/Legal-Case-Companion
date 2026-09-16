@@ -86,3 +86,5 @@ docs/view_database.html
 Thumbs.db
 Desktop.ini
 scratch/
+cloudflared.exe
+*.exe

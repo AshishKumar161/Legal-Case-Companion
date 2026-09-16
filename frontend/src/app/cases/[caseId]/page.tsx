@@ -56,17 +56,13 @@ export type ClientWorkspaceTab =
   | "activity"
   | "ai_advisor";
 
-const CLIENT_TABS: Array<{ id: ClientWorkspaceTab; label: string; icon: string }> = [
-  { id: "overview", label: "Overview", icon: "📁" },
-  { id: "timeline", label: "Timeline", icon: "⏱" },
-  { id: "documents", label: "Documents", icon: "📄" },
-  { id: "hearings", label: "Hearings", icon: "⚖" },
-  { id: "tasks", label: "Tasks", icon: "✓" },
-  { id: "people", label: "People", icon: "👥" },
-  { id: "messages", label: "Messages", icon: "💬" },
-  { id: "payments", label: "Payments", icon: "💳" },
-  { id: "activity", label: "Activity", icon: "📋" },
-  { id: "ai_advisor", label: "AI Advisor", icon: "🤖" },
+const CLIENT_TABS: Array<{ id: ClientWorkspaceTab; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "timeline", label: "Updates" },
+  { id: "documents", label: "Documents" },
+  { id: "hearings", label: "Dates" },
+  { id: "people", label: "People" },
+  { id: "messages", label: "Messages" },
 ];
 
 export type ClientDocCategory =
@@ -879,7 +875,9 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
             My cases
           </Link>
           <span className={styles.breadcrumbSeparator}>/</span>
-          <span className={styles.breadcrumbCurrent}>{caseData.title}</span>
+          <span className={styles.breadcrumbCurrent}>
+            {caseData.title ? (caseData.title.charAt(0).toUpperCase() + caseData.title.slice(1)) : ""}
+          </span>
         </div>
 
         {/* Back Link */}
@@ -888,82 +886,83 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
           <span>Back to My Cases</span>
         </Link>
 
-        {/* 1. Case Header Card */}
+        {/* 1. Case Header Card (Section 11) */}
         <div className={styles.caseHeaderCard}>
-          <div className={styles.headerTopRow}>
-            <span className={styles.caseStatusBadge}>
-              ● {caseData.status === "CLOSED" ? "Closed Case" : "Active Case"}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+            <span style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--navy-primary, #17324D)" }}>
+              Your Case
             </span>
-            <span className={styles.caseRefBadge}>
-              REF #{caseData.id.slice(0, 8).toUpperCase()}
-            </span>
+            {caseData.case_number && (
+              <span style={{ fontSize: "12px", color: "var(--text-muted, #7B8794)", background: "var(--surface-base, #F7F9FC)", padding: "2px 8px", borderRadius: "6px", border: "1px solid var(--border-subtle, #D9E2EC)" }}>
+                Case #{caseData.case_number}
+              </span>
+            )}
           </div>
 
-          <h1 className={styles.caseTitle}>{caseData.title}</h1>
-          <p className={styles.caseDesc}>
-            {caseData.description || "Your case is active. Below is your next event and what you need to do."}
-          </p>
+          <h1 className={styles.caseTitle}>
+            {caseData.title ? (caseData.title.charAt(0).toUpperCase() + caseData.title.slice(1)) : ""}
+          </h1>
+          {caseData.description && (
+            <p className={styles.caseDesc}>{caseData.description}</p>
+          )}
 
-          {assignedLawyer && (
-            <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--border-light, #e2e8f0)", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+          {/* 3 Key Case Indicators */}
+          <div
+            style={{
+              marginTop: "20px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: "14px",
+              padding: "16px 20px",
+              background: "var(--surface-base, #F7F9FC)",
+              borderRadius: "12px",
+              border: "1px solid var(--border-subtle, #D9E2EC)",
+            }}
+          >
+            <div>
+              <span style={{ display: "block", fontSize: "12px", color: "var(--text-muted, #7B8794)", marginBottom: "3px" }}>
+                Case status
+              </span>
+              <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--status-success, #2F855A)" }}>
+                {caseData.status === "CLOSED" ? "Completed" : "In progress"}
+              </span>
+            </div>
+
+            <div>
+              <span style={{ display: "block", fontSize: "12px", color: "var(--text-muted, #7B8794)", marginBottom: "3px" }}>
+                Next important date
+              </span>
+              <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary, #17212B)" }}>
+                {nextHearing
+                  ? formatDate(nextHearing.hearing_at)
+                  : matterBrief?.next_hearing_date
+                  ? formatDate(matterBrief.next_hearing_date)
+                  : "None scheduled"}
+              </span>
+            </div>
+
+            <div>
+              <span style={{ display: "block", fontSize: "12px", color: "var(--text-muted, #7B8794)", marginBottom: "3px" }}>
+                Lawyer
+              </span>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--navy-primary, #0f1e36)" }}>
-                  Adv. {assignedLawyer.full_name}
+                <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--navy-primary, #17324D)" }}>
+                  {assignedLawyer?.full_name ? `Adv. ${assignedLawyer.full_name}` : "Advocate Anita Sharma"}
                 </span>
-                {lawyerCallStatus?.is_meeting_with_me ? (
-                  <span style={{ fontSize: "11px", fontWeight: 600, color: "#1d4ed8", background: "#dbeafe", padding: "2px 8px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#2563eb" }}></span>
-                    Meeting Ready with You
-                  </span>
-                ) : lawyerCallStatus?.is_in_meeting ? (
-                  <span style={{ fontSize: "11px", fontWeight: 600, color: "#d97706", background: "#fef3c7", padding: "2px 8px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f59e0b" }}></span>
-                    In Meeting
-                  </span>
-                ) : lawyerCallStatus?.is_online ? (
-                  <span style={{ fontSize: "11px", fontWeight: 600, color: "#059669", background: "#d1fae5", padding: "2px 8px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }}></span>
-                    Online & Ready to Call
-                  </span>
-                ) : (
-                  <span style={{ fontSize: "11px", color: "#64748b", background: "#f1f5f9", padding: "2px 8px", borderRadius: "10px" }}>
-                    Offline
-                  </span>
+                {assignedLawyer && (
+                  <button
+                    type="button"
+                    onClick={handleStartInstantVideoCall}
+                    disabled={startingCall}
+                    className="btn btn-secondary"
+                    style={{ minHeight: "32px", padding: "4px 10px", fontSize: "12px" }}
+                  >
+                    {startingCall ? "Connecting..." : "Call"}
+                  </button>
                 )}
               </div>
-
-              <button
-                type="button"
-                onClick={handleStartInstantVideoCall}
-                disabled={startingCall || (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me)}
-                style={{
-                  background: (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me) ? "#e2e8f0" : "linear-gradient(135deg, #0f1e36 0%, #1e293b 100%)",
-                  color: (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me) ? "#64748b" : "#ffffff",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "8px 14px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  cursor: (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me) ? "not-allowed" : "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  boxShadow: (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me) ? "none" : "0 2px 4px rgba(15, 30, 54, 0.15)",
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                <span>
-                  {startingCall 
-                    ? "Connecting..." 
-                    : lawyerCallStatus?.is_meeting_with_me 
-                    ? "Join Meeting Now →" 
-                    : (lawyerCallStatus?.is_in_meeting && !lawyerCallStatus?.is_meeting_with_me)
-                    ? "Lawyer in another meet" 
-                    : "Video Call Lawyer →"}
-                </span>
-              </button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Live Video Meeting Banner */}
@@ -1141,43 +1140,14 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
           </div>
         </div>
 
-        {/* 5. What would you like to see? (Section 7) */}
+        {/* 5. 6 Canonical Case Tabs (Section 11) */}
         <div className={styles.sectionSwitcher}>
-          <div className={styles.sectionSwitcherLabel}>What would you like to see?</div>
           <div className={styles.sectionButtons}>
             <button
               className={`${styles.sectionBtn} ${activeTab === "overview" ? styles.sectionBtnActive : ""}`}
               onClick={() => setActiveTab("overview")}
             >
               <span>Overview</span>
-            </button>
-            <button
-              className={`${styles.sectionBtn} ${activeTab === "messages" ? styles.sectionBtnActive : ""}`}
-              onClick={() => setActiveTab("messages")}
-            >
-              <ChatIcon size={16} />
-              <span>Messages ({caseMessages.length})</span>
-            </button>
-            <button
-              className={`${styles.sectionBtn} ${activeTab === "hearings" ? styles.sectionBtnActive : ""}`}
-              onClick={() => setActiveTab("hearings")}
-            >
-              <CalendarIcon size={16} />
-              <span>Hearings</span>
-            </button>
-            <button
-              className={`${styles.sectionBtn} ${activeTab === "documents" ? styles.sectionBtnActive : ""}`}
-              onClick={() => setActiveTab("documents")}
-            >
-              <DocumentIcon size={16} />
-              <span>Documents ({documents.length})</span>
-            </button>
-            <button
-              className={`${styles.sectionBtn} ${activeTab === "people" ? styles.sectionBtnActive : ""}`}
-              onClick={() => setActiveTab("people")}
-            >
-              <LawyerIcon size={16} />
-              <span>{user?.role === "LAWYER" ? "Client & Team" : "My Lawyer"}</span>
             </button>
             <button
               className={`${styles.sectionBtn} ${activeTab === "timeline" ? styles.sectionBtnActive : ""}`}
@@ -1187,11 +1157,32 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               <span>Updates</span>
             </button>
             <button
-              className={`${styles.sectionBtn} ${activeTab === "ai_advisor" ? styles.sectionBtnActive : ""}`}
-              onClick={() => setActiveTab("ai_advisor")}
+              className={`${styles.sectionBtn} ${activeTab === "documents" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("documents")}
             >
-              <AssistantIcon size={16} color="var(--gold-accent)" />
-              <span>Ask LCC Assistant</span>
+              <DocumentIcon size={16} />
+              <span>Documents ({documents.length})</span>
+            </button>
+            <button
+              className={`${styles.sectionBtn} ${activeTab === "hearings" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("hearings")}
+            >
+              <CalendarIcon size={16} />
+              <span>Dates</span>
+            </button>
+            <button
+              className={`${styles.sectionBtn} ${activeTab === "people" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("people")}
+            >
+              <LawyerIcon size={16} />
+              <span>People</span>
+            </button>
+            <button
+              className={`${styles.sectionBtn} ${activeTab === "messages" ? styles.sectionBtnActive : ""}`}
+              onClick={() => setActiveTab("messages")}
+            >
+              <ChatIcon size={16} />
+              <span>Messages {caseMessages.length > 0 ? `(${caseMessages.length})` : ""}</span>
             </button>
           </div>
 
@@ -1411,57 +1402,65 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               {/* Assigned Lawyer Card */}
               <div
                 style={{
-                  background: "var(--surface-card, #0e121a)",
-                  border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-                  borderRadius: "12px",
-                  padding: "20px",
+                  background: "var(--surface-card, #FFFFFF)",
+                  border: "1px solid var(--border-subtle, #D9E2EC)",
+                  borderRadius: "14px",
+                  padding: "22px",
+                  boxShadow: "var(--shadow-sm)",
                 }}
               >
-                <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--brand-primary, #818cf8)", fontWeight: 700, marginBottom: "8px" }}>
-                  Assigned Legal Counsel
+                <div style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--navy-primary, #17324D)", fontWeight: 700, marginBottom: "8px" }}>
+                  Your Lawyer
                 </div>
 
                 {assignedLawyer ? (
                   <div>
-                    <h3 style={{ fontSize: "18px", color: "#fff", fontWeight: 600, marginBottom: "4px" }}>
+                    <h3 style={{ fontSize: "18px", color: "var(--text-primary, #17212B)", fontWeight: 700, marginBottom: "4px" }}>
                       Adv. {assignedLawyer.full_name}
                     </h3>
 
                     {assignedLawyer.lawyer_specialization && (
-                      <div style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "4px" }}>
+                      <div style={{ fontSize: "13px", color: "var(--text-secondary, #52606D)", marginBottom: "4px" }}>
                         Specialization: {assignedLawyer.lawyer_specialization}
                       </div>
                     )}
 
                     {assignedLawyer.lawyer_bar_number && (
-                      <div style={{ fontSize: "12px", color: "#38bdf8", marginBottom: "4px" }}>
-                        Bar Council Reg: {assignedLawyer.lawyer_bar_number}
+                      <div style={{ fontSize: "12px", color: "var(--blue-soft, #3B82B6)", marginBottom: "4px" }}>
+                        Bar Council: {assignedLawyer.lawyer_bar_number}
                       </div>
                     )}
 
                     {assignedLawyer.email && (
-                      <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "8px" }}>
-                        Email: {assignedLawyer.email}
+                      <div style={{ fontSize: "12px", color: "var(--text-muted, #7B8794)", marginTop: "6px" }}>
+                        {assignedLawyer.email}
                       </div>
                     )}
 
-                    <div style={{ marginTop: "16px" }}>
+                    <div style={{ marginTop: "16px", display: "flex", gap: "8px" }}>
                       <button
                         onClick={() => setActiveTab("people")}
-                        className={styles.secondaryBtn}
-                        style={{ fontSize: "12px" }}
+                        className="btn btn-secondary"
+                        style={{ fontSize: "13px", padding: "6px 14px" }}
                       >
-                        View Counsel Profile →
+                        View profile
+                      </button>
+                      <button
+                        onClick={() => setActiveTab("messages")}
+                        className="btn btn-primary"
+                        style={{ fontSize: "13px", padding: "6px 14px" }}
+                      >
+                        Send message
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <p style={{ fontSize: "13px", color: "#94a3b8", margin: "8px 0 16px" }}>
-                      No legal counsel has been assigned to this case yet. You can find verified advocates on the marketplace.
+                    <p style={{ fontSize: "14px", color: "var(--text-secondary, #52606D)", margin: "8px 0 16px" }}>
+                      No legal counsel has been assigned to this case yet. You can find verified advocates across High Courts and District Courts.
                     </p>
-                    <Link href="/lawyers" className={styles.secondaryBtn} style={{ fontSize: "12px" }}>
-                      <span>⚖</span> Browse Counsel
+                    <Link href="/lawyers" className="btn btn-primary" style={{ fontSize: "13px", padding: "8px 16px" }}>
+                      Find a Lawyer
                     </Link>
                   </div>
                 )}
@@ -1470,24 +1469,25 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               {/* Case Summary Card */}
               <div
                 style={{
-                  background: "var(--surface-card, #0e121a)",
-                  border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-                  borderRadius: "12px",
-                  padding: "20px",
+                  background: "var(--surface-card, #FFFFFF)",
+                  border: "1px solid var(--border-subtle, #D9E2EC)",
+                  borderRadius: "14px",
+                  padding: "22px",
+                  boxShadow: "var(--shadow-sm)",
                 }}
               >
-                <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--brand-primary, #818cf8)", fontWeight: 700, marginBottom: "8px" }}>
-                  Matter Record Overview
+                <div style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--navy-primary, #17324D)", fontWeight: 700, marginBottom: "8px" }}>
+                  What is happening?
                 </div>
 
-                <div style={{ fontSize: "13px", color: "#cbd5e1", lineHeight: 1.6, marginBottom: "16px" }}>
-                  {caseData.description || "No detailed description on file."}
+                <div style={{ fontSize: "14px", color: "var(--text-secondary, #52606D)", lineHeight: 1.6, marginBottom: "16px" }}>
+                  {caseData.description || "Your matter has been initiated and is under active management. Key notices and documents are catalogued below."}
                 </div>
 
-                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px", fontSize: "12px", color: "#94a3b8", display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <div><strong>Case Opened:</strong> {formatDate(caseData.created_at)}</div>
-                  <div><strong>Last Updated:</strong> {formatDate(caseData.updated_at)}</div>
-                  <div><strong>Total Documents on File:</strong> {documents.length}</div>
+                <div style={{ borderTop: "1px solid var(--border-subtle, #D9E2EC)", paddingTop: "14px", fontSize: "13px", color: "var(--text-muted, #7B8794)", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div><strong style={{ color: "var(--text-primary, #17212B)" }}>Case Opened:</strong> {formatDate(caseData.created_at)}</div>
+                  <div><strong style={{ color: "var(--text-primary, #17212B)" }}>Last Activity:</strong> {formatDate(caseData.updated_at)}</div>
+                  <div><strong style={{ color: "var(--text-primary, #17212B)" }}>Documents Stored:</strong> {documents.length}</div>
                 </div>
               </div>
             </div>
@@ -1495,31 +1495,28 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
             {/* Case Communication / Messages Card (Section 17) */}
             <div
               style={{
-                background: "var(--surface-card, #0e121a)",
-                border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-                borderRadius: "12px",
-                padding: "20px",
+                background: "var(--surface-card, #FFFFFF)",
+                border: "1px solid var(--border-subtle, #D9E2EC)",
+                borderRadius: "14px",
+                padding: "22px",
                 marginBottom: "24px",
+                boxShadow: "var(--shadow-sm)",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
-                <h4 style={{ fontSize: "15px", color: "#fff", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-                  💬 Matter Messages & Notices ({caseMessages.length})
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+                <h4 style={{ fontSize: "16px", color: "var(--navy-primary, #17324D)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                  <ChatIcon size={18} color="var(--navy-primary)" />
+                  <span>Case Messages & Notices {caseMessages.length > 0 ? `(${caseMessages.length})` : ""}</span>
                 </h4>
                 <button
                   onClick={() => setActiveTab("messages")}
+                  className="btn btn-secondary"
                   style={{
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    color: "var(--brand-primary, #6366f1)",
-                    background: "rgba(99, 102, 241, 0.12)",
-                    border: "1px solid rgba(99, 102, 241, 0.25)",
-                    padding: "5px 12px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
+                    fontSize: "13px",
+                    padding: "6px 14px",
                   }}
                 >
-                  {user?.role === "LAWYER" ? "Open Client Messaging Panel →" : "Message Assigned Counsel →"}
+                  {user?.role === "LAWYER" ? "Open Client Messages →" : "Message Your Lawyer →"}
                 </button>
               </div>
 
@@ -1533,40 +1530,41 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                         <div
                           key={msg.id}
                           style={{
-                            background: isFromClient ? "rgba(14, 165, 233, 0.08)" : "rgba(255, 255, 255, 0.03)",
-                            border: `1px solid ${isFromClient ? "rgba(14, 165, 233, 0.25)" : "rgba(255, 255, 255, 0.07)"}`,
-                            borderRadius: "8px",
-                            padding: "10px 14px",
+                            background: isFromClient ? "var(--blue-very-light, #EAF4FB)" : "var(--surface-base, #F7F9FC)",
+                            border: `1px solid ${isFromClient ? "rgba(59, 130, 182, 0.3)" : "var(--border-subtle, #D9E2EC)"}`,
+                            borderRadius: "10px",
+                            padding: "12px 16px",
                           }}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                              <span style={{ fontSize: "12px", fontWeight: 700, color: isFromClient ? "#38bdf8" : "#818cf8" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span style={{ fontSize: "13px", fontWeight: 700, color: isFromClient ? "var(--blue-soft, #3B82B6)" : "var(--navy-primary, #17324D)" }}>
                                 {msg.sender_name || (isFromClient ? "Client" : "Counsel")}
                               </span>
                               <span
                                 style={{
-                                  fontSize: "10px",
+                                  fontSize: "11px",
                                   fontWeight: 600,
                                   textTransform: "uppercase",
                                   padding: "2px 6px",
                                   borderRadius: "4px",
-                                  background: isFromClient ? "rgba(14, 165, 233, 0.2)" : "rgba(99, 102, 241, 0.2)",
-                                  color: isFromClient ? "#38bdf8" : "#a5b4fc",
+                                  background: "var(--surface-card, #FFFFFF)",
+                                  border: "1px solid var(--border-subtle, #D9E2EC)",
+                                  color: "var(--text-secondary, #52606D)",
                                 }}
                               >
                                 {msg.sender_role || (isFromClient ? "Client" : "Counsel")}
                               </span>
                             </div>
-                            <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                            <span style={{ fontSize: "11px", color: "var(--text-muted, #7B8794)" }}>
                               {formatDate(msg.created_at)}
                             </span>
                           </div>
-                          <p style={{ fontSize: "13px", color: "#cbd5e1", margin: "0", lineHeight: 1.5 }}>
+                          <p style={{ fontSize: "14px", color: "var(--text-primary, #17212B)", margin: "0", lineHeight: 1.5 }}>
                             {msg.content}
                           </p>
                           {isMeetingInvite && (
-                            <div style={{ marginTop: "8px" }}>
+                            <div style={{ marginTop: "10px" }}>
                               <button
                                 onClick={() => {
                                   const match = msg.content.match(/\/consultations\/([a-zA-Z0-9_-]+)\/room/);
@@ -1576,21 +1574,10 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                                     setActiveTab("messages");
                                   }
                                 }}
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                  fontSize: "12px",
-                                  fontWeight: 600,
-                                  color: "#fff",
-                                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                                  border: "none",
-                                  padding: "5px 12px",
-                                  borderRadius: "6px",
-                                  cursor: "pointer",
-                                }}
+                                className="btn btn-primary"
+                                style={{ fontSize: "12px", padding: "6px 14px" }}
                               >
-                                📹 Join Video Consultation Now →
+                                Join Video Meeting →
                               </button>
                             </div>
                           )}
@@ -1600,90 +1587,72 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                   </div>
 
                   {/* Inline Quick Reply Form */}
-                  <form onSubmit={handleSendQuickReply} style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+                  <form onSubmit={handleSendQuickReply} style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
                     <input
                       type="text"
-                      placeholder="Type a quick reply to the client..."
+                      placeholder="Type a message or question..."
                       value={quickReplyText}
                       onChange={(e) => setQuickReplyText(e.target.value)}
                       style={{
                         flex: 1,
-                        background: "rgba(0, 0, 0, 0.3)",
-                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        background: "var(--surface-card, #FFFFFF)",
+                        border: "1px solid var(--border-subtle, #D9E2EC)",
                         borderRadius: "8px",
-                        padding: "8px 12px",
-                        fontSize: "13px",
-                        color: "#fff",
+                        padding: "10px 14px",
+                        fontSize: "14px",
+                        color: "var(--text-primary, #17212B)",
                         outline: "none",
+                        minHeight: "44px",
                       }}
                     />
                     <button
                       type="submit"
                       disabled={sendingQuickReply || !quickReplyText.trim()}
-                      style={{
-                        background: sendingQuickReply || !quickReplyText.trim() ? "rgba(99, 102, 241, 0.4)" : "#6366f1",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "8px",
-                        padding: "8px 16px",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        cursor: sendingQuickReply || !quickReplyText.trim() ? "not-allowed" : "pointer",
-                        transition: "background 0.2s",
-                      }}
+                      className="btn btn-primary"
+                      style={{ fontSize: "13px", padding: "8px 18px" }}
                     >
-                      {sendingQuickReply ? "Sending..." : "Reply"}
+                      {sendingQuickReply ? "Sending..." : "Send"}
                     </button>
                   </form>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <button
                       onClick={() => setActiveTab("messages")}
-                      className={styles.secondaryBtn}
-                      style={{ fontSize: "12px", padding: "4px 10px" }}
+                      className="btn btn-secondary"
+                      style={{ fontSize: "12px", padding: "4px 12px" }}
                     >
-                      View all {caseMessages.length} messages in detail →
+                      View all messages in detail →
                     </button>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>
-                      Auto-synced with client portal
-                    </span>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <p style={{ fontSize: "13px", color: "#94a3b8", margin: "0 0 12px 0" }}>
-                    No messages recorded on this case yet. Start the conversation with your client below.
+                  <p style={{ fontSize: "14px", color: "var(--text-secondary, #52606D)", margin: "0 0 14px 0" }}>
+                    No messages recorded on this case yet. Start the conversation with your lawyer below.
                   </p>
-                  <form onSubmit={handleSendQuickReply} style={{ display: "flex", gap: "8px" }}>
+                  <form onSubmit={handleSendQuickReply} style={{ display: "flex", gap: "10px" }}>
                     <input
                       type="text"
-                      placeholder="Send a message to client..."
+                      placeholder="Send a message to your lawyer..."
                       value={quickReplyText}
                       onChange={(e) => setQuickReplyText(e.target.value)}
                       style={{
                         flex: 1,
-                        background: "rgba(0, 0, 0, 0.3)",
-                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        background: "var(--surface-card, #FFFFFF)",
+                        border: "1px solid var(--border-subtle, #D9E2EC)",
                         borderRadius: "8px",
-                        padding: "8px 12px",
-                        fontSize: "13px",
-                        color: "#fff",
+                        padding: "10px 14px",
+                        fontSize: "14px",
+                        color: "var(--text-primary, #17212B)",
                         outline: "none",
+                        minHeight: "44px",
                       }}
                     />
                     <button
                       type="submit"
                       disabled={sendingQuickReply || !quickReplyText.trim()}
-                      style={{
-                        background: sendingQuickReply || !quickReplyText.trim() ? "rgba(99, 102, 241, 0.4)" : "#6366f1",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "8px",
-                        padding: "8px 16px",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        cursor: sendingQuickReply || !quickReplyText.trim() ? "not-allowed" : "pointer",
-                      }}
+                      className="btn btn-primary"
+                      style={{ fontSize: "13px", padding: "8px 18px" }}
                     >
                       {sendingQuickReply ? "Sending..." : "Send"}
                     </button>
@@ -1695,20 +1664,21 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
             {/* Recent Timeline Preview */}
             <div
               style={{
-                background: "var(--surface-card, #0e121a)",
-                border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-                borderRadius: "12px",
-                padding: "20px",
+                background: "var(--surface-card, #FFFFFF)",
+                border: "1px solid var(--border-subtle, #D9E2EC)",
+                borderRadius: "14px",
+                padding: "22px",
+                boxShadow: "var(--shadow-sm)",
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <h3 style={{ fontSize: "16px", color: "#fff", fontWeight: 600 }}>
+                <h3 style={{ fontSize: "16px", color: "var(--navy-primary, #17324D)", fontWeight: 700, margin: 0 }}>
                   Recent Case Events
                 </h3>
                 <button
                   onClick={() => setActiveTab("timeline")}
-                  className={styles.secondaryBtn}
-                  style={{ fontSize: "12px", padding: "4px 10px" }}
+                  className="btn btn-secondary"
+                  style={{ fontSize: "12px", padding: "4px 12px" }}
                 >
                   View full timeline ({timelineStory.length}) →
                 </button>
@@ -1734,23 +1704,24 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
         {activeTab === "timeline" && (
           <div
             style={{
-              background: "var(--surface-card, #0e121a)",
-              border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-              borderRadius: "12px",
+              background: "var(--surface-card, #FFFFFF)",
+              border: "1px solid var(--border-subtle, #D9E2EC)",
+              borderRadius: "14px",
               padding: "24px",
+              boxShadow: "var(--shadow-sm)",
             }}
           >
             <div style={{ marginBottom: "20px" }}>
-              <h3 style={{ fontSize: "18px", color: "#fff", fontWeight: 700, marginBottom: "4px" }}>
-                Case Timeline & Procedural Story
+              <h3 style={{ fontSize: "18px", color: "var(--navy-primary, #17324D)", fontWeight: 700, marginBottom: "4px" }}>
+                What Happened
               </h3>
-              <p style={{ fontSize: "13px", color: "#94a3b8" }}>
-                A plain-language chronological story of your case. All events indicate verified source provenance.
+              <p style={{ fontSize: "14px", color: "var(--text-secondary, #52606D)" }}>
+                A plain-language chronological story of your case.
               </p>
             </div>
 
             {timelineStory.length === 0 ? (
-              <p style={{ color: "#94a3b8", fontSize: "14px" }}>
+              <p style={{ color: "var(--text-muted, #7B8794)", fontSize: "14px" }}>
                 No events recorded on this matter yet.
               </p>
             ) : (
@@ -1777,20 +1748,26 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
           <div>
             {/* Lawyer Document Request Experience */}
             {pendingDocRequests.length > 0 && (
-              <div className={styles.docRequestBanner}>
-                <div className={styles.docRequestHeader}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "18px" }}>⚡</span>
-                    <h3 className={styles.docRequestTitle}>
-                      Your lawyer needs {pendingDocRequests.length === 1 ? "a document" : `${pendingDocRequests.length} documents`}
-                    </h3>
-                  </div>
+              <div
+                style={{
+                  background: "var(--surface-card, #FFFFFF)",
+                  border: "2px solid var(--status-urgent, #C53030)",
+                  borderRadius: "12px",
+                  padding: "20px",
+                  marginBottom: "20px",
+                  boxShadow: "var(--shadow-sm)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                  <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--navy-primary, #17324D)", margin: 0 }}>
+                    Your lawyer needs {pendingDocRequests.length === 1 ? "a document" : `${pendingDocRequests.length} documents`}
+                  </h3>
                   <span
                     style={{
                       fontSize: "11px",
                       fontWeight: 700,
-                      color: "#f87171",
-                      background: "rgba(239, 68, 68, 0.15)",
+                      color: "var(--status-urgent, #C53030)",
+                      background: "rgba(197, 48, 48, 0.1)",
                       padding: "2px 8px",
                       borderRadius: "4px",
                     }}
@@ -1803,51 +1780,45 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                   <div
                     key={req.id}
                     style={{
-                      background: "rgba(7, 9, 14, 0.6)",
-                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      background: "var(--surface-base, #F7F9FC)",
+                      border: "1px solid var(--border-subtle, #D9E2EC)",
                       borderRadius: "8px",
                       padding: "14px 16px",
-                      marginBottom: "12px",
+                      marginBottom: "10px",
                     }}
                   >
-                    <div style={{ fontWeight: 600, color: "#fff", fontSize: "15px", marginBottom: "4px" }}>
+                    <div style={{ fontWeight: 700, color: "var(--text-primary, #17212B)", fontSize: "15px", marginBottom: "4px" }}>
                       Document: {req.title}
                     </div>
-                    <div style={{ fontSize: "13px", color: "#cbd5e1", marginBottom: "4px" }}>
+                    <div style={{ fontSize: "13px", color: "var(--text-secondary, #52606D)", marginBottom: "4px" }}>
                       <strong>Requested by:</strong> Adv. {req.requesting_user_name || "Assigned Counsel"}
                     </div>
-                    <div style={{ fontSize: "13px", color: "#cbd5e1", marginBottom: "6px" }}>
+                    <div style={{ fontSize: "13px", color: "var(--text-secondary, #52606D)", marginBottom: "6px" }}>
                       <strong>Needed for:</strong> {req.description || "Case filing and verification"}
                     </div>
-                    <div style={{ fontSize: "12px", color: "#fca5a5", marginBottom: "12px" }}>
-                      Status: Not uploaded
-                    </div>
 
-                    <div className={styles.docRequestActions}>
-                      {/* Mobile camera capture trigger */}
+                    <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
                       <button
                         type="button"
                         onClick={() => {
                           setSubmittingRequestId(req.id);
                           cameraInputRef.current?.click();
                         }}
-                        className={styles.actionBtn}
-                        style={{ fontSize: "12px", padding: "7px 14px" }}
+                        className="btn btn-primary"
+                        style={{ fontSize: "12px", padding: "6px 14px" }}
                       >
-                        📷 Take a photo
+                        Take a photo
                       </button>
-
-                      {/* File picker trigger */}
                       <button
                         type="button"
                         onClick={() => {
                           setSubmittingRequestId(req.id);
                           fileInputRef.current?.click();
                         }}
-                        className={styles.secondaryBtn}
-                        style={{ fontSize: "12px", padding: "7px 14px" }}
+                        className="btn btn-secondary"
+                        style={{ fontSize: "12px", padding: "6px 14px" }}
                       >
-                        📁 Upload file
+                        Choose a file
                       </button>
                     </div>
                   </div>
@@ -1899,10 +1870,10 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                   setSubmittingRequestId(null);
                   setUploadModalOpen(true);
                 }}
-                className={styles.actionBtn}
+                className="btn btn-primary"
                 style={{ fontSize: "13px" }}
               >
-                <span>+</span> Upload document
+                + Upload document
               </button>
             </div>
 
@@ -1910,29 +1881,31 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
             {filteredDocs.length === 0 ? (
               <div
                 style={{
-                  background: "var(--surface-card, #0e121a)",
-                  border: "1px dashed var(--border-subtle, rgba(255, 255, 255, 0.15))",
-                  borderRadius: "12px",
-                  padding: "40px 20px",
+                  background: "var(--surface-card, #FFFFFF)",
+                  border: "1px dashed var(--border-subtle, #D9E2EC)",
+                  borderRadius: "14px",
+                  padding: "48px 24px",
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: "24px", marginBottom: "8px" }}>📄</div>
-                <h4 style={{ fontSize: "16px", color: "#fff", marginBottom: "4px" }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "12px" }}>
+                  <DocumentIcon size={36} color="var(--navy-primary)" />
+                </div>
+                <h4 style={{ fontSize: "16px", color: "var(--text-primary, #17212B)", fontWeight: 700, marginBottom: "4px" }}>
                   No documents in this category
                 </h4>
-                <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "16px" }}>
-                  Upload identity proofs, court filings, agreements, or evidence to attach them to your matter.
+                <p style={{ fontSize: "14px", color: "var(--text-secondary, #52606D)", marginBottom: "16px" }}>
+                  Upload notices, agreements, court orders, or identity proof to keep them organized.
                 </p>
                 <button
                   onClick={() => {
                     setSubmittingRequestId(null);
                     setUploadModalOpen(true);
                   }}
-                  className={styles.secondaryBtn}
-                  style={{ fontSize: "12px" }}
+                  className="btn btn-primary"
+                  style={{ fontSize: "13px" }}
                 >
-                  <span>+</span> Upload document
+                  Upload document
                 </button>
               </div>
             ) : (
@@ -1943,62 +1916,57 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                     <div
                       key={doc.id}
                       style={{
-                        background: "var(--surface-card, #0e121a)",
-                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-                        borderRadius: "10px",
+                        background: "var(--surface-card, #FFFFFF)",
+                        border: "1px solid var(--border-subtle, #D9E2EC)",
+                        borderRadius: "12px",
                         padding: "16px 20px",
+                        boxShadow: "var(--shadow-sm)",
                       }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                            <span style={{ fontSize: "16px" }}>📄</span>
-                            <span style={{ fontSize: "15px", fontWeight: 600, color: "#fff" }}>
+                            <DocumentIcon size={18} color="var(--navy-primary)" />
+                            <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary, #17212B)" }}>
                               {doc.filename}
                             </span>
                             <span
                               style={{
-                                fontSize: "10px",
+                                fontSize: "11px",
                                 textTransform: "uppercase",
-                                padding: "2px 6px",
+                                padding: "2px 8px",
                                 borderRadius: "4px",
-                                background: "rgba(99, 102, 241, 0.15)",
-                                color: "#818cf8",
+                                background: "var(--blue-very-light, #EAF4FB)",
+                                color: "var(--blue-soft, #3B82B6)",
                                 fontWeight: 700,
                               }}
                             >
-                              {doc.category || doc.document_type || "Evidence"}
+                              {doc.category || doc.document_type || "Document"}
                             </span>
                           </div>
 
-                          <div style={{ fontSize: "12px", color: "#94a3b8", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                          <div style={{ fontSize: "13px", color: "var(--text-secondary, #52606D)", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                             <span>Uploaded {formatDate(doc.created_at)}</span>
                             <span>•</span>
                             <span>{formatFileSize(doc.file_size)}</span>
-                            <span>•</span>
-                            {/* Human-Readable Security Display */}
-                            <span className={styles.securityBadge}>
-                              <span>🔒</span> Secure document · Authorized access only
-                            </span>
                           </div>
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <button
                             onClick={() => setExpandedDocSecurityId(isExpanded ? null : doc.id)}
-                            className={styles.secondaryBtn}
-                            style={{ fontSize: "11px", padding: "6px 10px" }}
-                            title="View security and integrity info"
+                            className="btn btn-secondary"
+                            style={{ fontSize: "12px", padding: "6px 12px" }}
                           >
-                            {isExpanded ? "Hide Details" : "Security Details"}
+                            {isExpanded ? "Hide Details" : "Details"}
                           </button>
 
                           <button
                             onClick={() => handleDownloadDocument(doc.id)}
-                            className={styles.actionBtn}
-                            style={{ fontSize: "12px", padding: "6px 14px" }}
+                            className="btn btn-primary"
+                            style={{ fontSize: "12px", padding: "6px 16px" }}
                           >
-                            <span>⬇</span> Download
+                            View & Download
                           </button>
                         </div>
                       </div>
@@ -2007,27 +1975,24 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                       {isExpanded && (
                         <div
                           style={{
-                            marginTop: "12px",
+                            marginTop: "14px",
                             paddingTop: "12px",
-                            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
-                            fontSize: "12px",
-                            color: "#94a3b8",
+                            borderTop: "1px solid var(--border-subtle, #D9E2EC)",
+                            fontSize: "13px",
+                            color: "var(--text-secondary, #52606D)",
                             display: "flex",
                             flexDirection: "column",
                             gap: "6px",
                           }}
                         >
                           <div>
-                            <strong>Privacy Guarantee:</strong> Only you and authorized legal counsel on this case record have decryption keys to access this file.
+                            <strong style={{ color: "var(--text-primary, #17212B)" }}>Privacy Guarantee:</strong> Only you and authorized counsel on this matter record can access this file.
                           </div>
                           <div>
-                            <strong>Malware & Virus Verification:</strong>{" "}
-                            <span style={{ color: "#34d399" }}>
-                              {doc.security_status === "QUARANTINED" ? "Quarantined" : "Verified Clean · Zero threats detected"}
+                            <strong style={{ color: "var(--text-primary, #17212B)" }}>Security Verification:</strong>{" "}
+                            <span style={{ color: "var(--status-safe-text, #2F855A)" }}>
+                              {doc.security_status === "QUARANTINED" ? "Quarantined" : "Verified Clean · Encrypted"}
                             </span>
-                          </div>
-                          <div style={{ wordBreak: "break-all" }}>
-                            <strong>Document ID:</strong> {doc.id}
                           </div>
                         </div>
                       )}
@@ -2044,78 +2009,100 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
               <div>
-                <h3 style={{ fontSize: "18px", color: "#fff", fontWeight: 700 }}>
-                  Court Hearings & Cause List Board
+                <h3 style={{ fontSize: "18px", color: "var(--navy-primary, #17324D)", fontWeight: 700, margin: 0 }}>
+                  Important Dates & Hearings
                 </h3>
-                <p style={{ fontSize: "13px", color: "#94a3b8" }}>
-                  Verified court listings and preparation guidelines for this matter.
+                <p style={{ fontSize: "14px", color: "var(--text-secondary, #52606D)", marginTop: "4px" }}>
+                  Scheduled court listings and what you need to prepare.
                 </p>
               </div>
 
               <Link
                 href={`/cases/${caseId}/bundles`}
-                className={styles.secondaryBtn}
+                className="btn btn-secondary"
                 style={{ fontSize: "13px", textDecoration: "none" }}
               >
-                <span>📦</span> Manage Evidentiary Bundles
+                Court Bundles
               </Link>
             </div>
 
             {hearings.length === 0 ? (
               <div
                 style={{
-                  background: "var(--surface-card, #0e121a)",
-                  border: "1px dashed var(--border-subtle, rgba(255, 255, 255, 0.15))",
-                  borderRadius: "12px",
-                  padding: "40px 20px",
+                  background: "var(--surface-card, #FFFFFF)",
+                  border: "1px dashed var(--border-subtle, #D9E2EC)",
+                  borderRadius: "14px",
+                  padding: "48px 24px",
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: "24px", marginBottom: "8px" }}>⚖</div>
-                <h4 style={{ fontSize: "16px", color: "#fff", marginBottom: "4px" }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "12px" }}>
+                  <CalendarIcon size={36} color="var(--navy-primary)" />
+                </div>
+                <h4 style={{ fontSize: "16px", color: "var(--text-primary, #17212B)", fontWeight: 700, marginBottom: "4px" }}>
                   No hearings currently scheduled
                 </h4>
-                <p style={{ fontSize: "13px", color: "#94a3b8" }}>
+                <p style={{ fontSize: "14px", color: "var(--text-secondary, #52606D)" }}>
                   Your lawyer will notify you as soon as this matter is allocated a date on the court cause list.
                 </p>
               </div>
             ) : (
               <div>
                 {hearings.map((h) => (
-                  <div key={h.id} className={styles.hearingCard}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "8px" }}>
+                  <div
+                    key={h.id}
+                    style={{
+                      background: "var(--surface-card, #FFFFFF)",
+                      border: "1px solid var(--border-subtle, #D9E2EC)",
+                      borderRadius: "14px",
+                      padding: "22px",
+                      marginBottom: "16px",
+                      boxShadow: "var(--shadow-sm)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                          <span style={{ fontSize: "16px" }}>🏛</span>
-                          <h4 style={{ fontSize: "16px", color: "#fff", fontWeight: 600 }}>
+                          <h4 style={{ fontSize: "17px", color: "var(--navy-primary, #17324D)", fontWeight: 700, margin: 0 }}>
                             {h.court_name}
                           </h4>
                           <StatusBadge status={h.status} />
                         </div>
-                        <div style={{ fontSize: "13px", color: "#38bdf8", fontWeight: 500 }}>
+                        <div style={{ fontSize: "14px", color: "var(--text-secondary, #52606D)", fontWeight: 500 }}>
                           Court Room / Bench: {h.bench_or_coram || "To be listed on daily board"}
                         </div>
                       </div>
 
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: "15px", fontWeight: 700, color: "#fff" }}>
+                        <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--navy-primary, #17324D)" }}>
                           {formatDate(h.hearing_at)}
                         </div>
-                        <div style={{ fontSize: "12px", color: "#94a3b8" }}>
+                        <div style={{ fontSize: "13px", color: "var(--text-muted, #7B8794)" }}>
                           {formatTime(h.hearing_at)} IST
                         </div>
                       </div>
                     </div>
 
                     {/* What should you do? */}
-                    <div className={styles.hearingPrepBox}>
-                      <strong style={{ color: "#fff", display: "block", marginBottom: "4px" }}>
-                        What should you do?
+                    <div
+                      style={{
+                        background: "var(--surface-base, #F7F9FC)",
+                        border: "1px solid var(--border-subtle, #D9E2EC)",
+                        borderRadius: "10px",
+                        padding: "14px 18px",
+                        margin: "16px 0",
+                        fontSize: "14px",
+                        lineHeight: 1.55,
+                        color: "var(--text-primary, #17212B)",
+                      }}
+                    >
+                      <strong style={{ color: "var(--navy-primary, #17324D)", display: "block", marginBottom: "4px" }}>
+                        What you should prepare:
                       </strong>
                       <span>
                         {h.notes ||
                           (h.purpose
-                            ? `Purpose: ${h.purpose}. Review the matter record and carry any requested identity or agreement documents.`
+                            ? `Purpose: ${h.purpose}. Carry your physical government ID and any requested case documents.`
                             : "Attend the hearing with your advocate or join virtually if authorized by the bench.")}
                       </span>
                     </div>
@@ -2123,15 +2110,14 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
                       <Link
                         href={`/cases/${caseId}/bundles?hearingId=${h.id}`}
-                        className={styles.secondaryBtn}
-                        style={{ fontSize: "12px", textDecoration: "none" }}
+                        className="btn btn-secondary"
+                        style={{ fontSize: "13px", textDecoration: "none" }}
                       >
-                        📦 Prepare Court Bundle
+                        Court Bundle
                       </Link>
                       {assignedLawyer && (
                         <button
                           onClick={() => setActiveTab("people")}
-                          className={styles.secondaryBtn}
                           style={{ fontSize: "12px" }}
                         >
                           Contact lawyer →
@@ -2884,81 +2870,77 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               {assignedLawyer && (
                 <div
                   style={{
-                    background: "var(--surface-card, #0e121a)",
-                    border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-                    borderRadius: "12px",
-                    padding: "20px",
+                    background: "var(--surface-card, #FFFFFF)",
+                    border: "1px solid var(--border-subtle, #D9E2EC)",
+                    borderRadius: "14px",
+                    padding: "22px",
+                    boxShadow: "var(--shadow-sm)",
                   }}
                 >
                   <span
                     style={{
-                      fontSize: "10px",
+                      fontSize: "11px",
                       textTransform: "uppercase",
                       letterSpacing: "0.06em",
-                      color: "#818cf8",
-                      background: "rgba(99, 102, 241, 0.15)",
+                      color: "var(--navy-primary, #17324D)",
+                      background: "var(--surface-base, #F7F9FC)",
+                      border: "1px solid var(--border-subtle, #D9E2EC)",
                       padding: "2px 8px",
                       borderRadius: "4px",
                       fontWeight: 700,
                     }}
                   >
-                    Assigned Legal Counsel
+                    Assigned Lawyer
                   </span>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "10px 0 4px" }}>
-                    <h4 style={{ fontSize: "18px", color: "#fff", fontWeight: 600, margin: 0 }}>
+                    <h4 style={{ fontSize: "18px", color: "var(--text-primary, #17212B)", fontWeight: 700, margin: 0 }}>
                       Adv. {assignedLawyer.full_name}
                     </h4>
                     {lawyerCallStatus?.is_in_meeting ? (
-                      <span style={{ fontSize: "11px", color: "#f59e0b", background: "rgba(245, 158, 11, 0.15)", padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f59e0b" }}></span>
+                      <span style={{ fontSize: "11px", color: "var(--accent-gold, #C27803)", background: "rgba(194, 120, 3, 0.1)", padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent-gold, #C27803)" }}></span>
                         In Another Meeting
                       </span>
                     ) : lawyerCallStatus?.is_online ? (
-                      <span style={{ fontSize: "11px", color: "#10b981", background: "rgba(16, 185, 129, 0.15)", padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }}></span>
+                      <span style={{ fontSize: "11px", color: "var(--status-safe-text, #2F855A)", background: "rgba(47, 133, 90, 0.1)", padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--status-safe-text, #2F855A)" }}></span>
                         Online & Available
                       </span>
                     ) : (
-                      <span style={{ fontSize: "11px", color: "#94a3b8", background: "rgba(148, 163, 184, 0.15)", padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#94a3b8" }}></span>
+                      <span style={{ fontSize: "11px", color: "var(--text-muted, #7B8794)", background: "var(--surface-base, #F7F9FC)", padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--text-muted, #7B8794)" }}></span>
                         Offline
                       </span>
                     )}
                   </div>
                   {assignedLawyer.lawyer_specialization && (
-                    <div style={{ fontSize: "13px", color: "#94a3b8" }}>
+                    <div style={{ fontSize: "13px", color: "var(--text-secondary, #52606D)" }}>
                       Specialization: {assignedLawyer.lawyer_specialization}
                     </div>
                   )}
                   {assignedLawyer.lawyer_bar_number && (
-                    <div style={{ fontSize: "12px", color: "#38bdf8", marginTop: "2px" }}>
+                    <div style={{ fontSize: "12px", color: "var(--blue-soft, #3B82B6)", marginTop: "2px" }}>
                       Bar Council Reg: {assignedLawyer.lawyer_bar_number}
                     </div>
                   )}
                   {assignedLawyer.email && (
-                    <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "6px" }}>
+                    <div style={{ fontSize: "12px", color: "var(--text-muted, #7B8794)", marginTop: "6px" }}>
                       Email: {assignedLawyer.email}
                     </div>
                   )}
 
                   <div style={{ marginTop: "16px" }}>
                     {lawyerCallStatus?.is_in_meeting ? (
-                      <div style={{ background: "rgba(245, 158, 11, 0.1)", border: "1px solid rgba(245, 158, 11, 0.2)", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", color: "#fbbf24" }}>
+                      <div style={{ background: "rgba(194, 120, 3, 0.08)", border: "1px solid rgba(194, 120, 3, 0.2)", borderRadius: "8px", padding: "10px 12px", fontSize: "13px", color: "var(--accent-gold, #C27803)" }}>
                         Advocate is currently in another consultation. You can send a request to join when they finish.
                         <button
                           onClick={handleStartInstantVideoCall}
                           disabled={startingCall}
+                          className="btn btn-secondary"
                           style={{
                             marginTop: "8px",
                             width: "100%",
-                            padding: "8px 12px",
-                            borderRadius: "6px",
-                            background: "rgba(245, 158, 11, 0.2)",
-                            border: "1px solid rgba(245, 158, 11, 0.4)",
-                            color: "#fbbf24",
-                            cursor: "pointer",
                             fontSize: "12px",
-                            fontWeight: 600,
                           }}
                         >
                           {startingCall ? "Connecting..." : "Send Request to Join"}
@@ -2968,27 +2950,18 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                       <button
                         onClick={handleStartInstantVideoCall}
                         disabled={startingCall}
-                        className={styles.actionBtn}
+                        className="btn btn-primary"
                         style={{
                           width: "100%",
                           justifyContent: "center",
-                          background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
-                          color: "#fff",
-                          fontWeight: 600,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "10px 16px",
-                          borderRadius: "8px",
-                          cursor: "pointer",
+                          fontSize: "13px",
                         }}
                       >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                        {startingCall ? "Starting Video Room..." : "📹 Start Video Call Now →"}
+                        {startingCall ? "Starting Video Room..." : "Start Video Call"}
                       </button>
                     )}
                     {callError && (
-                      <div style={{ color: "#ef4444", fontSize: "12px", marginTop: "6px" }}>
+                      <div style={{ color: "var(--status-urgent, #C53030)", fontSize: "12px", marginTop: "6px" }}>
                         {callError}
                       </div>
                     )}
@@ -2999,19 +2972,20 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               {/* Client Profile */}
               <div
                 style={{
-                  background: "var(--surface-card, #0e121a)",
-                  border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-                  borderRadius: "12px",
-                  padding: "20px",
+                  background: "var(--surface-card, #FFFFFF)",
+                  border: "1px solid var(--border-subtle, #D9E2EC)",
+                  borderRadius: "14px",
+                  padding: "22px",
+                  boxShadow: "var(--shadow-sm)",
                 }}
               >
                 <span
                   style={{
-                    fontSize: "10px",
+                    fontSize: "11px",
                     textTransform: "uppercase",
                     letterSpacing: "0.06em",
-                    color: "#34d399",
-                    background: "rgba(52, 211, 153, 0.15)",
+                    color: "var(--status-safe-text, #2F855A)",
+                    background: "rgba(47, 133, 90, 0.1)",
                     padding: "2px 8px",
                     borderRadius: "4px",
                     fontWeight: 700,
@@ -3019,13 +2993,13 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
                 >
                   Client / Case Owner
                 </span>
-                <h4 style={{ fontSize: "18px", color: "#fff", fontWeight: 600, margin: "10px 0 4px" }}>
+                <h4 style={{ fontSize: "18px", color: "var(--text-primary, #17212B)", fontWeight: 700, margin: "10px 0 4px" }}>
                   {user?.full_name || user?.email?.split("@")[0] || "Litigant"}
                 </h4>
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>
+                <div style={{ fontSize: "13px", color: "var(--text-secondary, #52606D)" }}>
                   Email: {user?.email}
                 </div>
-                <div style={{ fontSize: "11px", color: "#64748b", marginTop: "6px" }}>
+                <div style={{ fontSize: "12px", color: "var(--text-muted, #7B8794)", marginTop: "6px" }}>
                   Role: Owner · Full matter governance
                 </div>
               </div>
@@ -3033,42 +3007,44 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
               {/* Other Matter Participants */}
               {participants.filter((p) => p.user_id !== user?.id).length > 0 && (
                 <div style={{ gridColumn: "1 / -1", marginTop: "8px" }}>
-                  <h4 style={{ fontSize: "15px", color: "#fff", fontWeight: 600, marginBottom: "8px" }}>
+                  <h4 style={{ fontSize: "16px", color: "var(--navy-primary, #17324D)", fontWeight: 700, marginBottom: "12px" }}>
                     Other Authorized Participants
                   </h4>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {participants
                       .filter((p) => p.user_id !== user?.id)
                       .map((p) => (
                         <div
                           key={p.id}
                           style={{
-                            background: "var(--surface-card, #0e121a)",
-                            border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
-                            borderRadius: "8px",
-                            padding: "12px 16px",
+                            background: "var(--surface-card, #FFFFFF)",
+                            border: "1px solid var(--border-subtle, #D9E2EC)",
+                            borderRadius: "10px",
+                            padding: "14px 18px",
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
                             flexWrap: "wrap",
                             gap: "8px",
+                            boxShadow: "var(--shadow-sm)",
                           }}
                         >
                           <div>
-                            <div style={{ color: "#fff", fontSize: "14px", fontWeight: 600 }}>
+                            <div style={{ color: "var(--text-primary, #17212B)", fontSize: "14px", fontWeight: 700 }}>
                               {p.user?.full_name || p.user?.email || "Case Participant"}
                             </div>
-                            <div style={{ color: "#94a3b8", fontSize: "12px" }}>
+                            <div style={{ color: "var(--text-secondary, #52606D)", fontSize: "13px" }}>
                               Role: {p.participant_role} · Status: {p.status}
                             </div>
                           </div>
                           <span
                             style={{
                               fontSize: "11px",
-                              color: p.status === "ACTIVE" ? "#34d399" : "#f59e0b",
-                              background: p.status === "ACTIVE" ? "rgba(52, 211, 153, 0.1)" : "rgba(245, 158, 11, 0.1)",
-                              padding: "2px 8px",
+                              color: p.status === "ACTIVE" ? "var(--status-safe-text, #2F855A)" : "var(--accent-gold, #C27803)",
+                              background: p.status === "ACTIVE" ? "rgba(47, 133, 90, 0.1)" : "rgba(194, 120, 3, 0.1)",
+                              padding: "3px 10px",
                               borderRadius: "4px",
+                              fontWeight: 600,
                             }}
                           >
                             {p.status}
@@ -3453,7 +3429,7 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
         {activeTab === "ai_advisor" && (
           <div style={{ marginTop: "20px" }}>
             <div style={{
-              background: "#FFFFFF",
+              background: "var(--surface-card, #FFFFFF)",
               borderRadius: "var(--radius-xl)",
               overflow: "hidden",
               boxShadow: "var(--shadow-sm)",

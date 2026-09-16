@@ -146,7 +146,10 @@ class LocalVectorStore(BaseVectorStore):
         for key, val in filters.items():
             if key == "crime_category":
                 doc_cat = doc.get("crime_category") or doc.get("metadata", {}).get("crime_category")
-                if doc_cat and doc_cat != val:
+                if isinstance(val, (list, tuple, set)):
+                    if doc_cat and doc_cat not in val:
+                        return False
+                elif doc_cat and doc_cat != val:
                     return False
             elif key == "source_type":
                 if doc.get("source_type") != val:
@@ -268,6 +271,8 @@ class LocalVectorStore(BaseVectorStore):
                 "outcome": doc.get("outcome"),
                 "statute_sections": doc.get("statute_sections", []),
                 "keywords": doc.get("keywords", []),
+                "url": doc.get("url"),
+                "tid": doc.get("tid"),
             }
         else:
             title = doc.get("title") or f"{doc.get('act', '')} Section {doc.get('section', '')}"

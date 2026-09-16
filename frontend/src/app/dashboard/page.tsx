@@ -3,79 +3,61 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useRouter } from "next/navigation";
-import { apiClient } from "@/api/client";
 import Link from "next/link";
+import { apiClient } from "@/api/client";
 import {
   CaseItem,
   ConsultationItem,
-  MatterBriefItem,
-  MatterRequestItem,
   CaseHearingItem,
   CaseDeadlineItem,
-  CaseMessageItem,
+  MatterRequestItem,
+  MatterBriefItem,
 } from "@/types";
-import { PaymentCheckoutModal } from "@/components/Payment/PaymentCheckoutModal";
-import { ConsultationActionModal } from "@/components/Consultation/ConsultationActionModal";
-import { WhatChangedBanner } from "@/components/WhatChangedBanner";
+import { CaseCard } from "@/components/ui/CaseCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import {
   CaseIcon,
-  CalendarIcon,
-  LawyerIcon,
   PlusIcon,
-  SearchIcon,
+  CalendarIcon,
+  DocumentIcon,
+  AssistantIcon,
   ArrowRightIcon,
+  CheckCircleIcon,
+  ClockIcon,
 } from "@/components/ui/Icons";
 import styles from "./dashboard.module.css";
 
-interface DashboardAttentionItem {
-  id: string;
-  priority: number; // 1: Urgent Hearing, 2: Deadline, 3: Document Request, 4: Message, 5: Payment, 6: Consultation
-  type: "HEARING" | "DEADLINE" | "DOCUMENT_REQUEST" | "MESSAGE" | "PAYMENT" | "CONSULTATION";
-  headerText: string;
-  badgeLabel: string;
-  badgeType: "urgent" | "warning" | "success" | "info";
-  matterTitle?: string;
-  caseId?: string;
-  headline: string;
-  detail: string;
-  actionLabel: string;
-  actionHref?: string;
-  onActionClick?: () => void;
-  isUrgent?: boolean;
-}
-
-function formatDate(dateString?: string | null): string {
-  if (!dateString) return "Not available";
+function formatDateShort(dateString?: string | null): string {
+  if (!dateString) return "";
   try {
     const d = new Date(dateString);
-    if (isNaN(d.getTime())) return "Not available";
+    if (isNaN(d.getTime())) return "";
     return d.toLocaleDateString("en-IN", {
       day: "numeric",
       month: "short",
-      year: "numeric",
     });
   } catch {
-    return "Not available";
+    return "";
   }
 }
 
-function formatDateTime(dateString?: string | null): string {
-  if (!dateString) return "Not available";
+function formatDateFull(dateString?: string | null): string {
+  if (!dateString) return "";
   try {
     const d = new Date(dateString);
-    if (isNaN(d.getTime())) return "Not available";
-    const datePart = d.toLocaleDateString("en-IN", {
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-IN", {
       day: "numeric",
-      month: "short",
+      month: "long",
+      year: "numeric",
     });
-    const timePart = d.toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-    return `${datePart} · ${timePart}`;
   } catch {
-    return "Not available";
+    return "";
   }
 }
 
@@ -88,35 +70,37 @@ export default function Dashboard() {
   const [hearings, setHearings] = useState<CaseHearingItem[]>([]);
   const [deadlines, setDeadlines] = useState<CaseDeadlineItem[]>([]);
   const [documentRequests, setDocumentRequests] = useState<MatterRequestItem[]>([]);
-  const [recentMessages, setRecentMessages] = useState<CaseMessageItem[]>([]);
   const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
 
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Modals
-  const [checkoutConsultation, setCheckoutConsultation] = useState<ConsultationItem | null>(null);
-  const [actionConsultationModal, setActionConsultationModal] = useState<{
-    type: "RESCHEDULE" | "CANCEL";
-    consultation: ConsultationItem;
-  } | null>(null);
-
-  // Search & Filter
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-
-  // Create Case Modal
+  // Start Case Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Time of day greeting
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  }, []);
+
+  const userName = useMemo(() => {
+    if (!user) return "";
+    if (user.full_name) return user.full_name.split(" ")[0];
+    if (user.email) return user.email.split("@")[0];
+    return "";
+  }, [user]);
 
   const fetchDashboardData = useCallback(async () => {
     try {
       setFetching(true);
       setFetchError(null);
 
-      // Fetch Cases, Consultations, and Aggregated Calendar Events in parallel
       const [casesRes, consultRes, calEventsRes] = await Promise.all([
         apiClient.get("/api/v1/cases").catch(() => ({ items: [] })),
         apiClient.get("/api/v1/consultations").catch(() => ({ items: [] })),
@@ -133,7 +117,6 @@ export default function Dashboard() {
       setCases(caseItems);
       setConsultations(consultItems);
 
-      // Extract hearings and deadlines directly from calendar events
       const rawEvents = (calEventsRes as { events?: Array<Record<string, unknown>> })?.events || [];
       const extractedHearings: CaseHearingItem[] = [];
       const extractedDeadlines: CaseDeadlineItem[] = [];
@@ -144,7 +127,7 @@ export default function Dashboard() {
             id: String(ev.id),
             case_id: String(ev.case_id || ""),
             hearing_at: String(ev.start_time || ev.event_date || new Date().toISOString()),
-            court_name: String(ev.location || "Official Court"),
+            court_name: String(ev.location || "District Court"),
             bench_or_coram: ev.courtroom ? String(ev.courtroom) : undefined,
             purpose: String(ev.description || "Court hearing"),
             status: "SCHEDULED",
@@ -155,12 +138,11 @@ export default function Dashboard() {
           extractedDeadlines.push({
             id: String(ev.id),
             case_id: String(ev.case_id || ""),
-            title: String(ev.title || "Legal Deadline"),
+            title: String(ev.title || "Document Submission"),
             deadline_at: String(ev.start_time || ev.event_date || new Date().toISOString()),
             deadline_type: "PROCEDURAL" as never,
             is_confirmed: true,
             status: "UPCOMING",
-            description: ev.description ? String(ev.description) : undefined,
             created_at: String(ev.start_time || new Date().toISOString()),
           });
         }
@@ -169,9 +151,8 @@ export default function Dashboard() {
       setHearings(extractedHearings);
       setDeadlines(extractedDeadlines);
 
-      // Fetch case briefs and document requests
       if (caseItems.length > 0) {
-        const topCases = caseItems.slice(0, 8);
+        const topCases = caseItems.slice(0, 6);
         const briefs = await Promise.all(
           topCases.map(async (c) => {
             const brief = await apiClient.get(`/api/v1/cases/${c.id}/collaboration/brief`).catch(() => null);
@@ -185,30 +166,20 @@ export default function Dashboard() {
         setBriefsByCaseId(newBriefs);
 
         const allDocRequests: MatterRequestItem[] = [];
-        const allMsgs: CaseMessageItem[] = [];
-
         await Promise.all(
           topCases.map(async (c) => {
             try {
               const reqs = await apiClient.get(`/api/v1/cases/${c.id}/collaboration/requests`).catch(() => []);
-              if (Array.isArray(reqs)) {
-                allDocRequests.push(...reqs);
-              }
-              const msgs = await apiClient.get(`/api/v1/cases/${c.id}/collaboration/messages`).catch(() => []);
-              if (Array.isArray(msgs)) {
-                allMsgs.push(...msgs);
-              }
+              if (Array.isArray(reqs)) allDocRequests.push(...reqs);
             } catch {
-              // Ignore per-case non-critical errors
+              // Ignore non-critical request errors
             }
           })
         );
-
         setDocumentRequests(allDocRequests);
-        setRecentMessages(allMsgs);
       }
     } catch {
-      setFetchError("Unable to load case details. Please try refreshing.");
+      setFetchError("Unable to load case overview. Please check your connection.");
     } finally {
       setFetching(false);
     }
@@ -217,595 +188,589 @@ export default function Dashboard() {
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
+    } else if (user?.role === "LAWYER") {
+      router.push("/lawyer/dashboard");
     } else if (user) {
       void fetchDashboardData();
     }
   }, [user, loading, router, fetchDashboardData]);
 
-  // Handle Creating a New Case
   const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || creating) return;
     try {
       setCreating(true);
-      const res: Record<string, unknown> = await apiClient.post("/api/v1/cases", {
+      const res = (await apiClient.post("/api/v1/cases", {
         title: newTitle.trim(),
         description: newDesc.trim(),
-      });
+      })) as { id: string };
       setCreateModalOpen(false);
       setNewTitle("");
       setNewDesc("");
       router.push(`/cases/${res.id}`);
     } catch {
-      alert("Failed to create case. Please try again.");
+      alert("Unable to create case right now. Please try again.");
     } finally {
       setCreating(false);
     }
   };
 
-  // Compile Prioritized Attention Items (Section 6)
-  const attentionItems = useMemo(() => {
-    const items: DashboardAttentionItem[] = [];
-    const now = new Date();
-
-    // 1. Upcoming Hearings (Red/Urgent)
-    const upcomingHearings = hearings
-      .filter((h) => h.status === "SCHEDULED" && new Date(h.hearing_at).getTime() >= now.getTime())
-      .sort((a, b) => new Date(a.hearing_at).getTime() - new Date(b.hearing_at).getTime());
-
-    for (const h of upcomingHearings.slice(0, 2)) {
-      const hearingDate = new Date(h.hearing_at);
-      const diffDays = Math.ceil((hearingDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const associatedCase = cases.find((c) => c.id === h.case_id);
-
-      const headerText =
-        diffDays === 0
-          ? "Hearing is today"
-          : diffDays === 1
-          ? "Hearing is tomorrow"
-          : `Hearing coming up in ${diffDays} days`;
-
-      items.push({
-        id: `hearing-${h.id}`,
-        priority: 1,
-        type: "HEARING",
-        headerText,
-        badgeLabel: diffDays <= 3 ? "Urgent Hearing" : "Court Hearing",
-        badgeType: "urgent",
-        isUrgent: diffDays <= 3,
-        matterTitle: associatedCase?.title,
-        caseId: h.case_id,
-        headline: `${h.court_name} ${h.bench_or_coram ? `· Court ${h.bench_or_coram}` : ""}`,
-        detail: `${formatDateTime(h.hearing_at)} · What to prepare: ${h.notes || h.purpose || "Bring your ID and requested documents."}`,
-        actionLabel: "View Hearing",
-        actionHref: `/cases/${h.case_id}?tab=hearings`,
-      });
+  // Next Step Resolution (Section 10)
+  const nextStep = useMemo(() => {
+    // 1. Pending document request
+    const pendingReq = documentRequests.find((r) => r.status === "PENDING");
+    if (pendingReq) {
+      const associatedCase = cases.find((c) => c.id === pendingReq.case_id);
+      return {
+        title: pendingReq.title || "Upload the court notice you received",
+        description: "This will help keep your case information and lawyer updated.",
+        actionLabel: "Upload document",
+        actionHref: `/cases/${pendingReq.case_id}?tab=documents`,
+        badge: "Action needed",
+        badgeVariant: "urgent" as const,
+        caseTitle: associatedCase?.title,
+      };
     }
 
-    // 2. Lawyer Document Requests (Yellow/Warning)
-    const pendingDocRequests = documentRequests.filter(
-      (r) => r.status === "PENDING" && r.request_type === "DOCUMENT_UPLOAD"
-    );
+    // 2. Upcoming hearing within 14 days
+    const upcomingHearing = hearings
+      .filter((h) => new Date(h.hearing_at).getTime() >= Date.now())
+      .sort((a, b) => new Date(a.hearing_at).getTime() - new Date(b.hearing_at).getTime())[0];
 
-    const reqsByCase: Record<string, MatterRequestItem[]> = {};
-    for (const r of pendingDocRequests) {
-      if (!reqsByCase[r.case_id]) reqsByCase[r.case_id] = [];
-      reqsByCase[r.case_id].push(r);
+    if (upcomingHearing) {
+      const dateFormatted = formatDateFull(upcomingHearing.hearing_at);
+      const associatedCase = cases.find((c) => c.id === upcomingHearing.case_id);
+      return {
+        title: `Court hearing scheduled on ${dateFormatted}`,
+        description: `Listing at ${upcomingHearing.court_name}. Check with your lawyer on required documents.`,
+        actionLabel: "View hearing details",
+        actionHref: `/cases/${upcomingHearing.case_id}?tab=dates`,
+        badge: "Court hearing",
+        badgeVariant: "primary" as const,
+        caseTitle: associatedCase?.title,
+      };
     }
 
-    for (const [caseId, reqList] of Object.entries(reqsByCase)) {
-      const associatedCase = cases.find((c) => c.id === caseId);
-      const lawyerName = reqList[0].requesting_user_name || "Advocate";
-      const count = reqList.length;
-
-      items.push({
-        id: `docreq-${caseId}`,
-        priority: 2,
-        type: "DOCUMENT_REQUEST",
-        headerText: count === 1 ? "Document requested" : `${count} documents requested`,
-        badgeLabel: "Lawyer Request",
-        badgeType: "warning",
-        matterTitle: associatedCase?.title,
-        caseId,
-        headline: `Your lawyer needs ${count === 1 ? "one document" : `${count} documents`}`,
-        detail: `Adv. ${lawyerName} requested: ${reqList.map((r) => r.title).join(", ")}.`,
-        actionLabel: "Upload Document",
-        actionHref: `/cases/${caseId}?tab=documents`,
-      });
+    // 3. If cases exist but no urgent action
+    if (cases.length > 0) {
+      const firstCase = cases[0];
+      return {
+        title: "All current tasks are up to date",
+        description: `Your matter "${firstCase.title}" is in progress. You can review saved documents or message your lawyer anytime.`,
+        actionLabel: "View case overview",
+        actionHref: `/cases/${firstCase.id}`,
+        badge: "Up to date",
+        badgeVariant: "success" as const,
+        caseTitle: firstCase.title,
+      };
     }
 
-    // 3. Important Deadlines (Legal Deadlines)
-    const activeDeadlines = deadlines
-      .filter((d) => d.status === "UPCOMING" || d.status === "DUE" || d.status === "OVERDUE")
-      .sort((a, b) => new Date(a.deadline_at).getTime() - new Date(b.deadline_at).getTime());
+    // 4. No cases yet
+    return null;
+  }, [documentRequests, hearings, cases]);
 
-    for (const d of activeDeadlines.slice(0, 1)) {
-      const isOverdue = d.status === "OVERDUE" || new Date(d.deadline_at).getTime() < now.getTime();
-      const associatedCase = cases.find((c) => c.id === d.case_id);
+  // Combined upcoming events list (hearings & consultations)
+  const upcomingEvents = useMemo(() => {
+    const list: Array<{
+      id: string;
+      dateShort: string;
+      title: string;
+      subtitle: string;
+      href: string;
+      type: "hearing" | "consultation";
+    }> = [];
 
-      items.push({
-        id: `deadline-${d.id}`,
-        priority: 3,
-        type: "DEADLINE",
-        headerText: isOverdue ? "Legal deadline overdue" : "Important legal deadline",
-        badgeLabel: isOverdue ? "Overdue" : "Legal Deadline",
-        badgeType: isOverdue ? "urgent" : "warning",
-        isUrgent: isOverdue,
-        matterTitle: associatedCase?.title,
-        caseId: d.case_id,
-        headline: d.title,
-        detail: `Due: ${formatDate(d.deadline_at)} ${d.description ? `· ${d.description}` : ""}`,
-        actionLabel: "View Details",
-        actionHref: `/cases/${d.case_id}?tab=tasks`,
-      });
+    const now = Date.now();
+
+    for (const h of hearings) {
+      const time = new Date(h.hearing_at).getTime();
+      if (time >= now) {
+        list.push({
+          id: `h-${h.id}`,
+          dateShort: formatDateShort(h.hearing_at),
+          title: "Court hearing",
+          subtitle: h.court_name || "Official Court",
+          href: `/cases/${h.case_id}?tab=dates`,
+          type: "hearing",
+        });
+      }
     }
 
-    // 4. Case Updates / Messages (Green/Success)
-    const unreadMsgs = recentMessages.filter((m) => m.sender_role === "LAWYER" || m.sender_role === "PRIMARY_LAWYER");
-    for (const msg of unreadMsgs.slice(0, 1)) {
-      const associatedCase = cases.find((c) => c.id === msg.case_id);
-      items.push({
-        id: `msg-${msg.id}`,
-        priority: 4,
-        type: "MESSAGE",
-        headerText: "Case update from lawyer",
-        badgeLabel: "Case Update",
-        badgeType: "success",
-        matterTitle: associatedCase?.title,
-        caseId: msg.case_id,
-        headline: `New message from Adv. ${msg.sender_name}`,
-        detail: `"${msg.content.slice(0, 110)}..."`,
-        actionLabel: "View Update",
-        actionHref: `/cases/${msg.case_id}?tab=overview`,
-      });
+    for (const c of consultations) {
+      const dateStr = c.scheduled_at || c.created_at;
+      const time = new Date(dateStr).getTime();
+      if (time >= now && c.status !== "CANCELLED") {
+        list.push({
+          id: `c-${c.id}`,
+          dateShort: formatDateShort(dateStr),
+          title: "Lawyer consultation",
+          subtitle: c.lawyer_name ? `Adv. ${c.lawyer_name}` : "Scheduled consultation",
+          href: "/consultations",
+          type: "consultation",
+        });
+      }
     }
 
-    // 5. Scheduled Consultations (Info/Blue)
-    const scheduledConsultations = consultations.filter(
-      (c) => c.status === "PAID" || c.status === "SCHEDULED"
-    );
-
-    for (const consult of scheduledConsultations.slice(0, 1)) {
-      items.push({
-        id: `consult-${consult.id}`,
-        priority: 5,
-        type: "CONSULTATION",
-        headerText: "Upcoming lawyer consultation",
-        badgeLabel: "Confirmed Session",
-        badgeType: "info",
-        headline: `Adv. ${consult.lawyer_name || "Advocate"}`,
-        detail: `Scheduled for ${formatDateTime(consult.scheduled_start)}. Ensure you have your questions ready.`,
-        actionLabel: "Join Consultation",
-        actionHref: `/consultations/${consult.id}`,
-      });
-    }
-
-    return items.sort((a, b) => a.priority - b.priority);
-  }, [hearings, deadlines, documentRequests, recentMessages, consultations, cases]);
-
-  // Greeting logic
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
-  }, []);
-
-  const clientName = useMemo(() => {
-    if (user?.full_name) return user.full_name;
-    if (user?.email) {
-      const local = user.email.split("@")[0];
-      return local.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-    }
-    return "there";
-  }, [user]);
-
-  // Filtered cases
-  const filteredCases = useMemo(() => {
-    return cases.filter((c) => {
-      const matchesStatus = statusFilter === "ALL" ? true : c.status === statusFilter;
-      const matchesSearch =
-        searchQuery === ""
-          ? true
-          : c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchesStatus && matchesSearch;
-    });
-  }, [cases, searchQuery, statusFilter]);
-
-  if (loading || (!user && fetching)) {
-    return (
-      <div className={styles.dashboardPage}>
-        <div className="container" style={{ textAlign: "center", paddingTop: "100px" }}>
-          <p style={{ color: "var(--text-secondary)", fontSize: "16px" }}>
-            Loading your case assistant...
-          </p>
-        </div>
-      </div>
-    );
-  }
+    return list.sort((a, b) => (a.dateShort > b.dateShort ? 1 : -1)).slice(0, 4);
+  }, [hearings, consultations]);
 
   return (
     <div className={styles.dashboardPage}>
-      <div className="container">
-        {/* Top Greeting Header (Section 6) */}
-        <div className={styles.dashboardHeader}>
-          <div className={styles.headerTitleSection}>
-            <div className={styles.eyebrow}>
-              <span className={styles.eyebrowDot} /> Your Legal Assistant
-            </div>
-            <h1 className={styles.pageHeading}>
-              {greeting}, {clientName}.
-            </h1>
-            <p className={styles.subHeading}>
-              {attentionItems.length > 0
-                ? "Here's what needs your attention today."
-                : "You're all caught up. No urgent actions need your attention today."}
-            </p>
-          </div>
-
-          <div className={styles.headerActions}>
-            <Link href="/lawyers" className={styles.secondaryActionBtn}>
-              <LawyerIcon size={16} />
-              <span>Find a Lawyer</span>
-            </Link>
-            <button
-              onClick={() => setCreateModalOpen(true)}
-              className={styles.primaryActionBtn}
-            >
-              <PlusIcon size={16} color="#FFFFFF" />
-              <span>Start a Case</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Phase 9: What Changed Notice */}
-        <WhatChangedBanner />
-
-        {fetchError && (
-          <div
+      <div className="container" style={{ maxWidth: "1080px" }}>
+        {/* Top Header: 5-Second Greeting */}
+        <div style={{ marginBottom: "32px" }}>
+          <h1
             style={{
-              background: "rgba(220, 38, 38, 0.06)",
-              border: "1px solid rgba(220, 38, 38, 0.25)",
-              borderRadius: "8px",
-              padding: "12px 16px",
-              marginBottom: "24px",
-              color: "var(--status-urgent)",
-              fontSize: "14px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              fontSize: "clamp(1.75rem, 3.5vw, 2.3rem)",
+              fontWeight: 800,
+              color: "var(--navy-primary, #17324D)",
+              letterSpacing: "-0.025em",
+              marginBottom: "6px",
             }}
           >
-            <span>{fetchError}</span>
-            <button
-              onClick={() => void fetchDashboardData()}
-              style={{
-                textDecoration: "underline",
-                color: "inherit",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Retry
-            </button>
-          </div>
-        )}
+            {greeting}, {userName || "there"}
+          </h1>
+          <p
+            style={{
+              fontSize: "1.05rem",
+              color: "var(--text-secondary, #52606D)",
+              margin: 0,
+            }}
+          >
+            Here&apos;s what needs your attention.
+          </p>
+        </div>
 
-        {/* 1. What Needs My Attention? (Section 6) */}
-        {attentionItems.length > 0 && (
-          <section className={styles.attentionCenter} aria-label="What needs your attention">
-            <div className={styles.attentionHeader}>
-              <h2 className={styles.attentionTitle}>
-                What needs your attention
-              </h2>
-              <span
-                className={styles.attentionBadge}
+        {fetching ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            <LoadingSkeleton type="card" count={2} />
+          </div>
+        ) : fetchError ? (
+          <div
+            style={{
+              background: "var(--surface-card, #FFFFFF)",
+              border: "1px solid var(--status-urgent, #C53030)",
+              borderRadius: "14px",
+              padding: "24px",
+              marginBottom: "24px",
+              color: "var(--text-primary, #17212B)",
+            }}
+          >
+            <h3 style={{ color: "var(--status-urgent, #C53030)", margin: "0 0 8px 0" }}>
+              Something went wrong
+            </h3>
+            <p style={{ margin: "0 0 16px 0", color: "var(--text-secondary, #52606D)" }}>
+              {fetchError}
+            </p>
+            <Button variant="secondary" onClick={() => void fetchDashboardData()}>
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+            {/* Section 1: Your Next Step (Prominent, High Clarity) */}
+            {nextStep && (
+              <section aria-labelledby="next-step-title">
+                <div
+                  style={{
+                    background: "var(--surface-card, #FFFFFF)",
+                    border: "1px solid var(--border-subtle, #D9E2EC)",
+                    borderRadius: "16px",
+                    padding: "24px 28px",
+                    boxShadow: "var(--shadow-sm)",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: "24px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ flex: "1 1 360px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          color: "var(--navy-primary, #17324D)",
+                        }}
+                      >
+                        Your next step
+                      </span>
+                      {nextStep.caseTitle && (
+                        <span style={{ fontSize: "12px", color: "var(--text-muted, #7B8794)" }}>
+                          · {nextStep.caseTitle}
+                        </span>
+                      )}
+                    </div>
+
+                    <h2
+                      id="next-step-title"
+                      style={{
+                        margin: "0 0 8px 0",
+                        fontSize: "1.25rem",
+                        fontWeight: 700,
+                        color: "var(--text-primary, #17212B)",
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {nextStep.title}
+                    </h2>
+
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "0.9375rem",
+                        color: "var(--text-secondary, #52606D)",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {nextStep.description}
+                    </p>
+                  </div>
+
+                  <div style={{ alignSelf: "center", flexShrink: 0 }}>
+                    <Link
+                      href={nextStep.actionHref}
+                      className="btn btn-primary"
+                      style={{
+                        minHeight: "46px",
+                        padding: "10px 24px",
+                        fontSize: "15px",
+                        boxShadow: "var(--shadow-sm)",
+                      }}
+                    >
+                      <span>{nextStep.actionLabel}</span>
+                      <ArrowRightIcon size={16} />
+                    </Link>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Section 2: Your Cases */}
+            <section aria-labelledby="your-cases-title">
+              <div
                 style={{
-                  background: "rgba(15, 30, 54, 0.08)",
-                  color: "var(--navy-primary)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "16px",
                 }}
               >
-                {attentionItems.length} {attentionItems.length === 1 ? "Item" : "Items"}
-              </span>
-            </div>
+                <h2
+                  id="your-cases-title"
+                  style={{
+                    fontSize: "1.2rem",
+                    fontWeight: 700,
+                    color: "var(--text-primary, #17212B)",
+                    margin: 0,
+                  }}
+                >
+                  Your Cases
+                </h2>
+                <div style={{ display: "flex", gap: "12px" }}>
+                  <button
+                    onClick={() => setCreateModalOpen(true)}
+                    className="btn btn-secondary"
+                    style={{
+                      padding: "7px 14px",
+                      fontSize: "13px",
+                      minHeight: "38px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <PlusIcon size={14} />
+                    <span>Start a case</span>
+                  </button>
+                  {cases.length > 2 && (
+                    <Link
+                      href="/cases"
+                      className="btn btn-tertiary"
+                      style={{ fontSize: "13px", padding: "6px 8px" }}
+                    >
+                      View all ({cases.length})
+                    </Link>
+                  )}
+                </div>
+              </div>
 
-            <div className={styles.attentionCards}>
-              {attentionItems.map((item) => {
-                const cardClass =
-                  item.badgeType === "urgent"
-                    ? styles.attentionCardUrgent
-                    : item.badgeType === "warning"
-                    ? styles.attentionCardWarning
-                    : item.badgeType === "success"
-                    ? styles.attentionCardSuccess
-                    : styles.attentionCardInfo;
+              {cases.length === 0 ? (
+                <EmptyState
+                  icon={<CaseIcon size={28} color="var(--navy-primary, #17324D)" />}
+                  title="No cases yet"
+                  description="Your cases will appear here once you create or join a case."
+                  actionLabel="Start a case"
+                  onAction={() => setCreateModalOpen(true)}
+                />
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "18px" }}>
+                  {cases.slice(0, 4).map((c) => {
+                    const brief = briefsByCaseId[c.id];
+                    const nextDateStr = brief?.next_hearing_date ? formatDateFull(brief.next_hearing_date) : null;
+                    const lawyer = brief?.lead_counsel_name || null;
+                    const courtInfo = brief?.next_hearing_court || (c.case_number ? `Case #${c.case_number}` : null);
 
-                const dotColor =
-                  item.badgeType === "urgent"
-                    ? "var(--status-urgent)"
-                    : item.badgeType === "warning"
-                    ? "var(--status-warning)"
-                    : item.badgeType === "success"
-                    ? "var(--status-success)"
-                    : "var(--status-info)";
+                    return (
+                      <CaseCard
+                        key={c.id}
+                        id={c.id}
+                        title={c.title}
+                        status={c.status}
+                        courtName={courtInfo}
+                        nextImportantDate={nextDateStr}
+                        lawyerName={lawyer}
+                        href={`/cases/${c.id}`}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </section>
 
-                return (
-                  <div key={item.id} className={`${styles.attentionCard} ${cardClass}`}>
-                    <div className={styles.attentionCardContent}>
-                      <div className={styles.attentionStatusRow}>
-                        <span className={styles.statusDot} style={{ background: dotColor }} />
-                        <span
-                          className={styles.attentionCardHeading}
-                          style={{ color: dotColor }}
-                        >
-                          {item.headerText}
-                        </span>
-                        {item.matterTitle && (
-                          <>
-                            <span style={{ color: "var(--border-hover)" }}>•</span>
-                            <span className={styles.attentionCaseTag}>
-                              Case: <strong>{item.matterTitle}</strong>
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      <div className={styles.attentionMainText}>{item.headline}</div>
-                      <div className={styles.attentionSubText}>{item.detail}</div>
-                    </div>
-
-                    <div className={styles.attentionCardAction}>
-                      {item.onActionClick ? (
-                        <button
-                          onClick={item.onActionClick}
-                          className={`${styles.actionBtn} ${
-                            item.isUrgent ? styles.actionBtnUrgent : styles.actionBtnPrimary
-                          }`}
-                        >
-                          <span>{item.actionLabel}</span>
-                          <ArrowRightIcon size={14} />
-                        </button>
-                      ) : item.actionHref ? (
-                        <Link
-                          href={item.actionHref}
-                          className={`${styles.actionBtn} ${
-                            item.isUrgent ? styles.actionBtnUrgent : styles.actionBtnPrimary
-                          }`}
-                        >
-                          <span>{item.actionLabel}</span>
-                          <ArrowRightIcon size={14} />
-                        </Link>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* 2. My Cases Section */}
-        <section style={{ marginTop: "32px" }}>
-          <div className={styles.sectionHeadingRow}>
-            <h2 className={styles.myCasesHeading}>
-              <CaseIcon size={22} color="var(--navy-primary)" />
-              <span>My Cases</span>
-            </h2>
-
-            {cases.length > 0 && (
-              <div className={styles.filterControls}>
-                <div className={styles.searchBox}>
-                  <SearchIcon size={14} />
-                  <input
-                    type="text"
-                    placeholder="Search your cases..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className={styles.searchInput}
-                    aria-label="Search cases"
-                  />
+            {/* Grid with 2 columns: Upcoming Dates & Need Help */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px" }}>
+              {/* Section 3: Upcoming Dates */}
+              <section aria-labelledby="upcoming-title">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "14px",
+                  }}
+                >
+                  <h2
+                    id="upcoming-title"
+                    style={{
+                      fontSize: "1.15rem",
+                      fontWeight: 700,
+                      color: "var(--text-primary, #17212B)",
+                      margin: 0,
+                    }}
+                  >
+                    Upcoming
+                  </h2>
+                  <Link
+                    href="/calendar"
+                    className="btn btn-tertiary"
+                    style={{ fontSize: "13px", padding: "4px 8px" }}
+                  >
+                    View calendar
+                  </Link>
                 </div>
 
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className={styles.filterSelect}
-                  aria-label="Filter cases by status"
+                <div
+                  style={{
+                    background: "var(--surface-card, #FFFFFF)",
+                    border: "1px solid var(--border-subtle, #D9E2EC)",
+                    borderRadius: "14px",
+                    padding: "16px 20px",
+                    boxShadow: "var(--shadow-sm)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "14px",
+                  }}
                 >
-                  <option value="ALL">All Statuses</option>
-                  <option value="OPEN">Open</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="IN_REVIEW">Under Review</option>
-                  <option value="CLOSED">Closed</option>
-                </select>
-              </div>
-            )}
+                  {upcomingEvents.length === 0 ? (
+                    <div style={{ padding: "16px 0", textAlign: "center", color: "var(--text-muted, #7B8794)" }}>
+                      <p style={{ margin: 0, fontSize: "14px" }}>No upcoming court dates or consultations.</p>
+                    </div>
+                  ) : (
+                    upcomingEvents.map((ev, idx) => (
+                      <Link
+                        key={ev.id}
+                        href={ev.href}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "10px 0",
+                          borderBottom: idx < upcomingEvents.length - 1 ? "1px solid var(--border-subtle, #D9E2EC)" : "none",
+                          textDecoration: "none",
+                          color: "inherit",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                          <span
+                            style={{
+                              fontSize: "13px",
+                              fontWeight: 700,
+                              color: "var(--navy-primary, #17324D)",
+                              width: "60px",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {ev.dateShort}
+                          </span>
+                          <div>
+                            <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary, #17212B)" }}>
+                              {ev.title}
+                            </div>
+                            <div style={{ fontSize: "12px", color: "var(--text-secondary, #52606D)" }}>
+                              {ev.subtitle}
+                            </div>
+                          </div>
+                        </div>
+
+                        <span style={{ color: "var(--text-muted, #7B8794)" }}>
+                          <ArrowRightIcon size={14} />
+                        </span>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              {/* Section 4: Need Help? (Ask LCC) */}
+              <section aria-labelledby="help-title">
+                <div style={{ marginBottom: "14px" }}>
+                  <h2
+                    id="help-title"
+                    style={{
+                      fontSize: "1.15rem",
+                      fontWeight: 700,
+                      color: "var(--text-primary, #17212B)",
+                      margin: 0,
+                    }}
+                  >
+                    Need help?
+                  </h2>
+                </div>
+
+                <div
+                  style={{
+                    background: "var(--surface-card, #FFFFFF)",
+                    border: "1px solid var(--border-subtle, #D9E2EC)",
+                    borderRadius: "14px",
+                    padding: "20px 24px",
+                    boxShadow: "var(--shadow-sm)",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    height: "calc(100% - 34px)",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <div>
+                    <h3
+                      style={{
+                        margin: "0 0 6px 0",
+                        fontSize: "1rem",
+                        fontWeight: 600,
+                        color: "var(--text-primary, #17212B)",
+                      }}
+                    >
+                      Not sure what to do next?
+                    </h3>
+                    <p
+                      style={{
+                        margin: "0 0 18px 0",
+                        fontSize: "0.875rem",
+                        color: "var(--text-secondary, #52606D)",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      Lex can answer questions about your case documents, timelines, and court procedures in plain words.
+                    </p>
+                  </div>
+
+                  <div>
+                    <Link
+                      href="/ai-advisor"
+                      className="btn btn-secondary"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        minHeight: "42px",
+                        fontSize: "14px",
+                        width: "100%",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <AssistantIcon size={16} color="var(--navy-primary, #102A43)" />
+                      <span>Lex</span>
+                    </Link>
+                  </div>
+                </div>
+              </section>
+            </div>
           </div>
-
-          {cases.length === 0 ? (
-            /* Empty State for First-Time Clients */
-            <div className={styles.emptyContainer}>
-              <div className={styles.emptyIcon}>
-                <CaseIcon size={28} />
-              </div>
-              <h3 className={styles.emptyHeading}>You don&apos;t have a case yet.</h3>
-              <p className={styles.emptyDesc}>
-                Create a case to keep your documents, hearings, lawyer, and important updates together in one simple place.
-              </p>
-              <div className={styles.emptyActions}>
-                <button
-                  onClick={() => setCreateModalOpen(true)}
-                  className="btn btn-primary"
-                >
-                  <PlusIcon size={16} />
-                  <span>Start a Case</span>
-                </button>
-                <Link href="/lawyers" className="btn btn-secondary">
-                  <LawyerIcon size={16} />
-                  <span>Find a Lawyer</span>
-                </Link>
-              </div>
-            </div>
-          ) : filteredCases.length === 0 ? (
-            <div className={styles.emptyContainer}>
-              <p style={{ color: "var(--text-secondary)", fontSize: "14px" }}>
-                No cases match &ldquo;{searchQuery}&rdquo;. Try clearing your search.
-              </p>
-            </div>
-          ) : (
-            <div className={styles.caseGrid}>
-              {filteredCases.map((c) => {
-                const brief = briefsByCaseId[c.id];
-                const courtDisplay = brief?.next_hearing_court || "Court Record";
-                const nextEventDisplay = brief?.next_hearing_date
-                  ? `Next hearing: ${formatDate(brief.next_hearing_date)}`
-                  : "Waiting for next hearing date";
-                const lawyerDisplay = brief?.lead_counsel_name
-                  ? `Adv. ${brief.lead_counsel_name}`
-                  : "Lawyer not assigned yet";
-
-                return (
-                  <Link key={c.id} href={`/cases/${c.id}`} className={styles.caseCard}>
-                    <div className={styles.caseTop}>
-                      <div className={styles.caseBadgeRow}>
-                        <span
-                          style={{
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            padding: "2px 8px",
-                            borderRadius: "var(--radius-full)",
-                            background:
-                              c.status === "CLOSED"
-                                ? "var(--surface-subtle)"
-                                : "var(--status-safe-bg)",
-                            color:
-                              c.status === "CLOSED"
-                                ? "var(--text-muted)"
-                                : "var(--status-safe-text)",
-                            border: `1px solid ${
-                              c.status === "CLOSED"
-                                ? "var(--border-subtle)"
-                                : "var(--status-safe-border)"
-                            }`,
-                          }}
-                        >
-                          ● {c.status === "CLOSED" ? "Closed Case" : "Active Case"}
-                        </span>
-                        <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 600 }}>
-                          REF #{c.id.slice(0, 8).toUpperCase()}
-                        </span>
-                      </div>
-
-                      <h3 className={styles.caseTitle}>{c.title}</h3>
-
-                      <div className={styles.caseMeta}>
-                        <div><strong>Court:</strong> {courtDisplay}</div>
-                        <div><strong>Lawyer:</strong> {lawyerDisplay}</div>
-                      </div>
-
-                      <div className={styles.caseNextEvent}>
-                        <CalendarIcon size={14} color="var(--navy-primary)" />
-                        <span>{nextEventDisplay}</span>
-                      </div>
-                    </div>
-
-                    <div className={styles.caseFooter}>
-                      <span>View Case Details</span>
-                      <ArrowRightIcon size={14} />
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </section>
+        )}
       </div>
 
       {/* Start Case Modal */}
-      {createModalOpen && (
-        <div className={styles.modalBackdrop} onClick={() => setCreateModalOpen(false)}>
-          <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Start a New Case</h3>
-              <button
-                className={styles.closeBtn}
-                onClick={() => setCreateModalOpen(false)}
-                aria-label="Close dialog"
+      <Modal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        title="Start a new matter"
+        size="md"
+      >
+        <form onSubmit={handleCreateCase}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <p style={{ fontSize: "14px", color: "var(--text-secondary, #52606D)", margin: 0 }}>
+              Tell us what this matter is about in plain words. You can add documents and invite your advocate anytime.
+            </p>
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "var(--text-primary, #17212B)",
+                  marginBottom: "6px",
+                }}
               >
-                ✕
-              </button>
+                What is this matter about? *
+              </label>
+              <Input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="e.g. Property dispute regarding ancestral land"
+                required
+              />
             </div>
 
-            <form onSubmit={handleCreateCase}>
-              <div className="input-group">
-                <label className="input-label">What is this case about?</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="e.g. Property boundary dispute, Rent agreement issue"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  required
-                />
-              </div>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "var(--text-primary, #17212B)",
+                  marginBottom: "6px",
+                }}
+              >
+                Brief description (optional)
+              </label>
+              <Textarea
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="Mention any notices received, police complaints, or court names if known."
+                rows={3}
+              />
+            </div>
 
-              <div className="input-group">
-                <label className="input-label">Briefly explain what happened (Optional)</label>
-                <textarea
-                  className="input-field"
-                  rows={3}
-                  placeholder="Describe your situation in plain words..."
-                  value={newDesc}
-                  onChange={(e) => setNewDesc(e.target.value)}
-                />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
-                <button
-                  type="button"
-                  onClick={() => setCreateModalOpen(false)}
-                  className="btn btn-secondary"
-                  disabled={creating}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={creating}
-                >
-                  {creating ? "Creating Case..." : "Continue →"}
-                </button>
-              </div>
-            </form>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "12px" }}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setCreateModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" isLoading={creating}>
+                Create matter
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Consultation Action & Checkout Modals */}
-      {checkoutConsultation && (
-        <PaymentCheckoutModal
-          consultation={checkoutConsultation}
-          onClose={() => setCheckoutConsultation(null)}
-          onPaymentSuccess={() => {
-            setCheckoutConsultation(null);
-            void fetchDashboardData();
-          }}
-        />
-      )}
-
-      {actionConsultationModal && (
-        <ConsultationActionModal
-          type={actionConsultationModal.type}
-          consultation={actionConsultationModal.consultation}
-          onClose={() => setActionConsultationModal(null)}
-          onSuccess={() => {
-            setActionConsultationModal(null);
-            void fetchDashboardData();
-          }}
-        />
-      )}
+        </form>
+      </Modal>
     </div>
   );
 }

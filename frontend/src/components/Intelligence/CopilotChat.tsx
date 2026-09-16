@@ -201,13 +201,29 @@ export function CopilotChat({
         {/* Header (Section 12) */}
         <div className={styles.chatHeader}>
           <div className={styles.chatTitle}>
-            <Image
-              src="/logo-icon.png"
-              alt="LCC Assistant"
-              width={22}
-              height={22}
-              style={{ objectFit: "contain" }}
-            />
+            <span
+              style={{
+                width: "26px",
+                height: "26px",
+                borderRadius: "6px",
+                background: "#102A43",
+                border: "1px solid rgba(255, 255, 255, 0.18)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+                padding: "2px",
+                flexShrink: 0,
+              }}
+            >
+              <Image
+                src="/logo-icon-white.png"
+                alt="LCC Assistant"
+                width={18}
+                height={18}
+                style={{ objectFit: "contain" }}
+              />
+            </span>
             <span>LCC Legal Assistant</span>
           </div>
           <div className={styles.onlineBadge}>

@@ -7,6 +7,14 @@ import LegalTerm from "@/components/LegalTerm";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { trackFunnelEvent } from "@/lib/analytics";
 import { CourtCaseSummary, CourtCaseDetail } from "@/types";
+import {
+  CourthouseIcon,
+  DocumentIcon,
+  DownloadIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  SearchIcon,
+} from "@/components/ui/Icons";
 import styles from "./page.module.css";
 
 type SearchMode = "cnr" | "case_no" | "party" | "advocate";
@@ -171,7 +179,7 @@ export default function CourtTrackingPage() {
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.eyebrow}>
-          <span>🏛</span>
+          <CourthouseIcon size={14} color="#2563eb" />
           <span>eCourts & Cause List Ecosystem</span>
         </div>
         <h1 className={styles.title}>Find your case</h1>
@@ -182,8 +190,9 @@ export default function CourtTrackingPage() {
         {/* Pilot Jurisdiction & Provenance Notice Banner */}
         <div className={styles.disclaimerBanner}>
           <div>
-            <div style={{ fontWeight: 700, color: "#93c5fd", marginBottom: "4px" }}>
-              🏛 Active Pilot Jurisdictions: High Court of Delhi, High Court of Bombay, and High Court of Allahabad. (District courts expanding in Cohort 2).
+            <div style={{ fontWeight: 700, color: "#1e40af", marginBottom: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
+              <CourthouseIcon size={15} color="#2563eb" />
+              <span>Active Pilot Jurisdictions: High Court of Delhi, High Court of Bombay, and High Court of Allahabad. (District courts expanding in Cohort 2).</span>
             </div>
             <strong>Important Notice on Court Records:</strong> Legal Case Companion tracks publicly available court information for matter governance. LCC is an independent legal management platform and does not replace official court records. Certified copies must be obtained from the respective court registry.
           </div>
@@ -286,7 +295,7 @@ export default function CourtTrackingPage() {
               style={{
                 background: "transparent",
                 border: "none",
-                color: "var(--accent-secondary, #818cf8)",
+                color: "#2563eb",
                 fontSize: "12px",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -346,17 +355,21 @@ export default function CourtTrackingPage() {
       {actionNotice && (
         <div
           style={{
-            background: "rgba(16, 185, 129, 0.12)",
-            border: "1px solid rgba(16, 185, 129, 0.3)",
-            color: "#34d399",
+            background: "#ecfdf5",
+            border: "1px solid #a7f3d0",
+            color: "#059669",
             padding: "10px 16px",
             borderRadius: "8px",
             marginBottom: "20px",
             fontSize: "13px",
             fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
           }}
         >
-          ✓ {actionNotice}
+          <CheckCircleIcon size={16} color="#059669" />
+          <span>{actionNotice}</span>
         </div>
       )}
 
@@ -364,13 +377,14 @@ export default function CourtTrackingPage() {
       {error && (
         <div
           style={{
-            background: "rgba(239, 68, 68, 0.12)",
-            border: "1px solid rgba(239, 68, 68, 0.3)",
-            color: "#fca5a5",
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            color: "#dc2626",
             padding: "12px 16px",
             borderRadius: "8px",
             marginBottom: "20px",
             fontSize: "13px",
+            fontWeight: 500,
           }}
         >
           {error}
@@ -387,7 +401,7 @@ export default function CourtTrackingPage() {
       {/* Search Results Summary List (when multiple results or browsing) */}
       {!isSearching && results.length > 1 && (
         <div className={styles.resultsList}>
-          <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-secondary)" }}>
+          <div style={{ fontSize: "14px", fontWeight: 700, color: "#334155" }}>
             Found {results.length} court records matching your search:
           </div>
           {results.map((item) => (
@@ -400,15 +414,15 @@ export default function CourtTrackingPage() {
                 <span className={styles.cnrPill}>{item.cnr}</span>
                 <span className={styles.provenanceBadge}>{item.source_provenance}</span>
               </div>
-              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#f8fafc" }}>
+              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#0f172a" }}>
                 {item.petitioner} v. {item.respondent}
               </h3>
-              <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+              <div style={{ fontSize: "13px", color: "#64748b" }}>
                 {item.court_name} · <strong>{item.case_number}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px", paddingTop: "8px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px", paddingTop: "8px", borderTop: "1px solid #e2e8f0" }}>
                 <LegalTerm term={item.technical_status} source={item.source_provenance} />
-                <span style={{ fontSize: "12px", color: "var(--accent-secondary)", fontWeight: 600 }}>
+                <span style={{ fontSize: "12px", color: "#2563eb", fontWeight: 600 }}>
                   View Complete Record →
                 </span>
               </div>
@@ -420,7 +434,9 @@ export default function CourtTrackingPage() {
       {/* No Results Empty State */}
       {!isSearching && results.length === 0 && (
         <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}>🏛</div>
+          <div className={styles.emptyIcon}>
+            <CourthouseIcon size={24} color="#2563eb" />
+          </div>
           <h2 className={styles.emptyTitle}>We couldn&apos;t find a case matching those details.</h2>
           <p className={styles.emptyDesc}>
             Check the number or name and try again. You can search by 16-digit CNR, case number (e.g. 412/2025), party name, or advocate name.
@@ -448,9 +464,9 @@ export default function CourtTrackingPage() {
           <div className={styles.resultTopBar}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
               <span className={styles.provenanceBadge}>
-                <span>🏛</span> {activeCase.source_provenance}
+                <CourthouseIcon size={14} color="#065f46" /> {activeCase.source_provenance}
               </span>
-              <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+              <span style={{ fontSize: "12px", color: "#64748b" }}>
                 Last synchronized: {new Date(activeCase.last_synchronized_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} · {new Date(activeCase.last_synchronized_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} IST
               </span>
             </div>
@@ -470,7 +486,8 @@ export default function CourtTrackingPage() {
                 onClick={handleSync}
                 disabled={isSyncing}
               >
-                {isSyncing ? "Syncing Registry..." : "🔄 Sync Registry"}
+                <ClockIcon size={14} color="#334155" />
+                <span>{isSyncing ? "Syncing Registry..." : "Sync Registry"}</span>
               </button>
             </div>
           </div>
@@ -519,14 +536,15 @@ export default function CourtTrackingPage() {
               </div>
 
               {activeCase.next_hearing_date && (
-                <div style={{ background: "rgba(10, 13, 20, 0.7)", padding: "10px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <div style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 700, color: "#818cf8" }}>
-                    Next Important Date
+                <div style={{ background: "var(--surface-card, #ffffff)", padding: "12px 16px", borderRadius: "8px", border: "1px solid var(--border-subtle, #e2e8f0)", boxShadow: "var(--shadow-sm)" }}>
+                  <div style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 700, color: "#2563eb", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <ClockIcon size={12} color="#2563eb" />
+                    <span>Next Important Date</span>
                   </div>
-                  <div style={{ fontSize: "15px", fontWeight: 700, color: "#f8fafc", marginTop: "2px" }}>
+                  <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary, #0f172a)", marginTop: "4px" }}>
                     {new Date(activeCase.next_hearing_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                   </div>
-                  <div style={{ fontSize: "12px", color: "#94a3b8" }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
                     {activeCase.next_hearing_purpose}
                   </div>
                 </div>
@@ -534,8 +552,8 @@ export default function CourtTrackingPage() {
             </div>
 
             {/* Milestone Guidance: What Happens Next? */}
-            <div style={{ marginTop: "16px", padding: "12px 16px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "8px", fontSize: "12px", color: "var(--text-secondary)" }}>
-              <strong style={{ color: "#f1f5f9" }}>What happens next?</strong>{" "}
+            <div style={{ marginTop: "16px", padding: "14px 18px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", fontSize: "13px", color: "#1e3a8a", lineHeight: 1.5 }}>
+              <strong style={{ color: "#1e40af" }}>What happens next?</strong>{" "}
               {activeCase.technical_status.toLowerCase().includes("reserved")
                 ? "The scheduled hearing has taken place. All oral submissions have concluded. The court will pronounce the final order or judgment on the listed date. No further oral appearances are required."
                 : activeCase.technical_status.toLowerCase().includes("notice")
@@ -613,10 +631,10 @@ export default function CourtTrackingPage() {
                 <tbody>
                   {activeCase.history.map((h, idx) => (
                     <tr key={idx}>
-                      <td style={{ fontWeight: 600, color: "#f8fafc", whiteSpace: "nowrap" }}>{h.date}</td>
+                      <td style={{ fontWeight: 600, color: "#0f172a", whiteSpace: "nowrap" }}>{h.date}</td>
                       <td>{h.judge}</td>
                       <td>{h.business}</td>
-                      <td style={{ fontWeight: 600, color: "var(--accent-secondary)", whiteSpace: "nowrap" }}>
+                      <td style={{ fontWeight: 600, color: "#2563eb", whiteSpace: "nowrap" }}>
                         {h.next_date || "—"}
                       </td>
                     </tr>
@@ -629,29 +647,29 @@ export default function CourtTrackingPage() {
           {/* Tab 2: Daily Cause List */}
           {activeDetailTab === "causelist" && activeCase.cause_list && (
             <div style={{ padding: "24px" }}>
-              <div style={{ background: "rgba(10, 13, 20, 0.7)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "20px" }}>
+              <div style={{ background: "var(--surface-card, #ffffff)", border: "1px solid var(--border-subtle, #e2e8f0)", borderRadius: "10px", padding: "20px", boxShadow: "var(--shadow-sm)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
-                  <div style={{ fontSize: "16px", fontWeight: 700, color: "#f8fafc" }}>
+                  <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary, #0f172a)" }}>
                     Daily Board: {activeCase.cause_list.cause_list_date}
                   </div>
                   <span className={styles.provenanceBadge}>Official Registry Cause List</span>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", fontSize: "13px" }}>
                   <div>
-                    <span style={{ color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Court Room:</span>
-                    <strong style={{ color: "#f8fafc", fontSize: "15px" }}>{activeCase.cause_list.court_room}</strong>
+                    <span style={{ color: "#64748b", display: "block", marginBottom: "4px" }}>Court Room:</span>
+                    <strong style={{ color: "#0f172a", fontSize: "15px" }}>{activeCase.cause_list.court_room}</strong>
                   </div>
                   <div>
-                    <span style={{ color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Item Number:</span>
-                    <strong style={{ color: "#f8fafc", fontSize: "15px" }}>{activeCase.cause_list.item_number}</strong>
+                    <span style={{ color: "#64748b", display: "block", marginBottom: "4px" }}>Item Number:</span>
+                    <strong style={{ color: "#0f172a", fontSize: "15px" }}>{activeCase.cause_list.item_number}</strong>
                   </div>
                   <div>
-                    <span style={{ color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Bench:</span>
-                    <strong style={{ color: "#f8fafc" }}>{activeCase.cause_list.bench}</strong>
+                    <span style={{ color: "#64748b", display: "block", marginBottom: "4px" }}>Bench:</span>
+                    <strong style={{ color: "#0f172a" }}>{activeCase.cause_list.bench}</strong>
                   </div>
                   <div>
-                    <span style={{ color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Listing Purpose:</span>
-                    <strong style={{ color: "#34d399" }}>{activeCase.cause_list.board_status}</strong>
+                    <span style={{ color: "#64748b", display: "block", marginBottom: "4px" }}>Listing Purpose:</span>
+                    <strong style={{ color: "#059669" }}>{activeCase.cause_list.board_status}</strong>
                   </div>
                 </div>
               </div>
@@ -662,7 +680,7 @@ export default function CourtTrackingPage() {
           {activeDetailTab === "orders" && (
             <div style={{ padding: "24px" }}>
               {activeCase.orders.length === 0 ? (
-                <div style={{ color: "var(--text-muted)", textAlign: "center", padding: "24px" }}>
+                <div style={{ color: "#64748b", textAlign: "center", padding: "24px" }}>
                   No interim orders or judgments uploaded for this matter yet.
                 </div>
               ) : (
@@ -671,8 +689,8 @@ export default function CourtTrackingPage() {
                     <div
                       key={idx}
                       style={{
-                        background: "rgba(10, 13, 20, 0.7)",
-                        border: "1px solid rgba(255,255,255,0.08)",
+                        background: "var(--surface-card, #ffffff)",
+                        border: "1px solid var(--border-subtle, #e2e8f0)",
                         borderRadius: "8px",
                         padding: "16px 20px",
                         display: "flex",
@@ -680,14 +698,16 @@ export default function CourtTrackingPage() {
                         alignItems: "center",
                         flexWrap: "wrap",
                         gap: "12px",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: "14px", fontWeight: 700, color: "#f8fafc", marginBottom: "4px" }}>
-                          📄 {ord.title}
+                        <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", marginBottom: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
+                          <DocumentIcon size={16} color="#2563eb" />
+                          <span>{ord.title}</span>
                         </div>
-                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                          Order Date: {ord.order_date} · {ord.pages} Pages · SHA-256: <code style={{ fontSize: "11px" }}>{ord.sha256.slice(0, 16)}...</code>
+                        <div style={{ fontSize: "12px", color: "#64748b" }}>
+                          Order Date: {ord.order_date} · {ord.pages} Pages · SHA-256: <code style={{ fontSize: "11px", background: "#f1f5f9", padding: "2px 6px", borderRadius: "4px", color: "#334155" }}>{ord.sha256.slice(0, 16)}...</code>
                         </div>
                       </div>
 
@@ -699,7 +719,8 @@ export default function CourtTrackingPage() {
                           alert(`Secure certified copy hash: ${ord.sha256}\nDocument title: ${ord.title}\nProtected under court verification protocol.`);
                         }}
                       >
-                        ⬇ Download Order
+                        <DownloadIcon size={14} color="#334155" />
+                        <span>Download Order</span>
                       </button>
                     </div>
                   ))}

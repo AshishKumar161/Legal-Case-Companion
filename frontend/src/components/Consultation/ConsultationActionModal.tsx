@@ -99,7 +99,7 @@ export function ConsultationActionModal({
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        backgroundColor: "rgba(15, 23, 42, 0.6)",
         backdropFilter: "blur(4px)",
         display: "flex",
         alignItems: "center",
@@ -111,17 +111,18 @@ export function ConsultationActionModal({
     >
       <div
         style={{
-          background: "#141721",
-          border: "1px solid #232838",
+          background: "var(--surface-card, #ffffff)",
+          border: "1px solid var(--border-subtle, #e2e8f0)",
+          boxShadow: "var(--shadow-xl)",
           borderRadius: "12px",
           width: "100%",
           maxWidth: "460px",
           padding: "24px",
-          color: "#f7f8fa",
+          color: "var(--text-primary, #0f172a)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 style={{ fontSize: "16px", fontWeight: 600, margin: "0 0 12px 0" }}>
+        <h3 style={{ fontSize: "16px", fontWeight: 700, margin: "0 0 12px 0", color: "var(--text-primary, #0f172a)" }}>
           {getTitle()}
         </h3>
 
@@ -130,11 +131,12 @@ export function ConsultationActionModal({
             style={{
               padding: "10px 14px",
               borderRadius: "6px",
-              background: "rgba(239, 68, 68, 0.15)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              color: "#fca5a5",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#dc2626",
               fontSize: "12px",
               marginBottom: "16px",
+              fontWeight: 500,
             }}
           >
             {error}
@@ -145,7 +147,7 @@ export function ConsultationActionModal({
           {(type === "RESCHEDULE" || type === "SCHEDULE") && (
             <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "16px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "12px", color: "#94a3b8", marginBottom: "6px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: "6px" }}>
                   Select Consultation Date (IST):
                 </label>
                 <input
@@ -158,9 +160,9 @@ export function ConsultationActionModal({
                     width: "100%",
                     padding: "10px",
                     borderRadius: "6px",
-                    background: "#1a1e2e",
-                    border: "1px solid #282f44",
-                    color: "#f7f8fa",
+                    background: "var(--surface-card, #ffffff)",
+                    border: "1px solid var(--border-subtle, #cbd5e1)",
+                    color: "var(--text-primary, #0f172a)",
                     fontSize: "13px",
                   }}
                 />
@@ -170,7 +172,7 @@ export function ConsultationActionModal({
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "12px", color: "#94a3b8", marginBottom: "6px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: "6px" }}>
                   Duration (Minutes):
                 </label>
                 <select
@@ -180,9 +182,9 @@ export function ConsultationActionModal({
                     width: "100%",
                     padding: "10px",
                     borderRadius: "6px",
-                    background: "#1a1e2e",
-                    border: "1px solid #282f44",
-                    color: "#f7f8fa",
+                    background: "var(--surface-card, #ffffff)",
+                    border: "1px solid var(--border-subtle, #cbd5e1)",
+                    color: "var(--text-primary, #0f172a)",
                     fontSize: "13px",
                   }}
                 >
@@ -199,7 +201,7 @@ export function ConsultationActionModal({
 
           {(type === "CANCEL" || type === "REJECT" || type === "NO_SHOW" || type === "RESCHEDULE") && (
             <div style={{ marginBottom: "18px" }}>
-              <label style={{ display: "block", fontSize: "12px", color: "#94a3b8", marginBottom: "6px" }}>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: "6px" }}>
                 {type === "CANCEL" && "Cancellation Reason (Optional):"}
                 {type === "REJECT" && "Decline Reason:"}
                 {type === "NO_SHOW" && "No-Show Observation Notes:"}
@@ -214,9 +216,9 @@ export function ConsultationActionModal({
                   width: "100%",
                   padding: "10px",
                   borderRadius: "6px",
-                  background: "#1a1e2e",
-                  border: "1px solid #282f44",
-                  color: "#f7f8fa",
+                  background: "var(--surface-card, #ffffff)",
+                  border: "1px solid var(--border-subtle, #cbd5e1)",
+                  color: "var(--text-primary, #0f172a)",
                   fontSize: "13px",
                 }}
               />
@@ -224,7 +226,7 @@ export function ConsultationActionModal({
           )}
 
           {type === "COMPLETE" && (
-            <p style={{ fontSize: "13px", color: "#94a3b8", lineHeight: "1.5", marginBottom: "18px" }}>
+            <p style={{ fontSize: "13px", color: "#64748b", lineHeight: "1.5", marginBottom: "18px" }}>
               Mark this consultation as successfully completed. This will close out the scheduled session and record completion in the matter timeline.
             </p>
           )}
@@ -236,10 +238,11 @@ export function ConsultationActionModal({
               style={{
                 padding: "8px 16px",
                 borderRadius: "6px",
-                background: "transparent",
-                border: "1px solid #232838",
-                color: "#94a3b8",
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                color: "#475569",
                 fontSize: "13px",
+                fontWeight: 500,
                 cursor: "pointer",
               }}
             >
@@ -253,8 +256,8 @@ export function ConsultationActionModal({
                 borderRadius: "6px",
                 background:
                   type === "CANCEL" || type === "REJECT" || type === "NO_SHOW"
-                    ? "#ef4444"
-                    : "linear-gradient(135deg, #3b82f6, #2563eb)",
+                    ? "#dc2626"
+                    : "#2563eb",
                 border: "none",
                 color: "#ffffff",
                 fontSize: "13px",

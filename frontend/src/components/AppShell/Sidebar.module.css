@@ -1,6 +1,6 @@
 .sidebar {
   width: 250px;
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
@@ -196,7 +196,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
 }
 
 .userSummary {
@@ -258,3 +258,26 @@
     transform: translateX(0);
   }
 }
+
+/* ============================================================
+   Dark Mode Enhancements for Sidebar
+   ============================================================ */
+:global([data-theme="dark"]) .navItemActive {
+  background: rgba(37, 99, 235, 0.16) !important;
+  color: #38BDF8 !important;
+}
+
+:global([data-theme="dark"]) .navItemActive::before {
+  background: #38BDF8;
+}
+
+:global([data-theme="dark"]) .navItem:hover {
+  background: var(--surface-subtle);
+  color: #FFFFFF;
+}
+
+:global([data-theme="dark"]) .brandIcon {
+  background: #10192A;
+  border: 1px solid #1E2D44;
+}
+

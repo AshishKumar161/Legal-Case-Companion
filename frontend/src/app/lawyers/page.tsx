@@ -14,6 +14,7 @@ import {
   SearchIcon,
   ScalesIcon,
 } from "@/components/ui/Icons";
+import { LawyerCard, EmptyState, Badge } from "@/components/ui";
 import styles from "./discovery.module.css";
 
 // ----------------------------------------------------------------------------
@@ -23,7 +24,6 @@ import styles from "./discovery.module.css";
 interface LegalIntentOption {
   id: string;
   label: string;
-  icon: string;
   practiceArea: string;
   explanation: string;
 }
@@ -31,71 +31,61 @@ interface LegalIntentOption {
 const INTENT_OPTIONS: LegalIntentOption[] = [
   {
     id: "property",
-    label: "Property problem",
-    icon: "🏡",
+    label: "Property & Land",
     practiceArea: "Property",
     explanation: "Disagreement about land, house, rent, ownership, or property documents.",
   },
   {
     id: "family",
-    label: "Family problem",
-    icon: "👨‍👩‍👧",
+    label: "Family & Matrimonial",
     practiceArea: "Family",
     explanation: "Divorce, maintenance, child custody, domestic issues, or family property.",
   },
   {
     id: "money",
-    label: "Money / payment problem",
-    icon: "💰",
+    label: "Money & Cheques",
     practiceArea: "Commercial",
     explanation: "Unpaid salary, loan recovery, bounced cheques, or financial disputes.",
   },
   {
     id: "employment",
-    label: "Employment problem",
-    icon: "💼",
+    label: "Employment & Work",
     practiceArea: "Labor",
     explanation: "Wrongful termination, workplace issues, gratuity, or PF disputes.",
   },
   {
     id: "criminal",
-    label: "Criminal matter",
-    icon: "⚖️",
+    label: "Criminal & Bail",
     practiceArea: "Criminal",
     explanation: "Police complaints, FIR, bail, summons, or criminal defense.",
   },
   {
     id: "consumer",
-    label: "Consumer problem",
-    icon: "🛍️",
+    label: "Consumer Dispute",
     practiceArea: "Consumer",
     explanation: "Defective goods, service deficiency, insurance claims, or refund issues.",
   },
   {
     id: "business",
-    label: "Business problem",
-    icon: "🏢",
+    label: "Business & Contracts",
     practiceArea: "Corporate",
     explanation: "Commercial agreements, partnership disputes, unpaid invoices, or vendor issues.",
   },
   {
     id: "court",
-    label: "Court case",
-    icon: "🏛️",
+    label: "Court Case",
     practiceArea: "Civil",
     explanation: "Already listed in court, need an advocate to represent or appear.",
   },
   {
     id: "notice",
-    label: "Legal notice",
-    icon: "📬",
+    label: "Legal Notice",
     practiceArea: "Litigation",
     explanation: "Received a legal notice or need to send a formal legal demand.",
   },
   {
     id: "other",
-    label: "Something else",
-    icon: "📝",
+    label: "General Legal Advice",
     practiceArea: "",
     explanation: "General legal advice, document drafting, or regulatory guidance.",
   },
@@ -365,7 +355,6 @@ export default function LawyerDiscoveryPage() {
                 className={`${styles.intentPill} ${isSelected ? styles.intentPillActive : ""}`}
                 onClick={() => handleSelectIntent(intent)}
               >
-                <span>{intent.icon}</span>
                 <span>{intent.label}</span>
               </button>
             );
@@ -407,13 +396,13 @@ export default function LawyerDiscoveryPage() {
                     className={`${styles.choicePill} ${selectedLocation === loc ? styles.choicePillActive : ""}`}
                     onClick={() => setSelectedLocation(loc)}
                   >
-                    📍 {loc}
+                    {loc}
                   </button>
                 ))}
               </div>
 
               <div style={{ marginTop: "16px" }}>
-                <label style={{ fontSize: "13px", color: "#cbd5e1", display: "block", marginBottom: "8px" }}>
+                <label style={{ fontSize: "13px", color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>
                   Do you already have an ongoing court case?
                 </label>
                 <div style={{ display: "flex", gap: "10px" }}>
@@ -463,7 +452,7 @@ export default function LawyerDiscoveryPage() {
                     className={`${styles.choicePill} ${selectedLanguage === lang ? styles.choicePillActive : ""}`}
                     onClick={() => setSelectedLanguage(lang)}
                   >
-                    🗣️ {lang}
+                    {lang}
                   </button>
                 ))}
               </div>
@@ -486,7 +475,7 @@ export default function LawyerDiscoveryPage() {
                     className={`${styles.choicePill} ${selectedBudget === b.id ? styles.choicePillActive : ""}`}
                     onClick={() => setSelectedBudget(b.id)}
                   >
-                    💳 {b.label}
+                    {b.label}
                   </button>
                 ))}
               </div>
@@ -514,7 +503,7 @@ export default function LawyerDiscoveryPage() {
                     className={`${styles.choicePill} ${urgencyPreference === key ? styles.choicePillActive : ""}`}
                     onClick={() => setUrgencyPreference(key as never)}
                   >
-                    ⏱️ {label}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -696,20 +685,13 @@ export default function LawyerDiscoveryPage() {
         </div>
       ) : rankedLawyers.length === 0 ? (
         /* Empty State */
-        <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}>🔍</div>
-          <h3 className={styles.emptyTitle}>We couldn&apos;t find an advocate matching all your choices</h3>
-          <p className={styles.emptyText}>
-            Try selecting another court, location, or budget range to see more verified advocates.
-          </p>
-          <button
-            type="button"
-            className={styles.resetBtn}
-            onClick={handleResetFilters}
-          >
-            Reset All Filters
-          </button>
-        </div>
+        <EmptyState
+          icon={<SearchIcon size={28} color="var(--navy-600)" />}
+          title="No matching advocates found"
+          description="Try adjusting your court location, budget, or practice area to see more verified advocates."
+          actionLabel="Reset All Filters"
+          onAction={handleResetFilters}
+        />
       ) : (
         /* Advocate Grid (Section 11) */
         <div className={styles.lawyerGrid}>
@@ -718,116 +700,53 @@ export default function LawyerDiscoveryPage() {
               lawyer.verification_status === "VERIFIED" ||
               lawyer.verification_status === "APPROVED";
 
-            // Format practice areas with dots: Civil • Property • Family
-            let practiceAreasFormatted = "Civil • General Practice";
+            let practiceAreasArray: string[] = ["Civil", "General Practice"];
             if (lawyer.practice_areas) {
               if (Array.isArray(lawyer.practice_areas)) {
-                practiceAreasFormatted = lawyer.practice_areas.slice(0, 3).join(" • ");
-              } else {
-                practiceAreasFormatted = lawyer.practice_areas
-                  .split(",")
-                  .map((s) => s.trim())
-                  .slice(0, 3)
-                  .join(" • ");
+                practiceAreasArray = lawyer.practice_areas;
+              } else if (typeof lawyer.practice_areas === "string") {
+                practiceAreasArray = lawyer.practice_areas.split(",").map((s) => s.trim());
               }
             }
 
-            // Court or location
             const courtOrLocation =
               lawyer.court_jurisdictions && lawyer.court_jurisdictions.length > 0
                 ? lawyer.court_jurisdictions[0]
                 : lawyer.location
                 ? `${lawyer.location} District Court`
-                : "Delhi High Court";
+                : "District & High Court";
 
-            // Deterministic consultation count based on id
-            const consultationCount =
-              70 +
-              Math.abs(
-                (lawyer.id || "a")
-                  .split("")
-                  .reduce((acc, c) => acc + c.charCodeAt(0), 0) % 110
-              );
+            const languagesArray: string[] = Array.isArray(lawyer.languages)
+              ? lawyer.languages
+              : typeof (lawyer.languages as unknown) === "string"
+              ? (lawyer.languages as unknown as string).split(",").map((s: string) => s.trim())
+              : [];
 
             const lawyerId = lawyer.user_id || lawyer.id;
             const displayName = (lawyer.full_name || "Legal Professional").replace(/^(advocate|adv\.)\s+/i, "");
 
             return (
-              <div key={lawyer.id} className={styles.lawyerCard}>
-                <div>
-                  <div className={styles.cardHeader}>
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                      <div className={styles.avatarCircle}>
-                        <LawyerIcon size={22} color="var(--navy-primary)" />
-                      </div>
-                      <div>
-                        <h3 className={styles.lawyerName}>Advocate {displayName}</h3>
-                        {isVerified && (
-                          <span className={styles.verifiedBadge}>
-                            <CheckCircleIcon size={12} color="var(--status-safe-text)" />
-                            Verified Advocate
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Civil • Property • Family */}
-                  <div className={styles.practiceAreas}>
-                    {practiceAreasFormatted}
-                  </div>
-
-                  {/* Court / Location */}
-                  <div className={styles.courtName}>
-                    <CourthouseIcon size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: "4px" }} />
-                    {courtOrLocation}
-                  </div>
-
-                  {/* ★ 4.8 · 126 consultations */}
-                  <div className={styles.ratingRow}>
-                    <span className={styles.stars}>★ 4.8</span>
-                    <span>·</span>
-                    <span>{consultationCount} consultations</span>
-                    {lawyer.experience_years ? <span>· {lawyer.experience_years} yrs exp</span> : null}
-                  </div>
-
-                  {/* Available today */}
-                  <div className={styles.availabilityBadge}>
-                    <span className={styles.availDot} />
-                    <span>Available today</span>
-                  </div>
-
-                  {/* Fee text */}
-                  <div className={styles.feeText}>
-                    ₹{lawyer.consultation_fee || 1500} · 30 min consultation
-                  </div>
-
-                  {matchExplanation && (
-                    <div className={styles.matchTag}>
-                      <span>✓</span> {matchExplanation}
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions (Section 11) */}
-                <div className={styles.cardActions}>
-                  <Link
-                    href={`/lawyers/${lawyerId}`}
-                    className={styles.viewProfileBtn}
-                    onClick={() => trackFunnelEvent("profile_opened", { lawyer_id: lawyerId })}
-                  >
-                    View Profile
-                  </Link>
-
-                  <Link
-                    href={`/lawyers/${lawyerId}?action=book`}
-                    className={styles.talkToLawyerBtn}
-                    onClick={() => trackFunnelEvent("slot_selected", { lawyer_id: lawyerId })}
-                  >
-                    Talk to Lawyer
-                  </Link>
-                </div>
-              </div>
+              <LawyerCard
+                key={lawyer.id}
+                id={lawyerId}
+                name={`Advocate ${displayName}`}
+                verified={isVerified}
+                practiceAreas={practiceAreasArray}
+                experienceYears={lawyer.experience_years}
+                location={courtOrLocation}
+                languages={languagesArray}
+                consultationFee={lawyer.consultation_fee || 1500}
+                matchExplanation={matchExplanation}
+                profileHref={`/lawyers/${lawyerId}`}
+                onViewProfile={() => {
+                  trackFunnelEvent("profile_opened", { lawyer_id: lawyerId });
+                  window.location.href = `/lawyers/${lawyerId}`;
+                }}
+                onBook={() => {
+                  trackFunnelEvent("slot_selected", { lawyer_id: lawyerId });
+                  window.location.href = `/lawyers/${lawyerId}?action=book`;
+                }}
+              />
             );
           })}
         </div>

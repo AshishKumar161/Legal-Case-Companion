@@ -10,6 +10,28 @@ import {
   RecordingConsentStatus,
   VideoRoomAccessStatus,
 } from "@/types";
+import {
+  MicIcon,
+  MicOffIcon,
+  VideoIcon,
+  VideoOffIcon,
+  ScreenShareIcon,
+  PhoneOffIcon,
+  GearIcon,
+  ShieldIcon,
+  ClockIcon,
+  ChatIcon,
+  DocumentIcon,
+  ScalesIcon,
+  LawyerIcon,
+  CameraIcon,
+  CourthouseIcon,
+  PaperclipIcon,
+  UploadIcon,
+  DownloadIcon,
+  EyeIcon,
+  AlertTriangleIcon,
+} from "@/components/ui/Icons";
 
 interface VideoJoinInfo {
   consultation_id: string;
@@ -513,10 +535,10 @@ export default function VideoConsultationRoomPage() {
       ctx.fill();
 
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 32px sans-serif";
+      ctx.font = "bold 28px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("⚖️", 320, 190);
+      ctx.fillText((name?.charAt(0) || "L").toUpperCase(), 320, 190);
 
       ctx.font = "bold 20px sans-serif";
       ctx.fillStyle = "#f8fafc";
@@ -2057,7 +2079,7 @@ export default function VideoConsultationRoomPage() {
               fontSize: "24px",
             }}
           >
-            📹
+            <VideoIcon size={26} color="#818cf8" />
           </div>
           <div
             style={{
@@ -2136,7 +2158,7 @@ export default function VideoConsultationRoomPage() {
                 textAlign: "left",
               }}
             >
-              <span style={{ fontSize: "20px" }}>🟢</span>
+              <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: "#10b981", boxShadow: "0 0 10px #10b981", flexShrink: 0 }} />
               <div>
                 <div style={{ color: "#34d399", fontWeight: 700, fontSize: "13px" }}>
                   Advocate is Online & Ready
@@ -2169,7 +2191,7 @@ export default function VideoConsultationRoomPage() {
                 boxShadow: "0 4px 14px rgba(79, 70, 229, 0.35)",
               }}
             >
-              {accessStatus.lawyer_online ? "🚀 Enter Meeting with Advocate" : "⚡ Connect Now (Early Join / Test)"}
+              {accessStatus.lawyer_online ? "Enter Meeting with Advocate" : "Connect Now (Early Join / Test)"}
             </button>
             <button
               onClick={() => setRefreshKey((k) => k + 1)}
@@ -2251,7 +2273,7 @@ export default function VideoConsultationRoomPage() {
               fontSize: "24px",
             }}
           >
-            ⚠️
+            <AlertTriangleIcon size={28} color="#ef4444" />
           </div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>
             Unable to Enter Consultation
@@ -2306,9 +2328,9 @@ export default function VideoConsultationRoomPage() {
     <div
       id="consultation-room-container"
       style={{
-        height: "calc(100vh - 60px)",
-        maxHeight: "calc(100vh - 60px)",
-        backgroundColor: "#070b14",
+        height: "100vh",
+        maxHeight: "100vh",
+        backgroundColor: "#090E17",
         color: "#f8fafc",
         display: "flex",
         flexDirection: "column",
@@ -2344,27 +2366,29 @@ export default function VideoConsultationRoomPage() {
         </div>
       )}
 
-      {/* 1. Header Bar (Google Meet Style) */}
+      {/* 1. Header Bar — Clean, Institutional, Uncluttered */}
       <header
         style={{
           padding: "12px 24px",
-          backgroundColor: "#0d1322",
+          backgroundColor: "#0D1527",
           borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           zIndex: 20,
+          minHeight: "60px",
         }}
       >
+        {/* Left: Brand, Matter, Security */}
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div
               style={{
-                width: "30px",
-                height: "30px",
-                borderRadius: "6px",
-                background: "rgba(255, 255, 255, 0.08)",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
+                width: "32px",
+                height: "32px",
+                borderRadius: "8px",
+                background: "#102A43",
+                border: "1px solid rgba(255, 255, 255, 0.18)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2375,18 +2399,20 @@ export default function VideoConsultationRoomPage() {
               <Image
                 src="/logo-icon-white.png"
                 alt="LCC Logo"
-                width={28}
-                height={28}
+                width={26}
+                height={26}
                 style={{ objectFit: "contain", width: "auto", height: "auto" }}
               />
             </div>
             <div>
-              <span style={{ fontWeight: 700, fontSize: "15px", letterSpacing: "0.2px" }}>
-                LCC Consultation Room
-              </span>
-              <span style={{ color: "#64748b", fontSize: "12px", marginLeft: "8px" }}>
-                #{consultationId.slice(0, 8)}
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontWeight: 700, fontSize: "14px", letterSpacing: "0.2px", color: "#FFFFFF" }}>
+                  LCC Consultation Room
+                </span>
+                <span style={{ color: "#64748b", fontSize: "12px" }}>
+                  #{consultationId.slice(0, 8)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -2395,11 +2421,11 @@ export default function VideoConsultationRoomPage() {
               id="header-matter-btn"
               onClick={() => setActiveSideTab(activeSideTab === "case" ? null : "case")}
               style={{
-                backgroundColor: activeSideTab === "case" ? "rgba(99, 102, 241, 0.35)" : "rgba(99, 102, 241, 0.15)",
-                color: "#c7d2fe",
-                border: "1px solid rgba(99, 102, 241, 0.4)",
+                backgroundColor: activeSideTab === "case" ? "rgba(59, 130, 246, 0.25)" : "rgba(255, 255, 255, 0.06)",
+                color: "#93c5fd",
+                border: "1px solid rgba(59, 130, 246, 0.3)",
                 borderRadius: "100px",
-                padding: "3px 12px",
+                padding: "4px 12px",
                 fontSize: "12px",
                 fontWeight: 600,
                 display: "inline-flex",
@@ -2410,126 +2436,73 @@ export default function VideoConsultationRoomPage() {
               }}
               title="Open Case Workspace Inside Room"
             >
-              <span>⚖️ Matter:</span>
+              <ScalesIcon size={14} color="#93c5fd" />
+              <span>Matter:</span>
               <span style={{ fontWeight: 700, color: "#fff" }}>{linkedCase.title}</span>
-              <span style={{ fontSize: "10px", color: "#818cf8" }}>
-                ({linkedCase.reference_number || (linkedCase.id ? linkedCase.id.slice(0, 8) : "")})
-              </span>
             </button>
           )}
 
           <span
             style={{
-              backgroundColor: "rgba(59, 130, 246, 0.12)",
-              color: "#60a5fa",
+              backgroundColor: "rgba(16, 185, 129, 0.12)",
+              color: "#34d399",
               fontSize: "12px",
-              fontWeight: 600,
-              padding: "3px 10px",
+              fontWeight: 500,
+              padding: "4px 10px",
               borderRadius: "100px",
-              border: "1px solid rgba(59, 130, 246, 0.25)",
-            }}
-          >
-            🔒 End-to-End Encrypted
-          </span>
-
-          {istClock && (
-            <span
-              style={{
-                backgroundColor: "rgba(79, 91, 247, 0.15)",
-                color: "#a5b4fc",
-                fontSize: "12px",
-                fontWeight: 600,
-                padding: "3px 10px",
-                borderRadius: "100px",
-                border: "1px solid rgba(79, 91, 247, 0.3)",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px",
-              }}
-            >
-              <span>🕒</span> {istClock}
-            </span>
-          )}
-
-          <span
-            style={{
-              backgroundColor: "rgba(16, 185, 129, 0.15)",
-              color: "#10b981",
-              fontSize: "12px",
-              fontWeight: 600,
-              padding: "3px 10px",
-              borderRadius: "100px",
-              border: "1px solid rgba(16, 185, 129, 0.3)",
+              border: "1px solid rgba(16, 185, 129, 0.25)",
               display: "inline-flex",
               alignItems: "center",
               gap: "5px",
             }}
           >
-            <span>🤝</span> Mutual Consent Granted
+            <ShieldIcon size={13} color="#34d399" />
+            <span>Encrypted & Confidential</span>
           </span>
         </div>
 
-        {/* Center Indicators: Session Timer + Recording Pill */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        {/* Center: Session Timer, Connection Status & Recording indicator */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {/* Call Elapsed Timer */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              padding: "6px 14px",
+              gap: "6px",
+              backgroundColor: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              padding: "5px 12px",
               borderRadius: "8px",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              fontFamily: "monospace",
-              fontSize: "15px",
-              fontWeight: 700,
-              color: "#38bdf8",
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "#f8fafc",
             }}
           >
-            <span>⏱</span>
+            <ClockIcon size={14} color="#94a3b8" />
             <span>{formatTimer(secondsElapsed)}</span>
           </div>
 
-          {/* Live Recording Beacon Indicator */}
+          {/* Live Recording Beacon */}
           {isRecording ? (
             <div
               id="header-recording-badge"
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                backgroundColor: "rgba(239, 68, 68, 0.2)",
-                border: "1px solid rgba(239, 68, 68, 0.6)",
+                gap: "6px",
+                backgroundColor: "rgba(239, 68, 68, 0.15)",
+                border: "1px solid rgba(239, 68, 68, 0.4)",
                 color: "#f87171",
-                padding: "6px 14px",
+                padding: "5px 12px",
                 borderRadius: "8px",
-                fontSize: "13px",
-                fontWeight: 800,
-                letterSpacing: "0.5px",
+                fontSize: "12px",
+                fontWeight: 700,
               }}
               data-recording-id={activeRecordingId || undefined}
               title={activeRecordingId ? `Active Recording ID: ${activeRecordingId}` : "Recording active"}
             >
-              <span style={{ animation: "pulse 1s infinite" }}>🔴</span>
-              <span>RECORDING ({formatTimer(recordingSeconds)})</span>
-            </div>
-          ) : consentStatus?.can_record ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                backgroundColor: "rgba(34, 197, 94, 0.12)",
-                border: "1px solid rgba(34, 197, 94, 0.3)",
-                color: "#22c55e",
-                padding: "4px 10px",
-                borderRadius: "6px",
-                fontSize: "12px",
-                fontWeight: 600,
-              }}
-            >
-              <span>🔒 Consented (Ready)</span>
+              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#ef4444", animation: "pulse 1s infinite" }} />
+              <span>REC ({formatTimer(recordingSeconds)})</span>
             </div>
           ) : null}
 
@@ -2539,9 +2512,10 @@ export default function VideoConsultationRoomPage() {
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              padding: "4px 10px",
-              borderRadius: "6px",
+              padding: "5px 12px",
+              borderRadius: "8px",
               backgroundColor: "rgba(255, 255, 255, 0.04)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
               fontSize: "12px",
             }}
           >
@@ -2577,46 +2551,33 @@ export default function VideoConsultationRoomPage() {
           </div>
         </div>
 
-        {/* Right Section: User details & End Call */}
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+        {/* Right Section: User details with Initials Avatar */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div
+            style={{
+              width: "34px",
+              height: "34px",
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #1E3A8A 0%, #0F172A 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#FFFFFF",
+              fontWeight: 700,
+              fontSize: "13px",
+            }}
+          >
+            {joinInfo?.participant_name ? joinInfo.participant_name.charAt(0).toUpperCase() : "U"}
+          </div>
           <div style={{ textAlign: "right", fontSize: "12px" }}>
             <div style={{ color: "#f8fafc", fontWeight: 600 }}>
               {joinInfo?.participant_name}
             </div>
-            <div style={{ color: "#94a3b8" }}>
-              Role: <span style={{ color: "#38bdf8", fontWeight: 600 }}>{joinInfo?.participant_role}</span>
+            <div style={{ color: "#94a3b8", fontSize: "11px" }}>
+              {joinInfo?.participant_role === "CLIENT" ? "Client" : "Advocate"}
             </div>
           </div>
-
-          <button
-            id="end-call-btn"
-            onClick={handleEndCall}
-            disabled={isEndingCall}
-            style={{
-              backgroundColor: "#dc2626",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "8px",
-              padding: "8px 18px",
-              fontWeight: 600,
-              fontSize: "13px",
-              cursor: isEndingCall ? "default" : "pointer",
-              opacity: isEndingCall ? 0.6 : 1,
-              transition: "background-color 0.2s, opacity 0.2s",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-            onMouseOver={(e) => {
-              if (!isEndingCall) e.currentTarget.style.backgroundColor = "#b91c1c";
-            }}
-            onMouseOut={(e) => {
-              if (!isEndingCall) e.currentTarget.style.backgroundColor = "#dc2626";
-            }}
-          >
-            <span>📞</span>
-            <span>{isEndingCall ? "Ending..." : "End Call"}</span>
-          </button>
         </div>
       </header>
 
@@ -2662,7 +2623,7 @@ export default function VideoConsultationRoomPage() {
                 pointerEvents: "none",
               }}
             >
-              <span style={{ fontSize: "14px", animation: "pulse 1s infinite" }}>🔴</span>
+              <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#ef4444", boxShadow: "0 0 10px #ef4444", animation: "pulse 1s infinite", display: "inline-block" }} />
               <span>RECORDING ({formatTimer(recordingSeconds)})</span>
             </div>
           )}
@@ -2785,31 +2746,32 @@ export default function VideoConsultationRoomPage() {
               <div style={{ textAlign: "center", zIndex: 2 }}>
                 <div
                   style={{
-                    width: "110px",
-                    height: "110px",
+                    width: "88px",
+                    height: "88px",
                     borderRadius: "50%",
-                    backgroundColor: "#1e293b",
-                    border: "3px solid #3b82f6",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "44px",
-                    fontWeight: 700,
-                    color: "#ffffff",
                     margin: "0 auto 16px",
-                    boxShadow: "0 0 24px rgba(59, 130, 246, 0.2)",
+                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.3)",
                   }}
                 >
-                  {joinInfo?.participant_role === "CLIENT" ? "⚖️" : "👤"}
+                  {joinInfo?.participant_role === "CLIENT" ? (
+                    <LawyerIcon size={38} color="#94A3B8" />
+                  ) : (
+                    <ScalesIcon size={38} color="#94A3B8" />
+                  )}
                 </div>
 
-                <h3 style={{ fontSize: "18px", fontWeight: 600, margin: 0 }}>
-                  {joinInfo?.participant_role === "CLIENT" ? "Counsel / Advocate" : "Client"}
+                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#F8FAFC", margin: "0 0 4px" }}>
+                  {joinInfo?.participant_role === "CLIENT" ? "Advocate / Legal Counsel" : "Client"}
                 </h3>
-                <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
+                <p style={{ color: "#64748b", fontSize: "13px", margin: 0 }}>
                   {remotePeerActive
                     ? "Camera is turned off"
-                    : "Waiting for remote participant to connect..."}
+                    : "Waiting for counsel to connect..."}
                 </p>
               </div>
             )}
@@ -2820,7 +2782,7 @@ export default function VideoConsultationRoomPage() {
                 position: "absolute",
                 bottom: "16px",
                 left: "16px",
-                backgroundColor: "rgba(0, 0, 0, 0.65)",
+                backgroundColor: "rgba(13, 21, 39, 0.8)",
                 backdropFilter: "blur(8px)",
                 padding: "6px 14px",
                 borderRadius: "8px",
@@ -2841,11 +2803,19 @@ export default function VideoConsultationRoomPage() {
                   backgroundColor: remotePeerActive ? "#22c55e" : "#f59e0b",
                 }}
               />
-              <span>
+              <span style={{ color: "#F8FAFC" }}>
                 {joinInfo?.participant_role === "CLIENT" ? "Advocate / Legal Counsel" : "Client"}
               </span>
-              {remoteIsMuted && <span style={{ color: "#ef4444" }}>🔇 Muted</span>}
-              {remoteIsScreenSharing && <span style={{ color: "#38bdf8" }}>🖥️ Presenting</span>}
+              {remoteIsMuted && (
+                <span style={{ color: "#F87171", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                  <MicOffIcon size={13} color="#F87171" /> Muted
+                </span>
+              )}
+              {remoteIsScreenSharing && (
+                <span style={{ color: "#38BDF8", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                  <ScreenShareIcon size={13} color="#38BDF8" /> Presenting
+                </span>
+              )}
             </div>
           </div>
 
@@ -2855,7 +2825,7 @@ export default function VideoConsultationRoomPage() {
             style={{
               flex: isScreenSharing ? "0 0 280px" : "initial",
               height: "100%",
-              backgroundColor: "#0d1322",
+              backgroundColor: "#0D1527",
               borderRadius: "16px",
               border: "1px solid rgba(255, 255, 255, 0.08)",
               position: "relative",
@@ -2863,7 +2833,7 @@ export default function VideoConsultationRoomPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
             }}
           >
             {/* Non-blocking Camera Error Banner */}
@@ -2886,7 +2856,7 @@ export default function VideoConsultationRoomPage() {
                   boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
                 }}
               >
-                ⚠️ {cameraError}
+                {cameraError}
               </div>
             )}
 
@@ -2939,20 +2909,21 @@ export default function VideoConsultationRoomPage() {
               >
                 <div
                   style={{
-                    width: "90px",
-                    height: "90px",
+                    width: "88px",
+                    height: "88px",
                     borderRadius: "50%",
-                    backgroundColor: "#1f2937",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "36px",
-                    margin: "0 auto 12px",
+                    margin: "0 auto 14px",
+                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.3)",
                   }}
                 >
-                  📷
+                  <VideoOffIcon size={34} color="#64748B" />
                 </div>
-                <p style={{ color: "#94a3b8", fontSize: "14px", margin: 0 }}>Camera Off</p>
+                <p style={{ color: "#94a3b8", fontSize: "14px", fontWeight: 500, margin: 0 }}>Camera Off</p>
               </div>
             )}
 
@@ -2962,7 +2933,7 @@ export default function VideoConsultationRoomPage() {
                 position: "absolute",
                 bottom: "16px",
                 left: "16px",
-                backgroundColor: "rgba(0, 0, 0, 0.65)",
+                backgroundColor: "rgba(13, 21, 39, 0.8)",
                 backdropFilter: "blur(8px)",
                 padding: "6px 14px",
                 borderRadius: "8px",
@@ -2975,9 +2946,17 @@ export default function VideoConsultationRoomPage() {
                 border: "1px solid rgba(255, 255, 255, 0.1)",
               }}
             >
-              <span>You ({joinInfo?.participant_name})</span>
-              {isMuted && <span style={{ color: "#ef4444" }}>🔇 Muted</span>}
-              {isScreenSharing && <span style={{ color: "#38bdf8" }}>🖥️ Presenting</span>}
+              <span style={{ color: "#F8FAFC" }}>You ({joinInfo?.participant_name})</span>
+              {isMuted && (
+                <span style={{ color: "#F87171", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                  <MicOffIcon size={13} color="#F87171" /> Muted
+                </span>
+              )}
+              {isScreenSharing && (
+                <span style={{ color: "#38BDF8", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                  <ScreenShareIcon size={13} color="#38BDF8" /> Presenting
+                </span>
+              )}
             </div>
           </div>
         </main>
@@ -3106,7 +3085,8 @@ export default function VideoConsultationRoomPage() {
                     gap: "4px",
                   }}
                 >
-                  ⚖️ Case
+                  <ScalesIcon size={13} />
+                  Case
                 </button>
               </div>
 
@@ -3202,6 +3182,9 @@ export default function VideoConsultationRoomPage() {
                       padding: "0 14px",
                       fontWeight: 600,
                       cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
                     ➤
@@ -3213,7 +3196,7 @@ export default function VideoConsultationRoomPage() {
             {/* Tab Content: Participants */}
             {activeSideTab === "participants" && (
               <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
-                <h4 style={{ fontSize: "13px", textTransform: "uppercase", color: "#94a3b8", margin: "0 0 12px" }}>
+                <h4 style={{ fontSize: "13px", textTransform: "uppercase", color: "#94a3b8", margin: "0 0 12px", letterSpacing: "0.5px" }}>
                   In This Call (2 Maximum)
                 </h4>
 
@@ -3223,10 +3206,11 @@ export default function VideoConsultationRoomPage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "10px",
+                    padding: "10px 12px",
                     backgroundColor: "rgba(255, 255, 255, 0.03)",
                     borderRadius: "8px",
                     marginBottom: "8px",
+                    border: "1px solid rgba(255, 255, 255, 0.05)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -3238,9 +3222,9 @@ export default function VideoConsultationRoomPage() {
                       <div style={{ fontSize: "11px", color: "#38bdf8" }}>{joinInfo?.participant_role}</div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: "6px", fontSize: "14px" }}>
-                    <span>{isMuted ? "🔇" : "🎙️"}</span>
-                    <span>{isVideoOff ? "🚫" : "📹"}</span>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    {isMuted ? <MicOffIcon size={14} color="#ef4444" /> : <MicIcon size={14} color="#10b981" />}
+                    {isVideoOff ? <VideoOffIcon size={14} color="#ef4444" /> : <VideoIcon size={14} color="#94a3b8" />}
                   </div>
                 </div>
 
@@ -3250,14 +3234,15 @@ export default function VideoConsultationRoomPage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "10px",
+                    padding: "10px 12px",
                     backgroundColor: "rgba(255, 255, 255, 0.03)",
                     borderRadius: "8px",
+                    border: "1px solid rgba(255, 255, 255, 0.05)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 700 }}>
-                      {joinInfo?.participant_role === "CLIENT" ? "⚖️" : "👤"}
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#334155", display: "flex", alignItems: "center", justifyContent: "center", color: "#cbd5e1" }}>
+                      {joinInfo?.participant_role === "CLIENT" ? <LawyerIcon size={16} color="#cbd5e1" /> : <ScalesIcon size={16} color="#cbd5e1" />}
                     </div>
                     <div>
                       <div style={{ fontSize: "13px", fontWeight: 600 }}>
@@ -3268,9 +3253,9 @@ export default function VideoConsultationRoomPage() {
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: "6px", fontSize: "14px" }}>
-                    {remotePeerActive && <span>{remoteIsMuted ? "🔇" : "🎙️"}</span>}
-                    {remotePeerActive && <span>{remoteIsVideoOff ? "🚫" : "📹"}</span>}
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    {remotePeerActive && (remoteIsMuted ? <MicOffIcon size={14} color="#ef4444" /> : <MicIcon size={14} color="#10b981" />)}
+                    {remotePeerActive && (remoteIsVideoOff ? <VideoOffIcon size={14} color="#ef4444" /> : <VideoIcon size={14} color="#94a3b8" />)}
                   </div>
                 </div>
               </div>
@@ -3428,10 +3413,12 @@ export default function VideoConsultationRoomPage() {
                       style={{
                         textAlign: "center",
                         cursor: "pointer",
-                        padding: "10px 6px",
+                        padding: "16px 8px",
                       }}
                     >
-                      <div style={{ fontSize: "28px", marginBottom: "6px" }}>📄</div>
+                      <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px" }}>
+                        <DocumentIcon size={32} color="#38bdf8" />
+                      </div>
                       <div style={{ fontSize: "13px", fontWeight: 600, color: "#38bdf8" }}>
                         Click to select document
                       </div>
@@ -3454,7 +3441,7 @@ export default function VideoConsultationRoomPage() {
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
-                          <span style={{ fontSize: "16px" }}>📎</span>
+                          <PaperclipIcon size={14} color="#38bdf8" />
                           <span
                             style={{
                               fontSize: "12px",
@@ -3529,7 +3516,8 @@ export default function VideoConsultationRoomPage() {
                           gap: "6px",
                         }}
                       >
-                        {uploadingDoc ? "Uploading & Sending..." : "📤 Send to Peer in Call"}
+                        <UploadIcon size={14} />
+                        {uploadingDoc ? "Uploading & Sending..." : "Send to Peer in Call"}
                       </button>
                     </div>
                   )}
@@ -3574,8 +3562,6 @@ export default function VideoConsultationRoomPage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                       {sharedDocuments.map((doc) => {
                         const isPdf = doc.file_name.toLowerCase().endsWith(".pdf");
-                        const isImg = /\.(png|jpe?g|webp|gif)$/i.test(doc.file_name);
-                        const fileIcon = isPdf ? "📕" : isImg ? "🖼️" : "📄";
 
                         return (
                           <div
@@ -3593,13 +3579,15 @@ export default function VideoConsultationRoomPage() {
                             <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
                               <div
                                 style={{
-                                  fontSize: "20px",
                                   backgroundColor: "rgba(255, 255, 255, 0.06)",
                                   padding: "6px",
                                   borderRadius: "6px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
                                 }}
                               >
-                                {fileIcon}
+                                <DocumentIcon size={20} color={isPdf ? "#f87171" : "#60a5fa"} />
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div
@@ -3646,9 +3634,14 @@ export default function VideoConsultationRoomPage() {
                                   fontSize: "11px",
                                   fontWeight: 600,
                                   textDecoration: "none",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "4px",
                                 }}
                               >
-                                ⬇️ Download
+                                <DownloadIcon size={12} />
+                                Download
                               </a>
                               <button
                                 onClick={() => {
@@ -3665,9 +3658,14 @@ export default function VideoConsultationRoomPage() {
                                   fontSize: "11px",
                                   fontWeight: 600,
                                   cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "4px",
                                 }}
                               >
-                                👁️ Preview
+                                <EyeIcon size={12} />
+                                Preview
                               </button>
                             </div>
                           </div>
@@ -3751,13 +3749,13 @@ export default function VideoConsultationRoomPage() {
                       {/* Case metadata pills */}
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
                         {linkedCase.case_type && (
-                          <span style={{ fontSize: "10px", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: "4px", color: "#94a3b8" }}>
-                            🏛️ {linkedCase.case_type}
+                          <span style={{ fontSize: "11px", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: "4px", color: "#94a3b8", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                            <CourthouseIcon size={12} /> {linkedCase.case_type}
                           </span>
                         )}
                         {linkedCase.court_name && (
-                          <span style={{ fontSize: "10px", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: "4px", color: "#94a3b8" }}>
-                            ⚖️ {linkedCase.court_name}
+                          <span style={{ fontSize: "11px", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: "4px", color: "#94a3b8", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                            <ScalesIcon size={12} /> {linkedCase.court_name}
                           </span>
                         )}
                       </div>
@@ -3796,8 +3794,8 @@ export default function VideoConsultationRoomPage() {
                     {/* Live Case Messages Feed */}
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: "220px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                        <h4 style={{ fontSize: "13px", fontWeight: 700, color: "#f8fafc", margin: 0 }}>
-                          💬 Case Messages ({linkedCaseMessages.length})
+                        <h4 style={{ fontSize: "13px", fontWeight: 700, color: "#f8fafc", margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+                          <ChatIcon size={14} /> Case Messages ({linkedCaseMessages.length})
                         </h4>
                         <button
                           onClick={() => void fetchLinkedCaseData(linkedCase.id)}
@@ -3895,7 +3893,9 @@ export default function VideoConsultationRoomPage() {
                   </>
                 ) : (
                   <div style={{ textAlign: "center", padding: "20px 0" }}>
-                    <div style={{ fontSize: "32px", marginBottom: "8px" }}>⚖️</div>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+                      <ScalesIcon size={32} color="#64748b" />
+                    </div>
                     <h4 style={{ fontSize: "14px", color: "#f8fafc", margin: "0 0 6px" }}>
                       No Case Matter Linked
                     </h4>
@@ -3970,9 +3970,9 @@ export default function VideoConsultationRoomPage() {
           id="toggle-mic-btn"
           onClick={toggleMute}
           style={{
-            backgroundColor: isMuted ? "#ef4444" : "rgba(255, 255, 255, 0.12)",
+            backgroundColor: isMuted ? "#DC2626" : "rgba(255, 255, 255, 0.08)",
             color: "#ffffff",
-            border: "none",
+            border: isMuted ? "none" : "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "50%",
             width: "48px",
             height: "48px",
@@ -3980,12 +3980,11 @@ export default function VideoConsultationRoomPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            fontSize: "18px",
             transition: "all 0.2s",
           }}
           title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
         >
-          {isMuted ? "🔇" : "🎙️"}
+          {isMuted ? <MicOffIcon size={20} color="#FFFFFF" /> : <MicIcon size={20} color="#FFFFFF" />}
         </button>
 
         {/* Video On / Off */}
@@ -3993,9 +3992,9 @@ export default function VideoConsultationRoomPage() {
           id="toggle-video-btn"
           onClick={toggleVideo}
           style={{
-            backgroundColor: isVideoOff ? "#ef4444" : "rgba(255, 255, 255, 0.12)",
+            backgroundColor: isVideoOff ? "#DC2626" : "rgba(255, 255, 255, 0.08)",
             color: "#ffffff",
-            border: "none",
+            border: isVideoOff ? "none" : "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "50%",
             width: "48px",
             height: "48px",
@@ -4003,12 +4002,11 @@ export default function VideoConsultationRoomPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            fontSize: "18px",
             transition: "all 0.2s",
           }}
           title={isVideoOff ? "Turn Camera On" : "Turn Camera Off"}
         >
-          {isVideoOff ? "🚫" : "📹"}
+          {isVideoOff ? <VideoOffIcon size={20} color="#FFFFFF" /> : <VideoIcon size={20} color="#FFFFFF" />}
         </button>
 
         {/* Screen Share */}
@@ -4016,9 +4014,9 @@ export default function VideoConsultationRoomPage() {
           id="toggle-screen-btn"
           onClick={toggleScreenShare}
           style={{
-            backgroundColor: isScreenSharing ? "#2563eb" : "rgba(255, 255, 255, 0.12)",
+            backgroundColor: isScreenSharing ? "#2563eb" : "rgba(255, 255, 255, 0.08)",
             color: "#ffffff",
-            border: "none",
+            border: isScreenSharing ? "none" : "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "50%",
             width: "48px",
             height: "48px",
@@ -4026,12 +4024,11 @@ export default function VideoConsultationRoomPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            fontSize: "18px",
             transition: "all 0.2s",
           }}
           title={isScreenSharing ? "Stop Sharing Screen" : "Share Screen"}
         >
-          🖥️
+          <ScreenShareIcon size={20} color="#FFFFFF" />
         </button>
 
         {/* Dual-Consent Recording Controller */}
@@ -4041,7 +4038,7 @@ export default function VideoConsultationRoomPage() {
             onClick={handleStopRecording}
             disabled={uploadingRecording}
             style={{
-              backgroundColor: "#ef4444",
+              backgroundColor: "#DC2626",
               color: "#ffffff",
               border: "none",
               borderRadius: "100px",
@@ -4057,7 +4054,7 @@ export default function VideoConsultationRoomPage() {
             }}
             title="Stop recording and save"
           >
-            <span>⏹</span>
+            <span style={{ width: "10px", height: "10px", backgroundColor: "#ffffff", borderRadius: "2px" }} />
             <span>{uploadingRecording ? "Finalizing..." : "Stop REC"}</span>
           </button>
         ) : (
@@ -4068,9 +4065,9 @@ export default function VideoConsultationRoomPage() {
               setShowRecordingModal(true);
             }}
             style={{
-              backgroundColor: consentStatus?.can_record ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.12)",
+              backgroundColor: consentStatus?.can_record ? "rgba(16, 185, 129, 0.15)" : "rgba(255, 255, 255, 0.08)",
               color: consentStatus?.can_record ? "#10b981" : "#ffffff",
-              border: consentStatus?.can_record ? "1px solid #10b981" : "none",
+              border: consentStatus?.can_record ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(255, 255, 255, 0.12)",
               borderRadius: "50%",
               width: "48px",
               height: "48px",
@@ -4078,12 +4075,11 @@ export default function VideoConsultationRoomPage() {
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              fontSize: "18px",
               transition: "all 0.2s",
             }}
             title="Record Consultation (Requires Mutual Consent)"
           >
-            ⏺
+            <span style={{ width: "12px", height: "12px", borderRadius: "50%", backgroundColor: consentStatus?.can_record ? "#10b981" : "#f87171" }} />
           </button>
         )}
 
@@ -4095,9 +4091,9 @@ export default function VideoConsultationRoomPage() {
             setUnreadChatCount(0);
           }}
           style={{
-            backgroundColor: activeSideTab === "chat" ? "#2563eb" : "rgba(255, 255, 255, 0.12)",
+            backgroundColor: activeSideTab === "chat" ? "#2563eb" : "rgba(255, 255, 255, 0.08)",
             color: "#ffffff",
-            border: "none",
+            border: activeSideTab === "chat" ? "none" : "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "50%",
             width: "48px",
             height: "48px",
@@ -4105,13 +4101,12 @@ export default function VideoConsultationRoomPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            fontSize: "18px",
             position: "relative",
             transition: "all 0.2s",
           }}
           title="In-Meeting Chat"
         >
-          💬
+          <ChatIcon size={20} color="#FFFFFF" />
           {unreadChatCount > 0 && (
             <span
               style={{
@@ -4143,9 +4138,9 @@ export default function VideoConsultationRoomPage() {
             setUnreadDocCount(0);
           }}
           style={{
-            backgroundColor: activeSideTab === "documents" ? "#2563eb" : "rgba(255, 255, 255, 0.12)",
+            backgroundColor: activeSideTab === "documents" ? "#2563eb" : "rgba(255, 255, 255, 0.08)",
             color: "#ffffff",
-            border: "none",
+            border: activeSideTab === "documents" ? "none" : "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "50%",
             width: "48px",
             height: "48px",
@@ -4153,13 +4148,12 @@ export default function VideoConsultationRoomPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            fontSize: "18px",
             position: "relative",
             transition: "all 0.2s",
           }}
           title="Share Documents with Peer"
         >
-          📁
+          <DocumentIcon size={20} color="#FFFFFF" />
           {unreadDocCount > 0 && (
             <span
               style={{
@@ -4188,9 +4182,9 @@ export default function VideoConsultationRoomPage() {
           id="open-participants-btn"
           onClick={() => setActiveSideTab(activeSideTab === "participants" ? null : "participants")}
           style={{
-            backgroundColor: activeSideTab === "participants" ? "#2563eb" : "rgba(255, 255, 255, 0.12)",
+            backgroundColor: activeSideTab === "participants" ? "#2563eb" : "rgba(255, 255, 255, 0.08)",
             color: "#ffffff",
-            border: "none",
+            border: activeSideTab === "participants" ? "none" : "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "50%",
             width: "48px",
             height: "48px",
@@ -4198,12 +4192,11 @@ export default function VideoConsultationRoomPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            fontSize: "18px",
             transition: "all 0.2s",
           }}
           title="Participants"
         >
-          👥
+          <LawyerIcon size={20} color="#FFFFFF" />
         </button>
 
         {/* Side Drawer Toggle: Client Case Workspace */}
@@ -4211,9 +4204,9 @@ export default function VideoConsultationRoomPage() {
           id="open-case-workspace-btn"
           onClick={() => setActiveSideTab(activeSideTab === "case" ? null : "case")}
           style={{
-            backgroundColor: activeSideTab === "case" ? "#6366f1" : "rgba(255, 255, 255, 0.12)",
+            backgroundColor: activeSideTab === "case" ? "#2563eb" : "rgba(255, 255, 255, 0.08)",
             color: "#ffffff",
-            border: activeSideTab === "case" ? "1px solid #818cf8" : "none",
+            border: activeSideTab === "case" ? "1px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "50%",
             width: "48px",
             height: "48px",
@@ -4221,12 +4214,11 @@ export default function VideoConsultationRoomPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            fontSize: "18px",
             transition: "all 0.2s",
           }}
           title={linkedCase ? `Matter: ${linkedCase.title}` : "Client Case Workspace"}
         >
-          ⚖️
+          <ScalesIcon size={20} color="#FFFFFF" />
         </button>
 
         {/* Device Settings */}
@@ -4234,9 +4226,9 @@ export default function VideoConsultationRoomPage() {
           id="open-settings-btn"
           onClick={() => setShowDeviceModal(true)}
           style={{
-            backgroundColor: "rgba(255, 255, 255, 0.12)",
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
             color: "#ffffff",
-            border: "none",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "50%",
             width: "48px",
             height: "48px",
@@ -4244,12 +4236,11 @@ export default function VideoConsultationRoomPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            fontSize: "18px",
             transition: "all 0.2s",
           }}
           title="Audio & Video Settings"
         >
-          ⚙️
+          <GearIcon size={20} color="#FFFFFF" />
         </button>
 
         {/* Floating Red End Call Button */}
@@ -4258,11 +4249,11 @@ export default function VideoConsultationRoomPage() {
           onClick={handleEndCall}
           disabled={isEndingCall}
           style={{
-            backgroundColor: "#dc2626",
+            backgroundColor: "#DC2626",
             color: "#ffffff",
             border: "none",
             borderRadius: "100px",
-            padding: "0 20px",
+            padding: "0 22px",
             height: "48px",
             display: "flex",
             alignItems: "center",
@@ -4276,7 +4267,7 @@ export default function VideoConsultationRoomPage() {
           }}
           title="Conclude Consultation"
         >
-          <span>📞</span>
+          <PhoneOffIcon size={18} color="#FFFFFF" />
           <span>{isEndingCall ? "Ending..." : "End Call"}</span>
         </button>
       </footer>
@@ -4313,7 +4304,7 @@ export default function VideoConsultationRoomPage() {
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "22px" }}>📹</span>
+                <VideoIcon size={22} color="#38bdf8" />
                 <h3 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>
                   Consultation Recording
                 </h3>
@@ -4342,7 +4333,7 @@ export default function VideoConsultationRoomPage() {
                     color: consentStatus?.client_consented ? "#22c55e" : "#f59e0b",
                   }}
                 >
-                  {consentStatus?.client_consented ? "✓ Consented" : "⏳ Pending"}
+                  {consentStatus?.client_consented ? "Consented" : "Pending"}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -4354,7 +4345,7 @@ export default function VideoConsultationRoomPage() {
                     color: consentStatus?.lawyer_consented ? "#22c55e" : "#f59e0b",
                   }}
                 >
-                  {consentStatus?.lawyer_consented ? "✓ Consented" : "⏳ Pending"}
+                  {consentStatus?.lawyer_consented ? "Consented" : "Pending"}
                 </span>
               </div>
             </div>
@@ -4389,9 +4380,14 @@ export default function VideoConsultationRoomPage() {
                     fontSize: "13px",
                     fontWeight: 700,
                     cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
                   }}
                 >
-                  ⏺ Begin Recording Session
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#ef4444", display: "inline-block" }} />
+                  Begin Recording Session
                 </button>
               )}
             </div>
@@ -4429,8 +4425,9 @@ export default function VideoConsultationRoomPage() {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-              <h3 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>
-                ⚙️ Device Settings
+              <h3 style={{ fontSize: "18px", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                <GearIcon size={18} />
+                Device Settings
               </h3>
               <button
                 onClick={() => setShowDeviceModal(false)}
@@ -4696,8 +4693,9 @@ export default function VideoConsultationRoomPage() {
                 marginBottom: "20px",
               }}
             >
-              <h3 style={{ fontSize: "15px", fontWeight: 600, margin: "0 0 8px" }}>
-                ⚖️ Legal Case Conversion
+              <h3 style={{ fontSize: "15px", fontWeight: 600, margin: "0 0 8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <ScalesIcon size={16} />
+                Legal Case Conversion
               </h3>
               <p style={{ color: "#94a3b8", fontSize: "13px", margin: "0 0 14px" }}>
                 Would you like to formalize this matter into a tracked legal case?
@@ -4899,7 +4897,7 @@ export default function VideoConsultationRoomPage() {
             maxWidth: "380px",
           }}
         >
-          <div style={{ fontSize: "24px" }}>📄</div>
+          <DocumentIcon size={24} color="#38bdf8" />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: "12px", color: "#94a3b8" }}>
               <strong style={{ color: "#60a5fa" }}>{documentToast.sender}</strong> shared a document
@@ -4999,7 +4997,7 @@ export default function VideoConsultationRoomPage() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "18px" }}>📄</span>
+                <DocumentIcon size={18} color="#38bdf8" />
                 <span style={{ fontSize: "14px", fontWeight: 600, color: "#f8fafc" }}>
                   {previewDocName || "Document Preview"}
                 </span>
@@ -5018,9 +5016,13 @@ export default function VideoConsultationRoomPage() {
                     fontSize: "12px",
                     fontWeight: 600,
                     textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
                   }}
                 >
-                  ⬇️ Download
+                  <DownloadIcon size={12} />
+                  Download
                 </a>
                 <button
                   onClick={() => {

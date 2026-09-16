@@ -22,6 +22,19 @@ from .embeddings import BaseEmbeddings
 logger = logging.getLogger("lcc.retriever")
 
 
+CATEGORY_MAPPINGS: Dict[str, List[str]] = {
+    "cybercrime": ["cyber_fraud", "cybercrime"],
+    "cyber_fraud": ["cyber_fraud", "cybercrime"],
+    "cheating_forgery": ["cheating_forgery", "cyber_fraud"],
+    "theft_burglary": ["theft_burglary"],
+    "crimes_against_women": ["crimes_against_women", "family_matrimonial"],
+    "matrimonial_disputes": ["matrimonial_disputes", "family_matrimonial"],
+    "family_matrimonial": ["matrimonial_disputes", "family_matrimonial", "crimes_against_women"],
+    "senior_citizens": ["crimes_against_senior_citizens", "senior_citizens"],
+    "crimes_against_senior_citizens": ["crimes_against_senior_citizens", "senior_citizens"],
+}
+
+
 class HybridRetriever:
     """
     Hybrid retriever combining dense vector similarity and sparse lexical matching.
@@ -52,8 +65,9 @@ class HybridRetriever:
         Applies Reciprocal Rank Fusion to synthesize dense and sparse hit lists.
         """
         filters: Dict[str, Any] = {}
-        if category_filter and category_filter not in ("uncategorized", "other"):
-            filters["crime_category"] = category_filter
+        if category_filter and category_filter not in ("uncategorized", "other", "criminal", "civil"):
+            matched_cats = CATEGORY_MAPPINGS.get(category_filter, [category_filter])
+            filters["crime_category"] = matched_cats
         if source_type:
             filters["source_type"] = source_type
 
@@ -75,6 +89,16 @@ class HybridRetriever:
         # Filter out zero or noise relevance hits
         dense_hits = [h for h in dense_hits if h.relevance_score > 0.08]
         keyword_hits = [h for h in raw_keyword_hits if h.relevance_score > 0.0]
+
+        # Robust Fallback: If category filter was too restrictive, search without it
+        if not dense_hits and not keyword_hits and "crime_category" in filters:
+            fallback_filters = {k: v for k, v in filters.items() if k != "crime_category"} or None
+            dense_hits = [
+                h for h in self.vector_store.search_by_vector(query_vec, top_k * 2, fallback_filters)
+                if h.relevance_score > 0.08
+            ]
+            raw_keyword_hits = self.vector_store.search_by_keyword(query, top_k * 2, fallback_filters)
+            keyword_hits = [h for h in raw_keyword_hits if h.relevance_score > 0.0]
 
         if not dense_hits and not keyword_hits:
             return []

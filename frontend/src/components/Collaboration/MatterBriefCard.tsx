@@ -33,42 +33,43 @@ export function MatterBriefCard({ brief, loading }: MatterBriefCardProps) {
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.98))",
-        border: "1px solid var(--border-subtle)",
-        borderRadius: "var(--radius-md)",
+        background: "var(--surface-card, #ffffff)",
+        border: "1px solid var(--border-subtle, #e2e8f0)",
+        borderRadius: "12px",
         padding: "22px 24px",
         display: "flex",
         flexDirection: "column",
         gap: "16px",
-        boxShadow: "var(--shadow-md)",
+        boxShadow: "var(--shadow-sm)",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
             <span
               style={{
                 fontSize: "11px",
                 fontWeight: 700,
                 padding: "2px 8px",
                 borderRadius: "4px",
-                background: "rgba(59, 130, 246, 0.15)",
-                color: "#60a5fa",
+                background: "#eff6ff",
+                color: "#1d4ed8",
+                border: "1px solid #bfdbfe",
                 letterSpacing: "0.05em",
               }}
             >
               MATTER BRIEF
             </span>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+            <span style={{ fontSize: "12px", color: "#64748b" }}>
               Initiated {new Date(brief.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
             </span>
           </div>
-          <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#fff", margin: 0 }}>
+          <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#0f172a", margin: 0 }}>
             {brief.title}
           </h2>
-          <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
-            Lead Counsel: <strong style={{ color: "#e2e8f0" }}>{brief.lead_counsel_name || "Unassigned"}</strong> • Status:{" "}
-            <span style={{ color: brief.status === "OPEN" ? "#10b981" : "#f59e0b", fontWeight: 600 }}>{brief.status}</span>
+          <p style={{ fontSize: "13px", color: "#475569", marginTop: "4px" }}>
+            Lead Counsel: <strong style={{ color: "#0f172a" }}>{brief.lead_counsel_name || "Unassigned"}</strong> • Status:{" "}
+            <span style={{ color: brief.status === "OPEN" ? "#059669" : "#d97706", fontWeight: 600 }}>{brief.status}</span>
           </p>
         </div>
 
@@ -77,17 +78,17 @@ export function MatterBriefCard({ brief, loading }: MatterBriefCardProps) {
             style={{
               padding: "10px 16px",
               borderRadius: "8px",
-              background: daysToHearing <= 7 ? "rgba(239, 68, 68, 0.12)" : "rgba(59, 130, 246, 0.12)",
-              border: daysToHearing <= 7 ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(59, 130, 246, 0.3)",
+              background: daysToHearing <= 7 ? "#fef2f2" : "#eff6ff",
+              border: daysToHearing <= 7 ? "1px solid #fecaca" : "1px solid #bfdbfe",
               display: "flex",
               flexDirection: "column",
               alignItems: "flex-end",
             }}
           >
-            <span style={{ fontSize: "11px", fontWeight: 700, color: daysToHearing <= 7 ? "#ef4444" : "#60a5fa" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: daysToHearing <= 7 ? "#dc2626" : "#1d4ed8" }}>
               {daysToHearing === 0 ? "LISTED TODAY" : `COURT LISTING IN ${daysToHearing} DAYS`}
             </span>
-            <span style={{ fontSize: "12px", color: "#e2e8f0", marginTop: "2px" }}>
+            <span style={{ fontSize: "12px", color: "#475569", marginTop: "2px" }}>
               {brief.next_hearing_court || "Presiding Court"}
             </span>
           </div>
@@ -100,26 +101,26 @@ export function MatterBriefCard({ brief, loading }: MatterBriefCardProps) {
           gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
           gap: "12px",
           paddingTop: "14px",
-          borderTop: "1px solid rgba(255, 255, 255, 0.07)",
+          borderTop: "1px solid #f1f5f9",
         }}
       >
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Participants</span>
-          <span style={{ fontSize: "18px", fontWeight: 700, color: "#fff" }}>{brief.participants_count}</span>
+          <span style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Participants</span>
+          <span style={{ fontSize: "18px", fontWeight: 700, color: "#0f172a" }}>{brief.participants_count}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Open Requests</span>
-          <span style={{ fontSize: "18px", fontWeight: 700, color: brief.open_requests_count > 0 ? "#f59e0b" : "#10b981" }}>
+          <span style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Open Requests</span>
+          <span style={{ fontSize: "18px", fontWeight: 700, color: brief.open_requests_count > 0 ? "#d97706" : "#059669" }}>
             {brief.open_requests_count}
           </span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Evidence Records</span>
-          <span style={{ fontSize: "18px", fontWeight: 700, color: "#fff" }}>{brief.recent_documents_count}</span>
+          <span style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Evidence Records</span>
+          <span style={{ fontSize: "18px", fontWeight: 700, color: "#0f172a" }}>{brief.recent_documents_count}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>Active Tasks</span>
-          <span style={{ fontSize: "18px", fontWeight: 700, color: "#fff" }}>{brief.pending_tasks_count}</span>
+          <span style={{ fontSize: "11px", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Active Tasks</span>
+          <span style={{ fontSize: "18px", fontWeight: 700, color: "#0f172a" }}>{brief.pending_tasks_count}</span>
         </div>
       </div>
     </div>

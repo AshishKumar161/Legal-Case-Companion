@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: 240px 1fr;
   height: 680px;
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   overflow: hidden;
@@ -55,7 +55,7 @@
 }
 
 .threadBtnActive {
-  background: #FFFFFF !important;
+  background: var(--surface-card, #FFFFFF) !important;
   color: var(--navy-primary) !important;
   border-color: var(--border-subtle) !important;
   font-weight: 600;
@@ -74,7 +74,7 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
 }
 
 .chatHeader {
@@ -83,7 +83,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
 }
 
 .chatTitle {
@@ -172,7 +172,7 @@
 }
 
 .promptBtn:hover {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border-color: var(--navy-primary);
   box-shadow: var(--shadow-sm);
   transform: translateX(2px);
@@ -256,7 +256,7 @@
 .inputContainer {
   padding: 16px 20px;
   border-top: 1px solid var(--border-subtle);
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
 }
 
 .chatForm {
@@ -278,7 +278,7 @@
 }
 
 .chatInput:focus {
-  background: #FFFFFF;
+  background: var(--surface-card, #FFFFFF);
   border-color: var(--navy-primary);
   box-shadow: 0 0 0 2px rgba(15, 30, 54, 0.08);
 }

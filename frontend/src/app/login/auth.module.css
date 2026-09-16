@@ -3,96 +3,316 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 32px 20px;
+  background: radial-gradient(circle at 50% 12%, #eff6ff 0%, #f8fafc 70%, #f1f5f9 100%);
 }
 
 .authCard {
   width: 100%;
-  max-width: 440px;
-  padding: 48px 32px;
+  max-width: 460px;
+  padding: 36px 32px;
   text-align: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
 }
 
-.authCard h1 {
-  font-size: 2.25rem;
-  margin-bottom: 8px;
+.logoBadge {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  box-shadow: 0 10px 20px -5px rgba(15, 23, 42, 0.25);
+}
+
+.title {
+  font-size: 1.625rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
-  color: var(--text-secondary);
-  margin-bottom: 32px;
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
 }
 
 .form {
   text-align: left;
 }
 
+.inputGroup {
+  margin-bottom: 16px;
+}
+
+.inputLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.inputField {
+  width: 100%;
+  padding: 11px 14px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #0f172a;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.inputField:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
 .submitBtn {
   width: 100%;
-  margin-top: 16px;
-  padding: 14px;
+  margin-top: 18px;
+  padding: 12px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .errorAlert {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  margin-bottom: 24px;
-  font-size: 0.9rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.infoAlert {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  line-height: 1.4;
 }
 
 .authLinks {
   margin-top: 24px;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  font-size: 13px;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.authLinks a {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .authLinks a:hover {
   text-decoration: underline;
 }
 
-.roleSelect {
+/* 1-Click Demo Persona Access */
+.demoSection {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.demoHeader {
   display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
-.roleBtn {
-  flex: 1;
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
-  background: rgba(0,0,0,0.2);
-  color: var(--text-secondary);
-  transition: all var(--transition-fast);
-  cursor: pointer;
+.demoBadge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #1d4ed8;
+  background: #eff6ff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #bfdbfe;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.roleBtn.active {
-  border-color: var(--accent-primary);
-  background: var(--accent-glow);
-  color: white;
+.demoSubtext {
+  font-size: 11px;
+  color: #64748b;
 }
 
-.oauthDivider {
+.demoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.demoBtn {
   display: flex;
   align-items: center;
-  margin: 20px 0;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
-.oauthDivider::before,
-.oauthDivider::after {
-  content: "";
-  flex: 1;
-  border-bottom: 1px solid var(--border-subtle);
+.demoBtn:hover:not(:disabled) {
+  border-color: #2563eb;
+  background: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.08);
 }
 
-.oauthDivider span {
-  padding: 0 12px;
+.demoBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.demoBtnContent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.demoRoleIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.demoClient .demoRoleIcon {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+}
+
+.demoLawyer .demoRoleIcon {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+}
+
+.demoAdmin .demoRoleIcon {
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: #7c3aed;
+}
+
+.demoRoleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.demoRoleTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.demoTagClient {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.demoTagLawyer {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.demoTagAdmin {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+}
+
+.demoRoleDesc {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.demoAction {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .googleBtn {
@@ -101,103 +321,84 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-primary);
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  font-weight: 500;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  padding: 11px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .googleBtn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-1px);
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
-.infoAlert {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  margin-bottom: 24px;
-  font-size: 0.9rem;
+.oauthDivider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
+.oauthDivider::before,
+.oauthDivider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.oauthDivider span {
+  padding: 0 12px;
+}
+
+/* Role Select Buttons in Register */
+.roleSelect {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.roleBtn {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.roleBtn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.roleBtn.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+/* OTP Verification */
 .otpContainer {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 10px;
   margin: 24px 0;
-}
-
-.otpInput {
-  width: 48px;
-  height: 56px;
-  font-size: 1.6rem;
-  font-weight: 700;
-  text-align: center;
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
-  color: #ffffff;
-  transition: all 0.2s ease;
-  font-family: monospace;
-}
-
-.otpInput:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.35);
-  outline: none;
-  background: rgba(15, 23, 42, 0.85);
-}
-
-.otpEmailBadge {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  display: inline-block;
-  margin-bottom: 12px;
-  word-break: break-all;
-}
-
-.resendBtn {
-  background: transparent;
-  border: none;
-  color: #60a5fa;
-  cursor: pointer;
-  font-size: 0.85rem;
-  text-decoration: underline;
-  transition: opacity 0.2s;
-}
-
-.resendBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  text-decoration: none;
-}
-
-.backBtn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary, #94a3b8);
-  cursor: pointer;
-  font-size: 0.85rem;
-  margin-top: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.backBtn:hover {
-  color: #ffffff;
 }
 
 .otpBoxesWrapper {
@@ -215,29 +416,29 @@
   width: 48px;
   height: 56px;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.15));
-  color: #ffffff;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #0f172a;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.8rem;
   font-weight: 700;
   font-family: monospace;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   user-select: none;
 }
 
 .otpSegment.filled {
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .otpSegment.active {
-  border-color: #60a5fa;
-  box-shadow: 0 0 14px rgba(59, 130, 246, 0.45);
-  background: rgba(15, 23, 42, 0.85);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  background: #ffffff;
 }
 
 .otpUnifiedInput {
@@ -248,169 +449,141 @@
   height: 100%;
   opacity: 0;
   cursor: text;
-  caret-color: transparent;
-  letter-spacing: 20px;
-  font-size: 2rem;
 }
 
-/* 1-Click Demo Persona Access */
-.demoSection {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 24px;
-  text-align: left;
-  backdrop-filter: blur(8px);
-}
-
-.demoHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.otpEmailBadge {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  display: inline-block;
   margin-bottom: 12px;
+  word-break: break-all;
+  font-weight: 500;
 }
 
-.demoBadge {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #60a5fa;
+.resendBtn {
+  background: transparent;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  transition: opacity 0.2s;
+}
+
+.resendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.backBtn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-top: 14px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  font-weight: 500;
 }
 
-.demoSubtext {
-  font-size: 11px;
-  color: var(--text-muted);
+.backBtn:hover {
+  color: #0f172a;
 }
 
-.demoGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* ============================================================
+   Dark Mode Styles for Auth
+   ============================================================ */
+:global([data-theme="dark"]) .authContainer {
+  background: radial-gradient(circle at 50% 12%, #1e293b 0%, #0b0f17 70%, #030712 100%);
 }
 
-.demoBtn {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  color: var(--text-primary);
-  text-align: left;
-  width: 100%;
+:global([data-theme="dark"]) .authCard {
+  background: var(--surface-card, #151C28);
+  border-color: var(--border-subtle, #1e293b);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
 }
 
-.demoBtn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.07);
+:global([data-theme="dark"]) .title {
+  color: var(--text-primary, #f1f5f9);
 }
 
-.demoBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+:global([data-theme="dark"]) .subtitle {
+  color: var(--text-muted, #94a3b8);
 }
 
-.demoClient:hover:not(:disabled) {
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.15);
+:global([data-theme="dark"]) .inputLabel {
+  color: var(--text-secondary, #94a3b8);
 }
 
-.demoLawyer:hover:not(:disabled) {
-  border-color: rgba(16, 185, 129, 0.5);
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
+:global([data-theme="dark"]) .inputField {
+  background: var(--surface-base, #0b0f17);
+  border-color: var(--border-default, #334155);
+  color: var(--text-primary, #f1f5f9);
 }
 
-.demoAdmin:hover:not(:disabled) {
-  border-color: rgba(168, 85, 247, 0.5);
-  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.15);
+:global([data-theme="dark"]) .inputField:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
 }
 
-.demoBtnContent {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+:global([data-theme="dark"]) .demoSection {
+  background: var(--surface-base, #0b0f17);
+  border-color: var(--border-subtle, #1e293b);
 }
 
-.demoRoleIcon {
-  font-size: 20px;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+:global([data-theme="dark"]) .demoButton {
+  background: var(--surface-card, #151C28);
+  border-color: var(--border-default, #334155);
+  color: var(--text-primary, #f1f5f9);
 }
 
-.demoRoleInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+:global([data-theme="dark"]) .demoButton:hover {
+  background: var(--surface-subtle, #1e293b);
+  border-color: #38bdf8;
 }
 
-.demoRoleTitle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #f1f5f9;
+:global([data-theme="dark"]) .rolePill {
+  background: var(--surface-card, #151C28);
+  border-color: var(--border-default, #334155);
+  color: var(--text-secondary, #94a3b8);
 }
 
-.demoTagClient {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(59, 130, 246, 0.15);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+:global([data-theme="dark"]) .rolePillActive {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: #38bdf8;
+  color: #38bdf8;
 }
 
-.demoTagLawyer {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(16, 185, 129, 0.15);
-  color: #6ee7b7;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+:global([data-theme="dark"]) .otpSegment {
+  background: var(--surface-base, #0b0f17);
+  border-color: var(--border-default, #334155);
+  color: var(--text-primary, #f1f5f9);
 }
 
-.demoTagAdmin {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(168, 85, 247, 0.15);
-  color: #d8b4fe;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+:global([data-theme="dark"]) .otpSegment.filled {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: #38bdf8;
+  color: #38bdf8;
 }
 
-.demoRoleDesc {
-  font-size: 11px;
-  color: #94a3b8;
+:global([data-theme="dark"]) .otpSegment.active {
+  background: var(--surface-card, #151C28);
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
 }
 
-.demoAction {
-  font-size: 12px;
-  font-weight: 600;
-  color: #94a3b8;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: color 0.15s ease;
+:global([data-theme="dark"]) .backBtn {
+  color: var(--text-muted, #94a3b8);
 }
 
-.demoBtn:hover .demoAction {
-  color: #ffffff;
+:global([data-theme="dark"]) .backBtn:hover {
+  color: var(--text-primary, #f1f5f9);
 }
-
-
