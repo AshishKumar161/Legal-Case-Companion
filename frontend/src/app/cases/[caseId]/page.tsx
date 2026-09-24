@@ -40,7 +40,6 @@ import {
   LawyerIcon,
   ClockIcon,
   PlusIcon,
-  AssistantIcon,
   ChatIcon,
 } from "@/components/ui/Icons";
 
@@ -229,7 +228,6 @@ export default function CaseDetail({ params }: { params: Promise<{ caseId: strin
   const [newTaskPriority, setNewTaskPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "URGENT">("MEDIUM");
   const [newTaskLinkedHearing, setNewTaskLinkedHearing] = useState<string>("");
   const [addingTask, setAddingTask] = useState(false);
-  const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [checkoutConsultation, setCheckoutConsultation] = useState<ConsultationItem | null>(null);
 
   // Export Report State

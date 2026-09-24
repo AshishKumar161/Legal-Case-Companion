@@ -1,0 +1,2638 @@
+{
+  "state_fields_count": 65,
+  "state_fields": [
+    {
+      "model": "AdvisorSession",
+      "table": "advisor_sessions",
+      "column": "status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "ACTIVE"
+    },
+    {
+      "model": "CaseDeadline",
+      "table": "case_deadlines",
+      "column": "status",
+      "type": "VARCHAR(9)",
+      "enum_values": [
+        "UPCOMING",
+        "DUE",
+        "OVERDUE",
+        "COMPLETED",
+        "CANCELLED"
+      ],
+      "nullable": false,
+      "default": "DeadlineStatus.UPCOMING"
+    },
+    {
+      "model": "AdvocateVerificationDocument",
+      "table": "advocate_verification_documents",
+      "column": "scan_status",
+      "type": "VARCHAR(11)",
+      "enum_values": [
+        "PENDING",
+        "PASSED",
+        "FAILED",
+        "QUARANTINED"
+      ],
+      "nullable": false,
+      "default": "DocumentScanStatus.PENDING"
+    },
+    {
+      "model": "AdvocateVerificationDocument",
+      "table": "advocate_verification_documents",
+      "column": "verification_status",
+      "type": "VARCHAR(18)",
+      "enum_values": [
+        "NOT_SUBMITTED",
+        "SUBMITTED",
+        "UNDER_REVIEW",
+        "APPROVED",
+        "REJECTED",
+        "NEEDS_RESUBMISSION"
+      ],
+      "nullable": false,
+      "default": "DocumentVerificationStatus.SUBMITTED"
+    },
+    {
+      "model": "CaseReminder",
+      "table": "case_reminders",
+      "column": "status",
+      "type": "VARCHAR(9)",
+      "enum_values": [
+        "PENDING",
+        "TRIGGERED",
+        "DISMISSED"
+      ],
+      "nullable": false,
+      "default": "ReminderStatus.PENDING"
+    },
+    {
+      "model": "TranslationMessage",
+      "table": "translation_messages",
+      "column": "status",
+      "type": "VARCHAR(10)",
+      "enum_values": [
+        "DRAFT",
+        "REVIEW",
+        "APPROVED",
+        "DEPRECATED"
+      ],
+      "nullable": false,
+      "default": "TranslationStatus.DRAFT"
+    },
+    {
+      "model": "TranslationMessage",
+      "table": "translation_messages",
+      "column": "review_status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "PENDING"
+    },
+    {
+      "model": "AIConversation",
+      "table": "ai_conversations",
+      "column": "status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "ACTIVE"
+    },
+    {
+      "model": "ProcessedWebhookEvent",
+      "table": "processed_webhook_events",
+      "column": "status",
+      "type": "VARCHAR(10)",
+      "enum_values": [
+        "PENDING",
+        "PROCESSING",
+        "PROCESSED",
+        "FAILED"
+      ],
+      "nullable": false,
+      "default": "WebhookProcessingStatus.PROCESSED"
+    },
+    {
+      "model": "RawLegalSource",
+      "table": "raw_legal_sources",
+      "column": "status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "RAW_INGESTED"
+    },
+    {
+      "model": "PilotExperiment",
+      "table": "pilot_experiments",
+      "column": "status",
+      "type": "VARCHAR(10)",
+      "enum_values": [
+        "PLANNED",
+        "ACTIVE",
+        "PAUSED",
+        "COMPLETED",
+        "TERMINATED"
+      ],
+      "nullable": false,
+      "default": "ExperimentStatus.PLANNED"
+    },
+    {
+      "model": "Document",
+      "table": "documents",
+      "column": "security_status",
+      "type": "VARCHAR(11)",
+      "enum_values": [
+        "PENDING",
+        "QUARANTINED",
+        "VALIDATING",
+        "SCANNING",
+        "SAFE",
+        "REJECTED"
+      ],
+      "nullable": false,
+      "default": "DocumentSecurityStatus.QUARANTINED"
+    },
+    {
+      "model": "Document",
+      "table": "documents",
+      "column": "processing_status",
+      "type": "VARCHAR(18)",
+      "enum_values": [
+        "PENDING",
+        "PROCESSING",
+        "READY",
+        "FAILED",
+        "UNSUPPORTED_FORMAT",
+        "CORRUPTED_FILE",
+        "EMPTY_DOCUMENT",
+        "OCR_REQUIRED"
+      ],
+      "nullable": false,
+      "default": "DocumentProcessingStatus.PENDING"
+    },
+    {
+      "model": "ProductionIncident",
+      "table": "production_incidents",
+      "column": "status",
+      "type": "VARCHAR(13)",
+      "enum_values": [
+        "DETECTED",
+        "ACKNOWLEDGED",
+        "INVESTIGATING",
+        "MITIGATED",
+        "RESOLVED",
+        "CLOSED"
+      ],
+      "nullable": false,
+      "default": "IncidentStatus.DETECTED"
+    },
+    {
+      "model": "LegalIssue",
+      "table": "legal_issues",
+      "column": "status",
+      "type": "VARCHAR(10)",
+      "enum_values": [
+        "IDENTIFIED",
+        "ANALYZING",
+        "SUPPORTED",
+        "CONTESTED",
+        "UNRESOLVED"
+      ],
+      "nullable": false,
+      "default": "IssueStatus.IDENTIFIED"
+    },
+    {
+      "model": "LegalIssue",
+      "table": "legal_issues",
+      "column": "verification_status",
+      "type": "VARCHAR(16)",
+      "enum_values": [
+        "AI_SUGGESTED",
+        "AI_VERIFIED",
+        "AI_GENERATED",
+        "SYSTEM_RULE",
+        "SYSTEM_GENERATED",
+        "USER_PROVIDED",
+        "LAWYER_VERIFIED",
+        "OFFICIAL_SOURCE",
+        "HUMAN_CONFIRMED",
+        "CONTESTED",
+        "USER_REPORTED",
+        "UNVERIFIED"
+      ],
+      "nullable": false,
+      "default": "FactVerificationStatus.AI_SUGGESTED"
+    },
+    {
+      "model": "VideoMeeting",
+      "table": "video_meetings",
+      "column": "status",
+      "type": "VARCHAR(9)",
+      "enum_values": [
+        "SCHEDULED",
+        "ACTIVE",
+        "ENDED",
+        "CANCELLED"
+      ],
+      "nullable": false,
+      "default": "VideoMeetingStatus.SCHEDULED"
+    },
+    {
+      "model": "AIMessage",
+      "table": "ai_messages",
+      "column": "grounding_status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": true,
+      "default": null
+    },
+    {
+      "model": "ComplianceRegistryItem",
+      "table": "compliance_registry_items",
+      "column": "status",
+      "type": "VARCHAR(22)",
+      "enum_values": [
+        "OPEN",
+        "IN_REVIEW",
+        "CONDITIONALLY_APPROVED",
+        "APPROVED",
+        "BLOCKED",
+        "NOT_APPLICABLE"
+      ],
+      "nullable": false,
+      "default": "ComplianceItemStatus.OPEN"
+    },
+    {
+      "model": "PilotAllowlistEntry",
+      "table": "pilot_allowlist",
+      "column": "status",
+      "type": "VARCHAR(7)",
+      "enum_values": [
+        "ACTIVE",
+        "REVOKED",
+        "EXPIRED"
+      ],
+      "nullable": false,
+      "default": "AllowlistStatus.ACTIVE"
+    },
+    {
+      "model": "CommercialTransaction",
+      "table": "commercial_transactions",
+      "column": "status",
+      "type": "VARCHAR(18)",
+      "enum_values": [
+        "PENDING",
+        "AUTHORIZED",
+        "CAPTURED",
+        "FAILED",
+        "REFUNDED",
+        "PARTIALLY_REFUNDED",
+        "DISPUTED",
+        "CANCELLED"
+      ],
+      "nullable": false,
+      "default": "TransactionStatus.PENDING"
+    },
+    {
+      "model": "CommercialTransaction",
+      "table": "commercial_transactions",
+      "column": "reconciliation_status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "PENDING"
+    },
+    {
+      "model": "Evidence",
+      "table": "evidence",
+      "column": "status",
+      "type": "VARCHAR(16)",
+      "enum_values": [
+        "UPLOADING",
+        "QUARANTINED",
+        "ACTIVE",
+        "ARCHIVED",
+        "REVOKED",
+        "DELETION_PENDING",
+        "DELETED"
+      ],
+      "nullable": false,
+      "default": "EvidenceStatus.UPLOADING"
+    },
+    {
+      "model": "VideoRecording",
+      "table": "video_recordings",
+      "column": "status",
+      "type": "VARCHAR(10)",
+      "enum_values": [
+        "PENDING",
+        "CONSENTED",
+        "RECORDING",
+        "UPLOADING",
+        "PROCESSING",
+        "AVAILABLE",
+        "FAILED"
+      ],
+      "nullable": false,
+      "default": "VideoRecordingStatus.PENDING"
+    },
+    {
+      "model": "BackgroundJob",
+      "table": "background_jobs",
+      "column": "status",
+      "type": "VARCHAR(11)",
+      "enum_values": [
+        "PENDING",
+        "RUNNING",
+        "SUCCEEDED",
+        "FAILED",
+        "RETRYING",
+        "CANCELLED",
+        "DEAD_LETTER"
+      ],
+      "nullable": false,
+      "default": "JobStatus.PENDING"
+    },
+    {
+      "model": "CaseTask",
+      "table": "case_tasks",
+      "column": "status",
+      "type": "VARCHAR(11)",
+      "enum_values": [
+        "PENDING",
+        "IN_PROGRESS",
+        "BLOCKED",
+        "COMPLETED",
+        "CANCELLED"
+      ],
+      "nullable": false,
+      "default": "TaskStatus.PENDING"
+    },
+    {
+      "model": "Consultation",
+      "table": "consultations",
+      "column": "status",
+      "type": "VARCHAR(17)",
+      "enum_values": [
+        "CREATED",
+        "PENDING",
+        "CLIENT_AUTHORIZED",
+        "LAWYER_ACCEPTED",
+        "MUTUAL_CONSENT",
+        "IN_PROGRESS",
+        "ENDED",
+        "CANCELLED",
+        "REJECTED",
+        "EXPIRED",
+        "PAYMENT_FAILED",
+        "NO_SHOW",
+        "REQUESTED",
+        "PAID",
+        "ACCEPTED",
+        "SCHEDULED",
+        "COMPLETED"
+      ],
+      "nullable": false,
+      "default": "ConsultationStatus.REQUESTED"
+    },
+    {
+      "model": "CaseEvidenceGap",
+      "table": "case_evidence_gaps",
+      "column": "status",
+      "type": "VARCHAR(32)",
+      "enum_values": [
+        "IDENTIFIED",
+        "RESOLVED",
+        "WAIVED",
+        "NOT_FOUND_IN_AVAILABLE_MATERIALS"
+      ],
+      "nullable": false,
+      "default": "EvidenceGapStatus.NOT_FOUND_IN_AVAILABLE_MATERIALS"
+    },
+    {
+      "model": "CaseParticipant",
+      "table": "case_participants",
+      "column": "status",
+      "type": "VARCHAR(8)",
+      "enum_values": [
+        "ACTIVE",
+        "INACTIVE"
+      ],
+      "nullable": false,
+      "default": "ParticipantStatus.ACTIVE"
+    },
+    {
+      "model": "Case",
+      "table": "cases",
+      "column": "status",
+      "type": "VARCHAR(11)",
+      "enum_values": [
+        "OPEN",
+        "IN_PROGRESS",
+        "CLOSED",
+        "CANCELLED"
+      ],
+      "nullable": false,
+      "default": "CaseStatus.OPEN"
+    },
+    {
+      "model": "SupportCase",
+      "table": "support_cases",
+      "column": "status",
+      "type": "VARCHAR(16)",
+      "enum_values": [
+        "OPEN",
+        "INVESTIGATING",
+        "WAITING_FOR_USER",
+        "PENDING_USER",
+        "IN_PROGRESS",
+        "RESOLVED",
+        "CLOSED"
+      ],
+      "nullable": false,
+      "default": "SupportCaseStatus.OPEN"
+    },
+    {
+      "model": "LegalSource",
+      "table": "legal_sources",
+      "column": "status",
+      "type": "VARCHAR(9)",
+      "enum_values": [
+        "IMPORTED",
+        "VALIDATED",
+        "PUBLISHED",
+        "AMENDED",
+        "REPEALED",
+        "OVERRULED"
+      ],
+      "nullable": false,
+      "default": "LegalSourceStatus.PUBLISHED"
+    },
+    {
+      "model": "LawyerVerification",
+      "table": "lawyer_verifications",
+      "column": "state_bar_council",
+      "type": "VARCHAR(150)",
+      "enum_values": null,
+      "nullable": false,
+      "default": null
+    },
+    {
+      "model": "LawyerVerification",
+      "table": "lawyer_verifications",
+      "column": "status",
+      "type": "VARCHAR(12)",
+      "enum_values": [
+        "DRAFT",
+        "PENDING",
+        "UNDER_REVIEW",
+        "APPROVED",
+        "REJECTED",
+        "NEEDS_INFO",
+        "REVOKED"
+      ],
+      "nullable": false,
+      "default": "VerificationStatus.PENDING"
+    },
+    {
+      "model": "CaseRiskIndicator",
+      "table": "case_risk_indicators",
+      "column": "verification_status",
+      "type": "VARCHAR(16)",
+      "enum_values": [
+        "AI_SUGGESTED",
+        "AI_VERIFIED",
+        "AI_GENERATED",
+        "SYSTEM_RULE",
+        "SYSTEM_GENERATED",
+        "USER_PROVIDED",
+        "LAWYER_VERIFIED",
+        "OFFICIAL_SOURCE",
+        "HUMAN_CONFIRMED",
+        "CONTESTED",
+        "USER_REPORTED",
+        "UNVERIFIED"
+      ],
+      "nullable": false,
+      "default": "FactVerificationStatus.AI_SUGGESTED"
+    },
+    {
+      "model": "OutboxEvent",
+      "table": "outbox_events",
+      "column": "status",
+      "type": "VARCHAR(11)",
+      "enum_values": [
+        "PENDING",
+        "PROCESSING",
+        "PUBLISHED",
+        "FAILED",
+        "DEAD_LETTER"
+      ],
+      "nullable": false,
+      "default": "OutboxStatus.PENDING"
+    },
+    {
+      "model": "CaseClaimDefense",
+      "table": "case_claims_defenses",
+      "column": "statement",
+      "type": "TEXT",
+      "enum_values": null,
+      "nullable": false,
+      "default": null
+    },
+    {
+      "model": "CaseClaimDefense",
+      "table": "case_claims_defenses",
+      "column": "status",
+      "type": "VARCHAR(10)",
+      "enum_values": [
+        "ASSERTED",
+        "SUPPORTED",
+        "CONTESTED",
+        "REFUTED",
+        "UNVERIFIED"
+      ],
+      "nullable": false,
+      "default": "ClaimDefenseStatus.ASSERTED"
+    },
+    {
+      "model": "CaseClaimDefense",
+      "table": "case_claims_defenses",
+      "column": "verification_status",
+      "type": "VARCHAR(16)",
+      "enum_values": [
+        "AI_SUGGESTED",
+        "AI_VERIFIED",
+        "AI_GENERATED",
+        "SYSTEM_RULE",
+        "SYSTEM_GENERATED",
+        "USER_PROVIDED",
+        "LAWYER_VERIFIED",
+        "OFFICIAL_SOURCE",
+        "HUMAN_CONFIRMED",
+        "CONTESTED",
+        "USER_REPORTED",
+        "UNVERIFIED"
+      ],
+      "nullable": false,
+      "default": "FactVerificationStatus.AI_SUGGESTED"
+    },
+    {
+      "model": "AdvocatePayout",
+      "table": "advocate_payouts",
+      "column": "status",
+      "type": "VARCHAR(8)",
+      "enum_values": [
+        "ELIGIBLE",
+        "PENDING",
+        "PAID",
+        "FAILED",
+        "REVERSED"
+      ],
+      "nullable": false,
+      "default": "AdvocatePayoutStatus.PENDING"
+    },
+    {
+      "model": "EvidenceBundle",
+      "table": "evidence_bundles",
+      "column": "status",
+      "type": "VARCHAR(10)",
+      "enum_values": [
+        "DRAFT",
+        "GENERATING",
+        "FINALIZED",
+        "FAILED"
+      ],
+      "nullable": false,
+      "default": "BundleStatus.DRAFT"
+    },
+    {
+      "model": "LegalDocumentVersion",
+      "table": "legal_document_versions",
+      "column": "approval_status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "DRAFT"
+    },
+    {
+      "model": "LegalDocumentVersion",
+      "table": "legal_document_versions",
+      "column": "publication_status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "DRAFT"
+    },
+    {
+      "model": "AIReviewRecord",
+      "table": "ai_human_reviews",
+      "column": "status",
+      "type": "VARCHAR(9)",
+      "enum_values": [
+        "PENDING",
+        "IN_REVIEW",
+        "ACTIONED",
+        "DISMISSED"
+      ],
+      "nullable": false,
+      "default": "AIReviewStatus.PENDING"
+    },
+    {
+      "model": "CaseHearing",
+      "table": "case_hearings",
+      "column": "status",
+      "type": "VARCHAR(11)",
+      "enum_values": [
+        "SCHEDULED",
+        "ADJOURNED",
+        "CONCLUDED",
+        "COMPLETED",
+        "RESCHEDULED",
+        "CANCELLED"
+      ],
+      "nullable": false,
+      "default": "HearingStatus.SCHEDULED"
+    },
+    {
+      "model": "MatterRequest",
+      "table": "matter_requests",
+      "column": "status",
+      "type": "VARCHAR(9)",
+      "enum_values": [
+        "PENDING",
+        "SUBMITTED",
+        "REVIEWED",
+        "CANCELLED"
+      ],
+      "nullable": false,
+      "default": "MatterRequestStatus.PENDING"
+    },
+    {
+      "model": "User",
+      "table": "users",
+      "column": "account_status",
+      "type": "VARCHAR(11)",
+      "enum_values": [
+        "REGISTERED",
+        "VERIFIED",
+        "ACTIVE",
+        "RESTRICTED",
+        "SUSPENDED",
+        "DEACTIVATED"
+      ],
+      "nullable": false,
+      "default": "AccountStatus.ACTIVE"
+    },
+    {
+      "model": "PilotFeedback",
+      "table": "pilot_feedback",
+      "column": "status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "NEW"
+    },
+    {
+      "model": "DataQualityRun",
+      "table": "data_quality_runs",
+      "column": "status",
+      "type": "VARCHAR(24)",
+      "enum_values": [
+        "RUNNING",
+        "COMPLETED_CLEAN",
+        "COMPLETED_WITH_ANOMALIES",
+        "COMPLETED_WITH_REPAIRS",
+        "FAILED"
+      ],
+      "nullable": false,
+      "default": "DataQualityRunStatus.RUNNING"
+    },
+    {
+      "model": "CaseFact",
+      "table": "case_facts",
+      "column": "verification_status",
+      "type": "VARCHAR(16)",
+      "enum_values": [
+        "AI_SUGGESTED",
+        "AI_VERIFIED",
+        "AI_GENERATED",
+        "SYSTEM_RULE",
+        "SYSTEM_GENERATED",
+        "USER_PROVIDED",
+        "LAWYER_VERIFIED",
+        "OFFICIAL_SOURCE",
+        "HUMAN_CONFIRMED",
+        "CONTESTED",
+        "USER_REPORTED",
+        "UNVERIFIED"
+      ],
+      "nullable": false,
+      "default": "FactVerificationStatus.AI_SUGGESTED"
+    },
+    {
+      "model": "Payment",
+      "table": "payments",
+      "column": "status",
+      "type": "VARCHAR(18)",
+      "enum_values": [
+        "CREATED",
+        "PENDING",
+        "AUTHORIZED",
+        "CAPTURED",
+        "SUCCEEDED",
+        "FAILED",
+        "REFUNDED",
+        "PARTIALLY_REFUNDED",
+        "DISPUTED",
+        "CANCELLED"
+      ],
+      "nullable": false,
+      "default": "PaymentStatus.CREATED"
+    },
+    {
+      "model": "RefundRecord",
+      "table": "refund_records",
+      "column": "status",
+      "type": "VARCHAR(9)",
+      "enum_values": [
+        "PENDING",
+        "SUCCEEDED",
+        "FAILED",
+        "REJECTED"
+      ],
+      "nullable": false,
+      "default": "RefundStatus.PENDING"
+    },
+    {
+      "model": "CourtCase",
+      "table": "court_cases",
+      "column": "technical_status",
+      "type": "VARCHAR(100)",
+      "enum_values": null,
+      "nullable": false,
+      "default": null
+    },
+    {
+      "model": "CourtCase",
+      "table": "court_cases",
+      "column": "human_status",
+      "type": "TEXT",
+      "enum_values": null,
+      "nullable": false,
+      "default": null
+    },
+    {
+      "model": "CourtCase",
+      "table": "court_cases",
+      "column": "sync_status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "SYNCED"
+    },
+    {
+      "model": "VerificationReviewEvent",
+      "table": "verification_review_events",
+      "column": "from_status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": null
+    },
+    {
+      "model": "VerificationReviewEvent",
+      "table": "verification_review_events",
+      "column": "to_status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": null
+    },
+    {
+      "model": "EvidenceVersion",
+      "table": "evidence_versions",
+      "column": "scan_status",
+      "type": "VARCHAR(10)",
+      "enum_values": [
+        "PENDING",
+        "VALIDATING",
+        "SCANNING",
+        "PASSED",
+        "FAILED"
+      ],
+      "nullable": false,
+      "default": "EvidenceScanStatus.PENDING"
+    },
+    {
+      "model": "EvidenceVersion",
+      "table": "evidence_versions",
+      "column": "integrity_status",
+      "type": "VARCHAR(15)",
+      "enum_values": [
+        "UNVERIFIED",
+        "VERIFIED_MATCH",
+        "TAMPER_DETECTED"
+      ],
+      "nullable": false,
+      "default": "EvidenceIntegrityStatus.UNVERIFIED"
+    },
+    {
+      "model": "CaseChronologyEvent",
+      "table": "case_chronology_events",
+      "column": "verification_status",
+      "type": "VARCHAR(16)",
+      "enum_values": [
+        "AI_SUGGESTED",
+        "AI_VERIFIED",
+        "AI_GENERATED",
+        "SYSTEM_RULE",
+        "SYSTEM_GENERATED",
+        "USER_PROVIDED",
+        "LAWYER_VERIFIED",
+        "OFFICIAL_SOURCE",
+        "HUMAN_CONFIRMED",
+        "CONTESTED",
+        "USER_REPORTED",
+        "UNVERIFIED"
+      ],
+      "nullable": false,
+      "default": "FactVerificationStatus.AI_SUGGESTED"
+    },
+    {
+      "model": "ClientProfile",
+      "table": "client_profiles",
+      "column": "state",
+      "type": "VARCHAR(100)",
+      "enum_values": null,
+      "nullable": true,
+      "default": null
+    },
+    {
+      "model": "ClientProfile",
+      "table": "client_profiles",
+      "column": "kyc_status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "PENDING"
+    },
+    {
+      "model": "BSACertificateDraft",
+      "table": "bsa_certificate_drafts",
+      "column": "lawful_control_statement",
+      "type": "TEXT",
+      "enum_values": null,
+      "nullable": false,
+      "default": null
+    },
+    {
+      "model": "BSACertificateDraft",
+      "table": "bsa_certificate_drafts",
+      "column": "operational_condition_statement",
+      "type": "TEXT",
+      "enum_values": null,
+      "nullable": false,
+      "default": null
+    },
+    {
+      "model": "BSACertificateDraft",
+      "table": "bsa_certificate_drafts",
+      "column": "status",
+      "type": "VARCHAR(50)",
+      "enum_values": null,
+      "nullable": false,
+      "default": "DRAFT"
+    }
+  ],
+  "mutations_count": 345,
+  "mutations": [
+    {
+      "file": "app/domain/ai/ai_conversation_service.py",
+      "line_number": 147,
+      "code": "conv.status = status"
+    },
+    {
+      "file": "app/domain/ai/ai_review_service.py",
+      "line_number": 107,
+      "code": "record.status = AIReviewStatus.ACTIONED"
+    },
+    {
+      "file": "app/domain/ai/ai_review_service.py",
+      "line_number": 150,
+      "code": "query = query.filter(AIReviewRecord.status == status)"
+    },
+    {
+      "file": "app/domain/ai/claim_verifier.py",
+      "line_number": 196,
+      "code": "unsupported_count = sum(1 for c in verified_claims if c.status == ClaimSupportStatus.UNSUPPORTED)"
+    },
+    {
+      "file": "app/domain/ai/legal_authority_ingestion.py",
+      "line_number": 88,
+      "code": "source.status = req.status"
+    },
+    {
+      "file": "app/domain/ai/legal_data_pipeline.py",
+      "line_number": 80,
+      "code": "raw_record.status = \"RAW_INGESTED\""
+    },
+    {
+      "file": "app/domain/ai/legal_data_pipeline.py",
+      "line_number": 96,
+      "code": "raw_source.status = \"FAILED\""
+    },
+    {
+      "file": "app/domain/ai/legal_data_pipeline.py",
+      "line_number": 110,
+      "code": "raw_source.status = \"FAILED\""
+    },
+    {
+      "file": "app/domain/ai/legal_data_pipeline.py",
+      "line_number": 269,
+      "code": "raw_source.status = \"INDEXED\""
+    },
+    {
+      "file": "app/domain/cases/bundle_service.py",
+      "line_number": 322,
+      "code": "query = query.filter(EvidenceBundle.status == status)"
+    },
+    {
+      "file": "app/domain/cases/bundle_service.py",
+      "line_number": 342,
+      "code": "if bundle.status == BundleStatus.FINALIZED:"
+    },
+    {
+      "file": "app/domain/cases/bundle_service.py",
+      "line_number": 386,
+      "code": "if bundle.status == BundleStatus.FINALIZED:"
+    },
+    {
+      "file": "app/domain/cases/bundle_service.py",
+      "line_number": 398,
+      "code": "bundle.status = BundleStatus.GENERATING"
+    },
+    {
+      "file": "app/domain/cases/bundle_service.py",
+      "line_number": 559,
+      "code": "bundle.status = BundleStatus.FINALIZED"
+    },
+    {
+      "file": "app/domain/cases/bundle_service.py",
+      "line_number": 583,
+      "code": "bundle.status = BundleStatus.FAILED"
+    },
+    {
+      "file": "app/domain/cases/case_attention_service.py",
+      "line_number": 52,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/case_attention_service.py",
+      "line_number": 70,
+      "code": "CaseHearing.status == HearingStatus.SCHEDULED,"
+    },
+    {
+      "file": "app/domain/cases/case_attention_service.py",
+      "line_number": 105,
+      "code": "MatterRequest.status == MatterRequestStatus.PENDING,"
+    },
+    {
+      "file": "app/domain/cases/case_attention_service.py",
+      "line_number": 132,
+      "code": "d for d in deadlines if d.status == DeadlineStatus.OVERDUE or (d.deadline_at and _ensure_utc(d.deadline_at) < now)"
+    },
+    {
+      "file": "app/domain/cases/case_attention_service.py",
+      "line_number": 165,
+      "code": "if linked_court_case.sync_status == \"FAILED\":"
+    },
+    {
+      "file": "app/domain/cases/case_attention_service.py",
+      "line_number": 186,
+      "code": "MatterRequest.status == MatterRequestStatus.PENDING,"
+    },
+    {
+      "file": "app/domain/cases/case_attention_service.py",
+      "line_number": 226,
+      "code": "if any(c.status == ConsultationStatus.REQUESTED and (c.fee_amount or 0) > 0 for c in pending_consultations):"
+    },
+    {
+      "file": "app/domain/cases/case_intelligence_service.py",
+      "line_number": 196,
+      "code": "Document.processing_status == DocumentProcessingStatus.READY,"
+    },
+    {
+      "file": "app/domain/cases/case_intelligence_service.py",
+      "line_number": 531,
+      "code": "fact.verification_status = req.verification_status"
+    },
+    {
+      "file": "app/domain/cases/case_intelligence_service.py",
+      "line_number": 569,
+      "code": "issue.status = req.status"
+    },
+    {
+      "file": "app/domain/cases/case_intelligence_service.py",
+      "line_number": 571,
+      "code": "issue.verification_status = req.verification_status"
+    },
+    {
+      "file": "app/domain/cases/case_intelligence_service.py",
+      "line_number": 610,
+      "code": "claim.status = req.status"
+    },
+    {
+      "file": "app/domain/cases/case_intelligence_service.py",
+      "line_number": 612,
+      "code": "claim.verification_status = req.verification_status"
+    },
+    {
+      "file": "app/domain/cases/case_intelligence_service.py",
+      "line_number": 656,
+      "code": "event.verification_status = req.verification_status"
+    },
+    {
+      "file": "app/domain/cases/case_intelligence_service.py",
+      "line_number": 692,
+      "code": "gap.status = req.status"
+    },
+    {
+      "file": "app/domain/cases/case_intelligence_service.py",
+      "line_number": 733,
+      "code": "risk.verification_status = req.verification_status"
+    },
+    {
+      "file": "app/domain/cases/case_report_service.py",
+      "line_number": 102,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 141,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 147,
+      "code": "query = query.filter(Case.status == status)"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 177,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 273,
+      "code": "sql_case((CaseTask.status == TaskStatus.PENDING, CaseTask.id))"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 276,
+      "code": "sql_case((CaseTask.status == TaskStatus.IN_PROGRESS, CaseTask.id))"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 279,
+      "code": "sql_case((CaseTask.status == TaskStatus.COMPLETED, CaseTask.id))"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 282,
+      "code": "sql_case((CaseTask.status == TaskStatus.CANCELLED, CaseTask.id))"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 438,
+      "code": "case_.status = new_status"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 460,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 561,
+      "code": "if existing.status == ParticipantStatus.ACTIVE:"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 564,
+      "code": "existing.status = ParticipantStatus.ACTIVE"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 734,
+      "code": "if existing.status == ParticipantStatus.ACTIVE:"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 737,
+      "code": "existing.status = ParticipantStatus.ACTIVE"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 826,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 852,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 877,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 946,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 961,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 968,
+      "code": "participant.status = ParticipantStatus.INACTIVE"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 1165,
+      "code": "query = query.filter(CaseTask.status == status)"
+    },
+    {
+      "file": "app/domain/cases/case_service.py",
+      "line_number": 1302,
+      "code": "task.status = new_status"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 183,
+      "code": "dl.status = DeadlineStatus.OVERDUE"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 207,
+      "code": "overdue_deadlines = [d for d in deadlines if d.status == DeadlineStatus.OVERDUE]"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 212,
+      "code": "if h.status == HearingStatus.SCHEDULED and h_at >= now:"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 413,
+      "code": "task.status = req.status"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 414,
+      "code": "if req.status == TaskStatus.COMPLETED:"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 437,
+      "code": "task.status = TaskStatus.IN_PROGRESS"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 456,
+      "code": "task.status = TaskStatus.COMPLETED"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 486,
+      "code": "task.status = TaskStatus.CANCELLED"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 503,
+      "code": "task.status = TaskStatus.IN_PROGRESS"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 578,
+      "code": "t.status = TaskStatus.COMPLETED"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 582,
+      "code": "t.status = TaskStatus.CANCELLED"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 689,
+      "code": "deadline.status = req.status"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 690,
+      "code": "if req.status == DeadlineStatus.COMPLETED:"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 711,
+      "code": "deadline.status = DeadlineStatus.COMPLETED"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 730,
+      "code": "deadline.status = DeadlineStatus.CANCELLED"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 962,
+      "code": "CaseHearing.status == HearingStatus.SCHEDULED,"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 1000,
+      "code": "Evidence.status == \"ACTIVE\","
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 1057,
+      "code": "query = query.filter(CaseTask.status == status)"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 1115,
+      "code": "query = query.filter(CaseDeadline.status == status)"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 1193,
+      "code": "hearing.status = req.status"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 1215,
+      "code": "hearing.status = HearingStatus.ADJOURNED"
+    },
+    {
+      "file": "app/domain/cases/case_workflow_service.py",
+      "line_number": 1248,
+      "code": "hearing.status = HearingStatus.CONCLUDED"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 70,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 134,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 194,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 260,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 276,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 288,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 385,
+      "code": "matter_req.status = MatterRequestStatus.SUBMITTED"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 426,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 445,
+      "code": "matter_req.status = req.mark_status"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 460,
+      "code": "task.status = TaskStatus.COMPLETED"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 488,
+      "code": "query = query.filter(MatterRequest.status == status)"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 538,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 591,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/cases/collaboration_service.py",
+      "line_number": 626,
+      "code": "CaseHearing.status == HearingStatus.SCHEDULED,"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 109,
+      "code": "or con.status == ConsultationStatus.PAID"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 113,
+      "code": "con.status = ConsultationStatus.CANCELLED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 171,
+      "code": "Consultation.status == ConsultationStatus.IN_PROGRESS,"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 186,
+      "code": "VideoMeeting.status == VideoMeetingStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 218,
+      "code": "or pending_call.status == ConsultationStatus.PAID"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 680,
+      "code": "query = query.filter(Consultation.status == status)"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 710,
+      "code": "consultation.status = ConsultationStatus.ACCEPTED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 759,
+      "code": "if consultation.status == ConsultationStatus.REJECTED:"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 767,
+      "code": "consultation.status = ConsultationStatus.REJECTED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 848,
+      "code": "consultation.status = ConsultationStatus.SCHEDULED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 928,
+      "code": "consultation.status = ConsultationStatus.SCHEDULED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 975,
+      "code": "if consultation.status == ConsultationStatus.SCHEDULED:"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 996,
+      "code": "consultation.status = ConsultationStatus.SCHEDULED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1037,
+      "code": "if consultation.status == ConsultationStatus.CANCELLED:"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1049,
+      "code": "consultation.status = ConsultationStatus.CANCELLED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1053,
+      "code": "consultation.video_meeting.status = VideoMeetingStatus.CANCELLED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1146,
+      "code": "if consultation.status == ConsultationStatus.NO_SHOW:"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1160,
+      "code": "consultation.status = ConsultationStatus.NO_SHOW"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1164,
+      "code": "consultation.video_meeting.status = VideoMeetingStatus.CANCELLED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1210,
+      "code": "if consultation.status == ConsultationStatus.COMPLETED:"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1224,
+      "code": "consultation.status = ConsultationStatus.COMPLETED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1228,
+      "code": "consultation.video_meeting.status = VideoMeetingStatus.ENDED"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1246,
+      "code": "rec.status = VideoRecordingStatus.UPLOADING"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line_number": 1353,
+      "code": "existing_participant.status = ParticipantStatus.ACTIVE"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 636,
+      "code": "if consultation.status == ConsultationStatus.COMPLETED:"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 717,
+      "code": "is_live=meeting.status == VideoMeetingStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 738,
+      "code": "if meeting.status == VideoMeetingStatus.ACTIVE and consultation.status == ConsultationStatus.IN_PROGRESS:"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 759,
+      "code": "meeting.status = VideoMeetingStatus.ACTIVE"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 773,
+      "code": "consultation.status = ConsultationStatus.IN_PROGRESS"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 809,
+      "code": "if meeting.status == VideoMeetingStatus.ENDED and consultation.status == ConsultationStatus.COMPLETED:"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 823,
+      "code": "meeting.status = VideoMeetingStatus.ENDED"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 826,
+      "code": "consultation.status = ConsultationStatus.COMPLETED"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 844,
+      "code": "rec.status = VideoRecordingStatus.UPLOADING"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 906,
+      "code": "VideoMeeting.status == VideoMeetingStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 917,
+      "code": "meeting.status = VideoMeetingStatus.ENDED"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 928,
+      "code": "VideoRecording.status == VideoRecordingStatus.RECORDING,"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 933,
+      "code": "rec.status = VideoRecordingStatus.UPLOADING"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line_number": 976,
+      "code": "consultation.status = ConsultationStatus.COMPLETED"
+    },
+    {
+      "file": "app/domain/consultations/video_recording_service.py",
+      "line_number": 311,
+      "code": "query = query.filter(VideoRecording.status == VideoRecordingStatus.RECORDING)"
+    },
+    {
+      "file": "app/domain/consultations/video_recording_service.py",
+      "line_number": 323,
+      "code": "recording.status = VideoRecordingStatus.UPLOADING"
+    },
+    {
+      "file": "app/domain/consultations/video_recording_service.py",
+      "line_number": 385,
+      "code": "if recording.status == VideoRecordingStatus.AVAILABLE:"
+    },
+    {
+      "file": "app/domain/consultations/video_recording_service.py",
+      "line_number": 407,
+      "code": "recording.status = VideoRecordingStatus.PROCESSING"
+    },
+    {
+      "file": "app/domain/consultations/video_recording_service.py",
+      "line_number": 431,
+      "code": "recording.status = VideoRecordingStatus.AVAILABLE"
+    },
+    {
+      "file": "app/domain/consultations/video_recording_service.py",
+      "line_number": 476,
+      "code": "recording.status = VideoRecordingStatus.FAILED"
+    },
+    {
+      "file": "app/domain/consultations/video_recording_service.py",
+      "line_number": 766,
+      "code": "rec.status = VideoRecordingStatus.AVAILABLE"
+    },
+    {
+      "file": "app/domain/consultations/video_recording_service.py",
+      "line_number": 783,
+      "code": "rec.status = VideoRecordingStatus.FAILED"
+    },
+    {
+      "file": "app/domain/documents/document_processor.py",
+      "line_number": 80,
+      "code": "document.processing_status = DocumentProcessingStatus.PROCESSING"
+    },
+    {
+      "file": "app/domain/documents/document_processor.py",
+      "line_number": 557,
+      "code": "doc.processing_status = DocumentProcessingStatus.READY"
+    },
+    {
+      "file": "app/domain/documents/document_processor.py",
+      "line_number": 578,
+      "code": "doc.processing_status = status"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 245,
+      "code": "evidence.status = EvidenceStatus.QUARANTINED"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 263,
+      "code": "evidence.status = EvidenceStatus.QUARANTINED"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 281,
+      "code": "evidence.status = EvidenceStatus.QUARANTINED"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 298,
+      "code": "evidence.status = EvidenceStatus.QUARANTINED"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 321,
+      "code": "evidence.status = EvidenceStatus.ACTIVE"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 562,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 704,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 991,
+      "code": "evidence.status = EvidenceStatus.DELETED"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 1030,
+      "code": "Evidence.status == EvidenceStatus.UPLOADING,"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 1038,
+      "code": "ev.status = EvidenceStatus.QUARANTINED"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 1055,
+      "code": ".filter(Evidence.status == EvidenceStatus.ACTIVE, Evidence.deleted_at.is_(None))"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 1134,
+      "code": "evidence.status = EvidenceStatus.ARCHIVED"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 1155,
+      "code": "evidence.status = EvidenceStatus.ACTIVE"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 1207,
+      "code": "item.status = EvidenceStatus.ARCHIVED"
+    },
+    {
+      "file": "app/domain/evidence/evidence_service.py",
+      "line_number": 1219,
+      "code": "item.status = EvidenceStatus.ACTIVE"
+    },
+    {
+      "file": "app/domain/governance/compliance_service.py",
+      "line_number": 110,
+      "code": "item.status = status"
+    },
+    {
+      "file": "app/domain/governance/experiment_service.py",
+      "line_number": 102,
+      "code": "exp.status = new_status"
+    },
+    {
+      "file": "app/domain/governance/experiment_service.py",
+      "line_number": 155,
+      "code": "query = query.filter(PilotExperiment.status == status)"
+    },
+    {
+      "file": "app/domain/governance/incident_service.py",
+      "line_number": 178,
+      "code": "incident.status = new_status"
+    },
+    {
+      "file": "app/domain/governance/incident_service.py",
+      "line_number": 282,
+      "code": "query = query.filter(ProductionIncident.status == status)"
+    },
+    {
+      "file": "app/domain/governance/translation_service.py",
+      "line_number": 32,
+      "code": "TranslationMessage.status == TranslationStatus.APPROVED,"
+    },
+    {
+      "file": "app/domain/governance/translation_service.py",
+      "line_number": 67,
+      "code": "existing.status = TranslationStatus.REVIEW"
+    },
+    {
+      "file": "app/domain/governance/translation_service.py",
+      "line_number": 117,
+      "code": "msg.status = TranslationStatus.APPROVED if approved else TranslationStatus.DRAFT"
+    },
+    {
+      "file": "app/domain/governance/translation_service.py",
+      "line_number": 153,
+      "code": ".filter(TranslationMessage.locale == loc, TranslationMessage.status == TranslationStatus.APPROVED)"
+    },
+    {
+      "file": "app/domain/governance/workflow_telemetry_service.py",
+      "line_number": 387,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/governance/workflow_telemetry_service.py",
+      "line_number": 396,
+      "code": ".filter(Consultation.status == ConsultationStatus.COMPLETED)"
+    },
+    {
+      "file": "app/domain/governance/workflow_telemetry_service.py",
+      "line_number": 433,
+      "code": ".filter(LawyerVerification.status == VerificationStatus.APPROVED)"
+    },
+    {
+      "file": "app/domain/governance/workflow_telemetry_service.py",
+      "line_number": 441,
+      "code": ".filter(Consultation.status == ConsultationStatus.COMPLETED)"
+    },
+    {
+      "file": "app/domain/governance/workflow_telemetry_service.py",
+      "line_number": 447,
+      "code": ".filter(Consultation.status == ConsultationStatus.CANCELLED)"
+    },
+    {
+      "file": "app/domain/governance/workflow_telemetry_service.py",
+      "line_number": 453,
+      "code": ".filter(Consultation.status == ConsultationStatus.NO_SHOW)"
+    },
+    {
+      "file": "app/domain/jobs/change_feed_service.py",
+      "line_number": 73,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/jobs/change_feed_service.py",
+      "line_number": 187,
+      "code": "MatterRequest.status == MatterRequestStatus.PENDING,"
+    },
+    {
+      "file": "app/domain/jobs/job_service.py",
+      "line_number": 106,
+      "code": "job.status = JobStatus.RUNNING"
+    },
+    {
+      "file": "app/domain/jobs/job_service.py",
+      "line_number": 141,
+      "code": "query = query.filter(BackgroundJob.status == status)"
+    },
+    {
+      "file": "app/domain/jobs/job_service.py",
+      "line_number": 180,
+      "code": "BackgroundJob.status == JobStatus.RUNNING,"
+    },
+    {
+      "file": "app/domain/jobs/job_service.py",
+      "line_number": 189,
+      "code": "stale.status = JobStatus.RETRYING"
+    },
+    {
+      "file": "app/domain/jobs/job_service.py",
+      "line_number": 196,
+      "code": "stale.status = JobStatus.DEAD_LETTER"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 69,
+      "code": "job.status = JobStatus.SUCCEEDED"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 86,
+      "code": "job.status = JobStatus.FAILED"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 108,
+      "code": "job.status = JobStatus.RETRYING"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 116,
+      "code": "job.status = JobStatus.DEAD_LETTER"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 234,
+      "code": ".filter(CaseParticipant.case_id == case_id, CaseParticipant.status == ParticipantStatus.ACTIVE)"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 261,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 307,
+      "code": ".filter(CaseParticipant.case_id == dl.case_id, CaseParticipant.status == ParticipantStatus.ACTIVE)"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 335,
+      "code": "dl.status = DeadlineStatus.OVERDUE"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 338,
+      "code": ".filter(CaseParticipant.case_id == dl.case_id, CaseParticipant.status == ParticipantStatus.ACTIVE)"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 402,
+      "code": "BackgroundJob.status == JobStatus.RUNNING,"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 414,
+      "code": "stale.status = JobStatus.RETRYING"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 421,
+      "code": "stale.status = JobStatus.FAILED"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line_number": 609,
+      "code": "ev.status = EvidenceStatus.QUARANTINED"
+    },
+    {
+      "file": "app/domain/jobs/outbox_service.py",
+      "line_number": 75,
+      "code": "evt.status = OutboxStatus.PROCESSING"
+    },
+    {
+      "file": "app/domain/jobs/outbox_service.py",
+      "line_number": 117,
+      "code": "event.status = OutboxStatus.PUBLISHED"
+    },
+    {
+      "file": "app/domain/jobs/outbox_service.py",
+      "line_number": 132,
+      "code": "event.status = OutboxStatus.DEAD_LETTER"
+    },
+    {
+      "file": "app/domain/jobs/outbox_service.py",
+      "line_number": 136,
+      "code": "event.status = OutboxStatus.FAILED"
+    },
+    {
+      "file": "app/domain/notifications/alert_service.py",
+      "line_number": 26,
+      "code": "self.status = status"
+    },
+    {
+      "file": "app/domain/notifications/reminder_service.py",
+      "line_number": 43,
+      "code": "CaseHearing.status == HearingStatus.SCHEDULED,"
+    },
+    {
+      "file": "app/domain/notifications/reminder_service.py",
+      "line_number": 57,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/notifications/reminder_service.py",
+      "line_number": 121,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/notifications/reminder_service.py",
+      "line_number": 264,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/notifications/reminder_service.py",
+      "line_number": 333,
+      "code": "d.status = DeadlineStatus.OVERDUE"
+    },
+    {
+      "file": "app/domain/notifications/reminder_service.py",
+      "line_number": 340,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/notifications/reminder_service.py",
+      "line_number": 383,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 149,
+      "code": "if txn.status == TransactionStatus.CAPTURED:"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 152,
+      "code": "txn.status = TransactionStatus.CAPTURED"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 161,
+      "code": "consultation.status = ConsultationStatus.PAID"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 217,
+      "code": "RefundRecord.status == RefundStatus.SUCCEEDED,"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 224,
+      "code": "if remaining_refundable <= Decimal(\"0.00\") or txn.status == TransactionStatus.REFUNDED:"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 245,
+      "code": "txn.status = TransactionStatus.PARTIALLY_REFUNDED if is_partial else TransactionStatus.REFUNDED"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 258,
+      "code": "consultation.status = ConsultationStatus.CANCELLED"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 468,
+      "code": "if payout.status == AdvocatePayoutStatus.PAID:"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 472,
+      "code": "payout.status = AdvocatePayoutStatus.PAID"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 509,
+      "code": "RefundRecord.status == RefundStatus.SUCCEEDED,"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 517,
+      "code": "if remaining_refundable <= Decimal(\"0.00\") or txn.status == TransactionStatus.REFUNDED:"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 522,
+      "code": "RefundRecord.status == RefundStatus.SUCCEEDED,"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 556,
+      "code": "AdvocatePayout.status == AdvocatePayoutStatus.PAID,"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 586,
+      "code": "txn.status = TransactionStatus.PARTIALLY_REFUNDED if is_partial else TransactionStatus.REFUNDED"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 594,
+      "code": "consultation.status = ConsultationStatus.CANCELLED"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 643,
+      "code": ".filter(AdvocatePayout.status == AdvocatePayoutStatus.PAID)"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 649,
+      "code": ".filter(RefundRecord.status == RefundStatus.SUCCEEDED)"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 657,
+      "code": "(_to_decimal(t.net_advocate_amount) for t in transactions if t.status == TransactionStatus.CAPTURED),"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 665,
+      "code": "(_to_decimal(t.platform_fee) for t in transactions if t.status == TransactionStatus.CAPTURED),"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 669,
+      "code": "(self._extract_stored_tax(t) for t in transactions if t.status == TransactionStatus.CAPTURED),"
+    },
+    {
+      "file": "app/domain/payments/commercial_service.py",
+      "line_number": 695,
+      "code": "if t and t.status == TransactionStatus.REFUNDED:"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 409,
+      "code": "payment.status = PaymentStatus.REFUNDED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 511,
+      "code": "webhook_rec.status = WebhookProcessingStatus.FAILED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 520,
+      "code": "webhook_rec.status = WebhookProcessingStatus.FAILED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 528,
+      "code": "if payment.status == PaymentStatus.SUCCEEDED:"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 530,
+      "code": "webhook_rec.status = WebhookProcessingStatus.PROCESSED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 536,
+      "code": "payment.status = PaymentStatus.SUCCEEDED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 544,
+      "code": "consultation.status = ConsultationStatus.PAID"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 593,
+      "code": "webhook_rec.status = WebhookProcessingStatus.PROCESSED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 663,
+      "code": "webhook_rec.status = WebhookProcessingStatus.FAILED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 670,
+      "code": "payment.status = PaymentStatus.FAILED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 676,
+      "code": "consultation.status = ConsultationStatus.PAYMENT_FAILED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 679,
+      "code": "webhook_rec.status = WebhookProcessingStatus.PROCESSED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 705,
+      "code": "webhook_rec.status = WebhookProcessingStatus.PROCESSED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 719,
+      "code": "webhook_rec.status = WebhookProcessingStatus.PROCESSED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 748,
+      "code": "ProcessedWebhookEvent.status == WebhookProcessingStatus.FAILED,"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 750,
+      "code": "ProcessedWebhookEvent.status == WebhookProcessingStatus.PROCESSING,"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 772,
+      "code": "event.status = WebhookProcessingStatus.FAILED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 783,
+      "code": "event.status = WebhookProcessingStatus.FAILED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 790,
+      "code": "payment.status = PaymentStatus.SUCCEEDED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 797,
+      "code": "consultation.status = ConsultationStatus.PAID"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 822,
+      "code": "event.status = WebhookProcessingStatus.PROCESSED"
+    },
+    {
+      "file": "app/domain/payments/payment_service.py",
+      "line_number": 830,
+      "code": "event.status = WebhookProcessingStatus.PROCESSED"
+    },
+    {
+      "file": "app/domain/payments/reconciliation_service.py",
+      "line_number": 71,
+      "code": ".filter(BackgroundJob.status == JobStatus.RUNNING, BackgroundJob.started_at < stale_threshold)"
+    },
+    {
+      "file": "app/domain/payments/reconciliation_service.py",
+      "line_number": 80,
+      "code": "j.status = JobStatus.PENDING"
+    },
+    {
+      "file": "app/domain/payments/reconciliation_service.py",
+      "line_number": 91,
+      "code": "Consultation.status == ConsultationStatus.REQUESTED,"
+    },
+    {
+      "file": "app/domain/payments/reconciliation_service.py",
+      "line_number": 102,
+      "code": "c.status = ConsultationStatus.CANCELLED"
+    },
+    {
+      "file": "app/domain/payments/reconciliation_service.py",
+      "line_number": 155,
+      "code": "run.status = DataQualityRunStatus.COMPLETED_CLEAN"
+    },
+    {
+      "file": "app/domain/payments/reconciliation_service.py",
+      "line_number": 157,
+      "code": "run.status = DataQualityRunStatus.COMPLETED_WITH_REPAIRS"
+    },
+    {
+      "file": "app/domain/payments/reconciliation_service.py",
+      "line_number": 159,
+      "code": "run.status = DataQualityRunStatus.COMPLETED_WITH_ANOMALIES"
+    },
+    {
+      "file": "app/domain/payments/reconciliation_service.py",
+      "line_number": 183,
+      "code": "run.status = DataQualityRunStatus.FAILED"
+    },
+    {
+      "file": "app/domain/payments/unit_economics_service.py",
+      "line_number": 29,
+      "code": ".filter(CommercialTransaction.status == TransactionStatus.CAPTURED)"
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 87,
+      "code": ".filter(LawyerVerification.status == VerificationStatus.APPROVED)"
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 106,
+      "code": ".filter(Case.deleted_at.is_(None), Case.status == CaseStatus.CLOSED)"
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 121,
+      "code": "Consultation.status == ConsultationStatus.PAID,"
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 130,
+      "code": "Consultation.status == ConsultationStatus.SCHEDULED,"
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 139,
+      "code": ".filter(Payment.status == PaymentStatus.SUCCEEDED)"
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 145,
+      "code": ".filter(Payment.status == PaymentStatus.SUCCEEDED)"
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 296,
+      "code": "query = query.filter(LawyerVerification.status == status)"
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 335,
+      "code": "verif.status = ("
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 458,
+      "code": "query = query.filter(Case.status == status)"
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 509,
+      "code": "query = query.filter(Consultation.status == status)"
+    },
+    {
+      "file": "app/domain/users/admin_service.py",
+      "line_number": 550,
+      "code": "query = query.filter(Payment.status == status)"
+    },
+    {
+      "file": "app/domain/users/profile_service.py",
+      "line_number": 204,
+      "code": "LawyerVerification.status == VerificationStatus.APPROVED,"
+    },
+    {
+      "file": "app/domain/users/profile_service.py",
+      "line_number": 237,
+      "code": "if lp.verification_status == \"APPROVED\":"
+    },
+    {
+      "file": "app/domain/users/support_service.py",
+      "line_number": 98,
+      "code": "support_case.status = SupportCaseStatus.RESOLVED"
+    },
+    {
+      "file": "app/domain/users/support_service.py",
+      "line_number": 144,
+      "code": "support_case.status = SupportCaseStatus.IN_PROGRESS"
+    },
+    {
+      "file": "app/domain/users/support_service.py",
+      "line_number": 209,
+      "code": "query = query.filter(SupportCase.status == status)"
+    },
+    {
+      "file": "app/domain/users/support_service.py",
+      "line_number": 219,
+      "code": "resolved_cases = self.db.query(SupportCase).filter(SupportCase.status == SupportCaseStatus.RESOLVED).all()"
+    },
+    {
+      "file": "app/domain/users/support_service.py",
+      "line_number": 310,
+      "code": "support_case.status = new_status"
+    },
+    {
+      "file": "app/domain/users/support_service.py",
+      "line_number": 314,
+      "code": "if support_case.status == SupportCaseStatus.OPEN:"
+    },
+    {
+      "file": "app/domain/users/support_service.py",
+      "line_number": 315,
+      "code": "support_case.status = SupportCaseStatus.INVESTIGATING"
+    },
+    {
+      "file": "app/domain/users/support_service.py",
+      "line_number": 318,
+      "code": "support_case.status = SupportCaseStatus.INVESTIGATING"
+    },
+    {
+      "file": "app/domain/verification/cohort_governance_service.py",
+      "line_number": 104,
+      "code": ".filter(LawyerVerification.status == VerificationStatus.APPROVED)"
+    },
+    {
+      "file": "app/domain/verification/cohort_governance_service.py",
+      "line_number": 183,
+      "code": "is_verified = verif and verif.status == VerificationStatus.APPROVED"
+    },
+    {
+      "file": "app/domain/verification/cohort_governance_service.py",
+      "line_number": 191,
+      "code": "completed_count = sum(1 for c in consults if c.status == ConsultationStatus.COMPLETED)"
+    },
+    {
+      "file": "app/domain/verification/lawyer_dashboard_service.py",
+      "line_number": 72,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/domain/verification/lawyer_dashboard_service.py",
+      "line_number": 121,
+      "code": "CaseHearing.status == HearingStatus.SCHEDULED,"
+    },
+    {
+      "file": "app/domain/verification/lawyer_dashboard_service.py",
+      "line_number": 161,
+      "code": "is_overdue = d_dt < now or d.status == DeadlineStatus.OVERDUE"
+    },
+    {
+      "file": "app/domain/verification/lawyer_dashboard_service.py",
+      "line_number": 338,
+      "code": "CaseHearing.status == HearingStatus.SCHEDULED,"
+    },
+    {
+      "file": "app/domain/verification/lawyer_dashboard_service.py",
+      "line_number": 441,
+      "code": "CaseHearing.status == HearingStatus.SCHEDULED,"
+    },
+    {
+      "file": "app/domain/verification/lawyer_dashboard_service.py",
+      "line_number": 458,
+      "code": "func.sum(case((CaseTask.status == TaskStatus.COMPLETED, 1), else_=0)),"
+    },
+    {
+      "file": "app/domain/verification/lawyer_dashboard_service.py",
+      "line_number": 668,
+      "code": "CaseHearing.status == HearingStatus.SCHEDULED,"
+    },
+    {
+      "file": "app/domain/verification/lawyer_dashboard_service.py",
+      "line_number": 720,
+      "code": "Consultation.status == ConsultationStatus.REQUESTED,"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 169,
+      "code": "existing_doc.verification_status = DocumentVerificationStatus.SUBMITTED"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 300,
+      "code": "if existing.status == VerificationStatus.APPROVED:"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 304,
+      "code": "if existing and is_reverif and existing.status == VerificationStatus.APPROVED:"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 336,
+      "code": "verification.status = VerificationStatus.PENDING"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 396,
+      "code": "query = query.filter(LawyerVerification.status == status_filter)"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 525,
+      "code": "verification.status = VerificationStatus.UNDER_REVIEW"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 533,
+      "code": "AdvocateVerificationDocument.verification_status == DocumentVerificationStatus.SUBMITTED,"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 622,
+      "code": "if verification.status == VerificationStatus.APPROVED:"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 624,
+      "code": "if verification.status == VerificationStatus.REJECTED:"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 630,
+      "code": "verification.status = VerificationStatus.APPROVED"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 718,
+      "code": "if verification.status == VerificationStatus.REJECTED:"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 724,
+      "code": "verification.status = VerificationStatus.REJECTED"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 812,
+      "code": "verification.status = VerificationStatus.NEEDS_INFO"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 894,
+      "code": "verification.status = VerificationStatus.REVOKED"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 956,
+      "code": "LawyerVerification.status == VerificationStatus.APPROVED,"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 970,
+      "code": "active_verif.status = VerificationStatus.REVOKED"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 1033,
+      "code": "LawyerVerification.status == VerificationStatus.APPROVED,"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 1110,
+      "code": "LawyerVerification.status == VerificationStatus.APPROVED,"
+    },
+    {
+      "file": "app/domain/verification/lawyer_verification_service.py",
+      "line_number": 1121,
+      "code": "verif.status = VerificationStatus.REVOKED"
+    },
+    {
+      "file": "app/api/v1/analytics.py",
+      "line_number": 85,
+      "code": ".filter(CaseTask.status == TaskStatus.COMPLETED, CaseTask.deleted_at.is_(None))"
+    },
+    {
+      "file": "app/api/v1/auth.py",
+      "line_number": 84,
+      "code": "PilotAllowlistEntry.status == AllowlistStatus.ACTIVE,"
+    },
+    {
+      "file": "app/api/v1/auth.py",
+      "line_number": 171,
+      "code": "PilotAllowlistEntry.status == AllowlistStatus.ACTIVE,"
+    },
+    {
+      "file": "app/api/v1/calendar.py",
+      "line_number": 66,
+      "code": ".filter(CaseParticipant.user_id == current_user.id, CaseParticipant.status == ParticipantStatus.ACTIVE)"
+    },
+    {
+      "file": "app/api/v1/compliance.py",
+      "line_number": 59,
+      "code": "query = query.filter(ComplianceRegistryItem.status == status_filter)"
+    },
+    {
+      "file": "app/api/v1/consultations.py",
+      "line_number": 400,
+      "code": "Consultation.status == ConsultationStatus.IN_PROGRESS,"
+    },
+    {
+      "file": "app/api/v1/consultations.py",
+      "line_number": 606,
+      "code": "con.status = ConsultationStatus.IN_PROGRESS"
+    },
+    {
+      "file": "app/api/v1/consultations.py",
+      "line_number": 626,
+      "code": "new_con.status = ConsultationStatus.IN_PROGRESS"
+    },
+    {
+      "file": "app/api/v1/consultations.py",
+      "line_number": 805,
+      "code": "payment.status = PaymentStatus.SUCCEEDED"
+    },
+    {
+      "file": "app/api/v1/consultations.py",
+      "line_number": 808,
+      "code": "consultation.status = ConsultationStatus.PAID"
+    },
+    {
+      "file": "app/api/v1/consultations.py",
+      "line_number": 1005,
+      "code": "playback_url=f\"/api/v1/recordings/{rec.id}/play\" if rec.status.value == \"AVAILABLE\" or rec.status == \"AVAILABLE\" else None,"
+    },
+    {
+      "file": "app/api/v1/court_cases.py",
+      "line_number": 311,
+      "code": "case.sync_status = \"SYNCED\""
+    },
+    {
+      "file": "app/api/v1/data_quality.py",
+      "line_number": 49,
+      "code": "query = query.filter(DataQualityRun.status == status_filter)"
+    },
+    {
+      "file": "app/api/v1/documents.py",
+      "line_number": 176,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/api/v1/evidence.py",
+      "line_number": 149,
+      "code": "query = query.filter(Evidence.status == status_filter)"
+    },
+    {
+      "file": "app/api/v1/feedback.py",
+      "line_number": 114,
+      "code": "query = query.filter(PilotFeedback.status == status_)"
+    },
+    {
+      "file": "app/api/v1/feedback.py",
+      "line_number": 163,
+      "code": "fb.status = payload.status"
+    },
+    {
+      "file": "app/api/v1/health.py",
+      "line_number": 138,
+      "code": ".filter(BackgroundJob.status == JobStatus.PENDING)"
+    },
+    {
+      "file": "app/api/v1/health.py",
+      "line_number": 144,
+      "code": ".filter(BackgroundJob.status == JobStatus.DEAD_LETTER)"
+    },
+    {
+      "file": "app/api/v1/health.py",
+      "line_number": 150,
+      "code": ".filter(OutboxEvent.status == OutboxStatus.PENDING)"
+    },
+    {
+      "file": "app/api/v1/health.py",
+      "line_number": 156,
+      "code": ".filter(OutboxEvent.status == OutboxStatus.DEAD_LETTER)"
+    },
+    {
+      "file": "app/api/v1/health.py",
+      "line_number": 162,
+      "code": ".filter(BackgroundJob.status == JobStatus.RUNNING)"
+    },
+    {
+      "file": "app/api/v1/health.py",
+      "line_number": 168,
+      "code": ".filter(BackgroundJob.status == JobStatus.RETRYING)"
+    },
+    {
+      "file": "app/api/v1/kyc.py",
+      "line_number": 258,
+      "code": "client_prof.state = payload.state.strip()"
+    },
+    {
+      "file": "app/api/v1/messages.py",
+      "line_number": 40,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/api/v1/messages.py",
+      "line_number": 48,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/api/v1/messages.py",
+      "line_number": 131,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/api/v1/messages.py",
+      "line_number": 139,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/api/v1/messages.py",
+      "line_number": 204,
+      "code": "CaseParticipant.status == ParticipantStatus.ACTIVE,"
+    },
+    {
+      "file": "app/api/v1/pilot.py",
+      "line_number": 90,
+      "code": ".filter(PilotAllowlistEntry.status == AllowlistStatus.ACTIVE)"
+    },
+    {
+      "file": "app/api/v1/pilot.py",
+      "line_number": 172,
+      "code": "PilotAllowlistEntry.status == AllowlistStatus.ACTIVE,"
+    },
+    {
+      "file": "app/api/v1/pilot.py",
+      "line_number": 227,
+      "code": "entry.status = AllowlistStatus.REVOKED"
+    },
+    {
+      "file": "app/api/v1/pilot.py",
+      "line_number": 256,
+      "code": "query = query.filter(PilotAllowlistEntry.status == status_filter)"
+    },
+    {
+      "file": "app/api/v1/pilot.py",
+      "line_number": 425,
+      "code": "CourtCase.sync_status == \"SYNCED\","
+    },
+    {
+      "file": "app/api/v1/pilot.py",
+      "line_number": 441,
+      "code": ".filter(CourtCase.sync_status == \"FAILED\")"
+    },
+    {
+      "file": "app/api/v1/pilot.py",
+      "line_number": 516,
+      "code": ".filter(LawyerVerification.status == VerificationStatus.PENDING)"
+    },
+    {
+      "file": "app/api/v1/pilot.py",
+      "line_number": 523,
+      "code": "CaseHearing.status == HearingStatus.SCHEDULED,"
+    },
+    {
+      "file": "app/api/v1/pilot.py",
+      "line_number": 539,
+      "code": ".filter(CourtCase.sync_status == \"FAILED\")"
+    },
+    {
+      "file": "app/api/v1/video_signaling.py",
+      "line_number": 64,
+      "code": "if consultation.status == ConsultationStatus.COMPLETED:"
+    },
+    {
+      "file": "app/api/v1/video_signaling.py",
+      "line_number": 67,
+      "code": "consultation.status = ConsultationStatus.IN_PROGRESS"
+    },
+    {
+      "file": "app/api/v1/video_signaling.py",
+      "line_number": 84,
+      "code": "if meeting.status == VideoMeetingStatus.ENDED:"
+    },
+    {
+      "file": "app/api/v1/video_signaling.py",
+      "line_number": 85,
+      "code": "meeting.status = VideoMeetingStatus.ACTIVE"
+    }
+  ]
+}

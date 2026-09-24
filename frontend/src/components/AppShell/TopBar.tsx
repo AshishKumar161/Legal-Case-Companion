@@ -222,6 +222,41 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
             {role === "LAWYER" ? "Advocate" : role === "ADMIN" ? "Admin" : "Client"}
           </span>
 
+          {/* KYC Status Pill */}
+          {user && user.role !== "ADMIN" && (
+            user.is_kyc_completed ? (
+              <span
+                className={styles.roleBadge}
+                style={{
+                  background: "rgba(16, 185, 129, 0.12)",
+                  color: "#10B981",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                }}
+                title="Identity & KYC Verified"
+              >
+                ✓ Verified
+              </span>
+            ) : (
+              <Link
+                href="/kyc"
+                style={{ textDecoration: "none" }}
+                title="Click to complete your profile & KYC verification"
+              >
+                <span
+                  className={styles.roleBadge}
+                  style={{
+                    background: "rgba(245, 158, 11, 0.15)",
+                    color: "#D97706",
+                    border: "1px solid rgba(245, 158, 11, 0.35)",
+                    cursor: "pointer",
+                  }}
+                >
+                  ⚠️ Complete KYC
+                </span>
+              </Link>
+            )
+          )}
+
           {/* Sign Out Button */}
           <button onClick={handleLogout} className={styles.logoutBtn}>
             Sign Out

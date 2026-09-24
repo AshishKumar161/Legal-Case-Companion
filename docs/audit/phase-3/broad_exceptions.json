@@ -1,0 +1,156 @@
+{
+  "total_broad_excepts": 91,
+  "total_swallowed_or_logged_without_raise": 46,
+  "swallowed_samples": [
+    {
+      "file": "app/domain/ai/ai_conversation_service.py",
+      "line": 572,
+      "snippet": "except Exception as audit_err:  # noqa: BLE001\n            logger.warning(\"Failed to record AIResponseAudit in conversation: %s\", audit_err)\n            self.db.rollback()\n\n        return assistant_message\n\n    def _build_copilot_system_prompt(self) -> str:"
+    },
+    {
+      "file": "app/domain/ai/ai_prompt_policy.py",
+      "line": 109,
+      "snippet": "except Exception:\n                    pass\n                idx = lower.find(pat_lower)\n                sanitized = (\n                    sanitized[:idx]\n                    + \"[DEFANGED_INSTRUCTION]\"\n                    + sanitized[idx + len(pattern):]"
+    },
+    {
+      "file": "app/domain/ai/ai_provider.py",
+      "line": 58,
+      "snippet": "except Exception as e:\n            logger.warning(\n                \"Failed to initialize ProductionOpenAIProvider, falling back to stub: %s\",\n                e,\n            )\n            return StubAIProvider()"
+    },
+    {
+      "file": "app/domain/ai/assistant_service.py",
+      "line": 256,
+      "snippet": "except Exception as audit_err:  # noqa: BLE001\n            logger.warning(\"Failed to record AIResponseAudit: %s\", audit_err)\n            self.db.rollback()\n\n        # 13. RETURN STRUCTURED GROUNDED RESPONSE\n        return CaseAssistantQueryResponse(\n            question=req.question,"
+    },
+    {
+      "file": "app/domain/ai/legal_authority_ingestion.py",
+      "line": 149,
+      "snippet": "except Exception as emb_err:  # noqa: BLE001\n                logger.warning(\n                    f\"Vector embedding generation failed during legal authority ingestion ({req.canonical_identifier}): {emb_err}\"\n                )\n\n        self.db.commit()\n        self.db.refresh(source)"
+    },
+    {
+      "file": "app/domain/ai/legal_authority_retrieval.py",
+      "line": 110,
+      "snippet": "except Exception as emb_err:  # noqa: BLE001\n                logger.warning(\"Embedding generation failed during legal authority retrieval: %s\", emb_err)\n\n        # 8. Compute Lexical, Semantic, and Authority Ranking Scores\n        alpha = getattr(settings, \"HYBRID_SEARCH_ALPHA\", 0.6)\n        scored_results: list[RetrievedLegalAuthority] = []"
+    },
+    {
+      "file": "app/domain/ai/legal_data_pipeline.py",
+      "line": 262,
+      "snippet": "except Exception as emb_err:  # noqa: BLE001\n                logger.warning(\n                    f\"Vector embedding generation failed during pipeline processing ({canonical_id}): {emb_err}\"\n                )\n\n        # 5. Link raw source and record audit event\n        raw_source.canonical_source_id = source.id"
+    },
+    {
+      "file": "app/domain/ai/retrieval_service.py",
+      "line": 103,
+      "snippet": "except Exception as e:  # noqa: BLE001\n                logger.warning(f\"Embedding generation failed during search for case {case_id}: {e}\")\n\n        # 4. Compute lexical scores and hybrid fusion\n        alpha = getattr(settings, \"HYBRID_SEARCH_ALPHA\", 0.6)\n        scored_candidates: list[RetrievedEvidence] = []"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line": 87,
+      "snippet": "except Exception as e:\n                logger.warning(\"Failed to dispatch async notification: %s\", e)\n\n    def expire_stale_incoming_calls(\n        self, lawyer_profile_id: uuid.UUID | None = None\n    ) -> list[Consultation]:\n        \"\"\"Automatically expire instant consultations waiting past the ring timeout.\"\"\""
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line": 123,
+      "snippet": "except Exception as e:\n                logger.warning(\"Failed committing expired calls: %s\", e)\n                self.db.rollback()\n\n        return expired_list\n\n    def is_lawyer_available("
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line": 587,
+      "snippet": "except Exception as e:\n            logger.warning(\"Could not auto-provision meeting: %s\", e)\n\n        self._log_audit(\n            \"CONSULTATION_REQUESTED\",\n            user.id,\n            {"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line": 1093,
+      "snippet": "except Exception as e:\n                    logger.warning(\n                        \"Automatic cancellation refund failed for consultation %s: %s\",\n                        consultation.id,\n                        e,\n                    )"
+    },
+    {
+      "file": "app/domain/consultations/consultation_service.py",
+      "line": 1267,
+      "snippet": "except Exception as e:\n                logger.warning(\"Could not broadcast consultation-ended event: %s\", e)\n\n        self._log_audit(\n            \"CONSULTATION_COMPLETED\",\n            user.id,\n            {\"consultation_id\": str(consultation.id)},"
+    },
+    {
+      "file": "app/domain/consultations/lawyer_call_channel.py",
+      "line": 83,
+      "snippet": "except Exception as e:\n                logger.warning(\n                    \"Failed to deliver event to socket for lawyer %s: %s\",\n                    lawyer_id,\n                    e,\n                )\n                stale_sockets.append(ws)"
+    },
+    {
+      "file": "app/domain/consultations/presence_service.py",
+      "line": 156,
+      "snippet": "except Exception as e:\n            logger.warning(\"Redis presence read failed for user %s: %s. Failing safe to offline.\", user_id, e)\n            return False\n\n    def is_available_preference(self, user_id: UUID | str | None) -> bool:\n        \"\"\"Check if user has a valid heartbeat with preference set to AVAILABLE.\"\"\"\n        if not user_id:"
+    },
+    {
+      "file": "app/domain/consultations/presence_service.py",
+      "line": 174,
+      "snippet": "except Exception as e:\n            logger.warning(\"Redis availability read failed for user %s: %s. Failing safe to unavailable.\", user_id, e)\n            return False\n\n    def get_raw_presence(\n        self, user_id: UUID | str | None = None, lawyer_id: UUID | str | None = None\n    ) -> dict[str, Any] | None:"
+    },
+    {
+      "file": "app/domain/consultations/presence_service.py",
+      "line": 192,
+      "snippet": "except Exception as e:\n            logger.warning(\"Redis presence payload read failed: %s. Failing safe to None.\", e)\n            return None\n\n    def get_presence(\n        self, user_id: UUID | str | None = None, lawyer_id: UUID | str | None = None\n    ) -> dict[str, Any] | None:"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line": 349,
+      "snippet": "except Exception:\n                    pass\n            if str(con_id) != str(expected_consultation_id):\n                raise ValidationError(\"Video token does not match this consultation\")\n\n        if expected_role:\n            role = payload.get(\"role\")"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line": 360,
+      "snippet": "except Exception:\n                    pass\n            if role != expected_role:\n                raise ValidationError(\"Video token role does not match expected participant role\")\n\n        return payload"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line": 871,
+      "snippet": "except Exception as e:\n            logger.warning(\"Could not broadcast consultation-ended event: %s\", e)\n\n        self._log_audit(\n            \"VIDEO_MEETING_ENDED\",\n            user.id,\n            {"
+    },
+    {
+      "file": "app/domain/consultations/video_meeting_service.py",
+      "line": 959,
+      "snippet": "except Exception as e:\n                    logger.warning(\n                        \"Could not broadcast consultation-ended on stale meeting %s: %s\",\n                        meeting.id,\n                        e,\n                    )"
+    },
+    {
+      "file": "app/domain/consultations/video_recording_service.py",
+      "line": 777,
+      "snippet": "except Exception as e:  # noqa: BLE001\n                logger.warning(\"Error checking recording storage for %s: %s\", rec.id, e)\n\n            # If file does not exist and exceeds max age cutoff -> mark permanently FAILED\n            rec_created_at = rec.created_at.replace(tzinfo=UTC) if rec.created_at.tzinfo is None else rec.created_at\n            if rec_created_at <= max_age_cutoff:\n                rec.status = VideoRecordingStatus.FAILED"
+    },
+    {
+      "file": "app/domain/consultations/video_signaling_manager.py",
+      "line": 35,
+      "snippet": "except Exception as e:\n                logger.warning(f\"Failed to notify peer {client['user_id']} of join: {e}\")\n\n        # Notify the newly connected peer about all existing peers already in the room\n        for client in self.rooms[room_id]:\n            try:\n                await websocket.send_text(json.dumps({"
+    },
+    {
+      "file": "app/domain/consultations/video_signaling_manager.py",
+      "line": 47,
+      "snippet": "except Exception as e:\n                logger.warning(f\"Failed to notify new peer of existing peer: {e}\")\n\n        self.rooms[room_id].append({\n            \"ws\": websocket,\n            \"user_id\": user_id,\n            \"role\": role,"
+    },
+    {
+      "file": "app/domain/consultations/video_signaling_manager.py",
+      "line": 85,
+      "snippet": "except Exception as e:\n                    logger.warning(f\"Failed to notify peer {client['user_id']} of leave: {e}\")\n\n    async def broadcast_to_room(self, room_id: str, sender_ws: Any | None, message: dict[str, Any]) -> None:\n        \"\"\"Relays a validated WebRTC signaling message to all other peers in the room.\"\"\"\n        if room_id not in self.rooms:\n            return"
+    },
+    {
+      "file": "app/domain/consultations/video_signaling_manager.py",
+      "line": 99,
+      "snippet": "except Exception as e:\n                    logger.warning(f\"Failed to relay signaling message to {client['user_id']}: {e}\")\n                    dead_clients.append(client)\n\n        if dead_clients:\n            for dead in dead_clients:\n                if dead in self.rooms.get(room_id, []):"
+    },
+    {
+      "file": "app/domain/documents/document_processor.py",
+      "line": 163,
+      "snippet": "except Exception as emb_ex:  # noqa: BLE001\n                    logger.warning(\n                        f\"Embedding generation skipped for doc {document_id}: {emb_ex}\"\n                    )\n\n            # Persist pages and chunks idempotently in an atomic transaction\n            self._persist_pages_and_chunks("
+    },
+    {
+      "file": "app/domain/documents/document_processor.py",
+      "line": 312,
+      "snippet": "except Exception as page_err:  # noqa: BLE001\n                    logger.warning(f\"Error extracting page {idx + 1} of {filename}: {page_err}\")\n                    page_text = \"\"\n\n                cleaned = page_text.strip()\n                pages.append(\n                    ExtractedPageData("
+    },
+    {
+      "file": "app/domain/documents/document_processor.py",
+      "line": 411,
+      "snippet": "except Exception as e:  # noqa: BLE001\n            logger.warning(f\"DOCX extraction failed for {filename}: {e}\")\n            return (\n                DocumentProcessingStatus.CORRUPTED_FILE,\n                [],\n                f\"DOCX file is corrupted or unreadable: {e}\",\n            )"
+    },
+    {
+      "file": "app/domain/jobs/job_worker.py",
+      "line": 99,
+      "snippet": "except Exception as e:  # noqa: BLE001\n            # Potential transient error\n            logger.warning(f\"Transient error executing job {job_id} ({job.job_type}): {e}\")\n            now = datetime.now(UTC)\n            job.last_error = str(e)\n\n            if job.attempt_count < job.max_attempts:"
+    }
+  ]
+}

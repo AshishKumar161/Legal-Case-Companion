@@ -1,0 +1,699 @@
+{
+  "total_domains_audited": 9,
+  "domains": [
+    {
+      "domain_name": "Identity & Authentication",
+      "service_classes": [
+        "AuthService (app/domain/auth/auth_service.py)",
+        "GoogleOAuthService (app/domain/auth/google_oauth_service.py)",
+        "SessionCleanupService (app/domain/auth/session_cleanup_service.py)",
+        "UserService (app/domain/users/user_service.py)",
+        "LifecycleService (app/domain/users/lifecycle_service.py)"
+      ],
+      "router_modules": [
+        "app/api/v1/auth.py",
+        "app/api/v1/profiles.py"
+      ],
+      "primary_models": [
+        "User",
+        "UserProfile",
+        "UserExternalIdentity",
+        "RefreshTokenSession",
+        "EmailVerificationToken",
+        "PasswordResetToken",
+        "MFAConfiguration",
+        "MFABackupCode"
+      ],
+      "schemas": [
+        "app/schemas/user.py",
+        "app/schemas/auth.py",
+        "app/schemas/profile.py"
+      ],
+      "background_jobs": [
+        "JobType.EXPIRED_SESSION_CLEANUP",
+        "JobType.NOTIFICATION_DELIVERY"
+      ],
+      "external_integrations": [
+        "Google OAuth2 (Token & UserInfo API)",
+        "SMTP / SendGrid Email Dispatch"
+      ],
+      "state_machines": [
+        {
+          "field": "User.status",
+          "enum": "AccountStatus",
+          "states": [
+            "REGISTERED",
+            "VERIFIED",
+            "ACTIVE",
+            "RESTRICTED",
+            "SUSPENDED",
+            "DEACTIVATED"
+          ]
+        }
+      ],
+      "important_business_invariants": [
+        "User email must be unique and case-insensitive in lookup",
+        "Password reset token must be single-use and expire in 15 minutes",
+        "Refresh tokens must rotate on every refresh; reuse of prior token revokes entire session family",
+        "Active sessions must be revoked on password change",
+        "Suspended/deactivated users cannot authenticate or perform case actions"
+      ],
+      "tests": [
+        "tests/integration/test_auth_stabilization.py",
+        "tests/security/test_oauth_security.py",
+        "tests/security/test_session_invalidation.py"
+      ]
+    },
+    {
+      "domain_name": "Lawyer Management & Verification",
+      "service_classes": [
+        "LawyerVerificationService (app/domain/verification/lawyer_verification_service.py)",
+        "LawyerDashboardService (app/domain/verification/lawyer_dashboard_service.py)",
+        "CohortGovernanceService (app/domain/verification/cohort_governance_service.py)",
+        "ProfileService (app/domain/users/profile_service.py)"
+      ],
+      "router_modules": [
+        "app/api/v1/lawyers.py",
+        "app/api/v1/verification.py",
+        "app/api/v1/kyc.py"
+      ],
+      "primary_models": [
+        "LawyerProfile",
+        "LawyerVerification",
+        "AdvocateVerificationDocument",
+        "BarVerificationRecord",
+        "LawyerAvailability",
+        "LawyerRating"
+      ],
+      "schemas": [
+        "app/schemas/profile.py",
+        "app/schemas/verification.py",
+        "app/schemas/kyc.py"
+      ],
+      "background_jobs": [
+        "JobType.EVIDENCE_INTEGRITY_AUDIT"
+      ],
+      "external_integrations": [
+        "Bar Council of India / State Bar Registry lookups (simulated/manual review)",
+        "S3 / MinIO Private Credential Storage"
+      ],
+      "state_machines": [
+        {
+          "field": "LawyerVerification.status",
+          "enum": "VerificationStatus",
+          "states": [
+            "DRAFT",
+            "PENDING",
+            "UNDER_REVIEW",
+            "APPROVED",
+            "REJECTED",
+            "NEEDS_INFO",
+            "REVOKED"
+          ]
+        },
+        {
+          "field": "AdvocateVerificationDocument.verification_status",
+          "enum": "DocumentVerificationStatus",
+          "states": [
+            "NOT_SUBMITTED",
+            "SUBMITTED",
+            "UNDER_REVIEW",
+            "APPROVED",
+            "REJECTED",
+            "NEEDS_RESUBMISSION"
+          ]
+        },
+        {
+          "field": "AdvocateVerificationDocument.scan_status",
+          "enum": "DocumentScanStatus",
+          "states": [
+            "PENDING",
+            "SCANNING",
+            "PASSED",
+            "FLAGGED",
+            "FAILED"
+          ]
+        }
+      ],
+      "important_business_invariants": [
+        "Only lawyers with APPROVED verification status can accept consultations or appear in public discovery",
+        "Modifying Bar Council enrollment credentials immediately invalidates active verification (status -> REVOKED)",
+        "Unverified lawyers must not be able to be granted case access (enforced in grant_lawyer_access, bypassed in add_participant)",
+        "Advocate verification documents must be scanned and passed before submission"
+      ],
+      "tests": [
+        "tests/integration/test_lawyer_onboarding.py",
+        "tests/integration/test_advocate_verification.py",
+        "tests/integration/test_kyc_verification_flow.py"
+      ]
+    },
+    {
+      "domain_name": "Case & Matter Workspace",
+      "service_classes": [
+        "CaseService (app/domain/cases/case_service.py)",
+        "CaseWorkflowService (app/domain/cases/case_workflow_service.py)",
+        "CollaborationService (app/domain/cases/collaboration_service.py)",
+        "CaseReportService (app/domain/cases/case_report_service.py)",
+        "CaseAttentionService (app/domain/cases/case_attention_service.py)",
+        "BundleService (app/domain/cases/bundle_service.py)",
+        "BundlePdfEngine (app/domain/cases/bundle_pdf_engine.py)"
+      ],
+      "router_modules": [
+        "app/api/v1/cases.py",
+        "app/api/v1/workflow.py",
+        "app/api/v1/bundles.py",
+        "app/api/v1/attention.py"
+      ],
+      "primary_models": [
+        "Case",
+        "CaseParticipant",
+        "CaseTimelineEvent",
+        "CaseDeadline",
+        "CaseHearing",
+        "CaseTask",
+        "CaseNote",
+        "EvidenceBundle",
+        "EvidenceBundleItem"
+      ],
+      "schemas": [
+        "app/schemas/case.py",
+        "app/schemas/workflow.py",
+        "app/schemas/task.py",
+        "app/schemas/bundle.py",
+        "app/schemas/report.py"
+      ],
+      "background_jobs": [
+        "JobType.DEADLINE_REMINDER_SCAN",
+        "JobType.TASK_OVERDUE_SCAN",
+        "JobType.CASE_INTELLIGENCE_REFRESH"
+      ],
+      "external_integrations": [
+        "e-Courts Docket Tracking (Registry synchronization)",
+        "PyPDF / ReportLab PDF Compilation"
+      ],
+      "state_machines": [
+        {
+          "field": "Case.status",
+          "enum": "CaseStatus",
+          "states": [
+            "OPEN",
+            "IN_PROGRESS",
+            "CLOSED",
+            "CANCELLED"
+          ]
+        },
+        {
+          "field": "CaseParticipant.status",
+          "enum": "ParticipantStatus",
+          "states": [
+            "ACTIVE",
+            "INACTIVE"
+          ]
+        },
+        {
+          "field": "CaseDeadline.status",
+          "enum": "DeadlineStatus",
+          "states": [
+            "UPCOMING",
+            "DUE",
+            "OVERDUE",
+            "COMPLETED",
+            "CANCELLED"
+          ]
+        },
+        {
+          "field": "CaseHearing.status",
+          "enum": "HearingStatus",
+          "states": [
+            "SCHEDULED",
+            "ADJOURNED",
+            "CONCLUDED",
+            "CANCELLED"
+          ]
+        },
+        {
+          "field": "CaseTask.status",
+          "enum": "TaskStatus",
+          "states": [
+            "PENDING",
+            "IN_PROGRESS",
+            "BLOCKED",
+            "COMPLETED",
+            "CANCELLED"
+          ]
+        },
+        {
+          "field": "EvidenceBundle.status",
+          "enum": "BundleStatus",
+          "states": [
+            "DRAFT",
+            "COMPILING",
+            "GENERATED",
+            "FAILED",
+            "CERTIFIED"
+          ]
+        }
+      ],
+      "important_business_invariants": [
+        "Case must have at least one active OWNER at all times; last owner cannot be demoted or removed",
+        "CLOSED and CANCELLED are terminal case statuses; no transition out of closed is permitted",
+        "Workflow tasks, hearings, and deadlines cannot be mutated on closed/cancelled cases",
+        "Evidentiary bundles must only contain evidence items belonging to the case matter",
+        "Case participants must be authenticated users with active accounts"
+      ],
+      "tests": [
+        "tests/integration/test_case_workspace.py",
+        "tests/integration/test_case_workflow.py",
+        "tests/integration/test_bundle_generation.py",
+        "tests/security/test_case_authorization.py"
+      ]
+    },
+    {
+      "domain_name": "Document & Evidence Management",
+      "service_classes": [
+        "DocumentService (app/domain/documents/document_service.py)",
+        "DocumentProcessor (app/domain/documents/document_processor.py)",
+        "LegalDocumentService (app/domain/documents/legal_document_service.py)",
+        "EvidenceService (app/domain/evidence/evidence_service.py)",
+        "ScannerService (app/domain/evidence/scanner_service.py)"
+      ],
+      "router_modules": [
+        "app/api/v1/documents.py",
+        "app/api/v1/evidence.py",
+        "app/api/v1/legal_documents.py"
+      ],
+      "primary_models": [
+        "Document",
+        "DocumentVersion",
+        "DocumentChunk",
+        "DocumentPage",
+        "Evidence",
+        "EvidenceVersion",
+        "EvidenceCustodyEvent",
+        "EvidenceAccessGrant",
+        "CaseExhibit"
+      ],
+      "schemas": [
+        "app/schemas/document.py",
+        "app/schemas/evidence.py",
+        "app/schemas/bundle.py"
+      ],
+      "background_jobs": [
+        "JobType.DOCUMENT_PROCESSING",
+        "JobType.DOCUMENT_INDEXING",
+        "JobType.EVIDENCE_SCAN_AND_ACTIVATE",
+        "JobType.EVIDENCE_INTEGRITY_AUDIT",
+        "JobType.EVIDENCE_ORPHAN_RECONCILIATION",
+        "JobType.ABANDONED_UPLOAD_CLEANUP"
+      ],
+      "external_integrations": [
+        "AWS S3 / MinIO Object Storage",
+        "PyPDF / PyPDF2 / pdfplumber for text extraction",
+        "Malware scanning engine (Magic byte + ClamAV simulated)"
+      ],
+      "state_machines": [
+        {
+          "field": "Document.processing_status",
+          "enum": "DocumentProcessingStatus",
+          "states": [
+            "PENDING",
+            "PROCESSING",
+            "READY",
+            "FAILED"
+          ]
+        },
+        {
+          "field": "Document.security_status",
+          "enum": "DocumentSecurityStatus",
+          "states": [
+            "PENDING",
+            "SCANNING",
+            "SAFE",
+            "QUARANTINED",
+            "REJECTED",
+            "VALIDATING"
+          ]
+        },
+        {
+          "field": "Evidence.status",
+          "enum": "EvidenceStatus",
+          "states": [
+            "ACTIVE",
+            "ARCHIVED",
+            "DELETED"
+          ]
+        },
+        {
+          "field": "EvidenceVersion.integrity_status",
+          "enum": "EvidenceIntegrityStatus",
+          "states": [
+            "UNVERIFIED",
+            "VERIFIED_MATCH",
+            "TAMPER_DETECTED"
+          ]
+        }
+      ],
+      "important_business_invariants": [
+        "SHA-256 cryptographic hashes of evidence versions are immutable once written",
+        "Evidence under active legal hold cannot be deleted or archived",
+        "Unverified or quarantined documents cannot be downloaded or included in bundles",
+        "All evidence accesses, downloads, and shares generate immutable custody chain records",
+        "Documents can only be uploaded to active matters; closed cases reject uploads"
+      ],
+      "tests": [
+        "tests/integration/test_document_lifecycle.py",
+        "tests/integration/test_evidence_chain_of_custody.py",
+        "tests/integration/test_evidence_legal_hold.py",
+        "tests/security/test_document_confidentiality.py"
+      ]
+    },
+    {
+      "domain_name": "Consultations & Video Meetings",
+      "service_classes": [
+        "ConsultationService (app/domain/consultations/consultation_service.py)",
+        "VideoMeetingService (app/domain/consultations/video_meeting_service.py)",
+        "VideoSignalingManager (app/domain/consultations/video_signaling_manager.py)",
+        "PresenceService (app/domain/consultations/presence_service.py)",
+        "LawyerCallChannelManager (app/domain/consultations/lawyer_call_channel.py)"
+      ],
+      "router_modules": [
+        "app/api/v1/consultations.py",
+        "app/api/v1/video_signaling.py",
+        "app/api/v1/recordings.py",
+        "app/api/v1/calendar.py"
+      ],
+      "primary_models": [
+        "Consultation",
+        "ConsultationSlot",
+        "ConsultationParticipant",
+        "ConsultationDocument",
+        "ConsultationNote",
+        "VideoMeeting",
+        "VideoRecording"
+      ],
+      "schemas": [
+        "app/schemas/consultation.py",
+        "app/schemas/presence.py",
+        "app/schemas/video_meeting.py"
+      ],
+      "background_jobs": [
+        "JobType.STALE_MEETING_CLEANUP",
+        "JobType.RECORDING_UPLOAD_RETRY"
+      ],
+      "external_integrations": [
+        "WebRTC Video Signaling (WebSocket)",
+        "Encrypted S3 Object Storage for Video Recordings",
+        "Redis / In-Memory Presence Management"
+      ],
+      "state_machines": [
+        {
+          "field": "Consultation.status",
+          "enum": "ConsultationStatus",
+          "states": [
+            "REQUESTED",
+            "ACCEPTED",
+            "REJECTED",
+            "PAID",
+            "SCHEDULED",
+            "IN_PROGRESS",
+            "COMPLETED",
+            "CANCELLED",
+            "NO_SHOW"
+          ]
+        },
+        {
+          "field": "VideoMeeting.status",
+          "enum": "VideoMeetingStatus",
+          "states": [
+            "PENDING",
+            "ACTIVE",
+            "ENDED",
+            "CANCELLED"
+          ]
+        }
+      ],
+      "important_business_invariants": [
+        "Consultation slots must not overlap for the same lawyer (pessimistic lock enforced)",
+        "Only approved and active lawyers can create availability slots or accept calls",
+        "Cancelled or completed consultations cannot be rescheduled",
+        "Terminal states (COMPLETED, CANCELLED, REJECTED, NO_SHOW) cannot be cancelled",
+        "Completed consultations require lawyer or admin authorization"
+      ],
+      "tests": [
+        "tests/integration/test_consultation_flow.py",
+        "tests/integration/test_consultation_concurrency.py",
+        "tests/integration/test_video_signaling.py"
+      ]
+    },
+    {
+      "domain_name": "Billing, Payments & Commercial Operations",
+      "service_classes": [
+        "PaymentService (app/domain/payments/payment_service.py)",
+        "CommercialService (app/domain/payments/commercial_service.py)",
+        "CancellationPolicyService (app/domain/payments/cancellation_policy_service.py)",
+        "ReconciliationService (app/domain/payments/reconciliation_service.py)",
+        "UnitEconomicsService (app/domain/payments/unit_economics_service.py)"
+      ],
+      "router_modules": [
+        "app/api/v1/payments.py",
+        "app/api/v1/commercial.py",
+        "app/api/v1/webhooks.py"
+      ],
+      "primary_models": [
+        "Payment",
+        "CommercialTransaction",
+        "CommercialEntitlement",
+        "RefundRecord",
+        "AdvocatePayout",
+        "ProcessedWebhookEvent",
+        "Invoice",
+        "InvoiceItem"
+      ],
+      "schemas": [
+        "app/schemas/payment.py",
+        "app/schemas/commercial.py"
+      ],
+      "background_jobs": [
+        "JobType.COMMERCIAL_RECONCILIATION",
+        "JobType.WEBHOOK_REPROCESS"
+      ],
+      "external_integrations": [
+        "Stripe Payments API (PaymentIntents, Refunds, Webhooks)",
+        "Indian GST SAC 9982 Tax Engine (18% Statutory Rate)"
+      ],
+      "state_machines": [
+        {
+          "field": "Payment.status",
+          "enum": "PaymentStatus",
+          "states": [
+            "CREATED",
+            "PENDING",
+            "SUCCEEDED",
+            "FAILED",
+            "CANCELLED",
+            "REFUNDED"
+          ]
+        },
+        {
+          "field": "CommercialTransaction.status",
+          "enum": "TransactionStatus",
+          "states": [
+            "CREATED",
+            "AUTHORIZED",
+            "CAPTURED",
+            "PARTIALLY_REFUNDED",
+            "REFUNDED",
+            "FAILED",
+            "DISPUTED"
+          ]
+        },
+        {
+          "field": "ProcessedWebhookEvent.status",
+          "enum": "WebhookProcessingStatus",
+          "states": [
+            "RECEIVED",
+            "PROCESSING",
+            "PROCESSED",
+            "FAILED"
+          ]
+        }
+      ],
+      "important_business_invariants": [
+        "Refund amount cannot exceed remaining captured refundable amount",
+        "Transactions already fully refunded cannot be refunded again",
+        "Webhooks must be cryptographically verified via HMAC-SHA256 signature",
+        "Webhook events must be deduplicated by (event_id, provider)",
+        "Indian GST 18% calculation must strictly apply to platform commission"
+      ],
+      "tests": [
+        "tests/integration/test_payment_flows.py",
+        "tests/integration/test_commercial_operations.py",
+        "tests/security/test_webhook_hmac_security.py"
+      ]
+    },
+    {
+      "domain_name": "Messaging & Collaboration",
+      "service_classes": [
+        "MessageService (app/domain/consultations/message_service.py)",
+        "CollaborationService (app/domain/cases/collaboration_service.py)"
+      ],
+      "router_modules": [
+        "app/api/v1/messages.py"
+      ],
+      "primary_models": [
+        "Message",
+        "DirectMessage",
+        "CaseMessage",
+        "MatterRequest"
+      ],
+      "schemas": [
+        "app/schemas/message.py",
+        "app/schemas/collaboration.py"
+      ],
+      "background_jobs": [
+        "JobType.NOTIFICATION_DELIVERY"
+      ],
+      "external_integrations": [
+        "WebSocket live messaging dispatch"
+      ],
+      "state_machines": [
+        {
+          "field": "MatterRequest.status",
+          "enum": "MatterRequestStatus",
+          "states": [
+            "DRAFT",
+            "SUBMITTED",
+            "UNDER_REVIEW",
+            "ACCEPTED",
+            "DECLINED",
+            "EXPIRED"
+          ]
+        }
+      ],
+      "important_business_invariants": [
+        "Message sender must be an authorized participant in the thread or consultation",
+        "Messages cannot be forged on behalf of other user accounts",
+        "Soft-deleted messages must be excluded from conversation history",
+        "Case messages must be bound to active case matters"
+      ],
+      "tests": [
+        "tests/integration/test_messaging_flow.py",
+        "tests/integration/test_case_collaboration.py"
+      ]
+    },
+    {
+      "domain_name": "AI Copilot & Legal Authority Ingestion",
+      "service_classes": [
+        "AIConversationService (app/domain/ai/ai_conversation_service.py)",
+        "AssistantService (app/domain/ai/assistant_service.py)",
+        "RetrievalService (app/domain/ai/retrieval_service.py)",
+        "LegalAuthorityRetrievalService (app/domain/ai/legal_authority_retrieval.py)",
+        "LegalDataPipeline (app/domain/ai/legal_data_pipeline.py)",
+        "AIBudgetService (app/domain/ai/ai_budget_service.py)",
+        "ClaimVerifier (app/domain/ai/claim_verifier.py)"
+      ],
+      "router_modules": [
+        "app/api/v1/ai.py",
+        "app/api/v1/ai_conversations.py",
+        "app/api/v1/assistant.py",
+        "app/api/v1/legal_authority.py"
+      ],
+      "primary_models": [
+        "AIConversation",
+        "AIMessage",
+        "AIAnalysisJob",
+        "LegalAuthority",
+        "LegalAuthorityEmbedding",
+        "AIEvaluation"
+      ],
+      "schemas": [
+        "app/schemas/ai.py",
+        "app/schemas/assistant.py"
+      ],
+      "background_jobs": [
+        "JobType.LEGAL_AUTHORITY_INGESTION",
+        "JobType.LEGAL_AUTHORITY_REINDEX"
+      ],
+      "external_integrations": [
+        "Google Gemini / OpenAI / Anthropic LLM API via Mock/Real provider",
+        "Embedding generation model (768-dim float vectors)"
+      ],
+      "state_machines": [
+        {
+          "field": "AIAnalysisJob.status",
+          "enum": "AIAnalysisJobStatus",
+          "states": [
+            "PENDING",
+            "PROCESSING",
+            "COMPLETED",
+            "FAILED"
+          ]
+        }
+      ],
+      "important_business_invariants": [
+        "AI retrieval must be strictly scoped to the active case matter; cross-case leakage is strictly forbidden",
+        "All citations returned by LLM must be verified against retrieved chunks/provisions; ungrounded citations dropped",
+        "Prompt injection patterns in queries or retrieved documents must trigger immediate safety refusal",
+        "AI token and dollar budgets must be enforced prior to LLM invocation",
+        "Soft-deleted or quarantined documents must be excluded from retrieval"
+      ],
+      "tests": [
+        "tests/integration/test_ai_copilot_service.py",
+        "tests/security/test_prompt_injection_defense.py",
+        "tests/evaluation/test_legal_authority_benchmark.py"
+      ]
+    },
+    {
+      "domain_name": "Background Job Orchestration",
+      "service_classes": [
+        "JobService (app/domain/jobs/job_service.py)",
+        "JobWorker (app/domain/jobs/job_worker.py)",
+        "JobScheduler (app/domain/jobs/job_scheduler.py)",
+        "OutboxService (app/domain/jobs/outbox_service.py)",
+        "ChangeFeedService (app/domain/jobs/change_feed_service.py)"
+      ],
+      "router_modules": [
+        "app/api/v1/change_feed.py"
+      ],
+      "primary_models": [
+        "BackgroundJob",
+        "OutboxEvent"
+      ],
+      "schemas": [
+        "app/schemas/task.py"
+      ],
+      "background_jobs": [
+        "JobType.STALE_JOB_RECOVERY",
+        "JobType.OUTBOX_DISPATCH"
+      ],
+      "external_integrations": [
+        "Database-backed transactional queue (PostgreSQL FOR UPDATE SKIP LOCKED)"
+      ],
+      "state_machines": [
+        {
+          "field": "BackgroundJob.status",
+          "enum": "JobStatus",
+          "states": [
+            "PENDING",
+            "RUNNING",
+            "RETRYING",
+            "SUCCEEDED",
+            "FAILED",
+            "DEAD_LETTER",
+            "CANCELLED"
+          ]
+        }
+      ],
+      "important_business_invariants": [
+        "Job claiming must use SELECT FOR UPDATE SKIP LOCKED to prevent duplicate execution across workers",
+        "Jobs exceeding maximum retry attempts must transition to DEAD_LETTER",
+        "Job enqueueing with identical idempotency_key must return existing job instead of duplicating",
+        "Stale jobs with expired locks must be safely recovered by maintenance sweep"
+      ],
+      "tests": [
+        "tests/integration/test_job_queue_resilience.py",
+        "tests/integration/test_worker_crash_recovery.py"
+      ]
+    }
+  ]
+}

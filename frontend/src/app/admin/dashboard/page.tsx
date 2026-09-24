@@ -34,7 +34,6 @@ import {
   CourthouseIcon,
   ScalesIcon,
   AlertTriangleIcon,
-  ChatIcon,
 } from "@/components/ui/Icons";
 
 type AdminTab =

@@ -1,0 +1,149 @@
+{
+  "total_routers": 45,
+  "total_direct_queries": 159,
+  "total_direct_commits": 28,
+  "total_direct_adds": 27,
+  "total_direct_status_mutations": 38,
+  "router_breakdown": [
+    {
+      "router": "app/api/v1/admin.py",
+      "direct_queries": 1,
+      "direct_commits": 0,
+      "direct_adds": 0,
+      "direct_status_mutations": 0
+    },
+    {
+      "router": "app/api/v1/advisor.py",
+      "direct_queries": 6,
+      "direct_commits": 2,
+      "direct_adds": 3,
+      "direct_status_mutations": 0
+    },
+    {
+      "router": "app/api/v1/analytics.py",
+      "direct_queries": 23,
+      "direct_commits": 1,
+      "direct_adds": 1,
+      "direct_status_mutations": 1
+    },
+    {
+      "router": "app/api/v1/auth.py",
+      "direct_queries": 6,
+      "direct_commits": 0,
+      "direct_adds": 0,
+      "direct_status_mutations": 2
+    },
+    {
+      "router": "app/api/v1/calendar.py",
+      "direct_queries": 10,
+      "direct_commits": 0,
+      "direct_adds": 0,
+      "direct_status_mutations": 1
+    },
+    {
+      "router": "app/api/v1/commercial.py",
+      "direct_queries": 1,
+      "direct_commits": 0,
+      "direct_adds": 0,
+      "direct_status_mutations": 0
+    },
+    {
+      "router": "app/api/v1/compliance.py",
+      "direct_queries": 1,
+      "direct_commits": 0,
+      "direct_adds": 0,
+      "direct_status_mutations": 1
+    },
+    {
+      "router": "app/api/v1/consultations.py",
+      "direct_queries": 23,
+      "direct_commits": 5,
+      "direct_adds": 4,
+      "direct_status_mutations": 6
+    },
+    {
+      "router": "app/api/v1/court_cases.py",
+      "direct_queries": 8,
+      "direct_commits": 5,
+      "direct_adds": 5,
+      "direct_status_mutations": 0
+    },
+    {
+      "router": "app/api/v1/data_quality.py",
+      "direct_queries": 1,
+      "direct_commits": 0,
+      "direct_adds": 0,
+      "direct_status_mutations": 1
+    },
+    {
+      "router": "app/api/v1/documents.py",
+      "direct_queries": 1,
+      "direct_commits": 2,
+      "direct_adds": 1,
+      "direct_status_mutations": 1
+    },
+    {
+      "router": "app/api/v1/evidence.py",
+      "direct_queries": 4,
+      "direct_commits": 0,
+      "direct_adds": 0,
+      "direct_status_mutations": 1
+    },
+    {
+      "router": "app/api/v1/feedback.py",
+      "direct_queries": 2,
+      "direct_commits": 2,
+      "direct_adds": 1,
+      "direct_status_mutations": 2
+    },
+    {
+      "router": "app/api/v1/health.py",
+      "direct_queries": 6,
+      "direct_commits": 0,
+      "direct_adds": 0,
+      "direct_status_mutations": 6
+    },
+    {
+      "router": "app/api/v1/kyc.py",
+      "direct_queries": 3,
+      "direct_commits": 2,
+      "direct_adds": 2,
+      "direct_status_mutations": 1
+    },
+    {
+      "router": "app/api/v1/lawyers.py",
+      "direct_queries": 2,
+      "direct_commits": 0,
+      "direct_adds": 0,
+      "direct_status_mutations": 0
+    },
+    {
+      "router": "app/api/v1/legal_authority.py",
+      "direct_queries": 1,
+      "direct_commits": 0,
+      "direct_adds": 0,
+      "direct_status_mutations": 0
+    },
+    {
+      "router": "app/api/v1/messages.py",
+      "direct_queries": 41,
+      "direct_commits": 4,
+      "direct_adds": 6,
+      "direct_status_mutations": 5
+    },
+    {
+      "router": "app/api/v1/pilot.py",
+      "direct_queries": 17,
+      "direct_commits": 3,
+      "direct_adds": 4,
+      "direct_status_mutations": 6
+    },
+    {
+      "router": "app/api/v1/video_signaling.py",
+      "direct_queries": 2,
+      "direct_commits": 2,
+      "direct_adds": 0,
+      "direct_status_mutations": 4
+    }
+  ]
+}

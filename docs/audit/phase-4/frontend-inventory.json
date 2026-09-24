@@ -1,0 +1,107 @@
+{
+  "framework": {
+    "name": "Next.js",
+    "version": "16.3.4",
+    "react_version": "19.2.8",
+    "react_dom_version": "19.2.8",
+    "typescript_version": "^5",
+    "routing_architecture": "App Router (frontend/src/app)",
+    "rendering_strategy": "Predominantly Client-Side Rendered (CSR) via 'use client' directives with SSR shell",
+    "build_tool": "Webpack with SWC Wasm (@next/swc-wasm-nodejs: ^16.3.3)"
+  },
+  "file_metrics": {
+    "total_source_files": 132,
+    "total_pages": 43,
+    "total_components": 66,
+    "total_providers": 3,
+    "total_lib_modules": 12,
+    "total_api_modules": 2,
+    "client_rendered_files": 108,
+    "server_rendered_files": 8,
+    "test_scripts": 6
+  },
+  "architecture_breakdown": {
+    "routing": {
+      "type": "Next.js App Router",
+      "root_directory": "frontend/src/app",
+      "middleware": "None (no middleware.ts in frontend; route guarding is handled client-side in useEffect / AppShell)",
+      "layouts": [
+        "frontend/src/app/layout.tsx"
+      ],
+      "not_found_handling": "Default Next.js fallback"
+    },
+    "state_management": {
+      "type": "React Built-in State & Context API",
+      "stores": "No external store libraries (no Redux, Zustand, Recoil, or MobX)",
+      "contexts": [
+        "AuthContext (frontend/src/providers/AuthProvider.tsx)",
+        "I18nContext (frontend/src/providers/I18nProvider.tsx)",
+        "ThemeContext (frontend/src/providers/ThemeProvider.tsx)"
+      ],
+      "component_state": "useState, useReducer, useCallback, useMemo across individual pages"
+    },
+    "api_client": {
+      "base_client": "frontend/src/api/client.ts (apiClient)",
+      "session_manager": "frontend/src/api/session.ts",
+      "re_export_shim": "frontend/src/lib/api/client.ts",
+      "modular_endpoints": [
+        "frontend/src/lib/api/auth.ts",
+        "frontend/src/lib/api/cases.ts",
+        "frontend/src/lib/api/consultations.ts",
+        "frontend/src/lib/api/documents.ts",
+        "frontend/src/lib/api/ai.ts",
+        "frontend/src/lib/api/payments.ts",
+        "frontend/src/lib/api/verification.ts"
+      ],
+      "underlying_transport": "Native window.fetch with automatic Bearer token injection and CSRF header propagation",
+      "token_refresh": "Automatic 401 interception with queue-based concurrent refresh via /api/v1/auth/refresh"
+    },
+    "authentication": {
+      "token_storage": "Browser sessionStorage partitioned per tab ('lcc_access_token', 'lcc_refresh_token', 'lcc_session_id')",
+      "header_transport": "Authorization: Bearer <session_access_token> and X-CSRF-Token: <csrf_cookie>",
+      "cookie_transport": "credentials: 'include' (supports backend HttpOnly cookies)",
+      "oauth_flow": "Google OAuth 2.0 PKCE / Authorization Code via /api/v1/auth/google/callback",
+      "session_invalidation": "CustomEvent dispatch ('lcc:session-expired') and tab session clearing"
+    },
+    "form_validation": {
+      "approach": "Inline client-side validation using standard HTML5 constraints and manual regex checks",
+      "schema_validation": "Zod is in node_modules, but forms rely primarily on manual checks (e.g. regex for OTP, required string trims)"
+    },
+    "error_handling": {
+      "class_hierarchy": [
+        "ApiError (base)",
+        "NetworkError (status 0)",
+        "AuthenticationError (status 401)",
+        "AuthorizationError (status 403)",
+        "NotFoundError (status 404)",
+        "ConflictError (status 409)",
+        "ValidationError (status 422)",
+        "RateLimitError (status 429)",
+        "ServerError (status >= 500)"
+      ],
+      "ui_representation": "Inline error banners, alerts, toast notifications, ErrorState component"
+    },
+    "testing": {
+      "runner": "Puppeteer E2E automated browser integration scripts",
+      "test_scripts": [
+        "frontend/scripts/test_browser_flow.mjs",
+        "frontend/scripts/test_phase_7_1_qa.mjs",
+        "frontend/scripts/test_video_flow.mjs"
+      ],
+      "unit_tests": "No Jest or Vitest test suites configured in package.json (no .test.tsx or .spec.tsx files)"
+    },
+    "security_configuration": {
+      "headers": [
+        "X-Content-Type-Options: nosniff",
+        "X-Frame-Options: DENY",
+        "Referrer-Policy: strict-origin-when-cross-origin",
+        "Permissions-Policy: camera=(self), microphone=(self), geolocation=()",
+        "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+        "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' ...; frame-ancestors 'none'"
+      ],
+      "rewrites": "/api/v1/:path* -> BACKEND_INTERNAL_URL or NEXT_PUBLIC_API_URL",
+      "source_maps": "Disabled in production (productionBrowserSourceMaps: false)",
+      "powered_by_header": "Disabled (poweredByHeader: false)"
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "total_test_scripts_inspected": 3,
+  "total_backend_contract_tests_inspected": 8,
+  "browser_e2e_suites": [
+    {
+      "script_file": "frontend/scripts/test_browser_flow.mjs",
+      "framework": "Puppeteer E2E",
+      "scenarios_covered": [
+        "Landing page visit and anchor scrolling to #features",
+        "Unauthenticated lawyer discovery search and public profile viewing",
+        "Unauthenticated consultation booking modal gate enforcement",
+        "Login page demo persona button rendering",
+        "Client 1-click login and client dashboard redirection",
+        "Advocate 1-click login and lawyer dashboard redirection"
+      ],
+      "classification": "[VERIFIED]"
+    },
+    {
+      "script_file": "frontend/scripts/test_phase_7_1_qa.mjs",
+      "framework": "Puppeteer E2E",
+      "scenarios_covered": [
+        "Design system showcase rendering on desktop (1440x900)",
+        "LegalTerm 3-layer popover interaction",
+        "Modal dialog accessibility and Escape key dismissal",
+        "Client authenticated experience and role-aware sidebar rendering",
+        "Mobile bottom navigation on mobile viewport (375x812)"
+      ],
+      "classification": "[VERIFIED]"
+    },
+    {
+      "script_file": "frontend/scripts/test_video_flow.mjs",
+      "framework": "Puppeteer E2E",
+      "scenarios_covered": [
+        "Video consultation room entry and token validation",
+        "WebRTC media controls (audio mute, video disable, screen share)",
+        "Remote peer presence status indicators",
+        "Consultation completion and room exit teardown"
+      ],
+      "classification": "[VERIFIED]"
+    }
+  ],
+  "backend_contract_tests": [
+    {
+      "test_file": "tests/integration/test_phase_8_frontend_contracts.py",
+      "test_function": "TestFrontendBackendContracts.test_error_response_envelope_contract",
+      "contract_verified": "Error envelope formatting matches frontend ApiError expectations (401, 404, 422)",
+      "classification": "[VERIFIED]"
+    },
+    {
+      "test_file": "tests/integration/test_phase_8_frontend_contracts.py",
+      "test_function": "TestFrontendBackendContracts.test_auth_login_contract_matches_frontend_type",
+      "contract_verified": "Login response payload matches LoginResponse type in frontend/src/types/index.ts",
+      "classification": "[VERIFIED]"
+    },
+    {
+      "test_file": "tests/integration/test_phase_8_frontend_contracts.py",
+      "test_function": "TestFrontendBackendContracts.test_case_workspace_contract_matches_frontend_type",
+      "contract_verified": "Case workspace response matches CaseWorkspaceResponse TypeScript interface",
+      "classification": "[VERIFIED]"
+    },
+    {
+      "test_file": "tests/integration/test_phase_8_frontend_contracts.py",
+      "test_function": "TestFrontendBackendContracts.test_case_status_enums_contract",
+      "contract_verified": "CaseStatus enum values match frontend StatusBadge and filter options",
+      "classification": "[VERIFIED]"
+    },
+    {
+      "test_file": "tests/integration/test_phase_8_frontend_contracts.py",
+      "test_function": "TestFrontendBackendContracts.test_participant_role_enums_contract",
+      "contract_verified": "ParticipantRole enum values match frontend ParticipantRole TypeScript type",
+      "classification": "[VERIFIED]"
+    },
+    {
+      "test_file": "tests/integration/test_phase_8_frontend_contracts.py",
+      "test_function": "TestFrontendBackendContracts.test_download_report_binary_blob_contract",
+      "contract_verified": "Binary blob response handling for case report download in apiClient.blob()",
+      "classification": "[VERIFIED]"
+    },
+    {
+      "test_file": "tests/integration/test_phase_8_frontend_contracts.py",
+      "test_function": "TestFrontendBackendContracts.test_legal_authorities_hybrid_search_contract",
+      "contract_verified": "AI citation and legal authority search payload parity",
+      "classification": "[VERIFIED]"
+    },
+    {
+      "test_file": "tests/integration/test_phase_8_frontend_contracts.py",
+      "test_function": "TestFrontendBackendContracts.test_consultation_video_join_contract",
+      "contract_verified": "VideoJoinInfoResponse payload matches VideoJoinInfo TypeScript interface",
+      "classification": "[VERIFIED]"
+    }
+  ],
+  "missing_frontend_test_areas": [
+    "Unit tests for React components (no Jest/Vitest runner configured in package.json)",
+    "Negative contract tests for dead/mismatched helpers in lib/api/verification.ts and lib/api/auth.ts",
+    "OAuth callback browser history Back-button replay tests",
+    "Account-switching state sanitization tests",
+    "Form input validation boundary tests (XSS payloads in case description, oversized file uploads)",
+    "Offline network failure recovery tests in dashboard widgets"
+  ]
+}

@@ -12,7 +12,6 @@ import {
   DocumentIcon,
   LawyerIcon,
   ChatIcon,
-  BellIcon,
   SettingsIcon,
   CourthouseIcon,
   ShieldIcon,

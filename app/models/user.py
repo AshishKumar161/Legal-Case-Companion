@@ -114,6 +114,30 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
             return self.lawyer_profile.full_name
         return self.email.split("@")[0] if self.email else "User"
 
+    @property
+    def kyc_status(self) -> str:
+        if self.role == UserRole.ADMIN:
+            return "VERIFIED"
+        if self.role == UserRole.LAWYER:
+            if self.lawyer_profile:
+                return self.lawyer_profile.verification_status
+            return "PENDING"
+        if self.role == UserRole.CLIENT:
+            if self.client_profile and getattr(self.client_profile, "kyc_status", None):
+                return self.client_profile.kyc_status
+            return "PENDING"
+        return "PENDING"
+
+    @property
+    def is_kyc_completed(self) -> bool:
+        if self.role == UserRole.ADMIN:
+            return True
+        if self.role == UserRole.LAWYER:
+            return self.kyc_status in ("UNDER_REVIEW", "APPROVED")
+        if self.role == UserRole.CLIENT:
+            return self.kyc_status in ("UNDER_REVIEW", "VERIFIED")
+        return False
+
 
 class ClientProfile(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "client_profiles"
@@ -127,6 +151,21 @@ class ClientProfile(Base, TimestampMixin, SoftDeleteMixin):
     )
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     location: Mapped[str | None] = mapped_column(String, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    date_of_birth: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    id_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    id_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    pincode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    kyc_document_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    kyc_document_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    kyc_status: Mapped[str] = mapped_column(String(50), default="PENDING", nullable=False)
+    kyc_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    kyc_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    kyc_rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="client_profile")
@@ -139,8 +178,8 @@ class ClientProfile(Base, TimestampMixin, SoftDeleteMixin):
         return self.user.email if self.user else None
 
     @property
-    def phone(self) -> str | None:
-        return self.user.phone if self.user else None
+    def is_kyc_completed(self) -> bool:
+        return self.kyc_status in ("UNDER_REVIEW", "VERIFIED")
 
 
 class LawyerProfile(Base, TimestampMixin, SoftDeleteMixin):
@@ -198,6 +237,10 @@ class LawyerProfile(Base, TimestampMixin, SoftDeleteMixin):
             return "PENDING"
         latest = sorted(self.verifications, key=lambda v: v.created_at or datetime.min, reverse=True)[0]
         return latest.status.value
+
+    @property
+    def is_kyc_completed(self) -> bool:
+        return self.verification_status in ("UNDER_REVIEW", "APPROVED")
 
     @property
     def enrollment_number(self) -> str | None:

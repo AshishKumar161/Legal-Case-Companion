@@ -12,9 +12,6 @@ import {
   CheckCircleIcon,
   ArrowRightIcon,
   ChatIcon,
-  ClockIcon,
-  ScalesIcon,
-  SearchIcon,
 } from "@/components/ui/Icons";
 import { Badge } from "@/components/ui";
 import styles from "./page.module.css";

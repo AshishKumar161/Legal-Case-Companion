@@ -85,11 +85,12 @@ export function WhatChangedBanner() {
   };
 
   // Deduplicate identical consecutive events (e.g. repeated ping webhooks)
+  const events = data?.events;
   const displayEvents = useMemo(() => {
-    if (!data?.events) return [];
+    if (!events) return [];
     const seen = new Set<string>();
     const unique: DeltaEvent[] = [];
-    for (const ev of data.events) {
+    for (const ev of events) {
       const key = `${ev.category}-${ev.title}-${ev.description.slice(0, 40)}`;
       if (!seen.has(key)) {
         seen.add(key);
@@ -97,7 +98,7 @@ export function WhatChangedBanner() {
       }
     }
     return unique;
-  }, [data?.events]);
+  }, [events]);
 
   if (dismissed || !data || !data.has_unacknowledged_changes || displayEvents.length === 0) {
     return null;

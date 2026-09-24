@@ -23,12 +23,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import {
   CaseIcon,
   PlusIcon,
-  CalendarIcon,
-  DocumentIcon,
   AssistantIcon,
   ArrowRightIcon,
-  CheckCircleIcon,
-  ClockIcon,
 } from "@/components/ui/Icons";
 import styles from "./dashboard.module.css";
 
@@ -68,9 +64,9 @@ export default function Dashboard() {
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [briefsByCaseId, setBriefsByCaseId] = useState<Record<string, MatterBriefItem>>({});
   const [hearings, setHearings] = useState<CaseHearingItem[]>([]);
-  const [deadlines, setDeadlines] = useState<CaseDeadlineItem[]>([]);
   const [documentRequests, setDocumentRequests] = useState<MatterRequestItem[]>([]);
   const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
+  const [currentTimestamp] = useState(() => Date.now());
 
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -149,7 +145,6 @@ export default function Dashboard() {
       }
 
       setHearings(extractedHearings);
-      setDeadlines(extractedDeadlines);
 
       if (caseItems.length > 0) {
         const topCases = caseItems.slice(0, 6);
@@ -234,7 +229,7 @@ export default function Dashboard() {
 
     // 2. Upcoming hearing within 14 days
     const upcomingHearing = hearings
-      .filter((h) => new Date(h.hearing_at).getTime() >= Date.now())
+      .filter((h) => new Date(h.hearing_at).getTime() >= currentTimestamp)
       .sort((a, b) => new Date(a.hearing_at).getTime() - new Date(b.hearing_at).getTime())[0];
 
     if (upcomingHearing) {
@@ -267,7 +262,7 @@ export default function Dashboard() {
 
     // 4. No cases yet
     return null;
-  }, [documentRequests, hearings, cases]);
+  }, [documentRequests, hearings, cases, currentTimestamp]);
 
   // Combined upcoming events list (hearings & consultations)
   const upcomingEvents = useMemo(() => {
@@ -280,7 +275,7 @@ export default function Dashboard() {
       type: "hearing" | "consultation";
     }> = [];
 
-    const now = Date.now();
+    const now = currentTimestamp;
 
     for (const h of hearings) {
       const time = new Date(h.hearing_at).getTime();
@@ -312,7 +307,7 @@ export default function Dashboard() {
     }
 
     return list.sort((a, b) => (a.dateShort > b.dateShort ? 1 : -1)).slice(0, 4);
-  }, [hearings, consultations]);
+  }, [hearings, consultations, currentTimestamp]);
 
   return (
     <div className={styles.dashboardPage}>
@@ -368,6 +363,83 @@ export default function Dashboard() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+            {/* KYC Incomplete Alert Banner */}
+            {!user?.is_kyc_completed && (
+              <div
+                style={{
+                  background: "linear-gradient(135deg, rgba(234, 88, 12, 0.08) 0%, rgba(245, 158, 11, 0.05) 100%)",
+                  border: "1px solid rgba(245, 158, 11, 0.35)",
+                  borderRadius: "16px",
+                  padding: "20px 24px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "20px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: "1 1 300px" }}>
+                  <div
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      borderRadius: "12px",
+                      background: "rgba(245, 158, 11, 0.15)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "22px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    🛡️
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                          background: "rgba(245, 158, 11, 0.2)",
+                          color: "#D97706",
+                        }}
+                      >
+                        Action Required
+                      </span>
+                      <h4 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>
+                        Complete Your Profile & KYC Verification
+                      </h4>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary, #475569)" }}>
+                      Authenticating your identity unlocks verified consultations, court document vaults, and seamless matter representation.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/kyc"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "#0284C7",
+                    color: "#FFFFFF",
+                    padding: "10px 20px",
+                    borderRadius: "10px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    boxShadow: "0 2px 8px rgba(2, 132, 199, 0.3)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Complete KYC Now →
+                </Link>
+              </div>
+            )}
+
             {/* Section 1: Your Next Step (Prominent, High Clarity) */}
             {nextStep && (
               <section aria-labelledby="next-step-title">

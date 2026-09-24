@@ -1,0 +1,3848 @@
+{
+  "summary": {
+    "phase_0_expected_count": 205,
+    "phase_1_fully_traced_count": 222,
+    "newly_discovered_count": 17,
+    "partial_count": 0,
+    "unknown_count": 0,
+    "not_inspected_count": 0,
+    "authoritative_count": 222,
+    "reconciliation_status": "RECONCILED_EXACT"
+  },
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/workspace",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/report",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cases/{case_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/participants",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/grant-lawyer-access",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/participants",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/participants/{user_id}",
+      "identifier_names": [
+        "case_id",
+        "user_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cases/{case_id}/participants/{user_id}",
+      "identifier_names": [
+        "case_id",
+        "user_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/timeline",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/tasks",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/tasks",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/tasks/{task_id}",
+      "identifier_names": [
+        "case_id",
+        "task_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/tasks/{task_id}",
+      "identifier_names": [
+        "case_id",
+        "task_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cases/{case_id}/tasks/{task_id}",
+      "identifier_names": [
+        "case_id",
+        "task_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/notes",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/notes",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/notes/{note_id}",
+      "identifier_names": [
+        "case_id",
+        "note_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/notes/{note_id}",
+      "identifier_names": [
+        "case_id",
+        "note_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cases/{case_id}/notes/{note_id}",
+      "identifier_names": [
+        "case_id",
+        "note_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/consultations",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/consultations",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/collaboration/participants",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/collaboration/brief",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/collaboration/messages",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/collaboration/messages",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/collaboration/requests",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/collaboration/requests",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/collaboration/requests/{request_id}/submit",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/collaboration/requests/{request_id}/review",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/intelligence",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/intelligence/refresh",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/intelligence/facts",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/intelligence/facts",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/intelligence/facts/{fact_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/intelligence/issues",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/intelligence/issues",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/intelligence/issues/{issue_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/intelligence/timeline",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/intelligence/timeline",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/intelligence/timeline/{event_id}",
+      "identifier_names": [
+        "case_id",
+        "event_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/intelligence/evidence-gaps",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/intelligence/evidence-gaps",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/intelligence/evidence-gaps/{gap_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/intelligence/risks",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/intelligence/risks",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/intelligence/risks/{risk_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/workflow",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/workflow/suggestions/generate",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/deadlines",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/deadlines",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/deadlines/{deadline_id}",
+      "identifier_names": [
+        "case_id",
+        "deadline_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/deadlines/{deadline_id}/confirm",
+      "identifier_names": [
+        "case_id",
+        "deadline_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/hearings",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/hearings",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/hearings/{hearing_id}",
+      "identifier_names": [
+        "case_id",
+        "hearing_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/hearings/{hearing_id}/confirm",
+      "identifier_names": [
+        "case_id",
+        "hearing_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/hearings/{hearing_id}/adjourn",
+      "identifier_names": [
+        "case_id",
+        "hearing_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/hearings/{hearing_id}/complete",
+      "identifier_names": [
+        "case_id",
+        "hearing_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/hearings/import-ecourts",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/tasks/{task_id}/confirm",
+      "identifier_names": [
+        "case_id",
+        "task_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/tasks/{task_id}/start",
+      "identifier_names": [
+        "case_id",
+        "task_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/tasks/{task_id}/complete",
+      "identifier_names": [
+        "case_id",
+        "task_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/tasks/{task_id}/cancel",
+      "identifier_names": [
+        "case_id",
+        "task_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/tasks/{task_id}/reopen",
+      "identifier_names": [
+        "case_id",
+        "task_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/tasks/{task_id}/reassign",
+      "identifier_names": [
+        "case_id",
+        "task_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/tasks/batch",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/deadlines/{deadline_id}/complete",
+      "identifier_names": [
+        "case_id",
+        "deadline_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/deadlines/{deadline_id}/cancel",
+      "identifier_names": [
+        "case_id",
+        "deadline_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/workflow/templates/apply",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/workflow/health-summary",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/workflow/tasks",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/workflow/deadlines",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultations/{consultation_id}",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/accept",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/reject",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/schedule",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/reschedule",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/confirm",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/cancel",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/no-show",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/complete",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/payments",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/pay-test",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultations/{consultation_id}/payments",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/messages",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultations/{consultation_id}/messages",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultations/{consultation_id}/video/access-status",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultations/{consultation_id}/video/join",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/video/reconnect",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/video/start",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/video/end",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/video/recording/consent",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultations/{consultation_id}/video/recording/consent-status",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/video/recording/start",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/video/recording/stop",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/video/recording/upload",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultations/{consultation_id}/recordings",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/link-case",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/create-case",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/notes",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultations/{consultation_id}/notes",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_consultation_access",
+      "ownership_participant_relationship_checked": "consultation.client.user_id == user.id OR consultation.lawyer.user_id == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/test_instant_consultation_flow.py::test_consultation_room_participant_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultations/{consultation_id}/documents",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_document_modification",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultations/{consultation_id}/documents",
+      "identifier_names": [
+        "consultation_id"
+      ],
+      "resource_type": "Consultation",
+      "repository_service_lookup": "SQLAlchemy Session query on Consultation",
+      "authorization_function_called": "authorize_document_access",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultations/{consultation_id}/documents/{document_id}/download",
+      "identifier_names": [
+        "document_id",
+        "consultation_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_access",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/documents/upload-init",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/documents",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/documents",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/documents/summary",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/documents/{document_id}",
+      "identifier_names": [
+        "case_id",
+        "document_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/documents/{document_id}",
+      "identifier_names": [
+        "case_id",
+        "document_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/documents/{document_id}/complete",
+      "identifier_names": [
+        "case_id",
+        "document_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/documents/{document_id}/download",
+      "identifier_names": [
+        "case_id",
+        "document_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cases/{case_id}/documents/{document_id}",
+      "identifier_names": [
+        "case_id",
+        "document_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/documents/{document_id}/processing-status",
+      "identifier_names": [
+        "case_id",
+        "document_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/documents/{document_id}/process",
+      "identifier_names": [
+        "case_id",
+        "document_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/documents/{document_id}/pages",
+      "identifier_names": [
+        "case_id",
+        "document_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/documents/{document_id}/chunks",
+      "identifier_names": [
+        "case_id",
+        "document_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/documents/{document_id}",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_access",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/documents/{document_id}",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_modification",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/documents/{document_id}/complete",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_modification",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/documents/{document_id}/download",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_access",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/documents/{document_id}",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_modification",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/documents/{document_id}/processing-status",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_access",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/documents/{document_id}/process",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_modification",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/documents/{document_id}/pages",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_access",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/documents/{document_id}/chunks",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_access",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/documents/{document_id}/scan",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_modification",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/upload-init",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/complete",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/batch",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/archive",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/restore",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/versions/upload-init",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/versions/{version_id}/complete",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/versions",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/versions/{version_id}",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/download",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/view-url",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/share",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/revoke",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/grants",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/shareable-participants",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence-shared-with-me",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/verify-integrity",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/legal-hold",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/custody",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/exhibits",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/evidence/{evidence_id}/exhibits",
+      "identifier_names": [
+        "case_id",
+        "evidence_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/exhibits",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/exhibits/{exhibit_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/exhibits/{exhibit_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cases/{case_id}/exhibits/{exhibit_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/bundles",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/bundles",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}",
+      "identifier_names": [
+        "case_id",
+        "bundle_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}",
+      "identifier_names": [
+        "case_id",
+        "bundle_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}/finalize",
+      "identifier_names": [
+        "case_id",
+        "bundle_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}/download",
+      "identifier_names": [
+        "case_id",
+        "bundle_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}/certificate",
+      "identifier_names": [
+        "case_id",
+        "bundle_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}/certificate/{certificate_id}/download",
+      "identifier_names": [
+        "case_id",
+        "bundle_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/search",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payments/{payment_id}",
+      "identifier_names": [
+        "payment_id"
+      ],
+      "resource_type": "PAYMENT",
+      "repository_service_lookup": "SQLAlchemy Session query on PAYMENT",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/notifications/{notification_id}/read",
+      "identifier_names": [
+        "notification_id"
+      ],
+      "resource_type": "NOTIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on NOTIFICATION",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/notifications/{notification_id}/unread",
+      "identifier_names": [
+        "notification_id"
+      ],
+      "resource_type": "NOTIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on NOTIFICATION",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/notifications/{notification_id}",
+      "identifier_names": [
+        "notification_id"
+      ],
+      "resource_type": "NOTIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on NOTIFICATION",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/lawyers/{user_id}",
+      "identifier_names": [
+        "user_id"
+      ],
+      "resource_type": "User",
+      "repository_service_lookup": "SQLAlchemy Session query on User",
+      "authorization_function_called": "current_user ID comparison OR RequireRole([ADMIN])",
+      "ownership_participant_relationship_checked": "current_user.id == target_user_id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/test_multi_tab_auth_isolation.py::test_user_identity_scoping",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/ai/research",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/assistant/query",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/ai/conversations",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/ai/conversations",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/ai/conversations/{conversation_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cases/{case_id}/ai/conversations/{conversation_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cases/{case_id}/ai/conversations/{conversation_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cases/{case_id}/ai/conversations/{conversation_id}/messages",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/ai/conversations/{conversation_id}/messages",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/advisor/sessions/{session_id}/messages",
+      "identifier_names": [
+        "session_id"
+      ],
+      "resource_type": "Session",
+      "repository_service_lookup": "SQLAlchemy Session query on Session",
+      "authorization_function_called": "AIConversationService / session.user_id check",
+      "ownership_participant_relationship_checked": "session.user_id == current_user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/integration/test_ai_conversation_isolation.py::test_conversation_scoping",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/advisor/sessions/{session_id}",
+      "identifier_names": [
+        "session_id"
+      ],
+      "resource_type": "Session",
+      "repository_service_lookup": "SQLAlchemy Session query on Session",
+      "authorization_function_called": "AIConversationService / session.user_id check",
+      "ownership_participant_relationship_checked": "session.user_id == current_user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/integration/test_ai_conversation_isolation.py::test_conversation_scoping",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/users/{user_id}",
+      "identifier_names": [
+        "user_id"
+      ],
+      "resource_type": "User",
+      "repository_service_lookup": "SQLAlchemy Session query on User",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/users/{user_id}/suspend",
+      "identifier_names": [
+        "user_id"
+      ],
+      "resource_type": "User",
+      "repository_service_lookup": "SQLAlchemy Session query on User",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/users/{user_id}/reactivate",
+      "identifier_names": [
+        "user_id"
+      ],
+      "resource_type": "User",
+      "repository_service_lookup": "SQLAlchemy Session query on User",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/verifications/{verification_id}/approve",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/verifications/{verification_id}/reject",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/legal-sources/{source_id}/reindex",
+      "identifier_names": [
+        "source_id"
+      ],
+      "resource_type": "SOURCE",
+      "repository_service_lookup": "SQLAlchemy Session query on SOURCE",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/operators/{user_id}/permissions",
+      "identifier_names": [
+        "user_id"
+      ],
+      "resource_type": "User",
+      "repository_service_lookup": "SQLAlchemy Session query on User",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/operators/{user_id}/permissions/{permission}",
+      "identifier_names": [
+        "user_id"
+      ],
+      "resource_type": "User",
+      "repository_service_lookup": "SQLAlchemy Session query on User",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/operators/{user_id}/permissions",
+      "identifier_names": [
+        "user_id"
+      ],
+      "resource_type": "User",
+      "repository_service_lookup": "SQLAlchemy Session query on User",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/recordings/{recording_id}/playback-ticket",
+      "identifier_names": [
+        "recording_id"
+      ],
+      "resource_type": "VideoRecording",
+      "repository_service_lookup": "SQLAlchemy Session query on VideoRecording",
+      "authorization_function_called": "authorize_recording_access / verify_playback_ticket",
+      "ownership_participant_relationship_checked": "Participant in consultation or parent case",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/integration/test_video_consultation_lifecycle.py::test_recording_access_security",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/recordings/{recording_id}/play",
+      "identifier_names": [
+        "recording_id"
+      ],
+      "resource_type": "VideoRecording",
+      "repository_service_lookup": "SQLAlchemy Session query on VideoRecording",
+      "authorization_function_called": "authorize_recording_access / verify_playback_ticket",
+      "ownership_participant_relationship_checked": "Participant in consultation or parent case",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/integration/test_video_consultation_lifecycle.py::test_recording_access_security",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/incidents/{incident_id}",
+      "identifier_names": [
+        "incident_id"
+      ],
+      "resource_type": "ProductionIncident",
+      "repository_service_lookup": "SQLAlchemy Session query on ProductionIncident",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/incidents/{incident_id}/transition",
+      "identifier_names": [
+        "incident_id"
+      ],
+      "resource_type": "ProductionIncident",
+      "repository_service_lookup": "SQLAlchemy Session query on ProductionIncident",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/incidents/{incident_id}/notes",
+      "identifier_names": [
+        "incident_id"
+      ],
+      "resource_type": "ProductionIncident",
+      "repository_service_lookup": "SQLAlchemy Session query on ProductionIncident",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/support/cases/{case_id}",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/support/cases/{case_id}/resolve",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/support/cases/{case_id}/escalate",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/support/cases/{case_id}/messages",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/support/cases/{case_id}/messages",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_modification",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ai/reviews/{review_id}",
+      "identifier_names": [
+        "review_id"
+      ],
+      "resource_type": "REVIEW",
+      "repository_service_lookup": "SQLAlchemy Session query on REVIEW",
+      "authorization_function_called": "AIConversationService / session.user_id check",
+      "ownership_participant_relationship_checked": "session.user_id == current_user.id",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/integration/test_ai_conversation_isolation.py::test_conversation_scoping",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/reviews/{review_id}/action",
+      "identifier_names": [
+        "review_id"
+      ],
+      "resource_type": "REVIEW",
+      "repository_service_lookup": "SQLAlchemy Session query on REVIEW",
+      "authorization_function_called": "AIConversationService / session.user_id check",
+      "ownership_participant_relationship_checked": "session.user_id == current_user.id",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/integration/test_ai_conversation_isolation.py::test_conversation_scoping",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/localization/messages/{message_id}/review",
+      "identifier_names": [
+        "message_id"
+      ],
+      "resource_type": "MESSAGE",
+      "repository_service_lookup": "SQLAlchemy Session query on MESSAGE",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/verification/documents/{document_id}/download-url",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_access",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/verification/advocate/documents/{document_id}/download",
+      "identifier_names": [
+        "document_id"
+      ],
+      "resource_type": "Document",
+      "repository_service_lookup": "SQLAlchemy Session query on Document",
+      "authorization_function_called": "authorize_document_access",
+      "ownership_participant_relationship_checked": "Parent Case participant check OR doc.uploaded_by == user.id",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_document_access_isolation",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/verification/{verification_id}",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/verification/admin/{verification_id}",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/verification/admin/{verification_id}/detail",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/{verification_id}/start-review",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/admin/{verification_id}/start-review",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/{verification_id}/approve",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/admin/{verification_id}/approve",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/{verification_id}/reject",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/admin/{verification_id}/reject",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/{verification_id}/request-information",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/admin/{verification_id}/request-information",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/{verification_id}/revoke",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "N/A",
+      "ownership_participant_relationship_checked": "Participant / Ownership check",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError)",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/admin/{verification_id}/revoke",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/verification/admin/{verification_id}/review",
+      "identifier_names": [
+        "verification_id"
+      ],
+      "resource_type": "VERIFICATION",
+      "repository_service_lookup": "SQLAlchemy Session query on VERIFICATION",
+      "authorization_function_called": "RequireRole([UserRole.ADMIN])",
+      "ownership_participant_relationship_checked": "Administrative Oversight (Admin Role)",
+      "role_checked": "ADMIN",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 403 (AuthorizationError)",
+      "existence_obscured": false,
+      "relevant_test": "tests/security/test_operator_permissions.py::test_admin_least_privilege",
+      "final_status": "FULLY_TRACED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cases/{case_id}/attention",
+      "identifier_names": [
+        "case_id"
+      ],
+      "resource_type": "Case",
+      "repository_service_lookup": "SQLAlchemy Session query on Case",
+      "authorization_function_called": "authorize_case_access",
+      "ownership_participant_relationship_checked": "CaseParticipant(case_id, user_id, status=ACTIVE)",
+      "role_checked": "Any Authenticated Role",
+      "status_visibility_condition_checked": "deleted_at.is_(None)",
+      "unauthorized_response": "HTTP 404 (ResourceNotFoundError) on existence / 403 on role permission",
+      "existence_obscured": true,
+      "relevant_test": "tests/e2e/test_case_isolation_and_security.py::test_case_access_isolation",
+      "final_status": "FULLY_TRACED"
+    }
+  ]
+}

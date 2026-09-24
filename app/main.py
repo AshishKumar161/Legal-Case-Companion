@@ -39,6 +39,7 @@ from app.api.v1.feedback import router as feedback_router
 from app.api.v1.health import root_router as root_health_router
 from app.api.v1.health import router as health_router
 from app.api.v1.incidents import router as incidents_router
+from app.api.v1.kyc import router as kyc_router
 from app.api.v1.launch_gates import router as launch_gates_router
 from app.api.v1.lawyers import router as lawyers_router
 from app.api.v1.legal_authority import router as legal_authority_router
@@ -80,6 +81,33 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         from app.models.base import Base
 
         Base.metadata.create_all(bind=engine)
+        # Ensure schema compatibility for dynamic profile columns in SQLite
+        try:
+            with engine.begin() as conn:
+                res = conn.exec_driver_sql("PRAGMA table_info(client_profiles)").fetchall()
+                existing_cols = {row[1] for row in res}
+                new_cols = [
+                    ("phone", "VARCHAR(20)"),
+                    ("date_of_birth", "VARCHAR(20)"),
+                    ("gender", "VARCHAR(20)"),
+                    ("id_type", "VARCHAR(50)"),
+                    ("id_number", "VARCHAR(100)"),
+                    ("address", "TEXT"),
+                    ("city", "VARCHAR(100)"),
+                    ("state", "VARCHAR(100)"),
+                    ("pincode", "VARCHAR(20)"),
+                    ("kyc_document_storage_key", "VARCHAR(512)"),
+                    ("kyc_document_filename", "VARCHAR(255)"),
+                    ("kyc_status", "VARCHAR(50) DEFAULT 'PENDING'"),
+                    ("kyc_submitted_at", "DATETIME"),
+                    ("kyc_verified_at", "DATETIME"),
+                    ("kyc_rejection_reason", "TEXT"),
+                ]
+                for col_name, col_type in new_cols:
+                    if col_name not in existing_cols:
+                        conn.exec_driver_sql(f"ALTER TABLE client_profiles ADD COLUMN {col_name} {col_type}")
+        except Exception as e:
+            logger.debug(f"Schema compatibility check notice: {e}")
         logger.info("Local/development database tables initialized.")
     yield
 
@@ -250,6 +278,7 @@ app.include_router(legal_documents_router, prefix=settings.API_V1_STR)
 app.include_router(trust_router, prefix=settings.API_V1_STR)
 app.include_router(commercial_router, prefix=settings.API_V1_STR)
 app.include_router(verification_router, prefix=settings.API_V1_STR)
+app.include_router(kyc_router, prefix=settings.API_V1_STR)
 app.include_router(launch_gates_router, prefix=settings.API_V1_STR)
 app.include_router(court_cases_router, prefix=settings.API_V1_STR)
 app.include_router(calendar_router, prefix=settings.API_V1_STR)

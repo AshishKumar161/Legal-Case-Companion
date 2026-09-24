@@ -7,8 +7,6 @@ import {
   DocumentIcon,
   PlusIcon,
   ShieldIcon,
-  AssistantIcon,
-  CheckCircleIcon,
   CameraIcon,
 } from "@/components/ui/Icons";
 import { DocumentCard } from "@/components/ui/DocumentCard";
@@ -90,9 +88,6 @@ export default function DocumentWorkspacePage() {
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState<string>("EVIDENCE");
   const [uploading, setUploading] = useState(false);
-
-  // "Understand This Document" Plain-Language Modal
-  const [explainingDoc, setExplainingDoc] = useState<EnrichedDoc | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);

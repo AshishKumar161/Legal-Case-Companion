@@ -29,7 +29,6 @@ function getSystemTheme(): ResolvedTheme {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
-  const [mounted, setMounted] = useState(false);
 
   // Initialize theme from localStorage or document attribute
   useEffect(() => {
@@ -46,7 +45,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setResolvedTheme("light");
       document.documentElement.setAttribute("data-theme", "light");
     }
-    setMounted(true);
   }, []);
 
   // Listen for system theme changes when theme === 'system'

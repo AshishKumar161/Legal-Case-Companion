@@ -1,0 +1,1353 @@
+{
+  "total_routes": 43,
+  "public_routes_count": 11,
+  "authenticated_routes_count": 32,
+  "routes": [
+    {
+      "pathname": "/admin/dashboard",
+      "component_file": "frontend/src/app/admin/dashboard/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "ADMIN",
+      "required_backend_resources": [
+        "/api/v1/admin/overview",
+        "/api/v1/admin/verifications",
+        "/api/v1/admin/jobs?limit=20"
+      ],
+      "api_calls": [
+        "GET /api/v1/pilot/support-analytics",
+        "GET /api/v1/admin/metrics",
+        "POST /api/v1/admin/legal-sources/import-raw",
+        "GET /api/v1/admin/users?limit=50",
+        "GET /api/v1/admin/cases?limit=50",
+        "GET /api/v1/pilot/marketplace-quality",
+        "GET /api/v1/feedback?limit=30",
+        "GET /api/v1/admin/jobs?limit=20",
+        "POST /api/v1/admin/users/${confirmModal.targetId}/reactivate",
+        "GET /api/v1/pilot/marketplace-balance",
+        "GET /api/v1/admin/document-security?limit=50",
+        "GET /api/v1/commercial/unit-economics",
+        "GET /api/v1/pilot/advocate-supply-roster",
+        "POST /api/v1/admin/verifications/${id}/approve",
+        "GET /api/v1/pilot/cohort-2/status",
+        "GET /api/v1/admin/verifications",
+        "GET /api/v1/pilot/conversion-funnel",
+        "GET /api/v1/admin/payments?limit=50",
+        "POST /api/v1/pilot/cohort-2/advance-stage",
+        "POST /api/v1/admin/users/${confirmModal.targetId}/suspend",
+        "GET /api/v1/admin/consultations?limit=50",
+        "GET /api/v1/admin/security-events?limit=50",
+        "GET /api/v1/commercial/settlements/reconciliation",
+        "GET /api/v1/pilot/court-data-quality",
+        "GET /api/v1/pilot/retention-metrics",
+        "GET /api/v1/admin/audit?limit=50",
+        "POST /api/v1/admin/verifications/${confirmModal.targetId}/reject",
+        "POST /api/v1/admin/legal-sources/sync-fixtures",
+        "GET /api/v1/admin/overview"
+      ],
+      "mutations": [
+        "POST /api/v1/admin/legal-sources/import-raw",
+        "POST /api/v1/admin/verifications/${id}/approve",
+        "POST /api/v1/admin/verifications/${confirmModal.targetId}/reject",
+        "POST /api/v1/admin/legal-sources/sync-fixtures",
+        "POST /api/v1/pilot/cohort-2/advance-stage",
+        "POST /api/v1/admin/users/${confirmModal.targetId}/reactivate",
+        "POST /api/v1/admin/users/${confirmModal.targetId}/suspend"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated, or to /dashboard if role !== ADMIN"
+    },
+    {
+      "pathname": "/admin",
+      "component_file": "frontend/src/app/admin/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "ADMIN",
+      "required_backend_resources": [
+        "Static Assets"
+      ],
+      "api_calls": [],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": false,
+      "has_error_state": false,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated, or to /dashboard if role !== ADMIN"
+    },
+    {
+      "pathname": "/admin/reports",
+      "component_file": "frontend/src/app/admin/reports/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "ADMIN",
+      "required_backend_resources": [
+        "Static Assets"
+      ],
+      "api_calls": [],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": false,
+      "has_error_state": false,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated, or to /dashboard if role !== ADMIN"
+    },
+    {
+      "pathname": "/admin/users",
+      "component_file": "frontend/src/app/admin/users/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "ADMIN",
+      "required_backend_resources": [
+        "Static Assets"
+      ],
+      "api_calls": [],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": false,
+      "has_error_state": false,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated, or to /dashboard if role !== ADMIN"
+    },
+    {
+      "pathname": "/admin/verification",
+      "component_file": "frontend/src/app/admin/verification/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "ADMIN",
+      "required_backend_resources": [
+        "/api/v1/verification/admin/${id}",
+        "/api/v1/verification/${detail.id}/start-review",
+        "/api/v1/verification/${detail.id}/approve"
+      ],
+      "api_calls": [
+        "POST /api/v1/verification/${detail.id}/start-review",
+        "GET /api/v1/verification/documents/${docId}/download-url",
+        "POST /api/v1/verification/${detail.id}/approve",
+        "GET /api/v1/verification/admin/${id}",
+        "POST /api/v1/verification/${detail.id}/revoke",
+        "POST /api/v1/verification/${detail.id}/reject",
+        "POST /api/v1/verification/${detail.id}/request-information"
+      ],
+      "mutations": [
+        "POST /api/v1/verification/${detail.id}/start-review",
+        "POST /api/v1/verification/${detail.id}/approve",
+        "POST /api/v1/verification/${detail.id}/revoke",
+        "POST /api/v1/verification/${detail.id}/reject",
+        "POST /api/v1/verification/${detail.id}/request-information"
+      ],
+      "sensitive_data_displayed": [
+        "Bar Council enrollment numbers",
+        "Government ID proofs",
+        "Advocate verification certificates"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated, or to /dashboard if role !== ADMIN"
+    },
+    {
+      "pathname": "/ai-advisor",
+      "component_file": "frontend/src/app/ai-advisor/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/advisor/sessions",
+        "/api/v1/advisor/sessions/${sessionId}/messages",
+        "/api/v1/advisor/sessions/${sessionId}"
+      ],
+      "api_calls": [
+        "DELETE /api/v1/advisor/sessions/${sessionId}",
+        "GET /api/v1/advisor/sessions",
+        "POST /api/v1/advisor/chat",
+        "GET /api/v1/advisor/sessions/${sessionId}/messages"
+      ],
+      "mutations": [
+        "DELETE /api/v1/advisor/sessions/${sessionId}",
+        "POST /api/v1/advisor/chat"
+      ],
+      "sensitive_data_displayed": [
+        "Confidential legal queries",
+        "AI synthesized legal advice",
+        "Document citations"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/auth/callback",
+      "component_file": "frontend/src/app/auth/callback/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "ANY",
+      "required_backend_resources": [
+        "/api/v1/auth/google/callback",
+        "/api/v1/auth/me"
+      ],
+      "api_calls": [
+        "GET /api/v1/auth/me",
+        "POST /api/v1/auth/google/callback"
+      ],
+      "mutations": [
+        "POST /api/v1/auth/google/callback"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "None (public page)"
+    },
+    {
+      "pathname": "/calendar",
+      "component_file": "frontend/src/app/calendar/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/calendar/events?timeframe=upcoming",
+        "/api/v1/cases"
+      ],
+      "api_calls": [
+        "GET /api/v1/calendar/events?timeframe=upcoming",
+        "GET /api/v1/cases"
+      ],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/cases/[caseId]/bundles",
+      "component_file": "frontend/src/app/cases/[caseId]/bundles/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/cases/${caseId}",
+        "/api/v1/cases/${caseId}/bundles",
+        "/api/v1/cases/${caseId}/workflow"
+      ],
+      "api_calls": [
+        "GET /api/v1/cases/${caseId}/evidence/exhibits",
+        "POST /api/v1/cases/${caseId}/bundles/${bundleToFinalize.id}/finalize",
+        "POST /api/v1/cases/${caseId}/bundles/${certBundle.id}/certificates/bsa63",
+        "GET /api/v1/cases/${caseId}/bundles/${bundle.id}",
+        "GET /api/v1/cases/${caseId}/bundles/${bundle.id}/download",
+        "GET /api/v1/cases/${caseId}/bundles/${cert.bundle_id}/certificates/${cert.id}/download",
+        "GET /api/v1/cases/${caseId}/workflow",
+        "GET /api/v1/cases/${caseId}/bundles",
+        "GET /api/v1/cases/${caseId}",
+        "POST /api/v1/cases/${caseId}/bundles"
+      ],
+      "mutations": [
+        "POST /api/v1/cases/${caseId}/bundles/${bundleToFinalize.id}/finalize",
+        "POST /api/v1/cases/${caseId}/bundles",
+        "POST /api/v1/cases/${caseId}/bundles/${certBundle.id}/certificates/bsa63"
+      ],
+      "sensitive_data_displayed": [
+        "Case details",
+        "Case notes",
+        "Litigation filings",
+        "Case participant identities",
+        "Forensic evidence files",
+        "Chain of custody events",
+        "SHA256 hashes",
+        "Legal hold status"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/cases/[caseId]/evidence/[evidenceId]",
+      "component_file": "frontend/src/app/cases/[caseId]/evidence/[evidenceId]/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/cases/${caseId}/evidence/${evidenceId}",
+        "/api/v1/cases/${caseId}/evidence/${evidenceId}/custody",
+        "/api/v1/cases/${caseId}/hearings"
+      ],
+      "api_calls": [
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/revoke",
+        "GET /api/v1/cases/${caseId}/hearings",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/exhibits",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/legal-hold",
+        "GET /api/v1/cases/${caseId}/evidence/${evidenceId}/custody",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/versions/${initRes.version_id}/complete",
+        "DELETE /api/v1/cases/${caseId}/evidence/${evidenceId}",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/versions/upload-init",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/verify-integrity",
+        "PATCH /api/v1/cases/${caseId}/evidence/${evidenceId}",
+        "GET /api/v1/cases/${caseId}/evidence/${evidenceId}",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/${endpoint}"
+      ],
+      "mutations": [
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/revoke",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/exhibits",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/legal-hold",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/versions/${initRes.version_id}/complete",
+        "DELETE /api/v1/cases/${caseId}/evidence/${evidenceId}",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/versions/upload-init",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/verify-integrity",
+        "PATCH /api/v1/cases/${caseId}/evidence/${evidenceId}",
+        "POST /api/v1/cases/${caseId}/evidence/${evidenceId}/${endpoint}"
+      ],
+      "sensitive_data_displayed": [
+        "Case details",
+        "Case notes",
+        "Litigation filings",
+        "Case participant identities",
+        "Forensic evidence files",
+        "Chain of custody events",
+        "SHA256 hashes",
+        "Legal hold status"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/cases/[caseId]/evidence",
+      "component_file": "frontend/src/app/cases/[caseId]/evidence/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/cases/${caseId}/evidence/batch",
+        "/api/v1/cases/${caseId}/evidence/batch",
+        "/api/v1/cases/${caseId}/evidence/batch"
+      ],
+      "api_calls": [
+        "POST /api/v1/cases/${caseId}/evidence/batch",
+        "GET /api/v1/cases/${caseId}/evidence/${evidenceId}/download",
+        "POST /api/v1/cases/${caseId}/evidence/upload-init",
+        "GET /api/v1/cases/${caseId}/evidence/${evidenceId}/view-url",
+        "POST /api/v1/cases/${caseId}/evidence/${initRes.evidence_id}/complete"
+      ],
+      "mutations": [
+        "POST /api/v1/cases/${caseId}/evidence/upload-init",
+        "POST /api/v1/cases/${caseId}/evidence/batch",
+        "POST /api/v1/cases/${caseId}/evidence/${initRes.evidence_id}/complete"
+      ],
+      "sensitive_data_displayed": [
+        "Case details",
+        "Case notes",
+        "Litigation filings",
+        "Case participant identities",
+        "Forensic evidence files",
+        "Chain of custody events",
+        "SHA256 hashes",
+        "Legal hold status"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/cases/[caseId]",
+      "component_file": "frontend/src/app/cases/[caseId]/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/cases/${caseId}/collaboration/messages",
+        "/api/v1/cases/${caseId}/collaboration/messages?limit=100",
+        "/api/v1/cases/${caseId}"
+      ],
+      "api_calls": [
+        "GET /api/v1/cases/${caseId}/collaboration/brief",
+        "POST /api/v1/documents/${doc.id}/scan?is_safe=true",
+        "GET /api/v1/cases/${caseId}/consultations",
+        "GET /api/v1/cases/${caseId}/workspace",
+        "POST /api/v1/cases/${caseId}/deadlines/${deadlineId}/cancel",
+        "POST /api/v1/cases/${caseId}/tasks/${taskId}/start",
+        "GET /api/v1/cases/${caseId}/workflow",
+        "GET /api/v1/cases/${caseId}/documents?limit=50",
+        "GET /api/v1/court-cases?case_id=${caseId}",
+        "GET /api/v1/consultations/lawyer-call-status?lawyer_id=${lid}&case_id=${caseId}",
+        "GET /api/v1/documents/${docId}/download",
+        "POST /api/v1/cases/${caseId}/documents/upload-init",
+        "POST /api/v1/cases/${caseId}/collaboration/requests/${targetRequestId}/submit",
+        "GET /api/v1/cases/${caseId}/collaboration/participants",
+        "BLOB /api/v1/cases/${caseId}/report?format=${exportFormat}&download=true",
+        "POST /api/v1/cases/${caseId}/deadlines/${deadlineId}/complete",
+        "POST /api/v1/cases/${caseId}/tasks/${taskId}/cancel",
+        "POST /api/v1/cases/${caseId}/tasks",
+        "POST /api/v1/consultations/instant-call",
+        "GET /api/v1/cases/${caseId}/collaboration/messages?limit=100",
+        "POST /api/v1/cases/${caseId}/tasks/${taskId}/reopen",
+        "GET /api/v1/cases/${caseId}/collaboration/requests",
+        "GET /api/v1/cases/${caseId}/timeline?limit=50",
+        "GET /api/v1/cases/${caseId}/participants",
+        "POST /api/v1/cases/${caseId}/workflow/templates/apply",
+        "GET /api/v1/cases/${caseId}/workflow/health-summary",
+        "GET /api/v1/cases/${caseId}",
+        "POST /api/v1/cases/${caseId}/collaboration/messages",
+        "POST /api/v1/cases/${caseId}/tasks/${taskId}/complete",
+        "POST /api/v1/documents/${doc.id}/complete"
+      ],
+      "mutations": [
+        "POST /api/v1/cases/${caseId}/collaboration/requests/${targetRequestId}/submit",
+        "POST /api/v1/documents/${doc.id}/scan?is_safe=true",
+        "POST /api/v1/cases/${caseId}/tasks/${taskId}/reopen",
+        "POST /api/v1/cases/${caseId}/deadlines/${deadlineId}/cancel",
+        "POST /api/v1/cases/${caseId}/tasks/${taskId}/start",
+        "POST /api/v1/cases/${caseId}/tasks/${taskId}/cancel",
+        "POST /api/v1/cases/${caseId}/tasks/${taskId}/complete",
+        "POST /api/v1/cases/${caseId}/deadlines/${deadlineId}/complete",
+        "POST /api/v1/cases/${caseId}/workflow/templates/apply",
+        "POST /api/v1/cases/${caseId}/tasks",
+        "POST /api/v1/consultations/instant-call",
+        "POST /api/v1/documents/${doc.id}/complete",
+        "POST /api/v1/cases/${caseId}/collaboration/messages",
+        "POST /api/v1/cases/${caseId}/documents/upload-init"
+      ],
+      "sensitive_data_displayed": [
+        "Case details",
+        "Case notes",
+        "Litigation filings",
+        "Case participant identities"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/cases/[caseId]/timeline",
+      "component_file": "frontend/src/app/cases/[caseId]/timeline/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/cases/${caseId}",
+        "/api/v1/cases/${caseId}/timeline"
+      ],
+      "api_calls": [
+        "GET /api/v1/cases/${caseId}/timeline",
+        "GET /api/v1/cases/${caseId}"
+      ],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Case details",
+        "Case notes",
+        "Litigation filings",
+        "Case participant identities"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/cases/new",
+      "component_file": "frontend/src/app/cases/new/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "CLIENT",
+      "required_backend_resources": [
+        "/api/v1/cases"
+      ],
+      "api_calls": [
+        "POST /api/v1/cases"
+      ],
+      "mutations": [
+        "POST /api/v1/cases"
+      ],
+      "sensitive_data_displayed": [
+        "Case details",
+        "Case notes",
+        "Litigation filings",
+        "Case participant identities"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/cases",
+      "component_file": "frontend/src/app/cases/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/cases",
+        "/api/v1/cases/${c.id}/collaboration/brief",
+        "/api/v1/cases"
+      ],
+      "api_calls": [
+        "GET /api/v1/cases",
+        "GET /api/v1/cases/${c.id}/collaboration/brief",
+        "POST /api/v1/cases"
+      ],
+      "mutations": [
+        "POST /api/v1/cases"
+      ],
+      "sensitive_data_displayed": [
+        "Case details",
+        "Case notes",
+        "Litigation filings",
+        "Case participant identities"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/clients",
+      "component_file": "frontend/src/app/clients/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "Static Assets"
+      ],
+      "api_calls": [],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": false,
+      "has_error_state": false,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/consultations/[id]/room",
+      "component_file": "frontend/src/app/consultations/[id]/room/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/cases/${caseIdToLoad}",
+        "/api/v1/cases/${caseIdToLoad}/collaboration/messages?limit=25",
+        "/api/v1/cases/${linkedCaseId}/collaboration/messages"
+      ],
+      "api_calls": [
+        "GET /api/v1/consultations/${consultationId}/video/join${bypassQuery}",
+        "GET /api/v1/consultations/${consultationId}",
+        "GET /api/v1/cases",
+        "GET /api/v1/cases/${caseIdToLoad}",
+        "POST /api/v1/consultations/${consultationId}/documents",
+        "GET /api/v1/consultations/${consultationId}/documents",
+        "GET /api/v1/cases/${linkedCaseId}/collaboration/messages?limit=25",
+        "POST /api/v1/consultations/${consultationId}/video/start${bypassQuery}",
+        "POST /api/v1/consultations/${consultationId}/video/end",
+        "POST /api/v1/consultations/${consultationId}/notes",
+        "POST /api/v1/consultations/${consultationId}/link-case",
+        "POST /api/v1/consultations/${consultationId}/create-case",
+        "GET /api/v1/consultations/${consultationId}/video/access-status${bypassQuery}",
+        "GET /api/v1/cases/${caseIdToLoad}/collaboration/messages?limit=25",
+        "POST /api/v1/cases/${linkedCaseId}/collaboration/messages"
+      ],
+      "mutations": [
+        "POST /api/v1/consultations/${consultationId}/documents",
+        "POST /api/v1/consultations/${consultationId}/video/start${bypassQuery}",
+        "POST /api/v1/consultations/${consultationId}/video/end",
+        "POST /api/v1/consultations/${consultationId}/notes",
+        "POST /api/v1/consultations/${consultationId}/link-case",
+        "POST /api/v1/consultations/${consultationId}/create-case",
+        "POST /api/v1/cases/${linkedCaseId}/collaboration/messages"
+      ],
+      "sensitive_data_displayed": [
+        "Live video WebRTC stream",
+        "Attorney-client consultation notes",
+        "Meeting recordings",
+        "SFU tokens"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/consultations",
+      "component_file": "frontend/src/app/consultations/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/consultations",
+        "/api/v1/consultations/${conId}/accept",
+        "/api/v1/consultations/${conId}/accept"
+      ],
+      "api_calls": [
+        "POST /api/v1/consultations/${linkCaseConsultation.id}/link-case",
+        "GET /api/v1/cases",
+        "POST /api/v1/consultations/${linkCaseConsultation.id}/create-case",
+        "GET /api/v1/consultations",
+        "GET /api/v1/consultations/${con.id}/notes",
+        "POST /api/v1/consultations/${conId}/accept",
+        "POST /api/v1/consultations/${viewNotesConsultation.id}/notes"
+      ],
+      "mutations": [
+        "POST /api/v1/consultations/${conId}/accept",
+        "POST /api/v1/consultations/${viewNotesConsultation.id}/notes",
+        "POST /api/v1/consultations/${linkCaseConsultation.id}/create-case",
+        "POST /api/v1/consultations/${linkCaseConsultation.id}/link-case"
+      ],
+      "sensitive_data_displayed": [
+        "Live video WebRTC stream",
+        "Attorney-client consultation notes",
+        "Meeting recordings",
+        "SFU tokens"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/court-tracking",
+      "component_file": "frontend/src/app/court-tracking/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/court-cases/${encodeURIComponent(idOrCnr)}",
+        "/api/v1/court-cases?${params.toString()}",
+        "/api/v1/court-cases/${activeCase.id}/sync"
+      ],
+      "api_calls": [
+        "GET /api/v1/court-cases/${encodeURIComponent(idOrCnr)}",
+        "DELETE /api/v1/court-cases/${activeCase.id}/follow",
+        "GET /api/v1/court-cases?${params.toString()}",
+        "POST /api/v1/court-cases/${activeCase.id}/follow",
+        "POST /api/v1/court-cases/${activeCase.id}/sync",
+        "POST /api/v1/court-cases/${activeCase.id}/link-matter"
+      ],
+      "mutations": [
+        "DELETE /api/v1/court-cases/${activeCase.id}/follow",
+        "POST /api/v1/court-cases/${activeCase.id}/link-matter",
+        "POST /api/v1/court-cases/${activeCase.id}/sync",
+        "POST /api/v1/court-cases/${activeCase.id}/follow"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/dashboard",
+      "component_file": "frontend/src/app/dashboard/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/cases",
+        "/api/v1/consultations",
+        "/api/v1/calendar/events?timeframe=upcoming"
+      ],
+      "api_calls": [
+        "GET /api/v1/calendar/events?timeframe=upcoming",
+        "GET /api/v1/cases",
+        "GET /api/v1/cases/${c.id}/collaboration/brief",
+        "GET /api/v1/cases/${c.id}/collaboration/requests",
+        "POST /api/v1/cases",
+        "GET /api/v1/consultations"
+      ],
+      "mutations": [
+        "POST /api/v1/cases"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/design-system",
+      "component_file": "frontend/src/app/design-system/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "ANY",
+      "required_backend_resources": [
+        "Static Assets"
+      ],
+      "api_calls": [],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "None (public page)"
+    },
+    {
+      "pathname": "/documents",
+      "component_file": "frontend/src/app/documents/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/cases",
+        "/api/v1/cases/${c.id}/documents",
+        "/api/v1/cases/${c.id}/collaboration/requests"
+      ],
+      "api_calls": [
+        "POST /api/v1/cases/${selectedCaseId}/documents",
+        "GET /api/v1/cases",
+        "GET /api/v1/cases/${doc.case_id}/documents/${doc.id}/download",
+        "GET /api/v1/cases/${c.id}/collaboration/requests",
+        "GET /api/v1/cases/${c.id}/documents"
+      ],
+      "mutations": [
+        "POST /api/v1/cases/${selectedCaseId}/documents"
+      ],
+      "sensitive_data_displayed": [
+        "Confidential client documents",
+        "Extracted text chunks",
+        "Presigned download URLs"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/forgot-password",
+      "component_file": "frontend/src/app/forgot-password/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "ANY",
+      "required_backend_resources": [
+        "/api/v1/auth/password/reset/request"
+      ],
+      "api_calls": [
+        "POST /api/v1/auth/password/reset/request"
+      ],
+      "mutations": [
+        "POST /api/v1/auth/password/reset/request"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "None (public page)"
+    },
+    {
+      "pathname": "/kyc",
+      "component_file": "frontend/src/app/kyc/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/kyc/status",
+        "/api/v1/verification/application/documents",
+        "/api/v1/kyc/client/document"
+      ],
+      "api_calls": [
+        "PATCH /api/v1/profiles/lawyer",
+        "POST /api/v1/verification/application/submit",
+        "POST /api/v1/kyc/client/document",
+        "GET /api/v1/kyc/status",
+        "POST /api/v1/kyc/client/submit",
+        "POST /api/v1/verification/application/documents"
+      ],
+      "mutations": [
+        "PATCH /api/v1/profiles/lawyer",
+        "POST /api/v1/verification/application/submit",
+        "POST /api/v1/kyc/client/document",
+        "POST /api/v1/kyc/client/submit",
+        "POST /api/v1/verification/application/documents"
+      ],
+      "sensitive_data_displayed": [
+        "Bar Council enrollment numbers",
+        "Government ID proofs",
+        "Advocate verification certificates"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/lawyer/dashboard",
+      "component_file": "frontend/src/app/lawyer/dashboard/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "LAWYER",
+      "required_backend_resources": [
+        "/api/v1/lawyers/heartbeat",
+        "/api/v1/consultations/incoming-calls",
+        "/api/v1/consultations/ws-ticket"
+      ],
+      "api_calls": [
+        "GET /api/v1/profiles/me",
+        "POST /api/v1/lawyers/heartbeat",
+        "GET /api/v1/cases",
+        "GET /api/v1/lawyers/dashboard?days_ahead=${rangeDays}",
+        "POST /api/v1/consultations/ws-ticket",
+        "GET /api/v1/consultations",
+        "GET /api/v1/consultations/incoming-calls",
+        "POST /api/v1/consultations/${callId}/accept"
+      ],
+      "mutations": [
+        "POST /api/v1/consultations/${callId}/accept",
+        "POST /api/v1/consultations/ws-ticket",
+        "POST /api/v1/lawyers/heartbeat"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated, or to /dashboard if role !== LAWYER"
+    },
+    {
+      "pathname": "/lawyer/profile",
+      "component_file": "frontend/src/app/lawyer/profile/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "LAWYER",
+      "required_backend_resources": [
+        "/api/v1/lawyers/heartbeat",
+        "/api/v1/profiles/me",
+        "/api/v1/profiles/lawyer/availability"
+      ],
+      "api_calls": [
+        "GET /api/v1/profiles/me",
+        "PATCH /api/v1/profiles/lawyer",
+        "GET /api/v1/profiles/lawyer/availability",
+        "POST /api/v1/lawyers/heartbeat",
+        "POST /api/v1/profiles/lawyer/verification",
+        "POST /api/v1/profiles/lawyer/availability",
+        "DELETE /api/v1/profiles/lawyer/availability/${id}"
+      ],
+      "mutations": [
+        "PATCH /api/v1/profiles/lawyer",
+        "POST /api/v1/lawyers/heartbeat",
+        "POST /api/v1/profiles/lawyer/verification",
+        "POST /api/v1/profiles/lawyer/availability",
+        "DELETE /api/v1/profiles/lawyer/availability/${id}"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated, or to /dashboard if role !== LAWYER"
+    },
+    {
+      "pathname": "/lawyers/[lawyerId]",
+      "component_file": "frontend/src/app/lawyers/[lawyerId]/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "LAWYER",
+      "required_backend_resources": [
+        "/api/v1/lawyers/${lawyerId}",
+        "/api/v1/lawyers/${lawyerId}/availability",
+        "/api/v1/verification/badge/${lawyerId}"
+      ],
+      "api_calls": [
+        "GET /api/v1/consultations/pricing-preview?lawyer_id=${targetId}&duration_minutes=30",
+        "GET /api/v1/lawyers/${lawyerId}/availability",
+        "GET /api/v1/lawyers/${lawyerId}/slots?date=${selectedDate}&duration_minutes=30",
+        "POST /api/v1/consultations",
+        "GET /api/v1/verification/badge/${lawyerId}",
+        "GET /api/v1/lawyers/${lawyerId}"
+      ],
+      "mutations": [
+        "POST /api/v1/consultations"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated, or to /dashboard if role !== LAWYER"
+    },
+    {
+      "pathname": "/lawyers",
+      "component_file": "frontend/src/app/lawyers/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "LAWYER",
+      "required_backend_resources": [
+        "/api/v1/lawyers?${params.toString()}"
+      ],
+      "api_calls": [
+        "GET /api/v1/lawyers?${params.toString()}"
+      ],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated, or to /dashboard if role !== LAWYER"
+    },
+    {
+      "pathname": "/login",
+      "component_file": "frontend/src/app/login/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "ANY",
+      "required_backend_resources": [
+        "/api/v1/auth/login",
+        "/api/v1/auth/me",
+        "/api/v1/auth/google/login?redirect_uri=${encodeURIComponent(callbackUrl)}&return_url=/dashboard"
+      ],
+      "api_calls": [
+        "GET /api/v1/auth/google/login?redirect_uri=${encodeURIComponent(callbackUrl)}&return_url=/dashboard",
+        "GET /api/v1/auth/me",
+        "POST /api/v1/auth/login"
+      ],
+      "mutations": [
+        "POST /api/v1/auth/login"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "None (public page)"
+    },
+    {
+      "pathname": "/messages",
+      "component_file": "frontend/src/app/messages/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/messages/threads",
+        "/api/v1/messages/threads/${partnerId}",
+        "/api/v1/messages/threads/${activePartnerId}"
+      ],
+      "api_calls": [
+        "GET /api/v1/messages/threads/${partnerId}",
+        "GET /api/v1/messages/threads",
+        "POST /api/v1/messages/threads/${activePartnerId}",
+        "POST /api/v1/consultations/instant-call"
+      ],
+      "mutations": [
+        "POST /api/v1/consultations/instant-call",
+        "POST /api/v1/messages/threads/${activePartnerId}"
+      ],
+      "sensitive_data_displayed": [
+        "Direct attorney-client messages",
+        "Case chat messages",
+        "Attachment metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/notifications",
+      "component_file": "frontend/src/app/notifications/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/notifications/unread-count",
+        "/api/v1/notifications/${id}/read",
+        "/api/v1/notifications/${id}/unread"
+      ],
+      "api_calls": [
+        "POST /api/v1/notifications/read-all",
+        "POST /api/v1/notifications/${id}/unread",
+        "POST /api/v1/notifications/${id}/read",
+        "POST /api/v1/notifications/bulk-read",
+        "GET /api/v1/notifications/unread-count",
+        "DELETE /api/v1/notifications/${id}",
+        "POST /api/v1/notifications/bulk-delete"
+      ],
+      "mutations": [
+        "POST /api/v1/notifications/read-all",
+        "POST /api/v1/notifications/${id}/unread",
+        "POST /api/v1/notifications/${id}/read",
+        "POST /api/v1/notifications/bulk-read",
+        "DELETE /api/v1/notifications/${id}",
+        "POST /api/v1/notifications/bulk-delete"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/onboarding/advocate",
+      "component_file": "frontend/src/app/onboarding/advocate/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "LAWYER",
+      "required_backend_resources": [
+        "/api/v1/verification/application/documents",
+        "/api/v1/verification/application/submit",
+        "/api/v1/pilot/telemetry/event"
+      ],
+      "api_calls": [
+        "POST /api/v1/pilot/telemetry/event",
+        "POST /api/v1/verification/application/submit",
+        "POST /api/v1/verification/application/documents"
+      ],
+      "mutations": [
+        "POST /api/v1/pilot/telemetry/event",
+        "POST /api/v1/verification/application/submit",
+        "POST /api/v1/verification/application/documents"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/onboarding/client",
+      "component_file": "frontend/src/app/onboarding/client/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "CLIENT",
+      "required_backend_resources": [
+        "/api/v1/pilot/telemetry/event",
+        "/api/v1/pilot/telemetry/event"
+      ],
+      "api_calls": [
+        "POST /api/v1/pilot/telemetry/event"
+      ],
+      "mutations": [
+        "POST /api/v1/pilot/telemetry/event"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": false,
+      "has_error_state": true,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/onboarding",
+      "component_file": "frontend/src/app/onboarding/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "Static Assets"
+      ],
+      "api_calls": [],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": false,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/",
+      "component_file": "frontend/src/app/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "ANY",
+      "required_backend_resources": [
+        "Static Assets"
+      ],
+      "api_calls": [],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": false,
+      "has_error_state": false,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "None (public page)"
+    },
+    {
+      "pathname": "/payments",
+      "component_file": "frontend/src/app/payments/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "Static Assets"
+      ],
+      "api_calls": [],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Commercial transaction amounts",
+        "Invoice line items",
+        "Payout balances",
+        "Stripe payment intents"
+      ],
+      "has_loading_state": false,
+      "has_error_state": false,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/profile",
+      "component_file": "frontend/src/app/profile/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "Static Assets"
+      ],
+      "api_calls": [],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": false,
+      "has_error_state": false,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/register",
+      "component_file": "frontend/src/app/register/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "ANY",
+      "required_backend_resources": [
+        "/api/v1/auth/register",
+        "/api/v1/auth/email/verify/otp",
+        "/api/v1/auth/email/verify/request"
+      ],
+      "api_calls": [
+        "GET /api/v1/auth/google/login?redirect_uri=${encodeURIComponent(callbackUrl)}&return_url=/dashboard",
+        "POST /api/v1/auth/register",
+        "POST /api/v1/auth/email/verify/request",
+        "POST /api/v1/auth/email/verify/otp"
+      ],
+      "mutations": [
+        "POST /api/v1/auth/register",
+        "POST /api/v1/auth/email/verify/request",
+        "POST /api/v1/auth/email/verify/otp"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "None (public page)"
+    },
+    {
+      "pathname": "/reset-password",
+      "component_file": "frontend/src/app/reset-password/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "ANY",
+      "required_backend_resources": [
+        "/api/v1/auth/password/reset/confirm"
+      ],
+      "api_calls": [
+        "POST /api/v1/auth/password/reset/confirm"
+      ],
+      "mutations": [
+        "POST /api/v1/auth/password/reset/confirm"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "None (public page)"
+    },
+    {
+      "pathname": "/settings",
+      "component_file": "frontend/src/app/settings/page.tsx",
+      "is_public": false,
+      "required_authentication": true,
+      "required_role": "AUTHENTICATED_USER",
+      "required_backend_resources": [
+        "/api/v1/profiles/me",
+        "/api/v1/notifications/preferences",
+        "/api/v1/profiles/client"
+      ],
+      "api_calls": [
+        "POST /api/v1/auth/password/change",
+        "GET /api/v1/notifications/preferences",
+        "PATCH /api/v1/profiles/lawyer",
+        "GET /api/v1/profiles/me",
+        "PATCH /api/v1/notifications/preferences",
+        "PATCH /api/v1/profiles/client"
+      ],
+      "mutations": [
+        "POST /api/v1/auth/password/change",
+        "PATCH /api/v1/notifications/preferences",
+        "PATCH /api/v1/profiles/client",
+        "PATCH /api/v1/profiles/lawyer"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "Redirects to /login if unauthenticated"
+    },
+    {
+      "pathname": "/support",
+      "component_file": "frontend/src/app/support/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "ANY",
+      "required_backend_resources": [
+        "/api/v1/support/cases",
+        "/api/v1/support/cases/${ticket.id}/messages",
+        "/api/v1/support/cases/${activeTicket.id}/messages?message_text=${encodeURIComponent(\n"
+      ],
+      "api_calls": [
+        "POST /api/v1/support/cases/${activeTicket.id}/messages?message_text=${encodeURIComponent(\n          replyText.trim()\n        )}",
+        "GET /api/v1/support/cases",
+        "POST /api/v1/pilot/telemetry/event",
+        "POST /api/v1/support/cases",
+        "GET /api/v1/support/cases/${ticket.id}/messages",
+        "GET /api/v1/support/cases/${activeTicket.id}/messages"
+      ],
+      "mutations": [
+        "POST /api/v1/support/cases",
+        "POST /api/v1/support/cases/${activeTicket.id}/messages?message_text=${encodeURIComponent(\n          replyText.trim()\n        )}",
+        "POST /api/v1/pilot/telemetry/event"
+      ],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "None (public page)"
+    },
+    {
+      "pathname": "/trust",
+      "component_file": "frontend/src/app/trust/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "ANY",
+      "required_backend_resources": [
+        "Static Assets"
+      ],
+      "api_calls": [],
+      "mutations": [],
+      "sensitive_data_displayed": [
+        "Public marketing and platform metadata"
+      ],
+      "has_loading_state": false,
+      "has_error_state": false,
+      "has_empty_state": true,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "None (public page)"
+    },
+    {
+      "pathname": "/verify-email",
+      "component_file": "frontend/src/app/verify-email/page.tsx",
+      "is_public": true,
+      "required_authentication": false,
+      "required_role": "ANY",
+      "required_backend_resources": [
+        "/api/v1/auth/email/verify/otp",
+        "/api/v1/auth/email/verify/confirm"
+      ],
+      "api_calls": [
+        "POST /api/v1/auth/email/verify/confirm",
+        "POST /api/v1/auth/email/verify/otp"
+      ],
+      "mutations": [
+        "POST /api/v1/auth/email/verify/confirm",
+        "POST /api/v1/auth/email/verify/otp"
+      ],
+      "sensitive_data_displayed": [
+        "Confidential legal queries",
+        "AI synthesized legal advice",
+        "Document citations"
+      ],
+      "has_loading_state": true,
+      "has_error_state": true,
+      "has_empty_state": false,
+      "authorization_enforcement": "Client-side useEffect checking user session from AuthProvider",
+      "redirect_behavior": "None (public page)"
+    }
+  ]
+}

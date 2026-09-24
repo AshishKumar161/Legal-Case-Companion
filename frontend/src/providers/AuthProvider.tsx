@@ -21,6 +21,9 @@ export interface User {
   account_status: string;
   full_name?: string;
   location?: string | null;
+  phone?: string | null;
+  kyc_status?: string;
+  is_kyc_completed?: boolean;
 }
 
 interface AuthContextType {
@@ -100,6 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             account_status: string;
             full_name?: string;
             location?: string | null;
+            phone?: string | null;
+            kyc_status?: string;
+            is_kyc_completed?: boolean;
           };
 
           if (me && me.role && (me.role === "CLIENT" || me.role === "LAWYER" || me.role === "ADMIN")) {
@@ -110,6 +116,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               account_status: me.account_status || "ACTIVE",
               full_name: me.full_name,
               location: me.location,
+              phone: me.phone,
+              kyc_status: me.kyc_status || "PENDING",
+              is_kyc_completed: Boolean(me.is_kyc_completed),
             });
           } else {
             // Missing or invalid role from server is an invalid auth state (never default to CLIENT)

@@ -7,7 +7,6 @@ import { apiClient } from "@/api/client";
 import { getSessionAccessToken } from "@/api/session";
 import {
   InMeetingChatMessage,
-  RecordingConsentStatus,
   VideoRoomAccessStatus,
 } from "@/types";
 import {
@@ -24,7 +23,6 @@ import {
   DocumentIcon,
   ScalesIcon,
   LawyerIcon,
-  CameraIcon,
   CourthouseIcon,
   PaperclipIcon,
   UploadIcon,
@@ -140,7 +138,6 @@ export default function VideoConsultationRoomPage() {
   // Timers
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const [isCallActive, setIsCallActive] = useState(false);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
 
   // Side Drawer State (tabs: 'chat' | 'participants' | 'notes' | 'documents' | 'case')
   const [activeSideTab, setActiveSideTab] = useState<"chat" | "participants" | "notes" | "documents" | "case" | null>(null);
@@ -211,14 +208,7 @@ export default function VideoConsultationRoomPage() {
   const [chatInput, setChatInput] = useState("");
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  // Dual-Consent Recording State
-  const [showRecordingModal, setShowRecordingModal] = useState(false);
-  const [consentStatus, setConsentStatus] = useState<RecordingConsentStatus | null>(null);
-  const [grantingConsent, setGrantingConsent] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [activeRecordingId, setActiveRecordingId] = useState<string | null>(null);
-  const [recordingSuccessToast, setRecordingSuccessToast] = useState<string | null>(null);
-  const [uploadingRecording, setUploadingRecording] = useState(false);
+
 
   // Device Settings Modal
   const [showDeviceModal, setShowDeviceModal] = useState(false);
@@ -245,25 +235,6 @@ export default function VideoConsultationRoomPage() {
   const [submittingCase, setSubmittingCase] = useState(false);
   const [caseSuccessMsg, setCaseSuccessMsg] = useState<string | null>(null);
 
-  // Live Indian Standard Time (IST) Clock
-  const [istClock, setIstClock] = useState("");
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-      setIstClock(`${timeStr} IST`);
-    };
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   // Media State & Refs
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -276,8 +247,7 @@ export default function VideoConsultationRoomPage() {
   const wsRef = useRef<WebSocket | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
+
 
   // Format timer seconds into MM:SS
   const formatTimer = (sec: number) => {
@@ -629,19 +599,7 @@ export default function VideoConsultationRoomPage() {
     }
   };
 
-  // Fetch consent status from backend
-  const fetchConsentStatus = useCallback(async () => {
-    try {
-      const res = (await apiClient.get(
-        `/api/v1/consultations/${consultationId}/video/recording/consent-status`
-      )) as RecordingConsentStatus;
-      setConsentStatus(res);
-      return res;
-    } catch (err) {
-      console.warn("Failed to fetch recording consent status", err);
-      return null;
-    }
-  }, [consultationId]);
+
 
   // 1. Fetch join information and initialize WebRTC + WebSocket
   useEffect(() => {
@@ -714,8 +672,6 @@ export default function VideoConsultationRoomPage() {
         // Do NOT set "connected" prematurely — actual WebRTC connectionState drives connection status
         setConnectionStatus("connecting");
 
-        // Fetch initial consent status
-        void fetchConsentStatus();
         // Fetch shared meeting documents
         void fetchSharedDocuments();
 
@@ -1269,18 +1225,7 @@ export default function VideoConsultationRoomPage() {
                     }
                   }
                 }
-              } else if (msg.type === "recording-status") {
-                // Remote peer started or stopped recording
-                if (mounted) {
-                  if (msg.status === "RECORDING") {
-                    setIsRecording(true);
-                    if (msg.recording_id) setActiveRecordingId(msg.recording_id);
-                  } else if (msg.status === "STOPPED") {
-                    setIsRecording(false);
-                    setRecordingSeconds(0);
-                  }
-                }
-                void fetchConsentStatus();
+
               } else if (msg.type === "consultation-ended") {
                 console.log("[LCC-Video] Authoritative consultation-ended received from peer/server");
                 if (mounted) {
@@ -1341,9 +1286,7 @@ export default function VideoConsultationRoomPage() {
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach((track) => track.stop());
       }
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-        mediaRecorderRef.current.stop();
-      }
+
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [consultationId, refreshKey, bypassTimeWindow]);
@@ -1359,18 +1302,7 @@ export default function VideoConsultationRoomPage() {
     return () => clearInterval(timer);
   }, [isCallActive]);
 
-  // 3. Recording duration timer
-  useEffect(() => {
-    let recTimer: NodeJS.Timeout;
-    if (isRecording) {
-      recTimer = setInterval(() => {
-        setRecordingSeconds((prev) => prev + 1);
-      }, 1000);
-    } else {
-      setRecordingSeconds(0);
-    }
-    return () => clearInterval(recTimer);
-  }, [isRecording]);
+
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -1716,156 +1648,7 @@ export default function VideoConsultationRoomPage() {
     }
   };
 
-  // Dual-Consent: Grant Consent
-  const handleGrantConsent = async () => {
-    setGrantingConsent(true);
-    try {
-      await apiClient.post(
-        `/api/v1/consultations/${consultationId}/video/recording/consent`,
-        { consented: true }
-      );
-      const updated = await fetchConsentStatus();
-      if (updated?.can_record) {
-        alert("Both participants have consented. You may now begin recording.");
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to grant consent";
-      alert(msg);
-    } finally {
-      setGrantingConsent(false);
-    }
-  };
 
-  // Start In-App Recording
-  const handleStartRecording = async () => {
-    try {
-      // 1. Trigger backend recording start (enforces dual-consent)
-      const res = (await apiClient.post(
-        `/api/v1/consultations/${consultationId}/video/recording/start`,
-        {}
-      )) as { recording_id: string };
-
-      setActiveRecordingId(res.recording_id);
-      setIsRecording(true);
-      setShowRecordingModal(false);
-
-      // Broadcast recording status over WebSocket
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
-          JSON.stringify({
-            type: "recording-status",
-            status: "RECORDING",
-            recording_id: res.recording_id,
-          })
-        );
-      }
-
-      // 2. Setup browser MediaRecorder with mixed audio from local and remote participants
-      if (localStreamRef.current) {
-        recordedChunksRef.current = [];
-
-        let streamToRecord = localStreamRef.current;
-        try {
-          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-          if (AudioCtx) {
-            const audioCtx = new AudioCtx();
-            const dest = audioCtx.createMediaStreamDestination();
-            if (localStreamRef.current.getAudioTracks().length > 0) {
-              const localAudio = audioCtx.createMediaStreamSource(localStreamRef.current);
-              localAudio.connect(dest);
-            }
-            if (remoteStreamRef.current && remoteStreamRef.current.getAudioTracks().length > 0) {
-              const remoteAudio = audioCtx.createMediaStreamSource(remoteStreamRef.current);
-              remoteAudio.connect(dest);
-            }
-            const activeVideoTrack = localStreamRef.current.getVideoTracks()[0];
-            const tracks = [
-              ...(activeVideoTrack ? [activeVideoTrack] : []),
-              ...dest.stream.getAudioTracks(),
-            ];
-            streamToRecord = new MediaStream(tracks);
-          }
-        } catch {
-          streamToRecord = localStreamRef.current;
-        }
-
-        const recorder = new MediaRecorder(streamToRecord, {
-          mimeType: "video/webm;codecs=vp8,opus",
-        });
-
-        recorder.ondataavailable = (event) => {
-          if (event.data && event.data.size > 0) {
-            recordedChunksRef.current.push(event.data);
-          }
-        };
-
-        recorder.onstop = async () => {
-          const recBlob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-          if (res.recording_id && recBlob.size > 0) {
-            setUploadingRecording(true);
-            try {
-              const token = getSessionAccessToken();
-              const uploadUrl = `/api/v1/consultations/${consultationId}/video/recording/upload?recording_id=${res.recording_id}&filename=consultation_rec.webm`;
-              const response = await fetch(uploadUrl, {
-                method: "POST",
-                headers: {
-                  ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                  "Content-Type": "video/webm",
-                },
-                body: recBlob,
-              });
-
-              if (response.ok) {
-                setRecordingSuccessToast("Recording securely finalized & SHA-256 integrity verified!");
-                setTimeout(() => setRecordingSuccessToast(null), 5000);
-              }
-            } catch (uploadErr) {
-              console.error("Recording upload error", uploadErr);
-            } finally {
-              setUploadingRecording(false);
-            }
-          }
-        };
-
-        recorder.start(1000); // 1-second chunks
-        mediaRecorderRef.current = recorder;
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to start recording. Please ensure both participants have consented.";
-      alert(msg);
-    }
-  };
-
-  // Stop In-App Recording
-  const handleStopRecording = async () => {
-    if (!isRecording) return;
-    try {
-      setIsRecording(false);
-
-      // Stop MediaRecorder
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-        mediaRecorderRef.current.stop();
-      }
-
-      // Call backend stop endpoint
-      await apiClient.post(
-        `/api/v1/consultations/${consultationId}/video/recording/stop`,
-        {}
-      );
-
-      // Broadcast over WebSocket
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
-          JSON.stringify({
-            type: "recording-status",
-            status: "STOPPED",
-          })
-        );
-      }
-    } catch (err: unknown) {
-      console.warn("Failed to cleanly stop backend recording", err);
-    }
-  };
 
   // Conclude Call
   const handleEndCall = async () => {
@@ -1873,9 +1656,7 @@ export default function VideoConsultationRoomPage() {
     if (confirm("Are you sure you want to conclude this video consultation?")) {
       setIsEndingCall(true);
       try {
-        if (isRecording) {
-          await handleStopRecording();
-        }
+
 
         setIsCallActive(false);
         setConnectionStatus("ended");
@@ -2339,32 +2120,7 @@ export default function VideoConsultationRoomPage() {
         position: "relative",
       }}
     >
-      {/* Toast Notification */}
-      {recordingSuccessToast && (
-        <div
-          style={{
-            position: "absolute",
-            top: "70px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: "rgba(16, 185, 129, 0.95)",
-            backdropFilter: "blur(12px)",
-            color: "#ffffff",
-            padding: "10px 24px",
-            borderRadius: "100px",
-            fontSize: "14px",
-            fontWeight: 600,
-            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.5)",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <span>✓</span>
-          <span>{recordingSuccessToast}</span>
-        </div>
-      )}
+
 
       {/* 1. Header Bar — Clean, Institutional, Uncluttered */}
       <header
@@ -2482,29 +2238,7 @@ export default function VideoConsultationRoomPage() {
             <span>{formatTimer(secondsElapsed)}</span>
           </div>
 
-          {/* Live Recording Beacon */}
-          {isRecording ? (
-            <div
-              id="header-recording-badge"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                backgroundColor: "rgba(239, 68, 68, 0.15)",
-                border: "1px solid rgba(239, 68, 68, 0.4)",
-                color: "#f87171",
-                padding: "5px 12px",
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontWeight: 700,
-              }}
-              data-recording-id={activeRecordingId || undefined}
-              title={activeRecordingId ? `Active Recording ID: ${activeRecordingId}` : "Recording active"}
-            >
-              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#ef4444", animation: "pulse 1s infinite" }} />
-              <span>REC ({formatTimer(recordingSeconds)})</span>
-            </div>
-          ) : null}
+
 
           {/* Connection Status Indicator */}
           <div
@@ -2598,35 +2332,7 @@ export default function VideoConsultationRoomPage() {
             overflow: "hidden",
           }}
         >
-          {/* Persistent Viewport Recording Indicator (Phase 8: continuously visible across screenshare/toggle/reconnect) */}
-          {isRecording && (
-            <div
-              id="viewport-persistent-recording-indicator"
-              style={{
-                position: "absolute",
-                top: "24px",
-                left: "24px",
-                zIndex: 60,
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                backgroundColor: "rgba(220, 38, 38, 0.92)",
-                color: "#ffffff",
-                padding: "8px 18px",
-                borderRadius: "9999px",
-                fontSize: "13px",
-                fontWeight: 800,
-                letterSpacing: "0.5px",
-                boxShadow: "0 6px 20px rgba(220, 38, 38, 0.6)",
-                backdropFilter: "blur(6px)",
-                border: "1px solid rgba(255, 255, 255, 0.3)",
-                pointerEvents: "none",
-              }}
-            >
-              <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#ef4444", boxShadow: "0 0 10px #ef4444", animation: "pulse 1s infinite", display: "inline-block" }} />
-              <span>RECORDING ({formatTimer(recordingSeconds)})</span>
-            </div>
-          )}
+
 
           {/* Remote Participant Panel */}
           <div
@@ -4031,57 +3737,7 @@ export default function VideoConsultationRoomPage() {
           <ScreenShareIcon size={20} color="#FFFFFF" />
         </button>
 
-        {/* Dual-Consent Recording Controller */}
-        {isRecording ? (
-          <button
-            id="stop-rec-btn"
-            onClick={handleStopRecording}
-            disabled={uploadingRecording}
-            style={{
-              backgroundColor: "#DC2626",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "100px",
-              padding: "0 18px",
-              height: "48px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontWeight: 700,
-              fontSize: "13px",
-              boxShadow: "0 0 16px rgba(239, 68, 68, 0.5)",
-            }}
-            title="Stop recording and save"
-          >
-            <span style={{ width: "10px", height: "10px", backgroundColor: "#ffffff", borderRadius: "2px" }} />
-            <span>{uploadingRecording ? "Finalizing..." : "Stop REC"}</span>
-          </button>
-        ) : (
-          <button
-            id="recording-modal-btn"
-            onClick={() => {
-              void fetchConsentStatus();
-              setShowRecordingModal(true);
-            }}
-            style={{
-              backgroundColor: consentStatus?.can_record ? "rgba(16, 185, 129, 0.15)" : "rgba(255, 255, 255, 0.08)",
-              color: consentStatus?.can_record ? "#10b981" : "#ffffff",
-              border: consentStatus?.can_record ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(255, 255, 255, 0.12)",
-              borderRadius: "50%",
-              width: "48px",
-              height: "48px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-            title="Record Consultation (Requires Mutual Consent)"
-          >
-            <span style={{ width: "12px", height: "12px", borderRadius: "50%", backgroundColor: consentStatus?.can_record ? "#10b981" : "#f87171" }} />
-          </button>
-        )}
+
 
         {/* Side Drawer Toggle: Chat */}
         <button
@@ -4272,128 +3928,7 @@ export default function VideoConsultationRoomPage() {
         </button>
       </footer>
 
-      {/* 4. Dual-Consent Recording Modal */}
-      {showRecordingModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.75)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 110,
-            padding: "20px",
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "#111827",
-              borderRadius: "16px",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              maxWidth: "460px",
-              width: "100%",
-              padding: "28px",
-              color: "#f8fafc",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.7)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <VideoIcon size={22} color="#38bdf8" />
-                <h3 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>
-                  Consultation Recording
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowRecordingModal(false)}
-                style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}
-              >
-                ✕
-              </button>
-            </div>
 
-            <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: 1.5, marginBottom: "20px" }}>
-              Consultation recordings are confidential legal work product protected under advocate-client privilege.
-              In compliance with legal ethics and privacy standards, recording requires mutual consent from both Client and Counsel.
-            </p>
-
-            {/* Consent Status Matrix */}
-            <div style={{ backgroundColor: "#1e293b", borderRadius: "10px", padding: "14px", marginBottom: "20px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                <span style={{ fontSize: "13px", fontWeight: 500 }}>Client Consent:</span>
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    color: consentStatus?.client_consented ? "#22c55e" : "#f59e0b",
-                  }}
-                >
-                  {consentStatus?.client_consented ? "Consented" : "Pending"}
-                </span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "13px", fontWeight: 500 }}>Advocate Consent:</span>
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    color: consentStatus?.lawyer_consented ? "#22c55e" : "#f59e0b",
-                  }}
-                >
-                  {consentStatus?.lawyer_consented ? "Consented" : "Pending"}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <button
-                onClick={handleGrantConsent}
-                disabled={grantingConsent}
-                style={{
-                  backgroundColor: "#2563eb",
-                  color: "#ffffff",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "10px 16px",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                {grantingConsent ? "Recording Consent..." : "Grant My Consent to Record"}
-              </button>
-
-              {consentStatus?.can_record && (
-                <button
-                  onClick={handleStartRecording}
-                  style={{
-                    backgroundColor: "#10b981",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: "8px",
-                    padding: "10px 16px",
-                    fontSize: "13px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                  }}
-                >
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#ef4444", display: "inline-block" }} />
-                  Begin Recording Session
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 5. Device Settings Modal */}
       {showDeviceModal && (

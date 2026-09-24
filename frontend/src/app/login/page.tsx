@@ -90,10 +90,26 @@ function LoginForm() {
       );
 
       const safeRedirect = getSafeRedirectUrl(searchParams.get('redirect'));
-      if (safeRedirect) {
+
+      // Check authoritative identity and KYC status
+      let isKycCompleted = false;
+      try {
+        const me = (await apiClient.get("/api/v1/auth/me")) as {
+          kyc_status?: string;
+          is_kyc_completed?: boolean;
+        };
+        isKycCompleted = Boolean(me?.is_kyc_completed);
+      } catch (meErr) {
+        console.warn("Could not check KYC status immediately upon login:", meErr);
+      }
+
+      if (userRole === 'ADMIN') {
+        router.push(safeRedirect || "/admin/dashboard");
+      } else if (!isKycCompleted) {
+        const targetUrl = safeRedirect ? `/kyc?redirect=${encodeURIComponent(safeRedirect)}` : "/kyc";
+        router.push(targetUrl);
+      } else if (safeRedirect) {
         router.push(safeRedirect);
-      } else if (userRole === 'ADMIN') {
-        router.push("/admin/dashboard");
       } else if (userRole === 'LAWYER') {
         router.push("/lawyer/dashboard");
       } else {

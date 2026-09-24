@@ -1,0 +1,1436 @@
+[
+  {
+    "table_name": "advisor_messages",
+    "model_file": "app/models/advisor.py",
+    "model_class": "AdvisorMessage",
+    "primary_key": "id",
+    "foreign_keys": [
+      "session_id -> advisor_sessions.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_advisor_messages_session_id on (session_id)"
+    ]
+  },
+  {
+    "table_name": "advisor_sessions",
+    "model_file": "app/models/advisor.py",
+    "model_class": "AdvisorSession",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_advisor_sessions_user_id on (user_id)"
+    ]
+  },
+  {
+    "table_name": "advocate_payouts",
+    "model_file": "app/models/commercial.py",
+    "model_class": "AdvocatePayout",
+    "primary_key": "id",
+    "foreign_keys": [
+      "advocate_user_id -> users.id",
+      "commercial_transaction_id -> commercial_transactions.id"
+    ],
+    "unique_constraints": [
+      "provider_payout_id (unique column)",
+      "payout_id (unique column)",
+      "unnamed(provider_payout_id)"
+    ],
+    "indexes": [
+      "ix_advocate_payouts_status on (status)",
+      "ix_advocate_payouts_payout_id on (payout_id)",
+      "ix_advocate_payouts_commercial_transaction_id on (commercial_transaction_id)",
+      "ix_advocate_payouts_advocate_user_id on (advocate_user_id)"
+    ]
+  },
+  {
+    "table_name": "advocate_verification_documents",
+    "model_file": "app/models/user.py",
+    "model_class": "AdvocateVerificationDocument",
+    "primary_key": "id",
+    "foreign_keys": [
+      "verification_id -> lawyer_verifications.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_advocate_verification_documents_verification_id on (verification_id)"
+    ]
+  },
+  {
+    "table_name": "ai_conversations",
+    "model_file": "app/models/ai.py",
+    "model_class": "AIConversation",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_ai_conversations_user_id on (user_id)",
+      "ix_ai_conversations_case_id on (case_id)"
+    ]
+  },
+  {
+    "table_name": "ai_evaluations",
+    "model_file": "app/models/evaluation.py",
+    "model_class": "AIEvaluation",
+    "primary_key": "id",
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  {
+    "table_name": "ai_human_reviews",
+    "model_file": "app/models/ai_review.py",
+    "model_class": "AIReviewRecord",
+    "primary_key": "id",
+    "foreign_keys": [
+      "conversation_id -> ai_conversations.id",
+      "reviewer_user_id -> users.id",
+      "message_id -> ai_messages.id",
+      "linked_incident_id -> production_incidents.id"
+    ],
+    "unique_constraints": [
+      "review_id (unique column)"
+    ],
+    "indexes": [
+      "ix_ai_human_reviews_message_id on (message_id)",
+      "ix_ai_human_reviews_review_outcome on (review_outcome)",
+      "ix_ai_human_reviews_reviewer_user_id on (reviewer_user_id)",
+      "ix_ai_human_reviews_conversation_id on (conversation_id)",
+      "ix_ai_human_reviews_linked_release_id on (linked_release_id)",
+      "ix_ai_human_reviews_review_id on (review_id)",
+      "ix_ai_human_reviews_status on (status)",
+      "ix_ai_reviews_cat_outcome on (category, review_outcome)",
+      "ix_ai_human_reviews_category on (category)",
+      "ix_ai_human_reviews_linked_incident_id on (linked_incident_id)",
+      "ix_ai_human_reviews_severity on (severity)"
+    ]
+  },
+  {
+    "table_name": "ai_messages",
+    "model_file": "app/models/ai.py",
+    "model_class": "AIMessage",
+    "primary_key": "id",
+    "foreign_keys": [
+      "conversation_id -> ai_conversations.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_ai_messages_conversation_id on (conversation_id)"
+    ]
+  },
+  {
+    "table_name": "ai_response_audits",
+    "model_file": "app/models/ai.py",
+    "model_class": "AIResponseAudit",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id",
+      "message_id -> ai_messages.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_ai_response_audits_case_id on (case_id)",
+      "ix_ai_response_audits_message_id on (message_id)"
+    ]
+  },
+  {
+    "table_name": "audit_events",
+    "model_file": "app/models/audit.py",
+    "model_class": "AuditEvent",
+    "primary_key": "id",
+    "foreign_keys": [
+      "actor_user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_audit_events_timestamp on (timestamp)",
+      "ix_audit_events_entity_id on (entity_id)",
+      "ix_audit_events_actor_user_id on (actor_user_id)"
+    ]
+  },
+  {
+    "table_name": "background_jobs",
+    "model_file": "app/models/job.py",
+    "model_class": "BackgroundJob",
+    "primary_key": "id",
+    "foreign_keys": [
+      "created_by_user_id -> users.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [
+      "idempotency_key (unique column)"
+    ],
+    "indexes": [
+      "ix_background_jobs_locked_until on (locked_until)",
+      "ix_background_jobs_idempotency_key on (idempotency_key)",
+      "ix_background_jobs_created_by_user_id on (created_by_user_id)",
+      "ix_background_jobs_scheduled_at on (scheduled_at)",
+      "ix_background_jobs_claim on (status, scheduled_at, locked_until)",
+      "ix_background_jobs_job_type on (job_type)",
+      "ix_background_jobs_case_id on (case_id)",
+      "ix_background_jobs_status_scheduled on (status, scheduled_at)",
+      "ix_background_jobs_status on (status)"
+    ]
+  },
+  {
+    "table_name": "bsa_certificate_drafts",
+    "model_file": "app/models/bundle.py",
+    "model_class": "BSACertificateDraft",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id",
+      "version_id -> evidence_versions.id",
+      "created_by_user_id -> users.id",
+      "bundle_id -> evidence_bundles.id",
+      "evidence_id -> evidence.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_bsa_certificate_drafts_evidence_id on (evidence_id)",
+      "ix_bsa_certificate_drafts_version_id on (version_id)",
+      "ix_bsa_certificate_drafts_created_by_user_id on (created_by_user_id)",
+      "ix_bsa_certificate_drafts_case_id on (case_id)",
+      "ix_bsa_certificate_drafts_bundle_id on (bundle_id)"
+    ]
+  },
+  {
+    "table_name": "case_chronology_events",
+    "model_file": "app/models/case_intelligence.py",
+    "model_class": "CaseChronologyEvent",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id",
+      "source_chunk_id -> document_chunks.id",
+      "source_document_id -> documents.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_chronology_events_source_document_id on (source_document_id)",
+      "ix_case_chronology_events_event_date on (event_date)",
+      "ix_case_chronology_events_source_chunk_id on (source_chunk_id)",
+      "ix_case_chronology_events_case_id on (case_id)"
+    ]
+  },
+  {
+    "table_name": "case_claims_defenses",
+    "model_file": "app/models/case_intelligence.py",
+    "model_class": "CaseClaimDefense",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_claims_defenses_case_id on (case_id)"
+    ]
+  },
+  {
+    "table_name": "case_deadlines",
+    "model_file": "app/models/workflow.py",
+    "model_class": "CaseDeadline",
+    "primary_key": "id",
+    "foreign_keys": [
+      "confirmed_by_user_id -> users.id",
+      "created_by_user_id -> users.id",
+      "linked_hearing_id -> case_hearings.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_deadlines_deadline_at on (deadline_at)",
+      "ix_case_deadlines_created_by_user_id on (created_by_user_id)",
+      "ix_case_deadlines_case_id on (case_id)",
+      "ix_case_deadlines_status on (status)",
+      "ix_case_deadlines_confirmed_by_user_id on (confirmed_by_user_id)",
+      "ix_case_deadlines_linked_hearing_id on (linked_hearing_id)"
+    ]
+  },
+  {
+    "table_name": "case_evidence_gaps",
+    "model_file": "app/models/case_intelligence.py",
+    "model_class": "CaseEvidenceGap",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id",
+      "related_issue_id -> legal_issues.id",
+      "related_claim_id -> case_claims_defenses.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_evidence_gaps_case_id on (case_id)",
+      "ix_case_evidence_gaps_related_claim_id on (related_claim_id)",
+      "ix_case_evidence_gaps_related_issue_id on (related_issue_id)"
+    ]
+  },
+  {
+    "table_name": "case_exhibits",
+    "model_file": "app/models/evidence.py",
+    "model_class": "CaseExhibit",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id",
+      "evidence_id -> evidence.id",
+      "version_id -> evidence_versions.id",
+      "hearing_id -> case_hearings.id",
+      "created_by_user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "uq_case_exhibits_case_number(case_id, exhibit_number)"
+    ],
+    "indexes": [
+      "ix_case_exhibits_case_id on (case_id)",
+      "ix_case_exhibits_version_id on (version_id)",
+      "ix_case_exhibits_created_by_user_id on (created_by_user_id)",
+      "ix_case_exhibits_hearing_id on (hearing_id)",
+      "ix_case_exhibits_evidence_id on (evidence_id)"
+    ]
+  },
+  {
+    "table_name": "case_facts",
+    "model_file": "app/models/case_intelligence.py",
+    "model_class": "CaseFact",
+    "primary_key": "id",
+    "foreign_keys": [
+      "source_document_id -> documents.id",
+      "case_id -> cases.id",
+      "source_message_id -> ai_messages.id",
+      "source_chunk_id -> document_chunks.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_facts_source_chunk_id on (source_chunk_id)",
+      "ix_case_facts_source_message_id on (source_message_id)",
+      "ix_case_facts_source_document_id on (source_document_id)",
+      "ix_case_facts_case_id on (case_id)"
+    ]
+  },
+  {
+    "table_name": "case_hearings",
+    "model_file": "app/models/workflow.py",
+    "model_class": "CaseHearing",
+    "primary_key": "id",
+    "foreign_keys": [
+      "created_by_user_id -> users.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_hearings_created_by_user_id on (created_by_user_id)",
+      "ix_case_hearings_case_id on (case_id)",
+      "ix_case_hearings_status on (status)",
+      "ix_case_hearings_hearing_at on (hearing_at)"
+    ]
+  },
+  {
+    "table_name": "case_messages",
+    "model_file": "app/models/case_collaboration.py",
+    "model_class": "CaseMessage",
+    "primary_key": "id",
+    "foreign_keys": [
+      "sender_id -> users.id",
+      "linked_document_id -> documents.id",
+      "case_id -> cases.id",
+      "linked_task_id -> case_tasks.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_messages_case_id on (case_id)",
+      "ix_case_messages_case_created on (case_id, created_at)",
+      "ix_case_messages_sender_id on (sender_id)"
+    ]
+  },
+  {
+    "table_name": "case_notes",
+    "model_file": "app/models/note.py",
+    "model_class": "CaseNote",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id",
+      "author_user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_notes_case_id on (case_id)",
+      "ix_case_notes_author_user_id on (author_user_id)",
+      "ix_case_notes_visibility on (visibility)"
+    ]
+  },
+  {
+    "table_name": "case_participants",
+    "model_file": "app/models/case.py",
+    "model_class": "CaseParticipant",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [
+      "uq_case_participant_case_user(case_id, user_id)"
+    ],
+    "indexes": [
+      "ix_case_participants_user_id on (user_id)",
+      "ix_case_participants_case_id on (case_id)"
+    ]
+  },
+  {
+    "table_name": "case_reminders",
+    "model_file": "app/models/workflow.py",
+    "model_class": "CaseReminder",
+    "primary_key": "id",
+    "foreign_keys": [
+      "created_by_user_id -> users.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_reminders_case_id on (case_id)",
+      "ix_case_reminders_remind_at on (remind_at)",
+      "ix_case_reminders_created_by_user_id on (created_by_user_id)",
+      "ix_case_reminders_target_id on (target_id)"
+    ]
+  },
+  {
+    "table_name": "case_risk_indicators",
+    "model_file": "app/models/case_intelligence.py",
+    "model_class": "CaseRiskIndicator",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_risk_indicators_case_id on (case_id)"
+    ]
+  },
+  {
+    "table_name": "case_tasks",
+    "model_file": "app/models/task.py",
+    "model_class": "CaseTask",
+    "primary_key": "id",
+    "foreign_keys": [
+      "linked_deadline_id -> case_deadlines.id",
+      "linked_evidence_id -> evidence.id",
+      "case_id -> cases.id",
+      "linked_hearing_id -> case_hearings.id",
+      "owner_user_id -> users.id",
+      "created_by_user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_tasks_linked_evidence_id on (linked_evidence_id)",
+      "ix_case_tasks_owner_user_id on (owner_user_id)",
+      "ix_case_tasks_case_id on (case_id)",
+      "ix_case_tasks_linked_deadline_id on (linked_deadline_id)",
+      "ix_case_tasks_created_by_user_id on (created_by_user_id)",
+      "ix_case_tasks_linked_hearing_id on (linked_hearing_id)"
+    ]
+  },
+  {
+    "table_name": "case_timeline_events",
+    "model_file": "app/models/case.py",
+    "model_class": "CaseTimelineEvent",
+    "primary_key": "id",
+    "foreign_keys": [
+      "actor_user_id -> users.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_case_timeline_events_case_id on (case_id)"
+    ]
+  },
+  {
+    "table_name": "cases",
+    "model_file": "app/models/case.py",
+    "model_class": "Case",
+    "primary_key": "id",
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  {
+    "table_name": "client_profiles",
+    "model_file": "app/models/user.py",
+    "model_class": "ClientProfile",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "user_id (unique column)"
+    ],
+    "indexes": [
+      "ix_client_profiles_user_id on (user_id)"
+    ]
+  },
+  {
+    "table_name": "commercial_entitlements",
+    "model_file": "app/models/commercial.py",
+    "model_class": "CommercialEntitlement",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_commercial_entitlements_user_id on (user_id)",
+      "ix_entitlement_user_type on (user_id, entitlement_type)"
+    ]
+  },
+  {
+    "table_name": "commercial_transactions",
+    "model_file": "app/models/commercial.py",
+    "model_class": "CommercialTransaction",
+    "primary_key": "id",
+    "foreign_keys": [
+      "consultation_id -> consultations.id",
+      "payee_user_id -> users.id",
+      "payer_user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "unnamed(invoice_number)",
+      "unnamed(provider_transaction_id)",
+      "invoice_number (unique column)",
+      "transaction_id (unique column)",
+      "provider_transaction_id (unique column)"
+    ],
+    "indexes": [
+      "ix_commercial_transactions_transaction_id on (transaction_id)",
+      "ix_commercial_tx_status_created on (status, created_at)",
+      "ix_commercial_transactions_consultation_id on (consultation_id)",
+      "ix_commercial_transactions_payer_user_id on (payer_user_id)",
+      "ix_commercial_transactions_status on (status)",
+      "ix_commercial_transactions_payee_user_id on (payee_user_id)"
+    ]
+  },
+  {
+    "table_name": "compliance_registry_items",
+    "model_file": "app/models/compliance.py",
+    "model_class": "ComplianceRegistryItem",
+    "primary_key": "id",
+    "foreign_keys": [],
+    "unique_constraints": [
+      "compliance_item_id (unique column)"
+    ],
+    "indexes": [
+      "ix_compliance_registry_items_compliance_item_id on (compliance_item_id)",
+      "ix_compliance_owner on (owner)",
+      "ix_compliance_status on (status)"
+    ]
+  },
+  {
+    "table_name": "consultation_documents",
+    "model_file": "app/models/consultation_document.py",
+    "model_class": "ConsultationDocument",
+    "primary_key": "id",
+    "foreign_keys": [
+      "uploader_id -> users.id",
+      "consultation_id -> consultations.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_consultation_documents_consultation_id on (consultation_id)",
+      "ix_consultation_documents_uploader_id on (uploader_id)"
+    ]
+  },
+  {
+    "table_name": "consultation_notes",
+    "model_file": "app/models/consultation_note.py",
+    "model_class": "ConsultationNote",
+    "primary_key": "id",
+    "foreign_keys": [
+      "consultation_id -> consultations.id",
+      "author_user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_consultation_notes_consultation_id on (consultation_id)",
+      "ix_consultation_notes_author_user_id on (author_user_id)"
+    ]
+  },
+  {
+    "table_name": "consultations",
+    "model_file": "app/models/consultation.py",
+    "model_class": "Consultation",
+    "primary_key": "id",
+    "foreign_keys": [
+      "lawyer_id -> lawyer_profiles.id",
+      "case_id -> cases.id",
+      "client_id -> client_profiles.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_consultations_lawyer_id on (lawyer_id)",
+      "ix_consultations_client_id on (client_id)",
+      "ix_consultations_status on (status)",
+      "ix_consultations_is_instant on (is_instant)",
+      "ix_consultations_lawyer_scheduled on (lawyer_id, scheduled_at)"
+    ]
+  },
+  {
+    "table_name": "court_cases",
+    "model_file": "app/models/court_case.py",
+    "model_class": "CourtCase",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [
+      "cnr (unique column)"
+    ],
+    "indexes": [
+      "ix_court_cases_case_number on (case_number)",
+      "ix_court_cases_court_name on (court_name)",
+      "ix_court_cases_case_id on (case_id)",
+      "ix_court_cases_cnr on (cnr)",
+      "ix_court_cases_next_hearing_date on (next_hearing_date)",
+      "ix_court_cases_respondent on (respondent)",
+      "ix_court_cases_petitioner on (petitioner)",
+      "ix_court_cases_respondent_advocate on (respondent_advocate)",
+      "ix_court_cases_petitioner_advocate on (petitioner_advocate)"
+    ]
+  },
+  {
+    "table_name": "data_quality_runs",
+    "model_file": "app/models/data_quality.py",
+    "model_class": "DataQualityRun",
+    "primary_key": "id",
+    "foreign_keys": [
+      "triggered_by_user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "run_id (unique column)"
+    ],
+    "indexes": [
+      "ix_data_quality_runs_status on (status)",
+      "ix_data_quality_runs_run_id on (run_id)",
+      "ix_data_quality_runs_triggered_by_user_id on (triggered_by_user_id)"
+    ]
+  },
+  {
+    "table_name": "direct_messages",
+    "model_file": "app/models/direct_message.py",
+    "model_class": "DirectMessage",
+    "primary_key": "id",
+    "foreign_keys": [
+      "recipient_id -> users.id",
+      "sender_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_direct_messages_recipient_id on (recipient_id)",
+      "ix_direct_messages_sender_id on (sender_id)"
+    ]
+  },
+  {
+    "table_name": "document_chunks",
+    "model_file": "app/models/ai.py",
+    "model_class": "DocumentChunk",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id",
+      "document_id -> documents.id"
+    ],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  {
+    "table_name": "document_pages",
+    "model_file": "app/models/document_page.py",
+    "model_class": "DocumentPage",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id",
+      "document_id -> documents.id"
+    ],
+    "unique_constraints": [
+      "uq_document_pages_doc_page(document_id, page_number)"
+    ],
+    "indexes": [
+      "ix_document_pages_case_id on (case_id)",
+      "ix_document_pages_document_id on (document_id)"
+    ]
+  },
+  {
+    "table_name": "documents",
+    "model_file": "app/models/document.py",
+    "model_class": "Document",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id",
+      "uploaded_by -> users.id"
+    ],
+    "unique_constraints": [
+      "unnamed(storage_key)",
+      "storage_key (unique column)"
+    ],
+    "indexes": [
+      "ix_documents_case_id on (case_id)",
+      "ix_documents_processing_status on (processing_status)",
+      "ix_documents_uploaded_by on (uploaded_by)"
+    ]
+  },
+  {
+    "table_name": "email_verification_tokens",
+    "model_file": "app/models/auth.py",
+    "model_class": "EmailVerificationToken",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_email_verification_tokens_expires_at on (expires_at)",
+      "ix_email_verification_tokens_user_id on (user_id)",
+      "ix_email_verification_tokens_email on (email)",
+      "ix_email_verification_tokens_token_hash on (token_hash)"
+    ]
+  },
+  {
+    "table_name": "evidence",
+    "model_file": "app/models/evidence.py",
+    "model_class": "Evidence",
+    "primary_key": "id",
+    "foreign_keys": [
+      "current_version_id -> evidence_versions.id",
+      "created_by_user_id -> users.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_evidence_created_by_user_id on (created_by_user_id)",
+      "ix_evidence_case_id on (case_id)",
+      "ix_evidence_status on (status)"
+    ]
+  },
+  {
+    "table_name": "evidence_access_grants",
+    "model_file": "app/models/evidence.py",
+    "model_class": "EvidenceAccessGrant",
+    "primary_key": "id",
+    "foreign_keys": [
+      "evidence_id -> evidence.id",
+      "grantee_user_id -> users.id",
+      "granted_by_user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_evidence_access_grants_granted_by_user_id on (granted_by_user_id)",
+      "ix_evidence_access_grants_evidence_id on (evidence_id)",
+      "ix_evidence_access_grants_grantee_user_id on (grantee_user_id)"
+    ]
+  },
+  {
+    "table_name": "evidence_bundle_items",
+    "model_file": "app/models/bundle.py",
+    "model_class": "EvidenceBundleItem",
+    "primary_key": "id",
+    "foreign_keys": [
+      "version_id -> evidence_versions.id",
+      "exhibit_id -> case_exhibits.id",
+      "evidence_id -> evidence.id",
+      "bundle_id -> evidence_bundles.id"
+    ],
+    "unique_constraints": [
+      "uq_bundle_item_order(bundle_id, order_index)"
+    ],
+    "indexes": [
+      "ix_evidence_bundle_items_version_id on (version_id)",
+      "ix_evidence_bundle_items_exhibit_id on (exhibit_id)",
+      "ix_evidence_bundle_items_bundle_id on (bundle_id)",
+      "ix_evidence_bundle_items_evidence_id on (evidence_id)"
+    ]
+  },
+  {
+    "table_name": "evidence_bundles",
+    "model_file": "app/models/bundle.py",
+    "model_class": "EvidenceBundle",
+    "primary_key": "id",
+    "foreign_keys": [
+      "hearing_id -> case_hearings.id",
+      "case_id -> cases.id",
+      "created_by_user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "storage_key (unique column)"
+    ],
+    "indexes": [
+      "ix_evidence_bundles_sha256_hash on (sha256_hash)",
+      "ix_evidence_bundles_hearing_id on (hearing_id)",
+      "ix_evidence_bundles_created_by_user_id on (created_by_user_id)",
+      "ix_evidence_bundles_case_id on (case_id)",
+      "ix_evidence_bundles_storage_key on (storage_key)",
+      "ix_evidence_bundles_status on (status)"
+    ]
+  },
+  {
+    "table_name": "evidence_custody_events",
+    "model_file": "app/models/evidence.py",
+    "model_class": "EvidenceCustodyEvent",
+    "primary_key": "id",
+    "foreign_keys": [
+      "evidence_id -> evidence.id",
+      "actor_user_id -> users.id",
+      "previous_event_id -> evidence_custody_events.id",
+      "version_id -> evidence_versions.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_evidence_custody_events_evidence_id on (evidence_id)",
+      "ix_evidence_custody_events_timestamp on (timestamp)",
+      "ix_evidence_custody_events_action on (action)",
+      "ix_evidence_custody_events_actor_user_id on (actor_user_id)",
+      "ix_evidence_custody_events_version_id on (version_id)"
+    ]
+  },
+  {
+    "table_name": "evidence_versions",
+    "model_file": "app/models/evidence.py",
+    "model_class": "EvidenceVersion",
+    "primary_key": "id",
+    "foreign_keys": [
+      "uploaded_by_user_id -> users.id",
+      "evidence_id -> evidence.id"
+    ],
+    "unique_constraints": [
+      "uq_evidence_version_number(evidence_id, version_number)",
+      "unnamed(storage_key)",
+      "storage_key (unique column)"
+    ],
+    "indexes": [
+      "ix_evidence_versions_scan_status on (scan_status)",
+      "ix_evidence_versions_evidence_id on (evidence_id)",
+      "ix_evidence_versions_sha256 on (sha256)",
+      "ix_evidence_versions_uploaded_by_user_id on (uploaded_by_user_id)"
+    ]
+  },
+  {
+    "table_name": "incident_timeline_events",
+    "model_file": "app/models/incident.py",
+    "model_class": "IncidentTimelineEvent",
+    "primary_key": "id",
+    "foreign_keys": [
+      "incident_id -> production_incidents.id",
+      "actor_user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_incident_timeline_events_incident_id on (incident_id)",
+      "ix_incident_timeline_events_timestamp on (timestamp)"
+    ]
+  },
+  {
+    "table_name": "lawyer_availabilities",
+    "model_file": "app/models/availability.py",
+    "model_class": "LawyerAvailability",
+    "primary_key": "id",
+    "foreign_keys": [
+      "lawyer_profile_id -> lawyer_profiles.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_lawyer_availabilities_day_of_week on (day_of_week)",
+      "ix_lawyer_availabilities_lawyer_profile_id on (lawyer_profile_id)"
+    ]
+  },
+  {
+    "table_name": "lawyer_profiles",
+    "model_file": "app/models/user.py",
+    "model_class": "LawyerProfile",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "user_id (unique column)"
+    ],
+    "indexes": [
+      "ix_lawyer_profiles_user_id on (user_id)"
+    ]
+  },
+  {
+    "table_name": "lawyer_verifications",
+    "model_file": "app/models/user.py",
+    "model_class": "LawyerVerification",
+    "primary_key": "id",
+    "foreign_keys": [
+      "lawyer_profile_id -> lawyer_profiles.id",
+      "reviewed_by -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_lawyer_verifications_reviewed_by on (reviewed_by)",
+      "ix_lawyer_verifications_lawyer_profile_id on (lawyer_profile_id)",
+      "ix_lawyer_verifications_status on (status)"
+    ]
+  },
+  {
+    "table_name": "legal_document_versions",
+    "model_file": "app/models/legal_document.py",
+    "model_class": "LegalDocumentVersion",
+    "primary_key": "id",
+    "foreign_keys": [
+      "supersedes_version_id -> legal_document_versions.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_legal_doc_publication on (publication_status)",
+      "ix_legal_doc_type_ver_locale on (document_type, version, locale)",
+      "ix_legal_document_versions_document_type on (document_type)"
+    ]
+  },
+  {
+    "table_name": "legal_issues",
+    "model_file": "app/models/case_intelligence.py",
+    "model_class": "LegalIssue",
+    "primary_key": "id",
+    "foreign_keys": [
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_legal_issues_case_id on (case_id)"
+    ]
+  },
+  {
+    "table_name": "legal_source_versions",
+    "model_file": "app/models/legal_authority.py",
+    "model_class": "LegalSourceVersion",
+    "primary_key": "id",
+    "foreign_keys": [
+      "source_id -> legal_sources.id"
+    ],
+    "unique_constraints": [
+      "canonical_provision_id (unique column)",
+      "uq_legal_source_section_version(source_id, section_number, version_label)"
+    ],
+    "indexes": [
+      "ix_legal_source_versions_is_current on (is_current)",
+      "ix_legal_source_versions_effective_from on (effective_from)",
+      "ix_legal_source_versions_canonical_provision_id on (canonical_provision_id)",
+      "ix_legal_source_versions_section_number on (section_number)",
+      "ix_legal_source_versions_effective_to on (effective_to)",
+      "ix_legal_source_versions_source_id on (source_id)"
+    ]
+  },
+  {
+    "table_name": "legal_sources",
+    "model_file": "app/models/legal_authority.py",
+    "model_class": "LegalSource",
+    "primary_key": "id",
+    "foreign_keys": [],
+    "unique_constraints": [
+      "canonical_identifier (unique column)"
+    ],
+    "indexes": [
+      "ix_legal_sources_jurisdiction on (jurisdiction)",
+      "ix_legal_sources_effective_to on (effective_to)",
+      "ix_legal_sources_name on (name)",
+      "ix_legal_sources_year on (year)",
+      "ix_legal_sources_canonical_identifier on (canonical_identifier)",
+      "ix_legal_sources_effective_from on (effective_from)"
+    ]
+  },
+  {
+    "table_name": "matter_requests",
+    "model_file": "app/models/case_collaboration.py",
+    "model_class": "MatterRequest",
+    "primary_key": "id",
+    "foreign_keys": [
+      "requesting_user_id -> users.id",
+      "assigned_user_id -> users.id",
+      "reviewed_by_user_id -> users.id",
+      "submitted_document_id -> documents.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_matter_requests_case_id on (case_id)",
+      "ix_matter_requests_case_status on (case_id, status)",
+      "ix_matter_requests_status on (status)",
+      "ix_matter_requests_requesting_user_id on (requesting_user_id)",
+      "ix_matter_requests_assigned_user_id on (assigned_user_id)"
+    ]
+  },
+  {
+    "table_name": "messages",
+    "model_file": "app/models/message.py",
+    "model_class": "Message",
+    "primary_key": "id",
+    "foreign_keys": [
+      "consultation_id -> consultations.id",
+      "sender_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  {
+    "table_name": "notifications",
+    "model_file": "app/models/notification.py",
+    "model_class": "Notification",
+    "primary_key": "id",
+    "foreign_keys": [
+      "document_id -> documents.id",
+      "user_id -> users.id",
+      "hearing_id -> case_hearings.id",
+      "deadline_id -> case_deadlines.id",
+      "task_id -> case_tasks.id",
+      "consultation_id -> consultations.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_notifications_event_id on (event_id)",
+      "ix_notifications_type on (type)",
+      "ix_notifications_deadline_id on (deadline_id)",
+      "ix_notifications_user_id on (user_id)",
+      "ix_notifications_user_event_type on (user_id, event_id, type)",
+      "ix_notifications_is_read on (is_read)",
+      "ix_notifications_document_id on (document_id)",
+      "ix_notifications_user_is_read_created on (user_id, is_read, created_at)",
+      "ix_notifications_task_id on (task_id)",
+      "ix_notifications_hearing_id on (hearing_id)",
+      "ix_notifications_consultation_id on (consultation_id)",
+      "ix_notifications_case_id on (case_id)"
+    ]
+  },
+  {
+    "table_name": "outbox_events",
+    "model_file": "app/models/outbox.py",
+    "model_class": "OutboxEvent",
+    "primary_key": "id",
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_outbox_events_aggregate_type on (aggregate_type)",
+      "ix_outbox_events_event_type on (event_type)",
+      "ix_outbox_events_aggregate_id on (aggregate_id)",
+      "ix_outbox_events_status_scheduled on (status, scheduled_at)",
+      "ix_outbox_events_status on (status)",
+      "ix_outbox_events_aggregate on (aggregate_type, aggregate_id)",
+      "ix_outbox_events_scheduled_at on (scheduled_at)"
+    ]
+  },
+  {
+    "table_name": "password_reset_tokens",
+    "model_file": "app/models/auth.py",
+    "model_class": "PasswordResetToken",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_password_reset_tokens_user_id on (user_id)",
+      "ix_password_reset_tokens_expires_at on (expires_at)",
+      "ix_password_reset_tokens_token_hash on (token_hash)"
+    ]
+  },
+  {
+    "table_name": "payments",
+    "model_file": "app/models/payment.py",
+    "model_class": "Payment",
+    "primary_key": "id",
+    "foreign_keys": [
+      "consultation_id -> consultations.id",
+      "payer_user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "provider_payment_id (unique column)",
+      "unnamed(provider_payment_id)"
+    ],
+    "indexes": [
+      "ix_payments_payer_user_id on (payer_user_id)"
+    ]
+  },
+  {
+    "table_name": "pilot_allowlist",
+    "model_file": "app/models/pilot.py",
+    "model_class": "PilotAllowlistEntry",
+    "primary_key": "id",
+    "foreign_keys": [
+      "added_by_user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_pilot_allowlist_status on (status)",
+      "ix_pilot_allowlist_identifier on (identifier)"
+    ]
+  },
+  {
+    "table_name": "pilot_experiments",
+    "model_file": "app/models/experiment.py",
+    "model_class": "PilotExperiment",
+    "primary_key": "id",
+    "foreign_keys": [
+      "owner_user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "experiment_id (unique column)"
+    ],
+    "indexes": [
+      "ix_pilot_experiments_cohort_status on (cohort, status)",
+      "ix_pilot_experiments_status on (status)",
+      "ix_pilot_experiments_experiment_id on (experiment_id)",
+      "ix_pilot_experiments_cohort on (cohort)",
+      "ix_pilot_experiments_owner_user_id on (owner_user_id)"
+    ]
+  },
+  {
+    "table_name": "pilot_feedback",
+    "model_file": "app/models/feedback.py",
+    "model_class": "PilotFeedback",
+    "primary_key": "id",
+    "foreign_keys": [
+      "linked_incident_id -> production_incidents.id",
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_pilot_feedback_linked_release_id on (linked_release_id)",
+      "ix_pilot_feedback_linked_incident_id on (linked_incident_id)",
+      "ix_pilot_feedback_feedback_type on (feedback_type)",
+      "ix_pilot_feedback_type_status on (feedback_type, status)",
+      "ix_pilot_feedback_workflow on (workflow)",
+      "ix_pilot_feedback_status on (status)",
+      "ix_pilot_feedback_category on (category)",
+      "ix_pilot_feedback_user_id on (user_id)"
+    ]
+  },
+  {
+    "table_name": "processed_webhook_events",
+    "model_file": "app/models/webhook.py",
+    "model_class": "ProcessedWebhookEvent",
+    "primary_key": "id",
+    "foreign_keys": [],
+    "unique_constraints": [
+      "event_id (unique column)"
+    ],
+    "indexes": [
+      "ix_processed_webhook_events_provider_event on (provider, event_id)",
+      "ix_processed_webhook_events_resource_id on (resource_id)",
+      "ix_processed_webhook_events_event_id on (event_id)"
+    ]
+  },
+  {
+    "table_name": "product_events",
+    "model_file": "app/models/analytics.py",
+    "model_class": "ProductEvent",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": []
+  },
+  {
+    "table_name": "production_incidents",
+    "model_file": "app/models/incident.py",
+    "model_class": "ProductionIncident",
+    "primary_key": "id",
+    "foreign_keys": [
+      "assigned_to_user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "incident_id (unique column)"
+    ],
+    "indexes": [
+      "ix_production_incidents_incident_id on (incident_id)",
+      "ix_production_incidents_category on (category)",
+      "ix_production_incidents_status on (status)",
+      "ix_production_incidents_severity on (severity)"
+    ]
+  },
+  {
+    "table_name": "raw_legal_sources",
+    "model_file": "app/models/legal_authority.py",
+    "model_class": "RawLegalSource",
+    "primary_key": "id",
+    "foreign_keys": [
+      "canonical_source_id -> legal_sources.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_raw_legal_sources_external_identifier on (external_identifier)",
+      "ix_raw_legal_sources_content_checksum on (content_checksum)",
+      "ix_raw_legal_sources_source_system on (source_system)",
+      "ix_raw_legal_sources_canonical_source_id on (canonical_source_id)"
+    ]
+  },
+  {
+    "table_name": "refresh_token_sessions",
+    "model_file": "app/models/auth.py",
+    "model_class": "RefreshTokenSession",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_refresh_token_sessions_token_hash on (token_hash)",
+      "ix_refresh_token_sessions_user_id on (user_id)",
+      "ix_refresh_token_sessions_token_family_id on (token_family_id)"
+    ]
+  },
+  {
+    "table_name": "refund_records",
+    "model_file": "app/models/commercial.py",
+    "model_class": "RefundRecord",
+    "primary_key": "id",
+    "foreign_keys": [
+      "processed_by_user_id -> users.id",
+      "commercial_transaction_id -> commercial_transactions.id"
+    ],
+    "unique_constraints": [
+      "refund_id (unique column)",
+      "unnamed(gateway_refund_id)",
+      "gateway_refund_id (unique column)"
+    ],
+    "indexes": [
+      "ix_refund_records_commercial_transaction_id on (commercial_transaction_id)",
+      "ix_refund_records_status on (status)",
+      "ix_refund_records_refund_id on (refund_id)",
+      "ix_refund_records_reason on (reason)",
+      "ix_refund_records_processed_by_user_id on (processed_by_user_id)"
+    ]
+  },
+  {
+    "table_name": "support_case_messages",
+    "model_file": "app/models/support.py",
+    "model_class": "SupportCaseMessage",
+    "primary_key": "id",
+    "foreign_keys": [
+      "support_case_id -> support_cases.id",
+      "sender_user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_support_case_messages_sender_user_id on (sender_user_id)",
+      "ix_support_case_messages_support_case_id on (support_case_id)"
+    ]
+  },
+  {
+    "table_name": "support_cases",
+    "model_file": "app/models/support.py",
+    "model_class": "SupportCase",
+    "primary_key": "id",
+    "foreign_keys": [
+      "assigned_to_user_id -> users.id",
+      "user_id -> users.id",
+      "linked_incident_id -> production_incidents.id"
+    ],
+    "unique_constraints": [
+      "support_case_id (unique column)"
+    ],
+    "indexes": [
+      "ix_support_cases_user_scope on (user_scope)",
+      "ix_support_cases_linked_release_id on (linked_release_id)",
+      "ix_support_cases_status on (status)",
+      "ix_support_cases_severity on (severity)",
+      "ix_support_cases_user_id on (user_id)",
+      "ix_support_cases_status_severity on (status, severity)",
+      "ix_support_cases_workflow on (workflow)",
+      "ix_support_cases_linked_incident_id on (linked_incident_id)",
+      "ix_support_cases_category on (category)",
+      "ix_support_cases_assigned_to_user_id on (assigned_to_user_id)",
+      "ix_support_cases_support_case_id on (support_case_id)"
+    ]
+  },
+  {
+    "table_name": "translation_messages",
+    "model_file": "app/models/localization.py",
+    "model_class": "TranslationMessage",
+    "primary_key": "id",
+    "foreign_keys": [],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_translation_messages_source_key on (source_key)",
+      "ix_translation_status on (status)",
+      "ix_translation_messages_locale on (locale)",
+      "ix_translation_locale_key on (locale, source_key)"
+    ]
+  },
+  {
+    "table_name": "user_document_consents",
+    "model_file": "app/models/legal_document.py",
+    "model_class": "UserDocumentConsent",
+    "primary_key": "id",
+    "foreign_keys": [
+      "document_version_id -> legal_document_versions.id",
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_user_document_consents_document_version_id on (document_version_id)",
+      "ix_user_document_consents_user_id on (user_id)",
+      "ix_user_consent_user_doc on (user_id, document_type, version)"
+    ]
+  },
+  {
+    "table_name": "user_external_identities",
+    "model_file": "app/models/auth.py",
+    "model_class": "UserExternalIdentity",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "uq_user_external_identity_provider_subject(provider, provider_subject)"
+    ],
+    "indexes": [
+      "ix_user_external_identities_provider on (provider)",
+      "ix_user_external_identities_email on (email)",
+      "ix_user_external_identities_user_id on (user_id)",
+      "ix_user_external_identities_provider_subject on (provider_subject)"
+    ]
+  },
+  {
+    "table_name": "user_feed_acknowledgments",
+    "model_file": "app/models/user_feed.py",
+    "model_class": "UserFeedAcknowledgment",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "user_id (unique column)"
+    ],
+    "indexes": [
+      "ix_user_feed_acknowledgments_user_id on (user_id)"
+    ]
+  },
+  {
+    "table_name": "user_followed_cases",
+    "model_file": "app/models/court_case.py",
+    "model_class": "UserFollowedCase",
+    "primary_key": "id",
+    "foreign_keys": [
+      "court_case_id -> court_cases.id",
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_user_followed_cases_user_id on (user_id)",
+      "ix_user_followed_cases_court_case_id on (court_case_id)"
+    ]
+  },
+  {
+    "table_name": "user_notification_preferences",
+    "model_file": "app/models/notification.py",
+    "model_class": "UserNotificationPreference",
+    "primary_key": "id",
+    "foreign_keys": [
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "user_id (unique column)"
+    ],
+    "indexes": [
+      "ix_user_notification_preferences_user_id on (user_id)"
+    ]
+  },
+  {
+    "table_name": "user_operator_permissions",
+    "model_file": "app/models/operator.py",
+    "model_class": "UserOperatorPermission",
+    "primary_key": "id",
+    "foreign_keys": [
+      "granted_by_user_id -> users.id",
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_user_operator_permissions_permission on (permission)",
+      "ix_user_operator_permissions_user_id on (user_id)"
+    ]
+  },
+  {
+    "table_name": "users",
+    "model_file": "app/models/user.py",
+    "model_class": "User",
+    "primary_key": "id",
+    "foreign_keys": [],
+    "unique_constraints": [
+      "email (unique column)",
+      "phone (unique column)"
+    ],
+    "indexes": [
+      "ix_users_phone on (phone)",
+      "ix_users_email on (email)"
+    ]
+  },
+  {
+    "table_name": "verification_review_events",
+    "model_file": "app/models/user.py",
+    "model_class": "VerificationReviewEvent",
+    "primary_key": "id",
+    "foreign_keys": [
+      "verification_id -> lawyer_verifications.id",
+      "reviewer_id -> users.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_verification_review_events_reviewer_id on (reviewer_id)",
+      "ix_verification_review_events_verification_id on (verification_id)"
+    ]
+  },
+  {
+    "table_name": "video_meetings",
+    "model_file": "app/models/video_meeting.py",
+    "model_class": "VideoMeeting",
+    "primary_key": "id",
+    "foreign_keys": [
+      "consultation_id -> consultations.id"
+    ],
+    "unique_constraints": [
+      "consultation_id (unique column)",
+      "room_id (unique column)"
+    ],
+    "indexes": [
+      "ix_video_meetings_consultation_id on (consultation_id)",
+      "ix_video_meetings_room_id on (room_id)"
+    ]
+  },
+  {
+    "table_name": "video_recording_consents",
+    "model_file": "app/models/video_recording.py",
+    "model_class": "VideoRecordingConsent",
+    "primary_key": "id",
+    "foreign_keys": [
+      "consultation_id -> consultations.id",
+      "recording_id -> video_recordings.id",
+      "user_id -> users.id"
+    ],
+    "unique_constraints": [
+      "uq_consultation_user_consent(consultation_id, user_id)"
+    ],
+    "indexes": [
+      "ix_video_recording_consents_consultation_id on (consultation_id)",
+      "ix_video_recording_consents_recording_id on (recording_id)",
+      "ix_video_recording_consents_user_id on (user_id)"
+    ]
+  },
+  {
+    "table_name": "video_recordings",
+    "model_file": "app/models/video_recording.py",
+    "model_class": "VideoRecording",
+    "primary_key": "id",
+    "foreign_keys": [
+      "consultation_id -> consultations.id",
+      "case_id -> cases.id"
+    ],
+    "unique_constraints": [],
+    "indexes": [
+      "ix_video_recordings_case_id on (case_id)",
+      "ix_video_recordings_status on (status)",
+      "ix_video_recordings_consultation_id on (consultation_id)"
+    ]
+  }
+]

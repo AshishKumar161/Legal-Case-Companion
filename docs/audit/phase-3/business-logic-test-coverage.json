@@ -1,0 +1,172 @@
+{
+  "total_domains_audited": 9,
+  "total_test_files_inspected": 169,
+  "total_test_functions_inspected": 457,
+  "coverage_records": [
+    {
+      "domain": "Identity & Authentication",
+      "invariant": "Password reset token must be single-use and expire within 15 minutes; active sessions revoked on password change",
+      "implementation_location": "app/domain/auth/auth_service.py:reset_password",
+      "test_file": "tests/integration/test_auth_flow.py",
+      "test_function": "test_password_reset_token_single_use_and_revocation",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Concurrent redemption of the same reset token in simultaneous requests",
+        "Password reset attempt during active account suspension"
+      ]
+    },
+    {
+      "domain": "Identity & Authentication",
+      "invariant": "Suspended or deactivated users cannot authenticate, refresh tokens, or execute actions",
+      "implementation_location": "app/domain/users/lifecycle_service.py:suspend_user",
+      "test_file": "tests/integration/test_auth_flow.py",
+      "test_function": "test_suspended_user_login_blocked",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Immediate termination of open WebSocket connections upon account suspension"
+      ]
+    },
+    {
+      "domain": "Lawyer & Verification",
+      "invariant": "Only Bar Council verified lawyers (APPROVED) can be discovered and offer public consultations",
+      "implementation_location": "app/domain/verification/lawyer_verification_service.py:approve_verification",
+      "test_file": "tests/integration/test_lawyer_verification.py",
+      "test_function": "test_approval_workflow",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Direct case participant addition with unverified lawyer (BL-FIND-01 missing negative test)",
+        "Lawyer profile updates triggering re-verification status"
+      ]
+    },
+    {
+      "domain": "Cases & Workflows",
+      "invariant": "Case status transitions adhere to ALLOWED_CASE_TRANSITIONS; CLOSED and CANCELLED are terminal",
+      "implementation_location": "app/domain/cases/case_service.py:update_case",
+      "test_file": "tests/integration/test_case_operations_and_workflow.py",
+      "test_function": "test_case_status_transitions",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Updating title or description on a CLOSED case (BL-FIND-02 missing test)",
+        "Adding or removing case participants on a CLOSED case (BL-FIND-02 missing test)",
+        "Appending case notes to a CLOSED case (BL-FIND-02 missing test)"
+      ]
+    },
+    {
+      "domain": "Cases & Workflows",
+      "invariant": "Tasks and deadlines cannot be modified or created on CLOSED or CANCELLED cases",
+      "implementation_location": "app/domain/cases/case_workflow_service.py:_check_case_active_for_mutations",
+      "test_file": "tests/integration/test_case_operations_and_workflow.py",
+      "test_function": "test_tasks_on_closed_case_rejected",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Direct router mutation bypassing workflow service checks"
+      ]
+    },
+    {
+      "domain": "Documents & Evidence",
+      "invariant": "Evidence SHA256 hash is immutable upon upload completion and recorded in custody chain",
+      "implementation_location": "app/domain/evidence/evidence_service.py:complete_upload",
+      "test_file": "tests/integration/test_evidence_e2e.py",
+      "test_function": "test_evidence_upload_lifecycle",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Staging upload on a CLOSED legal case (BL-FIND-02 missing test)",
+        "Reactivating revoked evidence access grants without audit loss (BL-FIND-08 missing test)"
+      ]
+    },
+    {
+      "domain": "Documents & Evidence",
+      "invariant": "Evidence under active legal hold cannot be deleted or pruned",
+      "implementation_location": "app/domain/evidence/evidence_service.py:delete_evidence",
+      "test_file": "tests/integration/test_evidence_e2e.py",
+      "test_function": "test_legal_hold_blocks_deletion",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Concurrent deletion attempt while legal hold is being applied"
+      ]
+    },
+    {
+      "domain": "Consultations",
+      "invariant": "Consultation slot cannot be concurrently double-booked",
+      "implementation_location": "app/domain/consultations/availability_service.py:reserve_slot",
+      "test_file": "tests/integration/test_consultation_lifecycle_production.py",
+      "test_function": "test_concurrent_slot_booking",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Cancellation refund failure leaving consultation in CANCELLED state without refund (BL-FIND-03 missing test)",
+        "Post-consultation refund resetting COMPLETED consultation to CANCELLED (BL-FIND-04 missing test)"
+      ]
+    },
+    {
+      "domain": "Consultations",
+      "invariant": "Cancelled consultations cannot be completed or rescheduled",
+      "implementation_location": "app/domain/consultations/consultation_service.py:cancel_consultation",
+      "test_file": "tests/integration/test_consultation_lifecycle_production.py",
+      "test_function": "test_cancelled_terminal",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Lawyer join attempt after consultation cancellation"
+      ]
+    },
+    {
+      "domain": "Payments & Billing",
+      "invariant": "Commercial transaction cannot be refunded for more than remaining captured balance; double refund rejected",
+      "implementation_location": "app/domain/payments/commercial_service.py:process_refund",
+      "test_file": "tests/integration/test_payment_workflow_comprehensive.py",
+      "test_function": "test_double_refund_rejected",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Concurrent partial refund requests totaling more than gross captured amount",
+        "Reconciliation job behavior when Stripe refund fails"
+      ]
+    },
+    {
+      "domain": "Payments & Billing",
+      "invariant": "Inbound Stripe webhook events are processed idempotently; duplicate deliveries acknowledged without re-execution",
+      "implementation_location": "app/domain/payments/payment_service.py:process_webhook_event",
+      "test_file": "tests/integration/test_webhooks.py",
+      "test_function": "test_webhook_idempotency",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Webhook event failure retry state progression to FAILED status",
+        "Dead-letter queue handling for un-reconcilable webhook events"
+      ]
+    },
+    {
+      "domain": "Messaging",
+      "invariant": "Case messages can only be sent by active case participants; direct messages scoped to conversation peers",
+      "implementation_location": "app/api/v1/messages.py:send_direct_message",
+      "test_file": "tests/integration/test_messages.py",
+      "test_function": "test_direct_message_send_and_receive",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Implicit case participant insertion and commit side-effect during DM dispatch (BL-FIND-05 missing test)",
+        "Message delivery attempt to suspended user"
+      ]
+    },
+    {
+      "domain": "AI & Legal Analysis",
+      "invariant": "AI citations must reference valid retrieved document chunks scoped to accessible documents",
+      "implementation_location": "app/domain/ai/rag_service.py:retrieve_relevant_chunks",
+      "test_file": "tests/integration/test_ai_agent_workflow.py",
+      "test_function": "test_citation_source_verification",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Retrieval queries filtering out soft-deleted documents (DB-FIND-02 / Phase 3)",
+        "Handling of LLM provider rate limits with exponential backoff vs exception swallowing"
+      ]
+    },
+    {
+      "domain": "Background Jobs & Outbox",
+      "invariant": "Background jobs claimed safely using row locks; failed jobs increment retry count up to max limit",
+      "implementation_location": "app/domain/jobs/job_queue.py:claim_next_job",
+      "test_file": "tests/integration/test_phase_9_cross_system_reliability.py",
+      "test_function": "test_background_job_retry_limit",
+      "coverage_classification": "[VERIFIED]",
+      "missing_test_cases": [
+        "Broad exception swallowing across 46 handlers preventing proper retry propagation (BL-FIND-06 missing test)",
+        "Idempotency of document OCR job when worker crashes midway through text extraction"
+      ]
+    }
+  ]
+}

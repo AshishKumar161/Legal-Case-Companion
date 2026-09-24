@@ -1,0 +1,76 @@
+{
+  "audit_timestamp": "2026-09-24T20:36:00Z",
+  "sections": {
+    "authentication_and_storage": {
+      "token_storage_location": "sessionStorage (tab-partitioned)",
+      "access_token_key": "lcc_access_token",
+      "refresh_token_key": "lcc_refresh_token",
+      "session_id_key": "lcc_session_id",
+      "httponly_cookie_used": true,
+      "javascript_token_exposure": true,
+      "security_analysis": "While tab-partitioned sessionStorage isolates credentials between concurrent tabs, tokens are accessible to client JavaScript and vulnerable to origin-level XSS. Refresh tokens in sessionStorage can be exfiltrated if an XSS flaw exists.",
+      "logout_behavior": "logout() calls /api/v1/auth/logout with refresh_token and clears the active tab sessionStorage via clearTabSession(). However, other open tabs are not synchronously cleared until they make an API call and receive 401."
+    },
+    "oauth_frontend_flow": {
+      "flow_type": "Google OAuth 2.0 Authorization Code with State & Nonce",
+      "callback_route": "/auth/callback (frontend/src/app/auth/callback/page.tsx)",
+      "url_history_hygiene": "DEFECTIVE: Uses router.push() instead of router.replace(), leaving authorization code and state in browser history, causing replay error upon clicking browser Back button.",
+      "replay_handling": "requestSentRef prevents React StrictMode double-execution; backend enforces single-use state."
+    },
+    "role_based_ui_and_authorization": {
+      "enforcement_layer": "Client-Side Only (useEffect in pages and AppShell; no Next.js server middleware.ts)",
+      "security_boundary_status": "NOT A SECURITY BOUNDARY. Client-side checks hide navigation items, but unauthenticated and unauthorized users can download JavaScript bundles containing administrative routes and schemas.",
+      "api_parity": "UI relies on backend HTTP 401/403 responses for true security enforcement."
+    },
+    "sensitive_legal_data_exposure": {
+      "browser_storage": "No case contents or evidence stored in localStorage; theme preferences only. Temporary state held in React component memory.",
+      "url_leakage": "Case IDs, consultation IDs, and document IDs passed in URLs (UUIDv4/UUIDv7). No PII or passwords in URLs.",
+      "time_bypass_leakage": "Consultation room reads ?bypass_time=true or ?test=true from URL and sends to backend API, exposing test bypass controls to end users.",
+      "account_switch_leakage": "Component state is wiped upon page navigation; AuthProvider resets user state on logout."
+    },
+    "api_error_handling": {
+      "interceptor": "apiClient in frontend/src/api/client.ts",
+      "hierarchy": "Typed ApiError classes (NetworkError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError, ValidationError, RateLimitError, ServerError)",
+      "auto_refresh_on_401": "Intercepts 401, calls performTokenRefresh(), queues concurrent requests, and retries original request once on success.",
+      "swallowed_errors": "Certain pages use .catch(() => null) or .catch(() => ({ items: [] })) which can mask silent network failures in dashboard widgets."
+    },
+    "mutation_safety_and_idempotency": {
+      "duplicate_click_protection": "Implemented via local state (e.g. creating, submitting, isEndingCall, requestSentRef).",
+      "idempotency_keys": "Frontend does NOT generate or transmit Idempotency-Key headers for case creation, payments, or consultation booking.",
+      "optimistic_updates": "Minimal optimistic updates; UI predominantly awaits backend confirmation before state refresh."
+    },
+    "state_machine_consistency": {
+      "case_status_parity": "Frontend recognizes OPEN, IN_PROGRESS, CLOSED, CANCELLED.",
+      "consultation_status_parity": "Frontend maps REQUESTED, PAID, ACCEPTED, SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED.",
+      "flaw_exposure": "Exposes Phase 3 BL-FIND-04: Full refund in commercial UI causes consultation to display as CANCELLED even if previously attended."
+    },
+    "file_upload_security": {
+      "upload_method": "Presigned S3/MinIO URLs (init_upload -> PUT to S3 -> complete_upload).",
+      "client_validation": "File size and MIME type validated in UI before initiating upload.",
+      "critical_vulnerability": "Cases page (cases/[caseId]/page.tsx:368) calls development mock endpoint POST /api/v1/documents/${doc.id}/scan?is_safe=true during production upload flow to force document status to SAFE."
+    },
+    "xss_and_dom_security": {
+      "dangerouslySetInnerHTML": "1 occurrence in frontend/src/app/layout.tsx: theme initialization script and hydration error filter. Static string only, no user data interpolated.",
+      "markdown_rendering": "Custom regex parser in ai-advisor/page.tsx: splits on **bold** and renders native React <strong> tags. React escapes interpolated strings.",
+      "verdict": "Low XSS risk; DOM sinks are strictly guarded by React JSX auto-escaping."
+    },
+    "csrf_and_cors": {
+      "csrf_protection": "Reads csrf_token cookie and attaches X-CSRF-Token header to all non-GET/HEAD/OPTIONS requests.",
+      "credentials": "fetchOptions.credentials = 'include' for cross-origin or proxied requests."
+    },
+    "security_headers": {
+      "csp_status": "Implemented in next.config.ts with 'unsafe-inline' in script-src.",
+      "x_frame_options": "DENY",
+      "x_content_type_options": "nosniff",
+      "referrer_policy": "strict-origin-when-cross-origin",
+      "hsts": "max-age=31536000; includeSubDomains; preload",
+      "source_maps": "Disabled in production."
+    },
+    "dependencies": {
+      "next": "16.3.4 (Canary / Pre-release)",
+      "react": "19.2.8",
+      "react_dom": "19.2.8",
+      "vulnerabilities": "Requires Windows patch-fs.js shim to prevent EISDIR crash on fs.readlinkSync."
+    }
+  }
+}

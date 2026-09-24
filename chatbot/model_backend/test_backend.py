@@ -204,6 +204,7 @@ def test_end_to_end_legal_assistant():
         confidence_threshold=0.70,
         embedding_type="local_tfidf",
         reranker_type="heuristic",
+        llama_config=LLaMAConfig(backend="mock"),
     )
     assistant = LegalAssistant(config)
 

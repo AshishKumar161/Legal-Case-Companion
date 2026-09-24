@@ -40,6 +40,9 @@ class CurrentUserResponse(BaseModel):
     role: str
     full_name: str | None = None
     location: str | None = None
+    phone: str | None = None
+    kyc_status: str = "PENDING"
+    is_kyc_completed: bool = False
 
     model_config = {"from_attributes": True}
 

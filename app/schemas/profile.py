@@ -8,6 +8,14 @@ class ClientProfileUpdate(BaseModel):
     full_name: str | None = None
     location: str | None = None
     phone: str | None = None
+    date_of_birth: str | None = None
+    gender: str | None = None
+    id_type: str | None = None
+    id_number: str | None = None
+    address: str | None = None
+    city: str | None = None
+    state: str | None = None
+    pincode: str | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -33,6 +41,19 @@ class ClientProfileResponse(BaseModel):
     location: str | None = None
     email: str | None = None
     phone: str | None = None
+    date_of_birth: str | None = None
+    gender: str | None = None
+    id_type: str | None = None
+    id_number: str | None = None
+    address: str | None = None
+    city: str | None = None
+    state: str | None = None
+    pincode: str | None = None
+    kyc_status: str = "PENDING"
+    is_kyc_completed: bool = False
+    kyc_document_filename: str | None = None
+    kyc_submitted_at: datetime | None = None
+    kyc_verified_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

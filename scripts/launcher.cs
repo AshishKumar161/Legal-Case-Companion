@@ -58,7 +58,7 @@ namespace LegalCaseCompanion
             PrintSuccess("npm Executable: " + npmExe);
 
             // Locate cloudflared
-            string cloudflaredExe = FindCloudflared();
+            string cloudflaredExe = FindCloudflared(projectRoot);
             if (!string.IsNullOrEmpty(cloudflaredExe))
             {
                 PrintSuccess("Cloudflare Tunnel: " + cloudflaredExe);
@@ -67,6 +67,9 @@ namespace LegalCaseCompanion
             {
                 PrintWarning("cloudflared.exe not found. Public dual-device URL will not be created.");
             }
+
+            // Clean up any lingering processes on ports 3000 and 8000
+            CleanupZombies();
 
             // Hook exit handlers
             Console.CancelKeyPress += new ConsoleCancelEventHandler(OnCancelKeyPress);
@@ -204,7 +207,7 @@ namespace LegalCaseCompanion
             {
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = pythonExe;
-                psi.Arguments = "-m uvicorn app.main:app --host 127.0.0.1 --port 8000";
+                psi.Arguments = "-m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload";
                 psi.WorkingDirectory = workingDir;
                 psi.UseShellExecute = false;
                 psi.RedirectStandardOutput = true;
@@ -333,10 +336,11 @@ namespace LegalCaseCompanion
             }
         }
 
-        private static string FindCloudflared()
+        private static string FindCloudflared(string projectRoot)
         {
             string[] possiblePaths = new string[]
             {
+                Path.Combine(projectRoot, "cloudflared.exe"),
                 @"C:\Program Files (x86)\cloudflared\cloudflared.exe",
                 @"C:\Program Files\cloudflared\cloudflared.exe",
                 Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\cloudflared\cloudflared.exe"),
@@ -356,7 +360,7 @@ namespace LegalCaseCompanion
 
             try
             {
-                ProcessStartInfo psi = new ProcessStartInfo("cmd", "/c where cloudflared.exe")
+                ProcessStartInfo psi = new ProcessStartInfo("where.exe", "cloudflared.exe")
                 {
                     RedirectStandardOutput = true,
                     UseShellExecute = false,
@@ -413,6 +417,10 @@ namespace LegalCaseCompanion
                 {
                     return Path.GetFullPath(current);
                 }
+                if (Directory.Exists(Path.Combine(current, "lcc_saved_latest", "app")) && Directory.Exists(Path.Combine(current, "lcc_saved_latest", "frontend")))
+                {
+                    return Path.GetFullPath(Path.Combine(current, "lcc_saved_latest"));
+                }
                 string parent = Path.GetDirectoryName(current);
                 if (string.IsNullOrEmpty(parent) || parent == current) break;
                 current = parent;
@@ -422,6 +430,10 @@ namespace LegalCaseCompanion
             if (Directory.Exists(Path.Combine(cd, "app")) && Directory.Exists(Path.Combine(cd, "frontend")))
             {
                 return Path.GetFullPath(cd);
+            }
+            if (Directory.Exists(Path.Combine(cd, "lcc_saved_latest", "app")) && Directory.Exists(Path.Combine(cd, "lcc_saved_latest", "frontend")))
+            {
+                return Path.GetFullPath(Path.Combine(cd, "lcc_saved_latest"));
             }
 
             return null;
@@ -433,6 +445,8 @@ namespace LegalCaseCompanion
             {
                 Path.Combine(projectRoot, ".venv", "Scripts", "python.exe"),
                 Path.Combine(projectRoot, "venv", "Scripts", "python.exe"),
+                Environment.ExpandEnvironmentVariables(@"%APPDATA%\uv\python\cpython-3.12-windows-x86_64-none\python.exe"),
+                Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\Programs\Python\Python312\python.exe"),
                 @"C:\Users\akuma\AppData\Local\Programs\Python\Python312\python.exe",
                 "python.exe",
                 "python"
@@ -442,10 +456,10 @@ namespace LegalCaseCompanion
             {
                 try
                 {
-                    if (File.Exists(p)) return Path.GetFullPath(p);
+                    if (File.Exists(p) && !p.Contains("WindowsApps")) return Path.GetFullPath(p);
                     if (p.StartsWith("python"))
                     {
-                        ProcessStartInfo psi = new ProcessStartInfo("cmd", "/c where python")
+                        ProcessStartInfo psi = new ProcessStartInfo("where.exe", "python")
                         {
                             RedirectStandardOutput = true,
                             UseShellExecute = false,
@@ -453,11 +467,14 @@ namespace LegalCaseCompanion
                         };
                         using (Process proc = Process.Start(psi))
                         {
-                            string outStr = proc.StandardOutput.ReadLine();
-                            proc.WaitForExit(1000);
-                            if (!string.IsNullOrEmpty(outStr) && File.Exists(outStr.Trim()))
+                            string line;
+                            while ((line = proc.StandardOutput.ReadLine()) != null)
                             {
-                                return outStr.Trim();
+                                line = line.Trim();
+                                if (!string.IsNullOrEmpty(line) && File.Exists(line) && !line.Contains("WindowsApps"))
+                                {
+                                    return line;
+                                }
                             }
                         }
                     }
@@ -469,6 +486,20 @@ namespace LegalCaseCompanion
 
         private static string FindNpm()
         {
+            string winGetBase = Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\Microsoft\WinGet\Packages");
+            if (Directory.Exists(winGetBase))
+            {
+                try
+                {
+                    string[] npmMatches = Directory.GetFiles(winGetBase, "npm.cmd", SearchOption.AllDirectories);
+                    if (npmMatches.Length > 0 && File.Exists(npmMatches[0]))
+                    {
+                        return npmMatches[0];
+                    }
+                }
+                catch { }
+            }
+
             string[] possiblePaths = new string[]
             {
                 @"C:\Program Files\nodejs\npm.cmd",
@@ -484,7 +515,7 @@ namespace LegalCaseCompanion
 
             try
             {
-                ProcessStartInfo psi = new ProcessStartInfo("cmd", "/c where npm.cmd")
+                ProcessStartInfo psi = new ProcessStartInfo("where.exe", "npm.cmd")
                 {
                     RedirectStandardOutput = true,
                     UseShellExecute = false,
@@ -503,6 +534,71 @@ namespace LegalCaseCompanion
             catch { }
 
             return "npm.cmd";
+        }
+
+        private static void CleanupZombies()
+        {
+            try
+            {
+                PrintInfo("Cleaning up any existing zombie processes on ports 3000 and 8000...");
+                KillProcessesOnPort(3000);
+                KillProcessesOnPort(8000);
+                KillProcessByName("cloudflared");
+            }
+            catch { }
+        }
+
+        private static void KillProcessesOnPort(int port)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("cmd", "/c netstat -aon | findstr :" + port)
+                {
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using (Process proc = Process.Start(psi))
+                {
+                    string output = proc.StandardOutput.ReadToEnd();
+                    proc.WaitForExit(3000);
+                    int currentPid = Process.GetCurrentProcess().Id;
+                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (line.Contains(":" + port) && (line.Contains("LISTENING") || line.Contains("LISTEN")))
+                        {
+                            string[] parts = Regex.Split(line.Trim(), @"\s+");
+                            if (parts.Length >= 5)
+                            {
+                                int pid;
+                                if (int.TryParse(parts[parts.Length - 1], out pid) && pid > 0 && pid != currentPid)
+                                {
+                                    try
+                                    {
+                                        Process p = Process.GetProcessById(pid);
+                                        KillProcessTree(p);
+                                        PrintInfo("Cleaned up lingering process (PID " + pid + ") on port " + port);
+                                    }
+                                    catch { }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private static void KillProcessByName(string processName)
+        {
+            try
+            {
+                foreach (Process p in Process.GetProcessesByName(processName))
+                {
+                    try { p.Kill(); } catch { }
+                }
+            }
+            catch { }
         }
 
         private static void Shutdown()
