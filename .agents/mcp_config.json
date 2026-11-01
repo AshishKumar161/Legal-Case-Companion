@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "lcc-agent-system": {
+      "command": "/home/ashish/.local/bin/lcc-agent-system-mcp",
+      "disabled": false
+    },
+    "lcc-database": {
+      "command": "/home/ashish/.local/bin/lcc-database-mcp",
+      "disabled": false
+    },
+    "sequential-thinking": {
+      "command": "/home/ashish/.local/bin/sequential-thinking-mcp",
+      "disabled": false
+    },
+    "backend-hierarchy": {
+      "command": "/home/ashish/.local/bin/backend-hierarchy-mcp",
+      "disabled": false
+    },
+    "fetch": {
+      "command": "/home/ashish/.local/bin/mcp-server-fetch",
+      "disabled": false
+    },
+    "git": {
+      "command": "/home/ashish/.local/bin/mcp-server-git",
+      "disabled": false
+    }
+  }
+}
