@@ -50,31 +50,7 @@ export default function ConsultationsPage() {
   const [creatingCaseFromCon, setCreatingCaseFromCon] = useState(false);
   const [linkingCase, setLinkingCase] = useState(false);
   const [caseActionMsg, setCaseActionMsg] = useState<string | null>(null);
-  const [istClock, setIstClock] = useState("");
 
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-      const dateStr = now.toLocaleDateString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-      setIstClock(`${dateStr} • ${timeStr} IST`);
-    };
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const fetchConsultations = useCallback(async () => {
     try {

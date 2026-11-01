@@ -9,7 +9,6 @@ import {
   CaseItem,
   ConsultationItem,
   CaseHearingItem,
-  CaseDeadlineItem,
   MatterRequestItem,
   MatterBriefItem,
 } from "@/types";
@@ -23,12 +22,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import {
   CaseIcon,
   PlusIcon,
-  CalendarIcon,
-  DocumentIcon,
   AssistantIcon,
   ArrowRightIcon,
-  CheckCircleIcon,
-  ClockIcon,
 } from "@/components/ui/Icons";
 import styles from "./dashboard.module.css";
 
@@ -68,7 +63,7 @@ export default function Dashboard() {
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [briefsByCaseId, setBriefsByCaseId] = useState<Record<string, MatterBriefItem>>({});
   const [hearings, setHearings] = useState<CaseHearingItem[]>([]);
-  const [deadlines, setDeadlines] = useState<CaseDeadlineItem[]>([]);
+  const [currentTime] = useState(() => Date.now());
   const [documentRequests, setDocumentRequests] = useState<MatterRequestItem[]>([]);
   const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
 
@@ -119,7 +114,6 @@ export default function Dashboard() {
 
       const rawEvents = (calEventsRes as { events?: Array<Record<string, unknown>> })?.events || [];
       const extractedHearings: CaseHearingItem[] = [];
-      const extractedDeadlines: CaseDeadlineItem[] = [];
 
       for (const ev of rawEvents) {
         if (ev.event_type === "hearing") {
@@ -134,22 +128,10 @@ export default function Dashboard() {
             is_confirmed: true,
             created_at: String(ev.start_time || new Date().toISOString()),
           });
-        } else if (ev.event_type === "limitation" || ev.event_type === "deadline") {
-          extractedDeadlines.push({
-            id: String(ev.id),
-            case_id: String(ev.case_id || ""),
-            title: String(ev.title || "Document Submission"),
-            deadline_at: String(ev.start_time || ev.event_date || new Date().toISOString()),
-            deadline_type: "PROCEDURAL" as never,
-            is_confirmed: true,
-            status: "UPCOMING",
-            created_at: String(ev.start_time || new Date().toISOString()),
-          });
         }
       }
 
       setHearings(extractedHearings);
-      setDeadlines(extractedDeadlines);
 
       if (caseItems.length > 0) {
         const topCases = caseItems.slice(0, 6);
@@ -234,7 +216,7 @@ export default function Dashboard() {
 
     // 2. Upcoming hearing within 14 days
     const upcomingHearing = hearings
-      .filter((h) => new Date(h.hearing_at).getTime() >= Date.now())
+      .filter((h) => new Date(h.hearing_at).getTime() >= currentTime)
       .sort((a, b) => new Date(a.hearing_at).getTime() - new Date(b.hearing_at).getTime())[0];
 
     if (upcomingHearing) {
@@ -267,7 +249,7 @@ export default function Dashboard() {
 
     // 4. No cases yet
     return null;
-  }, [documentRequests, hearings, cases]);
+  }, [documentRequests, hearings, cases, currentTime]);
 
   // Combined upcoming events list (hearings & consultations)
   const upcomingEvents = useMemo(() => {
@@ -280,7 +262,7 @@ export default function Dashboard() {
       type: "hearing" | "consultation";
     }> = [];
 
-    const now = Date.now();
+    const now = currentTime;
 
     for (const h of hearings) {
       const time = new Date(h.hearing_at).getTime();
@@ -312,7 +294,7 @@ export default function Dashboard() {
     }
 
     return list.sort((a, b) => (a.dateShort > b.dateShort ? 1 : -1)).slice(0, 4);
-  }, [hearings, consultations]);
+  }, [hearings, consultations, currentTime]);
 
   return (
     <div className={styles.dashboardPage}>

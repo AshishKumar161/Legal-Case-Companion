@@ -199,7 +199,11 @@ export function LawyerCard({
         }}
       >
         <div>
-          {languages.length > 0 && <span>Speaks {languages.join(", ")}</span>}
+          {languages.length > 0 ? (
+            <span>Speaks {languages.join(", ")}</span>
+          ) : availability ? (
+            <span>{availability}</span>
+          ) : null}
         </div>
         <div>
           {consultationFee !== undefined && consultationFee !== null && (

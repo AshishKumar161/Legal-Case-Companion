@@ -13,7 +13,6 @@ import {
   DownloadIcon,
   ClockIcon,
   CheckCircleIcon,
-  SearchIcon,
 } from "@/components/ui/Icons";
 import styles from "./page.module.css";
 

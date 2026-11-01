@@ -24,7 +24,6 @@ import {
   DocumentIcon,
   ScalesIcon,
   LawyerIcon,
-  CameraIcon,
   CourthouseIcon,
   PaperclipIcon,
   UploadIcon,
@@ -245,24 +244,7 @@ export default function VideoConsultationRoomPage() {
   const [submittingCase, setSubmittingCase] = useState(false);
   const [caseSuccessMsg, setCaseSuccessMsg] = useState<string | null>(null);
 
-  // Live Indian Standard Time (IST) Clock
-  const [istClock, setIstClock] = useState("");
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      });
-      setIstClock(`${timeStr} IST`);
-    };
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
-  }, []);
+
 
   // Media State & Refs
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);

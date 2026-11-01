@@ -1,20 +1,16 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/api/client";
 import { LawyerProfileItem } from "@/types";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { trackFunnelEvent } from "@/lib/analytics";
 import {
-  LawyerIcon,
-  CheckCircleIcon,
-  CourthouseIcon,
   SearchIcon,
   ScalesIcon,
 } from "@/components/ui/Icons";
-import { LawyerCard, EmptyState, Badge } from "@/components/ui";
+import { LawyerCard, EmptyState } from "@/components/ui";
 import styles from "./discovery.module.css";
 
 // ----------------------------------------------------------------------------
@@ -123,6 +119,7 @@ const BUDGET_OPTIONS = [
 ];
 
 export default function LawyerDiscoveryPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   // URL Query Sync
@@ -740,11 +737,11 @@ export default function LawyerDiscoveryPage() {
                 profileHref={`/lawyers/${lawyerId}`}
                 onViewProfile={() => {
                   trackFunnelEvent("profile_opened", { lawyer_id: lawyerId });
-                  window.location.href = `/lawyers/${lawyerId}`;
+                  router.push(`/lawyers/${lawyerId}`);
                 }}
                 onBook={() => {
                   trackFunnelEvent("slot_selected", { lawyer_id: lawyerId });
-                  window.location.href = `/lawyers/${lawyerId}?action=book`;
+                  router.push(`/lawyers/${lawyerId}?action=book`);
                 }}
               />
             );
