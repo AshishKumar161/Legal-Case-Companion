@@ -25,6 +25,16 @@ ALLOWED_MIME_TYPES = {
     "image/jpg",
 }
 
+EXTENSION_TO_MIME = {
+    ".pdf": "application/pdf",
+    ".txt": "text/plain",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".doc": "application/msword",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+}
+
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 

@@ -93,6 +93,19 @@ def upgrade() -> None:
     op.create_index(op.f("ix_support_cases_category"), "support_cases", ["category"], unique=False)
 
     # 3. Enhance Pilot Feedback
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        sa.Enum(
+            "BUG",
+            "USABILITY",
+            "FEATURE_REQUEST",
+            "LEGAL_RISK",
+            "SECURITY_CONCERN",
+            "AI_QUALITY",
+            "OPERATIONAL",
+            name="feedbacktype",
+        ).create(bind, checkfirst=True)
+
     with op.batch_alter_table("pilot_feedback") as batch_op:
         batch_op.add_column(
             sa.Column(

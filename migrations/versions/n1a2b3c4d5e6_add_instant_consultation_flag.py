@@ -31,5 +31,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_consultations_is_instant", table_name="consultations")
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    indexes = {idx["name"] for idx in insp.get_indexes("consultations")}
+    if "ix_consultations_is_instant" in indexes:
+        op.drop_index("ix_consultations_is_instant", table_name="consultations")
     op.drop_column("consultations", "is_instant")

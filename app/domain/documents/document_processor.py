@@ -18,6 +18,7 @@ from app.models.ai import DocumentChunk
 from app.models.document import (
     Document,
     DocumentProcessingStatus,
+    DocumentSecurityStatus,
 )
 from app.models.document_page import DocumentPage
 from app.domain.auth.auth_service import AuthService
@@ -64,6 +65,14 @@ class DocumentProcessor:
 
         if document.deleted_at is not None:
             logger.warning(f"Skipping processing for soft-deleted document {document_id}")
+            return []
+
+        # Quarantine safety check: prevent untrusted or pending documents from being processed
+        if document.security_status != DocumentSecurityStatus.SAFE:
+            logger.warning(
+                f"Aborting processing for document {document_id}: "
+                f"security status is {document.security_status.value}, expected SAFE"
+            )
             return []
 
         # Version safety check: verify against stale jobs

@@ -402,6 +402,10 @@ class DocumentService:
         limit: int = 50,
     ) -> dict[str, Any]:
         doc = authorize_document_access(self.db, user, document_id, case_id=case_id)
+        if doc.security_status != DocumentSecurityStatus.SAFE:
+            raise AuthorizationError(
+                "Document pages cannot be previewed while in quarantine or pending security verification."
+            )
 
         query = (
             self.db.query(DocumentPage)
@@ -425,6 +429,10 @@ class DocumentService:
         limit: int = 50,
     ) -> dict[str, Any]:
         doc = authorize_document_access(self.db, user, document_id, case_id=case_id)
+        if doc.security_status != DocumentSecurityStatus.SAFE:
+            raise AuthorizationError(
+                "Document chunks cannot be accessed while in quarantine or pending security verification."
+            )
 
         query = (
             self.db.query(DocumentChunk)

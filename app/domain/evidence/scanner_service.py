@@ -1,4 +1,5 @@
 import logging
+import re
 import socket
 from typing import Protocol
 from uuid import UUID
@@ -224,13 +225,23 @@ class ScannerService:
             is_safe, threat_reason = self.scanner.scan_bytes(file_bytes, document.filename)
         except ScannerUnavailableError as scan_err:
             document.security_status = DocumentSecurityStatus.QUARANTINED
+            current_attempts = 1
+            if document.processing_error and "attempt " in document.processing_error:
+                match = re.search(r"attempt (\d+)", document.processing_error)
+                if match:
+                    current_attempts = int(match.group(1)) + 1
             document.processing_error = (
-                "Malware scanner service is temporarily unavailable. Document remains quarantined."
+                f"Malware scanner service is temporarily unavailable (attempt {current_attempts}). "
+                "Document remains quarantined."
             )
             auth_svc.log_audit_event(
                 event_type="DOCUMENT_SCAN_UNAVAILABLE",
                 user_id=document.uploaded_by,
-                metadata={"document_id": str(document.id), "error": str(scan_err)},
+                metadata={
+                    "document_id": str(document.id),
+                    "attempt": current_attempts,
+                    "error": str(scan_err),
+                },
                 action="document_mutation",
             )
             self.db.commit()
@@ -339,3 +350,81 @@ class ScannerService:
                 case_id=document.case_id,
                 created_by_user_id=document.uploaded_by,
             )
+
+    def retry_quarantined_documents(
+        self,
+        max_retries: int = 3,
+        batch_size: int = 50,
+    ) -> dict[str, int]:
+        """Scans documents stuck in QUARANTINED state due to scanner unavailability.
+        Implements bounded retry logic (max_retries) and failure monitoring.
+        If max_retries is reached, marks the document as permanently failed quarantine
+        for administrator audit and manual review.
+        """
+        auth_svc = AuthService(self.db)
+        quarantined_docs = (
+            self.db.query(Document)
+            .filter(
+                Document.security_status == DocumentSecurityStatus.QUARANTINED,
+                Document.deleted_at.is_(None),
+            )
+            .order_by(Document.created_at.asc())
+            .limit(batch_size)
+            .all()
+        )
+
+        results = {
+            "evaluated": len(quarantined_docs),
+            "succeeded": 0,
+            "failed_rejection": 0,
+            "retry_failed": 0,
+            "exhausted": 0,
+            "still_quarantined": 0,
+        }
+
+        for doc in quarantined_docs:
+            current_attempts = 0
+            if doc.processing_error and "attempt " in doc.processing_error:
+                match = re.search(r"attempt (\d+)", doc.processing_error)
+                if match:
+                    current_attempts = int(match.group(1))
+
+            if current_attempts >= max_retries:
+                results["exhausted"] += 1
+                doc.processing_error = (
+                    f"Quarantine scan retry limit reached ({current_attempts}/{max_retries}). "
+                    "Document quarantined indefinitely pending manual administrator security review."
+                )
+                auth_svc.log_audit_event(
+                    event_type="DOCUMENT_SCAN_RETRY_EXHAUSTED",
+                    user_id=doc.uploaded_by,
+                    metadata={
+                        "document_id": str(doc.id),
+                        "attempts": current_attempts,
+                        "max_retries": max_retries,
+                    },
+                    action="document_mutation",
+                )
+                self.db.commit()
+                continue
+
+            try:
+                scanned_doc = self.scan_document(doc.id)
+                if scanned_doc.security_status == DocumentSecurityStatus.SAFE:
+                    results["succeeded"] += 1
+                elif scanned_doc.security_status == DocumentSecurityStatus.REJECTED:
+                    results["failed_rejection"] += 1
+                else:
+                    results["still_quarantined"] += 1
+            except ScannerUnavailableError as err:
+                results["retry_failed"] += 1
+                results["still_quarantined"] += 1
+                logger.warning(
+                    f"Retry failed for document {doc.id} (attempt {current_attempts + 1}/{max_retries}): {err}"
+                )
+            except Exception as e:
+                logger.error(f"Unexpected error during quarantine retry for {doc.id}: {e}")
+                results["retry_failed"] += 1
+                results["still_quarantined"] += 1
+
+        return results

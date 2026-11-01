@@ -18,15 +18,19 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # 1. Add new enum values to jobstatus and jobtype for postgres
+    # 1. Add new enum values to jobstatus and jobtype for postgres if they exist
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
-        op.execute("ALTER TYPE jobstatus ADD VALUE IF NOT EXISTS 'DEAD_LETTER'")
-        op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'EVIDENCE_SCAN_AND_ACTIVATE'")
-        op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'EVIDENCE_INTEGRITY_AUDIT'")
-        op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'EVIDENCE_ORPHAN_RECONCILIATION'")
-        op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'ABANDONED_UPLOAD_CLEANUP'")
-        op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'OUTBOX_DISPATCH'")
+        res = bind.execute(sa.text("SELECT typname FROM pg_type WHERE typname IN ('jobstatus', 'jobtype')")).fetchall()
+        existing_types = {r[0] for r in res}
+        if "jobstatus" in existing_types:
+            op.execute("ALTER TYPE jobstatus ADD VALUE IF NOT EXISTS 'DEAD_LETTER'")
+        if "jobtype" in existing_types:
+            op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'EVIDENCE_SCAN_AND_ACTIVATE'")
+            op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'EVIDENCE_INTEGRITY_AUDIT'")
+            op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'EVIDENCE_ORPHAN_RECONCILIATION'")
+            op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'ABANDONED_UPLOAD_CLEANUP'")
+            op.execute("ALTER TYPE jobtype ADD VALUE IF NOT EXISTS 'OUTBOX_DISPATCH'")
 
     # 2. Create outbox_events table
     outbox_status_enum = sa.Enum(

@@ -22,8 +22,8 @@ def upgrade() -> None:
     # 1. Create video_meetings table
     op.create_table(
         "video_meetings",
-        sa.Column("id", sa.CHAR(32), primary_key=True),
-        sa.Column("consultation_id", sa.CHAR(32), sa.ForeignKey("consultations.id", ondelete="CASCADE"), nullable=False, unique=True),
+        sa.Column("id", sa.Uuid(), primary_key=True),
+        sa.Column("consultation_id", sa.Uuid(), sa.ForeignKey("consultations.id", ondelete="CASCADE"), nullable=False, unique=True),
         sa.Column("room_id", sa.String(length=100), nullable=False, unique=True),
         sa.Column("provider", sa.String(length=50), server_default="internal_webrtc", nullable=False),
         sa.Column("status", sa.String(length=20), server_default="SCHEDULED", nullable=False),
@@ -42,12 +42,12 @@ def upgrade() -> None:
     # 2. Create consultation_notes table
     op.create_table(
         "consultation_notes",
-        sa.Column("id", sa.CHAR(32), primary_key=True),
-        sa.Column("consultation_id", sa.CHAR(32), sa.ForeignKey("consultations.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("author_user_id", sa.CHAR(32), sa.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
+        sa.Column("id", sa.Uuid(), primary_key=True),
+        sa.Column("consultation_id", sa.Uuid(), sa.ForeignKey("consultations.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("author_user_id", sa.Uuid(), sa.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
         sa.Column("summary", sa.Text(), nullable=False),
         sa.Column("action_items", sa.JSON(), nullable=True),
-        sa.Column("client_shared", sa.Boolean(), server_default="1", nullable=False),
+        sa.Column("client_shared", sa.Boolean(), server_default=sa.true(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )

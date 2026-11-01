@@ -71,6 +71,7 @@ explicit_package_bases = true
 disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
@@ -78,6 +79,7 @@ addopts = "-v --tb=short"
 filterwarnings = [
     "ignore:.*'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated.*:starlette.exceptions.StarletteDeprecationWarning",
     "ignore:.*Setting per-request cookies.*:DeprecationWarning",
+    "ignore:.*'asyncio.iscoroutinefunction' is deprecated.*:DeprecationWarning",
 ]
 
 [tool.hatch.build.targets.wheel]

@@ -22,16 +22,16 @@ def upgrade() -> None:
     # 1. Create video_recordings table
     op.create_table(
         "video_recordings",
-        sa.Column("id", sa.CHAR(32), primary_key=True),
+        sa.Column("id", sa.Uuid(), primary_key=True),
         sa.Column(
             "consultation_id",
-            sa.CHAR(32),
+            sa.Uuid(),
             sa.ForeignKey("consultations.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column(
             "case_id",
-            sa.CHAR(32),
+            sa.Uuid(),
             sa.ForeignKey("cases.id", ondelete="SET NULL"),
             nullable=True,
         ),
@@ -95,27 +95,27 @@ def upgrade() -> None:
     # 2. Create video_recording_consents table
     op.create_table(
         "video_recording_consents",
-        sa.Column("id", sa.CHAR(32), primary_key=True),
+        sa.Column("id", sa.Uuid(), primary_key=True),
         sa.Column(
             "consultation_id",
-            sa.CHAR(32),
+            sa.Uuid(),
             sa.ForeignKey("consultations.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column(
             "recording_id",
-            sa.CHAR(32),
+            sa.Uuid(),
             sa.ForeignKey("video_recordings.id", ondelete="CASCADE"),
             nullable=True,
         ),
         sa.Column(
             "user_id",
-            sa.CHAR(32),
+            sa.Uuid(),
             sa.ForeignKey("users.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column("role", sa.String(length=20), nullable=False),
-        sa.Column("consented", sa.Boolean(), server_default="1", nullable=False),
+        sa.Column("consented", sa.Boolean(), server_default=sa.true(), nullable=False),
         sa.Column(
             "consented_at",
             sa.DateTime(timezone=True),

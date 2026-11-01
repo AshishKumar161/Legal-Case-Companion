@@ -32,7 +32,7 @@ def upgrade() -> None:
         sa.Column("provider", sa.String(length=50), nullable=False),
         sa.Column("provider_subject", sa.String(length=255), nullable=False),
         sa.Column("email", sa.String(length=255), nullable=False),
-        sa.Column("email_verified", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column("email_verified", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("provider_metadata", sa.JSON(), nullable=True),
         sa.Column(
             "created_at",

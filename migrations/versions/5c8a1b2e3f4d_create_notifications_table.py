@@ -17,9 +17,10 @@ down_revision: str | None = "4b9e2f1a5c6d"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-
 def upgrade() -> None:
-    notification_type_enum = sa.Enum(
+    from sqlalchemy.dialects import postgresql
+
+    values = (
         "CASE_CREATED",
         "CASE_STATUS_CHANGED",
         "PARTICIPANT_ADDED",
@@ -37,9 +38,16 @@ def upgrade() -> None:
         "PAYMENT_SUCCEEDED",
         "PAYMENT_FAILED",
         "PAYMENT_REFUNDED",
-        name="notificationtype",
     )
-    notification_type_enum.create(op.get_bind(), checkfirst=True)
+    notification_type_enum = sa.Enum(*values, name="notificationtype").with_variant(
+        postgresql.ENUM(*values, name="notificationtype", create_type=False),
+        "postgresql",
+    )
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        postgresql.ENUM(*values, name="notificationtype").create(bind, checkfirst=True)
+    else:
+        notification_type_enum.create(bind, checkfirst=True)
 
     # Create notifications table
     op.create_table(

@@ -43,7 +43,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_consultations_lawyer_scheduled", table_name="consultations")
-    op.drop_index("ix_lawyer_profiles_location", table_name="lawyer_profiles")
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    indexes_con = {idx["name"] for idx in insp.get_indexes("consultations")}
+    if "ix_consultations_lawyer_scheduled" in indexes_con:
+        op.drop_index("ix_consultations_lawyer_scheduled", table_name="consultations")
+    indexes_lp = {idx["name"] for idx in insp.get_indexes("lawyer_profiles")}
+    if "ix_lawyer_profiles_location" in indexes_lp:
+        op.drop_index("ix_lawyer_profiles_location", table_name="lawyer_profiles")
     op.drop_column("lawyer_profiles", "court_jurisdictions")
     op.drop_column("lawyer_profiles", "experience_years")

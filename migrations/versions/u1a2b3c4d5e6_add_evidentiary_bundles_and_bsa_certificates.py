@@ -22,9 +22,12 @@ def upgrade() -> None:
 
     # 1. Update PostgreSQL enums if on postgresql
     if bind.dialect.name == "postgresql":
-        op.execute("ALTER TYPE hearingstatus ADD VALUE IF NOT EXISTS 'COMPLETED'")
-        op.execute("ALTER TYPE hearingstatus ADD VALUE IF NOT EXISTS 'RESCHEDULED'")
-        op.execute("CREATE TYPE bundlestatus AS ENUM ('DRAFT', 'GENERATING', 'FINALIZED', 'FAILED')")
+        from sqlalchemy.dialects import postgresql
+        res = bind.execute(sa.text("SELECT 1 FROM pg_type WHERE typname = 'hearingstatus'")).first()
+        if res:
+            op.execute("ALTER TYPE hearingstatus ADD VALUE IF NOT EXISTS 'COMPLETED'")
+            op.execute("ALTER TYPE hearingstatus ADD VALUE IF NOT EXISTS 'RESCHEDULED'")
+        postgresql.ENUM("DRAFT", "GENERATING", "FINALIZED", "FAILED", name="bundlestatus").create(bind, checkfirst=True)
 
     # 2. Add columns to case_hearings
     op.add_column("case_hearings", sa.Column("court_number", sa.String(50), nullable=True))
@@ -32,8 +35,9 @@ def upgrade() -> None:
     op.add_column("case_hearings", sa.Column("next_date", sa.DateTime(timezone=True), nullable=True))
 
     # 3. Create evidence_bundles table
+    from sqlalchemy.dialects import postgresql
     bundle_status_col = (
-        sa.Enum("DRAFT", "GENERATING", "FINALIZED", "FAILED", name="bundlestatus")
+        postgresql.ENUM("DRAFT", "GENERATING", "FINALIZED", "FAILED", name="bundlestatus", create_type=False)
         if bind.dialect.name == "postgresql"
         else sa.String(20)
     )

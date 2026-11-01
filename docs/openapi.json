@@ -3149,9 +3149,9 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 100,
+              "maximum": 500,
               "minimum": 1,
-              "default": 50,
+              "default": 100,
               "title": "Limit"
             }
           }
@@ -14290,6 +14290,221 @@
         }
       }
     },
+    "/api/v1/advisor/chat": {
+      "post": {
+        "tags": [
+          "legal-ai-advisor"
+        ],
+        "summary": "Chat With Advisor",
+        "description": "Send a message to the Legal AI Advisor.\n\nCreates a new session if session_id is not provided, or continues an existing one.\nAll messages are persisted to the database for cross-device continuity.",
+        "operationId": "chat_with_advisor_api_v1_advisor_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvisorChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/advisor/sessions": {
+      "get": {
+        "tags": [
+          "legal-ai-advisor"
+        ],
+        "summary": "List Sessions",
+        "description": "List all AI Advisor sessions for the current user, newest first.",
+        "operationId": "list_sessions_api_v1_advisor_sessions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdvisorSessionResponse"
+                  },
+                  "title": "Response List Sessions Api V1 Advisor Sessions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/advisor/sessions/{session_id}/messages": {
+      "get": {
+        "tags": [
+          "legal-ai-advisor"
+        ],
+        "summary": "List Messages",
+        "description": "Retrieve the full message history of a session.",
+        "operationId": "list_messages_api_v1_advisor_sessions__session_id__messages_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdvisorMessageResponse"
+                  },
+                  "title": "Response List Messages Api V1 Advisor Sessions  Session Id  Messages Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/advisor/sessions/{session_id}": {
+      "delete": {
+        "tags": [
+          "legal-ai-advisor"
+        ],
+        "summary": "Delete Session",
+        "description": "Soft-delete an AI Advisor session.",
+        "operationId": "delete_session_api_v1_advisor_sessions__session_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/feedback": {
       "post": {
         "tags": [
@@ -23362,6 +23577,176 @@
           "updated_at"
         ],
         "title": "AdminUserResponse"
+      },
+      "AdvisorChatRequest": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Message",
+            "description": "User message to the AI Legal Advisor"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id",
+            "description": "Continue an existing session, or omit to start a new one"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "AdvisorChatRequest"
+      },
+      "AdvisorChatResponse": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          },
+          "session_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Title"
+          },
+          "user_message": {
+            "$ref": "#/components/schemas/AdvisorMessageResponse"
+          },
+          "assistant_message": {
+            "$ref": "#/components/schemas/AdvisorMessageResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "session_title",
+          "user_message",
+          "assistant_message"
+        ],
+        "title": "AdvisorChatResponse"
+      },
+      "AdvisorMessageResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "session_id",
+          "role",
+          "content",
+          "created_at"
+        ],
+        "title": "AdvisorMessageResponse"
+      },
+      "AdvisorSessionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "title",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AdvisorSessionResponse"
       },
       "AdvocateDocumentType": {
         "type": "string",

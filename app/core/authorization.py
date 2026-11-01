@@ -96,6 +96,12 @@ def authorize_document_access(
     # User must have access to the underlying case
     if doc.case_id:
         authorize_case_access(db, user, doc.case_id)
+        if doc.is_confidential and doc.uploaded_by != user.id:
+            participant = _get_case_participant(db, doc.case_id, user.id)
+            if participant and participant.participant_role == ParticipantRole.VIEWER:
+                raise AuthorizationError(
+                    "Confidential case documents can only be accessed by case owners and assigned counsel."
+                )
         return doc
 
     if doc.uploaded_by == user.id:

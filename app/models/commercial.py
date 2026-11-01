@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, JSON, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, JSON, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.identifiers import generate_uuid7
@@ -137,10 +137,21 @@ class AdvocatePayout(Base, TimestampMixin):
         index=True,
     )
     provider: Mapped[str] = mapped_column(String(50), default="RAZORPAYX", nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     provider_payout_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     audit_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict, nullable=False)
+
+    __table_args__ = (
+        Index(
+            "uq_advocate_payout_active_commercial_txn",
+            "commercial_transaction_id",
+            unique=True,
+            postgresql_where=text("commercial_transaction_id IS NOT NULL AND status IN ('PENDING', 'PAID')"),
+            sqlite_where=text("commercial_transaction_id IS NOT NULL AND status IN ('PENDING', 'PAID')"),
+        ),
+    )
 
 
 class RefundRecord(Base, TimestampMixin):

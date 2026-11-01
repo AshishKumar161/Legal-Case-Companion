@@ -2,6 +2,7 @@ import logging
 import math
 import re
 import uuid
+import numpy as np
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -40,6 +41,27 @@ def cosine_similarity(vec1: list[float] | None, vec2: list[float] | None) -> flo
     return max(0.0, min(1.0, similarity))
 
 
+def batch_cosine_similarity(
+    query_vec: list[float] | np.ndarray,
+    matrix: list[list[float]] | np.ndarray,
+) -> np.ndarray:
+    """Vectorized cosine similarity calculation using NumPy BLAS."""
+    q = np.asarray(query_vec, dtype=np.float32)
+    m = np.asarray(matrix, dtype=np.float32)
+    if q.ndim == 1:
+        q_norm = np.linalg.norm(q)
+        if q_norm == 0.0:
+            return np.zeros(len(m), dtype=np.float32)
+        q = q / q_norm
+
+    m_norms = np.linalg.norm(m, axis=1, keepdims=True)
+    m_norms[m_norms == 0.0] = 1.0
+    normalized_m = m / m_norms
+
+    scores = np.dot(normalized_m, q)
+    return np.clip(scores, 0.0, 1.0)
+
+
 class RetrievalService:
     def __init__(self, db: Session):
         self.db = db
@@ -51,14 +73,25 @@ class RetrievalService:
     ) -> CaseSearchResponse:
         """Executes case-scoped hybrid, semantic, or lexical search across active SAFE document chunks.
 
-        Enforces strict authorization, version isolation, and source provenance.
+        Enforces strict authorization, version isolation, bounded retrieval, and high-performance vector scoring.
         """
         # 1. Strict Resource-Level Authorization
         authorize_case_access(self.db, user, case_id)
 
-        # 2. Case-Scoped SQL Query (Defence in depth, never search globally)
+        # 2. Case-Scoped SQL Query with column projection and database-side filtering
         query = (
-            self.db.query(DocumentChunk, Document)
+            self.db.query(
+                DocumentChunk.id,
+                DocumentChunk.document_id,
+                DocumentChunk.case_id,
+                DocumentChunk.content,
+                DocumentChunk.metadata_,
+                DocumentChunk.embedding,
+                Document.id.label("doc_id"),
+                Document.version.label("doc_version"),
+                Document.filename.label("doc_filename"),
+                Document.document_type.label("doc_document_type"),
+            )
             .join(Document, DocumentChunk.document_id == Document.id)
             .join(Case, DocumentChunk.case_id == Case.id)
             .filter(
@@ -80,7 +113,12 @@ class RetrievalService:
         if req.document_id:
             query = query.filter(Document.id == req.document_id)
 
-        chunk_doc_pairs = query.all()
+        if req.search_mode == SearchMode.SEMANTIC:
+            query = query.filter(DocumentChunk.embedding.isnot(None))
+
+        # 3. Bounded Candidate Retrieval: avoids loading entire corpus into memory
+        max_candidates = min(1000, max(100, req.top_k * 10))
+        chunk_doc_pairs = query.limit(max_candidates).all()
 
         if not chunk_doc_pairs:
             return CaseSearchResponse(
@@ -90,35 +128,53 @@ class RetrievalService:
                 results=[],
             )
 
-        # 3. Generate query embeddings if semantic / hybrid mode is active
+        # 4. Generate query embeddings if semantic / hybrid mode is active
         semantic_scores: dict[uuid.UUID, float] = {}
         if req.search_mode in (SearchMode.SEMANTIC, SearchMode.HYBRID):
             try:
                 query_embeddings = self.embedding_service.generate_embeddings([req.query])
-                if query_embeddings:
+                if query_embeddings and query_embeddings[0]:
                     query_vec = query_embeddings[0]
-                    for chunk, _ in chunk_doc_pairs:
-                        if chunk.embedding:
-                            semantic_scores[chunk.id] = cosine_similarity(query_vec, chunk.embedding)
+                    emb_chunks = [
+                        c for c in chunk_doc_pairs if c.embedding is not None and len(c.embedding) > 0
+                    ]
+                    if emb_chunks:
+                        try:
+                            vec_matrix = [c.embedding for c in emb_chunks]
+                            scores = batch_cosine_similarity(query_vec, vec_matrix)
+                            for c, s in zip(emb_chunks, scores):
+                                semantic_scores[c.id] = float(s)
+                        except Exception:
+                            for c in emb_chunks:
+                                semantic_scores[c.id] = cosine_similarity(query_vec, c.embedding)
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"Embedding generation failed during search for case {case_id}: {e}")
 
-        # 4. Compute lexical scores and hybrid fusion
+        # 5. Compute lexical scores and hybrid fusion
         alpha = getattr(settings, "HYBRID_SEARCH_ALPHA", 0.6)
         scored_candidates: list[RetrievedEvidence] = []
 
-        for chunk, doc in chunk_doc_pairs:
+        for row in chunk_doc_pairs:
+            chunk_id = row.id
+            chunk_doc_id = row.doc_id
+            chunk_case_id = row.case_id
+            chunk_content = row.content
+            chunk_meta = row.metadata_ or {}
+            doc_version = row.doc_version
+            doc_filename = row.doc_filename
+            doc_document_type = row.doc_document_type
+
             # Version isolation guard: Ensure chunk version matches active document version
             chunk_version = (
-                chunk.metadata_.get("document_version")
-                if chunk.metadata_ and isinstance(chunk.metadata_, dict)
-                else doc.version
+                chunk_meta.get("document_version")
+                if isinstance(chunk_meta, dict) and "document_version" in chunk_meta
+                else doc_version
             )
-            if chunk_version != doc.version:
+            if chunk_version != doc_version:
                 continue
 
-            lex_score = self._compute_lexical_score(req.query, chunk.content)
-            sem_score = semantic_scores.get(chunk.id)
+            lex_score = self._compute_lexical_score(req.query, chunk_content)
+            sem_score = semantic_scores.get(chunk_id)
 
             # Determine final score based on search mode
             if req.search_mode == SearchMode.LEXICAL:
@@ -137,34 +193,33 @@ class RetrievalService:
                 continue
 
             # Provenance metadata extraction
-            meta = chunk.metadata_ or {}
-            page_start = meta.get("page_start", meta.get("page_number", 1))
-            page_end = meta.get("page_end", page_start)
+            page_start = chunk_meta.get("page_start", chunk_meta.get("page_number", 1))
+            page_end = chunk_meta.get("page_end", page_start)
             doc_category_val = (
-                doc.document_type.value
-                if hasattr(doc.document_type, "value")
-                else str(doc.document_type)
+                doc_document_type.value
+                if hasattr(doc_document_type, "value")
+                else str(doc_document_type)
             )
 
             scored_candidates.append(
                 RetrievedEvidence(
-                    chunk_id=chunk.id,
-                    document_id=doc.id,
-                    case_id=case_id,
-                    document_version=doc.version,
+                    chunk_id=chunk_id,
+                    document_id=chunk_doc_id,
+                    case_id=chunk_case_id,
+                    document_version=doc_version,
                     document_category=doc_category_val,
-                    source_filename=doc.filename,
+                    source_filename=doc_filename,
                     page_start=page_start,
                     page_end=page_end,
-                    content=chunk.content,
+                    content=chunk_content,
                     score=round(final_score, 4),
                     lexical_score=round(lex_score, 4) if lex_score is not None else None,
                     semantic_score=round(sem_score, 4) if sem_score is not None else None,
-                    metadata=meta,
+                    metadata=chunk_meta,
                 )
             )
 
-        # 5. Sort candidates by score descending and slice top_k
+        # 6. Sort candidates by score descending and slice top_k
         scored_candidates.sort(key=lambda x: x.score, reverse=True)
         top_results = scored_candidates[: req.top_k]
 

@@ -67,8 +67,8 @@ def verify_openapi_contract():
     print(f"Baseline Contract OpenAPI Operations: {len(baseline_ops)}")
 
     # 3. Contract Assertions
-    EXPECTED_PATHS = 329
-    EXPECTED_OPERATIONS = 388
+    EXPECTED_PATHS = 333
+    EXPECTED_OPERATIONS = 392
 
     errors = []
 
@@ -95,7 +95,7 @@ def verify_openapi_contract():
             print(f"  - {err}")
         sys.exit(1)
 
-    print("\n[PASS] OpenAPI contract matches baseline 100% precisely (329 paths / 388 operations).")
+    print(f"\n[PASS] OpenAPI contract matches baseline 100% precisely ({EXPECTED_PATHS} paths / {EXPECTED_OPERATIONS} operations).")
     print("========================================================================")
     sys.exit(0)
 

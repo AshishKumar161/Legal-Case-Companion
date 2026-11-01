@@ -1,0 +1,17 @@
+{
+  "database": "postgresql",
+  "corpus_chunks": 500,
+  "embedding_dimensions": 256,
+  "baseline": {
+    "mean_latency_ms": 133.61,
+    "peak_memory_kb": 6539.33
+  },
+  "improved": {
+    "mean_latency_ms": 33.17,
+    "peak_memory_kb": 1390.03,
+    "speedup_factor": 4.03,
+    "memory_reduction_pct": 78.7
+  },
+  "query_plan": "Limit  (cost=0.15..192.00 rows=1 width=132) (actual time=0.029..0.665 rows=500.00 loops=1)\n  Buffers: shared hit=1625\n  ->  Nested Loop  (cost=0.15..192.00 rows=1 width=132) (actual time=0.029..0.642 rows=500.00 loops=1)\n        Buffers: shared hit=1625\n        ->  Nested Loop  (cost=0.00..183.82 rows=1 width=148) (actual time=0.007..0.343 rows=500.00 loops=1)\n              Join Filter: (d.id = dc.document_id)\n              Buffers: shared hit=625\n              ->  Seq Scan on document_chunks dc  (cost=0.00..173.44 rows=1 width=144) (actual time=0.004..0.102 rows=500.00 loops=1)\n                    Filter: ((deleted_at IS NULL) AND (case_id = '01a198c6-b856-70f0-8e99-caa5861201ba'::uuid))\n                    Buffers: shared hit=125\n              ->  Seq Scan on documents d  (cost=0.00..10.38 rows=1 width=20) (actual time=0.000..0.000 rows=1.00 loops=500)\n                    Filter: ((deleted_at IS NULL) AND (security_status = 'SAFE'::documentsecuritystatus))\n                    Buffers: shared hit=500\n        ->  Index Scan using cases_pkey on cases c  (cost=0.15..8.17 rows=1 width=16) (actual time=0.000..0.000 rows=1.00 loops=500)\n              Index Cond: (id = '01a198c6-b856-70f0-8e99-caa5861201ba'::uuid)\n              Filter: (deleted_at IS NULL)\n              Index Searches: 500\n              Buffers: shared hit=1000\nPlanning Time: 0.079 ms\nExecution Time: 0.694 ms",
+  "correctness_verified": true
+}

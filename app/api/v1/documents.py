@@ -72,22 +72,29 @@ async def upload_case_document_direct(
     """
     import hashlib
     import logging
+    import os
     from app.core.authorization import authorize_case_modification
-    from app.core.exceptions import ValidationError
-    from app.core.file_validation import validate_filename_security
+    from app.core.exceptions import ScannerUnavailableError, ValidationError
+    from app.core.file_validation import (
+        validate_file_magic_bytes,
+        validate_filename_security,
+    )
     from app.core.identifiers import generate_uuid7
     from app.core.storage import get_storage_provider
+    from app.domain.cases.case_service import CaseService
+    from app.domain.evidence.scanner_service import ScannerService
+    from app.domain.notifications.notification_service import NotificationService
     from app.models.case import CaseParticipant, CaseStatus, ParticipantStatus
     from app.models.document import (
+        ALLOWED_MIME_TYPES,
+        EXTENSION_TO_MIME,
+        MAX_FILE_SIZE_BYTES,
         Document,
         DocumentCategory,
         DocumentProcessingStatus,
         DocumentSecurityStatus,
-        MAX_FILE_SIZE_BYTES,
     )
     from app.models.notification import NotificationType
-    from app.domain.cases.case_service import CaseService
-    from app.domain.notifications.notification_service import NotificationService
 
     logger = logging.getLogger(__name__)
 
@@ -122,7 +129,35 @@ async def upload_case_document_direct(
 
     raw_filename = file.filename or "document.pdf"
     clean_filename = validate_filename_security(raw_filename)
-    mime_type = file.content_type or "application/octet-stream"
+
+    # 1. Validate permitted file extensions
+    ext = os.path.splitext(clean_filename)[1].lower()
+    if ext not in EXTENSION_TO_MIME:
+        raise ValidationError(
+            f"File extension '{ext}' is not permitted. Allowed extensions: {', '.join(sorted(EXTENSION_TO_MIME.keys()))}"
+        )
+
+    # 2. Strict MIME type validation against permitted types and extension
+    expected_mime = EXTENSION_TO_MIME[ext]
+    declared_mime = file.content_type
+    if declared_mime and declared_mime not in ("application/octet-stream", "binary/octet-stream"):
+        if declared_mime not in ALLOWED_MIME_TYPES:
+            raise ValidationError(
+                f"MIME type '{declared_mime}' is not permitted. Allowed types: {', '.join(sorted(ALLOWED_MIME_TYPES))}"
+            )
+        if (
+            declared_mime != expected_mime
+            and not (expected_mime == "image/jpeg" and declared_mime in ("image/jpeg", "image/jpg"))
+        ):
+            raise ValidationError(
+                f"MIME type '{declared_mime}' does not match file extension '{ext}' (expected '{expected_mime}')"
+            )
+        mime_type = declared_mime
+    else:
+        mime_type = expected_mime
+
+    # 3. Magic-byte signature and executable header validation
+    validate_file_magic_bytes(file_bytes, mime_type)
 
     checksum = hashlib.sha256(file_bytes).hexdigest()
     document_id = generate_uuid7()
@@ -133,6 +168,7 @@ async def upload_case_document_direct(
 
     display_title = title.strip() if (title and title.strip()) else clean_filename
 
+    # 4. Ingest into QUARANTINED state — never mark SAFE before security scanning
     doc = Document(
         id=document_id,
         case_id=case_id,
@@ -141,8 +177,8 @@ async def upload_case_document_direct(
         storage_key=storage_key,
         mime_type=mime_type,
         file_size=len(file_bytes),
-        security_status=DocumentSecurityStatus.SAFE,
-        processing_status=DocumentProcessingStatus.READY,
+        security_status=DocumentSecurityStatus.QUARANTINED,
+        processing_status=DocumentProcessingStatus.PENDING,
         document_type=doc_category,
         description=description.strip() if description else None,
         checksum=checksum,
@@ -153,45 +189,78 @@ async def upload_case_document_direct(
     db.commit()
     db.refresh(doc)
 
-    case_service = CaseService(db)
-    case_service.record_case_activity(
-        case_id,
-        current_user.id,
-        "DOCUMENT_UPLOADED",
-        f"Document '{display_title}' was shared with the case ({doc_category.value})",
-        {
-            "document_id": str(doc.id),
-            "filename": display_title,
-            "document_type": doc_category.value,
-            "file_size": len(file_bytes),
-        },
-    )
-
-    # Automatically notify other case participants (Lawyer or Client)
-    other_participants = (
-        db.query(CaseParticipant)
-        .filter(
-            CaseParticipant.case_id == case_id,
-            CaseParticipant.user_id != current_user.id,
-            CaseParticipant.status == ParticipantStatus.ACTIVE,
+    # 5. Execute malware scanning & antivirus validation
+    scanner_service = ScannerService(db)
+    try:
+        scanner_service.scan_document(doc.id)
+    except ScannerUnavailableError as scan_err:
+        logger.warning(
+            f"Malware scanner unavailable during direct upload for document {doc.id}: {scan_err}. "
+            "Document remains QUARANTINED."
         )
-        .all()
-    )
-    uploader_name = current_user.full_name or "Participant"
-    notification_service = NotificationService(db)
-    for p in other_participants:
+        # Fail closed: document remains quarantined and cannot be downloaded or processed
+        db.refresh(doc)
+        return doc
+
+    db.refresh(doc)
+
+    # 6. Handle scan failure/rejection
+    if doc.security_status == DocumentSecurityStatus.REJECTED:
         try:
-            notification_service.create_notification(
-                user_id=p.user_id,
-                type=NotificationType.DOCUMENT_READY,
-                title=f"New Document Shared in {case_.title}",
-                message=f"{uploader_name} shared document '{display_title}' ({doc_category.value}) with you.",
-                case_id=case_id,
-                document_id=doc.id,
-                send_email=False,
+            storage.delete_object(storage_key)
+        except Exception as cleanup_err:
+            logger.error(f"Failed to delete rejected file from storage {storage_key}: {cleanup_err}")
+        doc.processing_status = DocumentProcessingStatus.FAILED
+        db.commit()
+        raise ValidationError(
+            f"Security validation failed: {doc.processing_error or 'Threat detected'}"
+        )
+
+    # 7. Document is verified SAFE: transition to READY, record activity, and notify participants
+    if doc.security_status == DocumentSecurityStatus.SAFE:
+        doc.processing_status = DocumentProcessingStatus.READY
+        db.commit()
+        db.refresh(doc)
+
+        case_service = CaseService(db)
+        case_service.record_case_activity(
+            case_id,
+            current_user.id,
+            "DOCUMENT_UPLOADED",
+            f"Document '{display_title}' was shared with the case ({doc_category.value})",
+            {
+                "document_id": str(doc.id),
+                "filename": display_title,
+                "document_type": doc_category.value,
+                "file_size": len(file_bytes),
+            },
+        )
+
+        # Automatically notify other case participants (Lawyer or Client)
+        other_participants = (
+            db.query(CaseParticipant)
+            .filter(
+                CaseParticipant.case_id == case_id,
+                CaseParticipant.user_id != current_user.id,
+                CaseParticipant.status == ParticipantStatus.ACTIVE,
             )
-        except Exception as e:
-            logger.warning(f"Failed to dispatch document notification to {p.user_id}: {e}")
+            .all()
+        )
+        uploader_name = current_user.full_name or "Participant"
+        notification_service = NotificationService(db)
+        for p in other_participants:
+            try:
+                notification_service.create_notification(
+                    user_id=p.user_id,
+                    type=NotificationType.DOCUMENT_READY,
+                    title=f"New Document Shared in {case_.title}",
+                    message=f"{uploader_name} shared document '{display_title}' ({doc_category.value}) with you.",
+                    case_id=case_id,
+                    document_id=doc.id,
+                    send_email=False,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to dispatch document notification to {p.user_id}: {e}")
 
     return doc
 

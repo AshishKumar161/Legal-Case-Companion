@@ -1,3 +1,4 @@
+import logging
 import secrets
 from uuid import UUID
 
@@ -9,6 +10,8 @@ from app.api.deps import get_db
 from app.core.config import settings
 from app.domain.payments.payment_service import PaymentService
 from app.domain.evidence.scanner_service import ScannerService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -28,9 +31,14 @@ def aws_malware_webhook(
     """
     Internal Webhook for AWS EventBridge / Lambda to report malware scan results.
     Authorizes via a shared secret (AWS_WEBHOOK_SECRET) with constant-time verification.
+    Fails safely without disclosing internal configuration state.
     """
     if not settings.AWS_WEBHOOK_SECRET:
-        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+        logger.error("AWS_WEBHOOK_SECRET is not configured. Webhook request rejected.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Webhook service unavailable",
+        )
 
     expected_header = f"Bearer {settings.AWS_WEBHOOK_SECRET}"
     if not authorization or not secrets.compare_digest(authorization, expected_header):

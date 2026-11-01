@@ -36,6 +36,40 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column("last_reviewed_at", sa.DateTime(timezone=True), nullable=True))
         batch_op.add_column(sa.Column("reviewer_notes", sa.Text(), nullable=True))
 
+    from sqlalchemy.dialects import postgresql
+    doc_type_values = (
+        "BAR_COUNCIL_ENROLLMENT_CERT",
+        "BAR_COUNCIL_ID_CARD",
+        "GOVERNMENT_PHOTO_ID",
+        "CERTIFICATE_OF_PRACTICE",
+    )
+    doc_type_enum = sa.Enum(*doc_type_values, name="advocatedocumenttype").with_variant(
+        postgresql.ENUM(*doc_type_values, name="advocatedocumenttype", create_type=False),
+        "postgresql",
+    )
+    scan_status_values = ("PENDING", "PASSED", "FAILED", "QUARANTINED")
+    scan_status_enum = sa.Enum(*scan_status_values, name="documentscanstatus_v2").with_variant(
+        postgresql.ENUM(*scan_status_values, name="documentscanstatus_v2", create_type=False),
+        "postgresql",
+    )
+    verif_status_values = (
+        "NOT_SUBMITTED",
+        "SUBMITTED",
+        "UNDER_REVIEW",
+        "APPROVED",
+        "REJECTED",
+        "NEEDS_RESUBMISSION",
+    )
+    verif_status_enum = sa.Enum(*verif_status_values, name="documentverificationstatus").with_variant(
+        postgresql.ENUM(*verif_status_values, name="documentverificationstatus", create_type=False),
+        "postgresql",
+    )
+
+    if bind.dialect.name == "postgresql":
+        postgresql.ENUM(*doc_type_values, name="advocatedocumenttype").create(bind, checkfirst=True)
+        postgresql.ENUM(*scan_status_values, name="documentscanstatus_v2").create(bind, checkfirst=True)
+        postgresql.ENUM(*verif_status_values, name="documentverificationstatus").create(bind, checkfirst=True)
+
     # 3. Create advocate_verification_documents table
     op.create_table(
         "advocate_verification_documents",
@@ -49,13 +83,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "document_type",
-            sa.Enum(
-                "BAR_COUNCIL_ENROLLMENT_CERT",
-                "BAR_COUNCIL_ID_CARD",
-                "GOVERNMENT_PHOTO_ID",
-                "CERTIFICATE_OF_PRACTICE",
-                name="advocatedocumenttype",
-            ),
+            doc_type_enum,
             nullable=False,
         ),
         sa.Column("storage_key", sa.String(512), nullable=False),
@@ -65,27 +93,13 @@ def upgrade() -> None:
         sa.Column("sha256_hash", sa.String(64), nullable=False),
         sa.Column(
             "scan_status",
-            sa.Enum(
-                "PENDING",
-                "PASSED",
-                "FAILED",
-                "QUARANTINED",
-                name="documentscanstatus_v2",
-            ),
+            scan_status_enum,
             nullable=False,
             server_default="PENDING",
         ),
         sa.Column(
             "verification_status",
-            sa.Enum(
-                "NOT_SUBMITTED",
-                "SUBMITTED",
-                "UNDER_REVIEW",
-                "APPROVED",
-                "REJECTED",
-                "NEEDS_RESUBMISSION",
-                name="documentverificationstatus",
-            ),
+            verif_status_enum,
             nullable=False,
             server_default="SUBMITTED",
         ),
@@ -125,8 +139,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
     op.drop_table("verification_review_events")
     op.drop_table("advocate_verification_documents")
+    if bind.dialect.name == "postgresql":
+        op.execute("DROP TYPE IF EXISTS advocatedocumenttype")
+        op.execute("DROP TYPE IF EXISTS documentscanstatus_v2")
+        op.execute("DROP TYPE IF EXISTS documentverificationstatus")
 
     with op.batch_alter_table("lawyer_verifications") as batch_op:
         batch_op.drop_column("reviewer_notes")

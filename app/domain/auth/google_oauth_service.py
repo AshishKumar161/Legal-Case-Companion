@@ -150,6 +150,9 @@ class GoogleOAuthService:
             raise AuthenticationError("Missing Google ID token")
 
         client_id = settings.GOOGLE_CLIENT_ID
+        if not client_id or not client_id.strip():
+            logger.error("google_oauth.error: GOOGLE_CLIENT_ID is not configured. Failing closed.")
+            raise AuthenticationError("Google OAuth client configuration is missing")
 
         try:
             if override_public_key:
@@ -162,28 +165,37 @@ class GoogleOAuthService:
                 id_token,
                 signing_key_obj,
                 algorithms=["RS256"],
-                audience=client_id if client_id else None,
+                audience=client_id,
                 issuer=settings.GOOGLE_ISSUERS,
-                leeway=300,  # 5 minutes leeway to handle clock skew between local machine and Google time servers
+                leeway=0,  # Zero tolerance clock skew: expired tokens are strictly rejected
                 options={
-                    "verify_aud": bool(client_id),
+                    "verify_aud": True,
                     "verify_iss": True,
                     "verify_exp": True,
-                    "verify_nbf": False,
-                    "verify_iat": False,
+                    "verify_iat": True,
                 },
             )
         except jwt.ExpiredSignatureError as e:
+            logger.warning("google_oauth.token_validation_failed: Token signature has expired")
             raise AuthenticationError("Google ID token has expired") from e
         except jwt.ImmatureSignatureError as e:
-            raise AuthenticationError("Google ID token is not yet valid (clock skew)") from e
+            logger.warning("google_oauth.token_validation_failed: Token signature is immature")
+            raise AuthenticationError("Google ID token is not yet valid") from e
         except jwt.InvalidIssuerError as e:
+            logger.warning("google_oauth.token_validation_failed: Token issuer claim mismatch")
             raise AuthenticationError("Invalid Google token issuer") from e
         except jwt.InvalidAudienceError as e:
+            logger.warning("google_oauth.token_validation_failed: Token audience claim mismatch")
             raise AuthenticationError("Invalid Google token audience") from e
-        except Exception as e:
-            logger.warning(f"Google ID token validation failed: {e}")
+        except jwt.InvalidSignatureError as e:
+            logger.warning("google_oauth.token_validation_failed: Cryptographic signature verification failed")
             raise AuthenticationError("Invalid Google ID token signature") from e
+        except jwt.DecodeError as e:
+            logger.warning("google_oauth.token_validation_failed: Malformed or unparseable JWT")
+            raise AuthenticationError("Malformed Google ID token") from e
+        except Exception as e:
+            logger.warning("google_oauth.token_validation_failed: Token validation failed")
+            raise AuthenticationError("Invalid Google ID token") from e
 
         # Validate subject claim
         sub = claims.get("sub")

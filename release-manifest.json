@@ -3,8 +3,8 @@
   "release_id": "prod-2026.09.04",
   "application": "Legal Case Companion",
   "version": "1.0.0",
-  "build_timestamp": "2026-09-13T16:22:36.287316+00:00",
-  "git_commit_sha": "git-commit-unknown-standalone",
+  "build_timestamp": "2026-11-01T20:14:25.999091+00:00",
+  "git_commit_sha": "0e8a049675a73f59379733389383fb61dbae1dc6",
   "database_migration_head": "8b5b923063b9",
   "environment_target": "production",
   "release_owner": "Platform Engineering & Release Operations",
@@ -15,8 +15,8 @@
     "e2e_scenarios": "PASSED (verified)",
     "frontend_production_build": "PASSED (production build verified)",
     "frontend_dependency_audit": "PASSED (audit clean)",
-    "python_code_quality": "WARNING (242 lint notices)",
-    "python_type_safety": "PASSED (0 errors in 263 source files)"
+    "python_code_quality": "WARNING (0 lint notices)",
+    "python_type_safety": "FAILED (exit code 1)"
   },
   "sbom": {
     "backend_manifest": "sbom-backend.json",

@@ -54,7 +54,7 @@ def upgrade() -> None:
             sa.ForeignKey("case_tasks.id", name="fk_case_messages_linked_task_id", ondelete="SET NULL"),
             nullable=True,
         ),
-        sa.Column("is_counsel_only", sa.Boolean(), server_default=sa.text("0"), nullable=False),
+        sa.Column("is_counsel_only", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
