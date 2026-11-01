@@ -1,0 +1,405 @@
+{
+  "total_workflows_audited": 8,
+  "workflows": [
+    {
+      "workflow_id": "WF-01",
+      "name": "Case Lifecycle Workflow",
+      "steps": [
+        {
+          "step_name": "CREATE",
+          "endpoint": "POST /api/v1/cases",
+          "service": "CaseService.create_case",
+          "validation_rules": "Validates title, case_type, jurisdiction; sets status=OPEN; automatically creates owner participant record.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "PARTICIPANTS",
+          "endpoint": "POST /api/v1/cases/{case_id}/participants",
+          "service": "CaseService.add_participant",
+          "validation_rules": "Checks user account_status==ACTIVE; validates ParticipantRole enum.",
+          "audit_logged": true,
+          "defects_or_bypasses": "BL-FIND-01: Omits checking lawyer_profile.verification_status=='APPROVED', allowing unverified lawyers to be added. Also allows adding/removing participants on CLOSED cases (BL-FIND-02)."
+        },
+        {
+          "step_name": "DOCUMENTS_EVIDENCE",
+          "endpoint": "POST /api/v1/cases/{case_id}/evidence/upload-init",
+          "service": "EvidenceService.init_upload",
+          "validation_rules": "Validates case participation via authorize_case_access, file size, MIME type.",
+          "audit_logged": true,
+          "defects_or_bypasses": "BL-FIND-02: Missing check for parent case.status in (CLOSED, CANCELLED)."
+        },
+        {
+          "step_name": "DEADLINES_HEARINGS",
+          "endpoint": "POST /api/v1/cases/{case_id}/deadlines",
+          "service": "CaseWorkflowService.create_deadline",
+          "validation_rules": "Checks _check_case_active_for_mutations; validates deadline_date > now.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None; correctly blocked on CLOSED cases."
+        },
+        {
+          "step_name": "ACTIVITIES_NOTES_MILESTONES",
+          "endpoint": "POST /api/v1/cases/{case_id}/notes",
+          "service": "CaseService.create_note",
+          "validation_rules": "Checks authorize_case_access and note visibility rules.",
+          "audit_logged": true,
+          "defects_or_bypasses": "BL-FIND-02: Allows appending notes to CLOSED cases."
+        },
+        {
+          "step_name": "COURT_INFORMATION",
+          "endpoint": "POST /api/v1/cases/{case_id}/court-cases",
+          "service": "CourtService.link_court_case",
+          "validation_rules": "Links CNR number and validates court jurisdiction.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "TRANSFER",
+          "endpoint": "POST /api/v1/cases/{case_id}/transfer",
+          "service": "CaseService.transfer_case_ownership",
+          "validation_rules": "Authorizes current owner; adds new owner; demotes old owner or keeps as lawyer.",
+          "audit_logged": true,
+          "defects_or_bypasses": "Evidence access grants do not automatically transfer to new owner without re-indexing."
+        },
+        {
+          "step_name": "CLOSURE",
+          "endpoint": "PATCH /api/v1/cases/{case_id}",
+          "service": "CaseService.update_case",
+          "validation_rules": "Allows transition OPEN/IN_PROGRESS -> CLOSED.",
+          "audit_logged": true,
+          "defects_or_bypasses": "Does not enforce prerequisite check that active deadlines or hearings are resolved before closing."
+        },
+        {
+          "step_name": "REOPEN_ARCHIVE_DELETE",
+          "endpoint": "DELETE /api/v1/cases/{case_id}",
+          "service": "CaseService.delete_case",
+          "validation_rules": "Sets deleted_at = now(). Cannot transition status out of CLOSED via update_case.",
+          "audit_logged": true,
+          "defects_or_bypasses": "Soft delete does not cascade automatically to child tasks/hearings in raw queries (DB-FIND-02)."
+        }
+      ]
+    },
+    {
+      "workflow_id": "WF-02",
+      "name": "Lawyer / KYC / Verification Workflow",
+      "steps": [
+        {
+          "step_name": "LAWYER_REGISTRATION",
+          "endpoint": "POST /api/v1/auth/register",
+          "service": "AuthService.register_user",
+          "validation_rules": "Role set to LAWYER, account_status=REGISTERED, sends verification email.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "PROFILE_CREATION",
+          "endpoint": "POST /api/v1/lawyers/profile",
+          "service": "LawyerProfileService.create_profile",
+          "validation_rules": "Requires bar_council_number, practice_jurisdictions, experience_years; sets verification_status=DRAFT.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "KYC_AND_BAR_SUBMISSION",
+          "endpoint": "POST /api/v1/verification/submit",
+          "service": "LawyerVerificationService.submit_verification",
+          "validation_rules": "Requires identity proof and Bar Council certificate; transitions DRAFT -> PENDING.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "BAR_VERIFICATION_REVIEW",
+          "endpoint": "POST /api/v1/admin/verification/{id}/review",
+          "service": "LawyerVerificationService.start_review",
+          "validation_rules": "Transitions PENDING -> UNDER_REVIEW; assigns admin reviewer.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "APPROVAL_REJECTION",
+          "endpoint": "POST /api/v1/admin/verification/{id}/approve",
+          "service": "LawyerVerificationService.approve_verification",
+          "validation_rules": "Sets LawyerVerification.status=APPROVED, LawyerProfile.verification_status=APPROVED, User.is_kyc_completed=True.",
+          "audit_logged": true,
+          "defects_or_bypasses": "Existing user JWT tokens are not immediately invalidated upon approval/rejection (relies on token expiry)."
+        },
+        {
+          "step_name": "DISCOVERY",
+          "endpoint": "GET /api/v1/lawyers",
+          "service": "LawyerDiscoveryService.search_lawyers",
+          "validation_rules": "Strictly filters LawyerProfile.verification_status == 'APPROVED'.",
+          "audit_logged": false,
+          "defects_or_bypasses": "Discovery is properly gated; but direct case participant addition (BL-FIND-01) bypasses discovery gates."
+        },
+        {
+          "step_name": "CONSULTATION_OFFERING",
+          "endpoint": "POST /api/v1/consultations",
+          "service": "ConsultationService.create_consultation",
+          "validation_rules": "Verifies target lawyer verification_status == 'APPROVED'.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        }
+      ]
+    },
+    {
+      "workflow_id": "WF-03",
+      "name": "Consultation State & Booking Workflow",
+      "steps": [
+        {
+          "step_name": "AVAILABILITY_AND_SLOT",
+          "endpoint": "POST /api/v1/consultations/availability",
+          "service": "AvailabilityService.create_availability_window",
+          "validation_rules": "Generates bookable slots; validates start_time < end_time and not in past.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "SLOT_RESERVATION",
+          "endpoint": "POST /api/v1/consultations/reserve-slot",
+          "service": "AvailabilityService.reserve_slot",
+          "validation_rules": "Acquires SELECT FOR UPDATE lock; prevents concurrent double-booking.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "BOOKING_REQUEST",
+          "endpoint": "POST /api/v1/consultations",
+          "service": "ConsultationService.create_consultation",
+          "validation_rules": "Creates Consultation with status=REQUESTED.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "PAYMENT_CAPTURE",
+          "endpoint": "POST /api/v1/commercial/checkout",
+          "service": "CommercialService.capture_consultation_payment",
+          "validation_rules": "Captures Stripe payment; transitions Consultation.status -> PAID.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "SCHEDULE_CONFIRMATION",
+          "endpoint": "POST /api/v1/consultations/{id}/schedule",
+          "service": "ConsultationService.schedule_consultation",
+          "validation_rules": "Transitions PAID/ACCEPTED -> SCHEDULED; provisions VideoMeeting room.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "ACTIVE_MEETING",
+          "endpoint": "POST /api/v1/consultations/{id}/room/join",
+          "service": "ConsultationService.join_room",
+          "validation_rules": "Validates cryptographic ticket and schedule window; transitions to IN_PROGRESS.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "COMPLETION",
+          "endpoint": "POST /api/v1/consultations/{id}/complete",
+          "service": "ConsultationService.complete_consultation",
+          "validation_rules": "Transitions IN_PROGRESS/SCHEDULED -> COMPLETED; marks VideoMeeting ENDED; accrues advocate payout.",
+          "audit_logged": true,
+          "defects_or_bypasses": "BL-FIND-04: Full commercial refund later resets COMPLETED to CANCELLED."
+        },
+        {
+          "step_name": "CANCELLATION_AND_REFUND",
+          "endpoint": "POST /api/v1/consultations/{id}/cancel",
+          "service": "ConsultationService.cancel_consultation",
+          "validation_rules": "Transitions to CANCELLED; evaluates cancellation policy; calls commercial refund.",
+          "audit_logged": true,
+          "defects_or_bypasses": "BL-FIND-03: Commits CANCELLED status before refund; if refund fails, exception is swallowed and never retried."
+        }
+      ]
+    },
+    {
+      "workflow_id": "WF-04",
+      "name": "Payment Business Logic & Reconciliation",
+      "steps": [
+        {
+          "step_name": "INVOICE_GENERATION",
+          "endpoint": "POST /api/v1/invoices",
+          "service": "InvoiceService.generate_invoice",
+          "validation_rules": "Quantized decimal arithmetic: total = subtotal + tax - discount.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "PAYMENT_INTENT",
+          "endpoint": "POST /api/v1/commercial/create-intent",
+          "service": "CommercialService.create_payment_intent",
+          "validation_rules": "Creates Stripe PaymentIntent with idempotency key.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "CAPTURE_AND_WEBHOOK",
+          "endpoint": "POST /api/v1/webhooks/stripe",
+          "service": "PaymentService.process_webhook_event",
+          "validation_rules": "Validates HMAC signature; checks ProcessedWebhookEvent idempotency; updates CommercialTransaction to CAPTURED.",
+          "audit_logged": true,
+          "defects_or_bypasses": "Phase 2 DB-FIND-10: lock contention on ProcessedWebhookEvent table during concurrent webhooks."
+        },
+        {
+          "step_name": "REFUND",
+          "endpoint": "POST /api/v1/commercial/refund",
+          "service": "CommercialService.process_refund",
+          "validation_rules": "Locks transaction; sums prior refunds; checks refund <= remaining_refundable; transitions to PARTIALLY_REFUNDED or REFUNDED.",
+          "audit_logged": true,
+          "defects_or_bypasses": "BL-FIND-04: Full refund resets Consultation.status to CANCELLED even if previously COMPLETED."
+        },
+        {
+          "step_name": "RECONCILIATION",
+          "endpoint": "Background Cron / Worker",
+          "service": "ReconciliationJob.reconcile_commercial_transactions",
+          "validation_rules": "Compares Stripe API charges against local CommercialTransaction rows; flags mismatches.",
+          "audit_logged": true,
+          "defects_or_bypasses": "Does not automatically heal failed cancellation refunds from BL-FIND-03."
+        }
+      ]
+    },
+    {
+      "workflow_id": "WF-05",
+      "name": "Document & Evidence Lifecycle",
+      "steps": [
+        {
+          "step_name": "UPLOAD_INITIATION",
+          "endpoint": "POST /api/v1/cases/{case_id}/evidence/upload-init",
+          "service": "EvidenceService.init_upload",
+          "validation_rules": "Authorizes case access; checks file size limit; stages Evidence record in UPLOADING status.",
+          "audit_logged": true,
+          "defects_or_bypasses": "BL-FIND-02: Missing case.status CLOSED check."
+        },
+        {
+          "step_name": "MALWARE_SCAN_AND_HASH_COMPLETION",
+          "endpoint": "POST /api/v1/cases/{case_id}/evidence/upload-complete",
+          "service": "EvidenceService.complete_upload",
+          "validation_rules": "Scans file with ClamAV/MalwareScanner; verifies SHA256 matches staged hash; transitions status to ACTIVE; logs custody event.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "TEXT_EXTRACTION_AND_CHUNKING",
+          "endpoint": "Background Worker",
+          "service": "DocumentProcessor.process_document",
+          "validation_rules": "Extracts text from PDF/DOCX; handles OCR if needed; generates text chunks and vector embeddings; marks READY.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "SHARING_AND_ACCESS_GRANTS",
+          "endpoint": "POST /api/v1/evidence/{id}/share",
+          "service": "EvidenceService.share_evidence",
+          "validation_rules": "Validates target user case association; creates or updates EvidenceAccessGrant.",
+          "audit_logged": true,
+          "defects_or_bypasses": "BL-FIND-08: Reactivating revoked grants wipes revoked_at and revocation_reason in-place, losing custody history."
+        },
+        {
+          "step_name": "LEGAL_HOLD_AND_DELETION",
+          "endpoint": "DELETE /api/v1/evidence/{id}",
+          "service": "EvidenceService.delete_evidence",
+          "validation_rules": "Blocks deletion if is_legal_hold is True; sets status=DELETED.",
+          "audit_logged": true,
+          "defects_or_bypasses": "Phase 2 DB-FIND-02 soft delete leakage in direct queries."
+        }
+      ]
+    },
+    {
+      "workflow_id": "WF-06",
+      "name": "Messaging & Collaboration Lifecycle",
+      "steps": [
+        {
+          "step_name": "THREAD_RESOLUTION",
+          "endpoint": "GET /api/v1/messages/threads/{partner_id}",
+          "service": "messages._resolve_active_case_between",
+          "validation_rules": "Resolves shared case between users.",
+          "audit_logged": false,
+          "defects_or_bypasses": "BL-FIND-05: Performs db.commit() inside read-only GET helper to auto-enroll lawyer participant."
+        },
+        {
+          "step_name": "DIRECT_MESSAGE_CREATION",
+          "endpoint": "POST /api/v1/messages",
+          "service": "messages.send_direct_message",
+          "validation_rules": "Persists DirectMessage; generates real-time WebSocket event.",
+          "audit_logged": false,
+          "defects_or_bypasses": "BL-FIND-05: Auto-enrolls sender and recipient as CaseParticipants with ACTIVE status and commits to database without case owner consent."
+        },
+        {
+          "step_name": "READ_RECEIPTS",
+          "endpoint": "POST /api/v1/messages/read",
+          "service": "messages.mark_as_read",
+          "validation_rules": "Updates read_at timestamp for partner messages.",
+          "audit_logged": false,
+          "defects_or_bypasses": "None"
+        }
+      ]
+    },
+    {
+      "workflow_id": "WF-07",
+      "name": "AI Copilot & Legal Analysis Lifecycle",
+      "steps": [
+        {
+          "step_name": "USER_QUERY_SUBMISSION",
+          "endpoint": "POST /api/v1/ai/conversations/{id}/messages",
+          "service": "AICopilotService.send_message",
+          "validation_rules": "Validates conversation ownership; enforces rate limits.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "CONTEXT_RETRIEVAL_RAG",
+          "endpoint": "Internal Service",
+          "service": "RAGService.retrieve_relevant_chunks",
+          "validation_rules": "Embeds user query; searches pgvector chunks scoped to accessible documents; checks similarity threshold.",
+          "audit_logged": false,
+          "defects_or_bypasses": "Phase 2 DB-FIND-05: Vector dimension discrepancy fallback handling."
+        },
+        {
+          "step_name": "LLM_INFERENCE_AND_CITATIONS",
+          "endpoint": "Internal Service",
+          "service": "AIService.generate_response",
+          "validation_rules": "Calls LLM provider; parses structured response; validates citations reference retrieved chunk IDs.",
+          "audit_logged": true,
+          "defects_or_bypasses": "Swallows provider exceptions and returns generic error message without enqueuing retry job."
+        },
+        {
+          "step_name": "MESSAGE_PERSISTENCE",
+          "endpoint": "Internal Service",
+          "service": "AICopilotService._persist_ai_response",
+          "validation_rules": "Persists AI AIMessage, tokens used, citations, and model version.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        }
+      ]
+    },
+    {
+      "workflow_id": "WF-08",
+      "name": "Background Job Business Lifecycle",
+      "steps": [
+        {
+          "step_name": "JOB_DISPATCH",
+          "endpoint": "Outbox Table / Worker Queue",
+          "service": "JobQueue.enqueue",
+          "validation_rules": "Enqueues job with payload and max_retries.",
+          "audit_logged": true,
+          "defects_or_bypasses": "None"
+        },
+        {
+          "step_name": "WORKER_CLAIMING",
+          "endpoint": "Background Worker Process",
+          "service": "Worker.claim_next_job",
+          "validation_rules": "Claims jobs using SELECT FOR UPDATE SKIP LOCKED.",
+          "audit_logged": false,
+          "defects_or_bypasses": "Phase 2 verified concurrency locking, but job handler idempotency varies."
+        },
+        {
+          "step_name": "EXECUTION_AND_RETRY",
+          "endpoint": "Job Handlers",
+          "service": "JobProcessor.execute",
+          "validation_rules": "Executes job; on failure increments retry_count; marks FAILED if retry_count >= max_retries.",
+          "audit_logged": true,
+          "defects_or_bypasses": "BL-FIND-06: 46 broad exception blocks catch Exception and log without state correction or dead-letter enqueuing."
+        }
+      ]
+    }
+  ]
+}

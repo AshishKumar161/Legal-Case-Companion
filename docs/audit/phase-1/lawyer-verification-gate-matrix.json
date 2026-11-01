@@ -1,0 +1,551 @@
+[
+  {
+    "method": "PATCH",
+    "path": "/api/v1/profiles/lawyer",
+    "endpoint": "update_lawyer_profile()",
+    "router": "app/api/v1/profiles.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/profiles/lawyer/verification",
+    "endpoint": "submit_lawyer_verification()",
+    "router": "app/api/v1/profiles.py",
+    "gate_enforced": "ONBOARDING (Self-Submission)",
+    "code_evidence": "Allows unverified lawyer to submit Bar Council documents for review",
+    "impact_on_unverified_lawyer": "Legitimate onboarding workflow"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/profiles/lawyer/availability",
+    "endpoint": "get_lawyer_availabilities()",
+    "router": "app/api/v1/profiles.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/profiles/lawyer/availability",
+    "endpoint": "create_lawyer_availability()",
+    "router": "app/api/v1/profiles.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/profiles/lawyer/availability/{availability_id}",
+    "endpoint": "update_lawyer_availability()",
+    "router": "app/api/v1/profiles.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/profiles/lawyer/availability/{availability_id}",
+    "endpoint": "delete_lawyer_availability()",
+    "router": "app/api/v1/profiles.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/{case_id}/grant-lawyer-access",
+    "endpoint": "grant_lawyer_access()",
+    "router": "app/api/v1/cases.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/consultations/lawyer-call-status",
+    "endpoint": "get_lawyer_call_status()",
+    "router": "app/api/v1/consultations.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/{case_id}/bundles",
+    "endpoint": "list_bundles()",
+    "router": "app/api/v1/bundles.py",
+    "gate_enforced": "ROLE_AND_CASE_PARTICIPANT",
+    "code_evidence": "Requires lawyer to be assigned participant on the case",
+    "impact_on_unverified_lawyer": "Scoped to case, but lawyer role itself is unverified"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/{case_id}/bundles",
+    "endpoint": "create_bundle()",
+    "router": "app/api/v1/bundles.py",
+    "gate_enforced": "ROLE_AND_CASE_PARTICIPANT",
+    "code_evidence": "Requires lawyer to be assigned participant on the case",
+    "impact_on_unverified_lawyer": "Scoped to case, but lawyer role itself is unverified"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}",
+    "endpoint": "get_bundle()",
+    "router": "app/api/v1/bundles.py",
+    "gate_enforced": "ROLE_AND_CASE_PARTICIPANT",
+    "code_evidence": "Requires lawyer to be assigned participant on the case",
+    "impact_on_unverified_lawyer": "Scoped to case, but lawyer role itself is unverified"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}",
+    "endpoint": "update_bundle()",
+    "router": "app/api/v1/bundles.py",
+    "gate_enforced": "ROLE_AND_CASE_PARTICIPANT",
+    "code_evidence": "Requires lawyer to be assigned participant on the case",
+    "impact_on_unverified_lawyer": "Scoped to case, but lawyer role itself is unverified"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}/finalize",
+    "endpoint": "finalize_bundle()",
+    "router": "app/api/v1/bundles.py",
+    "gate_enforced": "ROLE_AND_CASE_PARTICIPANT",
+    "code_evidence": "Requires lawyer to be assigned participant on the case",
+    "impact_on_unverified_lawyer": "Scoped to case, but lawyer role itself is unverified"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}/download",
+    "endpoint": "get_bundle_download()",
+    "router": "app/api/v1/bundles.py",
+    "gate_enforced": "ROLE_AND_CASE_PARTICIPANT",
+    "code_evidence": "Requires lawyer to be assigned participant on the case",
+    "impact_on_unverified_lawyer": "Scoped to case, but lawyer role itself is unverified"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}/certificate",
+    "endpoint": "prepare_bsa_certificate()",
+    "router": "app/api/v1/bundles.py",
+    "gate_enforced": "ROLE_AND_CASE_PARTICIPANT",
+    "code_evidence": "Requires lawyer to be assigned participant on the case",
+    "impact_on_unverified_lawyer": "Scoped to case, but lawyer role itself is unverified"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/{case_id}/bundles/{bundle_id}/certificate/{certificate_id}/download",
+    "endpoint": "get_certificate_download()",
+    "router": "app/api/v1/bundles.py",
+    "gate_enforced": "ROLE_AND_CASE_PARTICIPANT",
+    "code_evidence": "Requires lawyer to be assigned participant on the case",
+    "impact_on_unverified_lawyer": "Scoped to case, but lawyer role itself is unverified"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/lawyers/dashboard",
+    "endpoint": "get_lawyer_operational_dashboard()",
+    "router": "app/api/v1/lawyers.py",
+    "gate_enforced": "ROLE_AND_VERIFIED (VerificationStatus.APPROVED)",
+    "code_evidence": "Service explicitly queries LawyerVerification.status == VerificationStatus.APPROVED",
+    "impact_on_unverified_lawyer": "Guarded against unverified advocates"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/lawyers/heartbeat",
+    "endpoint": "record_lawyer_heartbeat()",
+    "router": "app/api/v1/lawyers.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/lawyers",
+    "endpoint": "search_lawyers()",
+    "router": "app/api/v1/lawyers.py",
+    "gate_enforced": "ROLE_AND_VERIFIED (VerificationStatus.APPROVED)",
+    "code_evidence": "Service explicitly queries LawyerVerification.status == VerificationStatus.APPROVED",
+    "impact_on_unverified_lawyer": "Guarded against unverified advocates"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/lawyers/{user_id}",
+    "endpoint": "get_lawyer_profile()",
+    "router": "app/api/v1/lawyers.py",
+    "gate_enforced": "ROLE_AND_VERIFIED (VerificationStatus.APPROVED)",
+    "code_evidence": "Service explicitly queries LawyerVerification.status == VerificationStatus.APPROVED",
+    "impact_on_unverified_lawyer": "Guarded against unverified advocates"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/lawyers/{lawyer_id}/slots",
+    "endpoint": "get_lawyer_slots()",
+    "router": "app/api/v1/lawyers.py",
+    "gate_enforced": "ROLE_AND_VERIFIED (VerificationStatus.APPROVED)",
+    "code_evidence": "Service explicitly queries LawyerVerification.status == VerificationStatus.APPROVED",
+    "impact_on_unverified_lawyer": "Guarded against unverified advocates"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/lawyers/{lawyer_id}/availability",
+    "endpoint": "get_public_lawyer_availability()",
+    "router": "app/api/v1/lawyers.py",
+    "gate_enforced": "ROLE_AND_VERIFIED (VerificationStatus.APPROVED)",
+    "code_evidence": "Service explicitly queries LawyerVerification.status == VerificationStatus.APPROVED",
+    "impact_on_unverified_lawyer": "Guarded against unverified advocates"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/lawyers/{lawyer_id}/presence",
+    "endpoint": "get_lawyer_presence()",
+    "router": "app/api/v1/lawyers.py",
+    "gate_enforced": "ROLE_AND_VERIFIED (VerificationStatus.APPROVED)",
+    "code_evidence": "Service explicitly queries LawyerVerification.status == VerificationStatus.APPROVED",
+    "impact_on_unverified_lawyer": "Guarded against unverified advocates"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/verifications",
+    "endpoint": "get_verifications()",
+    "router": "app/api/v1/admin.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/verifications/{verification_id}/approve",
+    "endpoint": "approve_verification()",
+    "router": "app/api/v1/admin.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/verifications/{verification_id}/reject",
+    "endpoint": "reject_verification()",
+    "router": "app/api/v1/admin.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pilot/advocate-supply-roster",
+    "endpoint": "get_advocate_supply_roster()",
+    "router": "app/api/v1/pilot.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/payouts/process",
+    "endpoint": "process_payout()",
+    "router": "app/api/v1/commercial.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/application/documents",
+    "endpoint": "upload_advocate_document()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/advocate/documents",
+    "endpoint": "upload_advocate_document()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/documents/{document_id}/download-url",
+    "endpoint": "get_verification_document_download_url()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/advocate/documents/{document_id}/download",
+    "endpoint": "get_verification_document_download_url()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/application/submit",
+    "endpoint": "submit_advocate_verification_application()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ONBOARDING (Self-Submission)",
+    "code_evidence": "Allows unverified lawyer to submit Bar Council documents for review",
+    "impact_on_unverified_lawyer": "Legitimate onboarding workflow"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/advocate/submit",
+    "endpoint": "submit_advocate_verification_application()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ONBOARDING (Self-Submission)",
+    "code_evidence": "Allows unverified lawyer to submit Bar Council documents for review",
+    "impact_on_unverified_lawyer": "Legitimate onboarding workflow"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/application/status",
+    "endpoint": "get_advocate_verification_status()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/advocate/status",
+    "endpoint": "get_advocate_verification_status()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/admin/queue",
+    "endpoint": "get_admin_verification_queue()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/{verification_id}",
+    "endpoint": "get_admin_verification_detail()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/admin/{verification_id}",
+    "endpoint": "get_admin_verification_detail()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/admin/{verification_id}/detail",
+    "endpoint": "get_admin_verification_detail()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/{verification_id}/start-review",
+    "endpoint": "start_admin_review()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/admin/{verification_id}/start-review",
+    "endpoint": "start_admin_review()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/{verification_id}/approve",
+    "endpoint": "approve_admin_verification()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/admin/{verification_id}/approve",
+    "endpoint": "approve_admin_verification()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/{verification_id}/reject",
+    "endpoint": "reject_admin_verification()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/admin/{verification_id}/reject",
+    "endpoint": "reject_admin_verification()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/{verification_id}/request-information",
+    "endpoint": "request_admin_verification_info()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/admin/{verification_id}/request-information",
+    "endpoint": "request_admin_verification_info()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/{verification_id}/revoke",
+    "endpoint": "revoke_admin_verification()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/admin/{verification_id}/revoke",
+    "endpoint": "revoke_admin_verification()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/badge/{lawyer_id}",
+    "endpoint": "get_public_advocate_badge()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_AND_VERIFIED (VerificationStatus.APPROVED)",
+    "code_evidence": "Service explicitly queries LawyerVerification.status == VerificationStatus.APPROVED",
+    "impact_on_unverified_lawyer": "Guarded against unverified advocates"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/advocate/{lawyer_id}/badge",
+    "endpoint": "get_public_advocate_badge()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_AND_VERIFIED (VerificationStatus.APPROVED)",
+    "code_evidence": "Service explicitly queries LawyerVerification.status == VerificationStatus.APPROVED",
+    "impact_on_unverified_lawyer": "Guarded against unverified advocates"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/lawyer/submit",
+    "endpoint": "submit_lawyer_verification_legacy()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ONBOARDING (Self-Submission)",
+    "code_evidence": "Allows unverified lawyer to submit Bar Council documents for review",
+    "impact_on_unverified_lawyer": "Legitimate onboarding workflow"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/verification/admin/{verification_id}/review",
+    "endpoint": "review_lawyer_verification_legacy()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verification/discovery/transparency",
+    "endpoint": "get_discovery_ranking_transparency()",
+    "router": "app/api/v1/verification.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/court-cases",
+    "endpoint": "search_court_cases()",
+    "router": "app/api/v1/court_cases.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/court-cases/{id_or_cnr}",
+    "endpoint": "get_court_case_detail()",
+    "router": "app/api/v1/court_cases.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/court-cases/{id_or_cnr}/follow",
+    "endpoint": "follow_court_case()",
+    "router": "app/api/v1/court_cases.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/court-cases/{id_or_cnr}/follow",
+    "endpoint": "unfollow_court_case()",
+    "router": "app/api/v1/court_cases.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/court-cases/{id_or_cnr}/sync",
+    "endpoint": "sync_court_case()",
+    "router": "app/api/v1/court_cases.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/court-cases/{id_or_cnr}/link-matter",
+    "endpoint": "link_matter()",
+    "router": "app/api/v1/court_cases.py",
+    "gate_enforced": "ROLE_ONLY (UserRole.LAWYER)",
+    "code_evidence": "Handler or route decorator checks RequireRole([UserRole.LAWYER])",
+    "impact_on_unverified_lawyer": "Unverified lawyer can invoke this endpoint"
+  }
+]

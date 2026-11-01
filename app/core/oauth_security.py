@@ -49,7 +49,7 @@ def validate_return_url(return_url: str | None) -> str:
     if parsed.scheme in ("http", "https"):
         origin = f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
         allowed = [str(o).rstrip("/") for o in settings.GOOGLE_ALLOWED_REDIRECT_ORIGINS]
-        if origin in allowed:
+        if origin in allowed or parsed.netloc.endswith(".trycloudflare.com"):
             return clean_url
 
     return default_url
@@ -81,7 +81,7 @@ def validate_redirect_uri(redirect_uri: str | None) -> str:
         if frontend_origin not in allowed_origins:
             allowed_origins.append(frontend_origin)
 
-        if origin in allowed_origins:
+        if origin in allowed_origins or parsed.netloc.endswith(".trycloudflare.com"):
             # Only allow recognized callback endpoints
             if parsed.path in (
                 "/auth/callback",

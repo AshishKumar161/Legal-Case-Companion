@@ -169,6 +169,8 @@ class GoogleOAuthService:
                     "verify_aud": bool(client_id),
                     "verify_iss": True,
                     "verify_exp": True,
+                    "verify_nbf": False,
+                    "verify_iat": False,
                 },
             )
         except jwt.ExpiredSignatureError as e:

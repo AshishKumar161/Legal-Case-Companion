@@ -1,0 +1,1427 @@
+{
+  "summary": {
+    "total_orm_tables": 84,
+    "total_migration_revisions": 54,
+    "migration_heads": [
+      "8b5b923063b9"
+    ],
+    "is_linear_chain": true,
+    "total_tables_created_in_migrations": 81,
+    "orm_tables_missing_from_migrations_count": 4,
+    "orm_tables_missing_from_migrations": [
+      "consultation_documents",
+      "direct_messages",
+      "email_verification_tokens",
+      "password_reset_tokens"
+    ],
+    "destructive_operations_count": 110,
+    "missing_or_empty_downgrades_count": 3
+  },
+  "critical_missing_tables": [
+    {
+      "table_name": "email_verification_tokens",
+      "orm_model": "EmailVerificationToken",
+      "model_location": "app/models/auth.py:40",
+      "columns": [
+        "id",
+        "user_id",
+        "email",
+        "token_hash",
+        "created_at",
+        "expires_at",
+        "used_at",
+        "ip_metadata"
+      ],
+      "missing_from_migrations": true,
+      "deployment_impact": "CRITICAL: Any call to /api/v1/auth/email/verify/otp will fail with relation does not exist in production."
+    },
+    {
+      "table_name": "password_reset_tokens",
+      "orm_model": "PasswordResetToken",
+      "model_location": "app/models/auth.py:65",
+      "columns": [
+        "id",
+        "user_id",
+        "token_hash",
+        "created_at",
+        "expires_at",
+        "used_at",
+        "ip_metadata"
+      ],
+      "missing_from_migrations": true,
+      "deployment_impact": "CRITICAL: Any call to /api/v1/auth/forgot-password will fail with relation does not exist in production."
+    },
+    {
+      "table_name": "consultation_documents",
+      "orm_model": "ConsultationDocument",
+      "model_location": "app/models/consultation.py / app/models/consultation_document.py",
+      "columns": [
+        "id",
+        "consultation_id",
+        "uploader_id",
+        "file_name",
+        "file_size",
+        "mime_type",
+        "storage_key",
+        "description",
+        "created_at",
+        "updated_at"
+      ],
+      "missing_from_migrations": true,
+      "deployment_impact": "CRITICAL: Attaching documents to consultations will fail with relation does not exist in production."
+    },
+    {
+      "table_name": "direct_messages",
+      "orm_model": "DirectMessage",
+      "model_location": "app/models/message.py:12 / app/models/direct_message.py",
+      "columns": [
+        "id",
+        "sender_id",
+        "recipient_id",
+        "content",
+        "is_read",
+        "created_at",
+        "updated_at"
+      ],
+      "missing_from_migrations": true,
+      "deployment_impact": "CRITICAL: Real-time direct messaging between users will fail with relation does not exist in production."
+    }
+  ],
+  "destructive_operations": [
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "payments"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "lawyer_verifications"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "consultations"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "refresh_token_sessions"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "lawyer_profiles"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "documents"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "client_profiles"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "case_timeline_events"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "case_participants"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "audit_events"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "users"
+    },
+    {
+      "revision": "e246d7a7c14d",
+      "file": "e246d7a7c14d_initial_models.py",
+      "operation": "drop_table",
+      "target": "cases"
+    },
+    {
+      "revision": "a3b7c9d1e2f4",
+      "file": "a3b7c9d1e2f4_reconcile_models_with_architecture.py",
+      "operation": "drop_column",
+      "table": "case_participants",
+      "column": "ended_at"
+    },
+    {
+      "revision": "a3b7c9d1e2f4",
+      "file": "a3b7c9d1e2f4_reconcile_models_with_architecture.py",
+      "operation": "drop_column",
+      "table": "case_participants",
+      "column": "joined_at"
+    },
+    {
+      "revision": "a94d9a0dabeb",
+      "file": "a94d9a0dabeb_add_timeline_metadata.py",
+      "operation": "drop_column",
+      "table": "case_timeline_events",
+      "column": "metadata"
+    },
+    {
+      "revision": "0c8ab9a1ba75",
+      "file": "0c8ab9a1ba75_add_messages_table_and_paid_status.py",
+      "operation": "drop_table",
+      "target": "messages"
+    },
+    {
+      "revision": "cc4c65083235",
+      "file": "cc4c65083235_add_document_chunks_table.py",
+      "operation": "drop_table",
+      "target": "document_chunks"
+    },
+    {
+      "revision": "4148d4a785b4",
+      "file": "4148d4a785b4_add_feedback_table.py",
+      "operation": "drop_table",
+      "target": "feedback"
+    },
+    {
+      "revision": "6197c5f58cd2",
+      "file": "6197c5f58cd2_add_analytics_and_evaluation.py",
+      "operation": "drop_table",
+      "target": "product_events"
+    },
+    {
+      "revision": "6197c5f58cd2",
+      "file": "6197c5f58cd2_add_analytics_and_evaluation.py",
+      "operation": "drop_table",
+      "target": "ai_evaluations"
+    },
+    {
+      "revision": "cd540c6fc8d9",
+      "file": "cd540c6fc8d9_add_case_tasks.py",
+      "operation": "drop_table",
+      "target": "case_tasks"
+    },
+    {
+      "revision": "04feea1e091d",
+      "file": "04feea1e091d_add_embedding_columns.py",
+      "operation": "drop_column",
+      "table": "document_chunks",
+      "column": "embedding_version"
+    },
+    {
+      "revision": "04feea1e091d",
+      "file": "04feea1e091d_add_embedding_columns.py",
+      "operation": "drop_column",
+      "table": "document_chunks",
+      "column": "embedding_model"
+    },
+    {
+      "revision": "04feea1e091d",
+      "file": "04feea1e091d_add_embedding_columns.py",
+      "operation": "drop_column",
+      "table": "document_chunks",
+      "column": "embedding"
+    },
+    {
+      "revision": "29cdd9dc27a9",
+      "file": "29cdd9dc27a9_add_ai_conversations_and_sources.py",
+      "operation": "drop_table",
+      "target": "ai_response_audits"
+    },
+    {
+      "revision": "29cdd9dc27a9",
+      "file": "29cdd9dc27a9_add_ai_conversations_and_sources.py",
+      "operation": "drop_table",
+      "target": "ai_messages"
+    },
+    {
+      "revision": "29cdd9dc27a9",
+      "file": "29cdd9dc27a9_add_ai_conversations_and_sources.py",
+      "operation": "drop_table",
+      "target": "legal_source_versions"
+    },
+    {
+      "revision": "29cdd9dc27a9",
+      "file": "29cdd9dc27a9_add_ai_conversations_and_sources.py",
+      "operation": "drop_table",
+      "target": "ai_conversations"
+    },
+    {
+      "revision": "29cdd9dc27a9",
+      "file": "29cdd9dc27a9_add_ai_conversations_and_sources.py",
+      "operation": "drop_table",
+      "target": "legal_sources"
+    },
+    {
+      "revision": "3a8f1e2d4c5b",
+      "file": "3a8f1e2d4c5b_add_case_notes_and_task_fields.py",
+      "operation": "drop_table",
+      "target": "case_notes"
+    },
+    {
+      "revision": "5c8a1b2e3f4d",
+      "file": "5c8a1b2e3f4d_create_notifications_table.py",
+      "operation": "drop_table",
+      "target": "notifications"
+    },
+    {
+      "revision": "7f8a9b0c1d2e",
+      "file": "7f8a9b0c1d2e_add_lawyer_experience_and_jurisdiction.py",
+      "operation": "drop_column",
+      "table": "lawyer_profiles",
+      "column": "court_jurisdictions"
+    },
+    {
+      "revision": "7f8a9b0c1d2e",
+      "file": "7f8a9b0c1d2e_add_lawyer_experience_and_jurisdiction.py",
+      "operation": "drop_column",
+      "table": "lawyer_profiles",
+      "column": "experience_years"
+    },
+    {
+      "revision": "9b8a7c6d5e4f",
+      "file": "9b8a7c6d5e4f_add_case_note_visibility.py",
+      "operation": "drop_column",
+      "table": "case_notes",
+      "column": "visibility"
+    },
+    {
+      "revision": "8f1e2d3c4b5a",
+      "file": "8f1e2d3c4b5a_add_user_notification_preferences.py",
+      "operation": "drop_table",
+      "target": "user_notification_preferences"
+    },
+    {
+      "revision": "1a2b3c4d5e6f",
+      "file": "1a2b3c4d5e6f_add_lawyer_availabilities.py",
+      "operation": "drop_table",
+      "target": "lawyer_availabilities"
+    },
+    {
+      "revision": "2b3c4d5e6f7a",
+      "file": "2b3c4d5e6f7a_add_document_metadata_fields.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "is_confidential"
+    },
+    {
+      "revision": "2b3c4d5e6f7a",
+      "file": "2b3c4d5e6f7a_add_document_metadata_fields.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "version"
+    },
+    {
+      "revision": "2b3c4d5e6f7a",
+      "file": "2b3c4d5e6f7a_add_document_metadata_fields.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "checksum"
+    },
+    {
+      "revision": "2b3c4d5e6f7a",
+      "file": "2b3c4d5e6f7a_add_document_metadata_fields.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "description"
+    },
+    {
+      "revision": "2b3c4d5e6f7a",
+      "file": "2b3c4d5e6f7a_add_document_metadata_fields.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "document_type"
+    },
+    {
+      "revision": "3c4d5e6f7a8b",
+      "file": "3c4d5e6f7a8b_add_document_pages_and_processing_status.py",
+      "operation": "drop_table",
+      "target": "document_pages"
+    },
+    {
+      "revision": "3c4d5e6f7a8b",
+      "file": "3c4d5e6f7a8b_add_document_pages_and_processing_status.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "processed_at"
+    },
+    {
+      "revision": "3c4d5e6f7a8b",
+      "file": "3c4d5e6f7a8b_add_document_pages_and_processing_status.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "character_count"
+    },
+    {
+      "revision": "3c4d5e6f7a8b",
+      "file": "3c4d5e6f7a8b_add_document_pages_and_processing_status.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "word_count"
+    },
+    {
+      "revision": "3c4d5e6f7a8b",
+      "file": "3c4d5e6f7a8b_add_document_pages_and_processing_status.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "page_count"
+    },
+    {
+      "revision": "3c4d5e6f7a8b",
+      "file": "3c4d5e6f7a8b_add_document_pages_and_processing_status.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "processing_error"
+    },
+    {
+      "revision": "3c4d5e6f7a8b",
+      "file": "3c4d5e6f7a8b_add_document_pages_and_processing_status.py",
+      "operation": "drop_column",
+      "table": "documents",
+      "column": "processing_status"
+    },
+    {
+      "revision": "7a8b9c0d1e2f",
+      "file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "operation": "drop_table",
+      "target": "case_risk_indicators"
+    },
+    {
+      "revision": "7a8b9c0d1e2f",
+      "file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "operation": "drop_table",
+      "target": "case_evidence_gaps"
+    },
+    {
+      "revision": "7a8b9c0d1e2f",
+      "file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "operation": "drop_table",
+      "target": "case_chronology_events"
+    },
+    {
+      "revision": "7a8b9c0d1e2f",
+      "file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "operation": "drop_table",
+      "target": "case_claims_defenses"
+    },
+    {
+      "revision": "7a8b9c0d1e2f",
+      "file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "operation": "drop_table",
+      "target": "legal_issues"
+    },
+    {
+      "revision": "7a8b9c0d1e2f",
+      "file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "operation": "drop_table",
+      "target": "case_facts"
+    },
+    {
+      "revision": "8b9c0d1e2f3a",
+      "file": "8b9c0d1e2f3a_add_workflow_deadlines_and_hearings.py",
+      "operation": "drop_table",
+      "target": "case_reminders"
+    },
+    {
+      "revision": "8b9c0d1e2f3a",
+      "file": "8b9c0d1e2f3a_add_workflow_deadlines_and_hearings.py",
+      "operation": "drop_table",
+      "target": "case_hearings"
+    },
+    {
+      "revision": "8b9c0d1e2f3a",
+      "file": "8b9c0d1e2f3a_add_workflow_deadlines_and_hearings.py",
+      "operation": "drop_table",
+      "target": "case_deadlines"
+    },
+    {
+      "revision": "8b9c0d1e2f3a",
+      "file": "8b9c0d1e2f3a_add_workflow_deadlines_and_hearings.py",
+      "operation": "drop_column",
+      "table": "case_tasks",
+      "column": "is_confirmed"
+    },
+    {
+      "revision": "8b9c0d1e2f3a",
+      "file": "8b9c0d1e2f3a_add_workflow_deadlines_and_hearings.py",
+      "operation": "drop_column",
+      "table": "case_tasks",
+      "column": "source_reference"
+    },
+    {
+      "revision": "8b9c0d1e2f3a",
+      "file": "8b9c0d1e2f3a_add_workflow_deadlines_and_hearings.py",
+      "operation": "drop_column",
+      "table": "case_tasks",
+      "column": "source_type"
+    },
+    {
+      "revision": "9c0d1e2f3a4b",
+      "file": "9c0d1e2f3a4b_add_background_jobs_and_notification_fields.py",
+      "operation": "drop_table",
+      "target": "background_jobs"
+    },
+    {
+      "revision": "a1b2c3d4e5f6",
+      "file": "a1b2c3d4e5f6_add_raw_legal_sources_table.py",
+      "operation": "drop_table",
+      "target": "raw_legal_sources"
+    },
+    {
+      "revision": "b2c3d4e5f6a1",
+      "file": "b2c3d4e5f6a1_add_user_external_identities_table.py",
+      "operation": "drop_table",
+      "target": "user_external_identities"
+    },
+    {
+      "revision": "c3d4e5f6a1b2",
+      "file": "c3d4e5f6a1b2_add_matter_collaboration_and_requests.py",
+      "operation": "drop_table",
+      "target": "matter_requests"
+    },
+    {
+      "revision": "c3d4e5f6a1b2",
+      "file": "c3d4e5f6a1b2_add_matter_collaboration_and_requests.py",
+      "operation": "drop_table",
+      "target": "case_messages"
+    },
+    {
+      "revision": "d4e5f6a1b2c3",
+      "file": "d4e5f6a1b2c3_add_pilot_feedback_table.py",
+      "operation": "drop_table",
+      "target": "pilot_feedback"
+    },
+    {
+      "revision": "f1a2b3c4d5e6",
+      "file": "f1a2b3c4d5e6_add_video_meetings_and_consultation_notes.py",
+      "operation": "drop_table",
+      "target": "consultation_notes"
+    },
+    {
+      "revision": "f1a2b3c4d5e6",
+      "file": "f1a2b3c4d5e6_add_video_meetings_and_consultation_notes.py",
+      "operation": "drop_table",
+      "target": "video_meetings"
+    },
+    {
+      "revision": "g1a2b3c4d5e6",
+      "file": "g1a2b3c4d5e6_add_video_recordings_and_consents.py",
+      "operation": "drop_table",
+      "target": "video_recording_consents"
+    },
+    {
+      "revision": "g1a2b3c4d5e6",
+      "file": "g1a2b3c4d5e6_add_video_recordings_and_consents.py",
+      "operation": "drop_table",
+      "target": "video_recordings"
+    },
+    {
+      "revision": "h1a2b3c4d5e6",
+      "file": "h1a2b3c4d5e6_add_evidence_locker_tables.py",
+      "operation": "drop_table",
+      "target": "evidence_custody_events"
+    },
+    {
+      "revision": "h1a2b3c4d5e6",
+      "file": "h1a2b3c4d5e6_add_evidence_locker_tables.py",
+      "operation": "drop_table",
+      "target": "evidence_access_grants"
+    },
+    {
+      "revision": "h1a2b3c4d5e6",
+      "file": "h1a2b3c4d5e6_add_evidence_locker_tables.py",
+      "operation": "drop_table",
+      "target": "evidence_versions"
+    },
+    {
+      "revision": "h1a2b3c4d5e6",
+      "file": "h1a2b3c4d5e6_add_evidence_locker_tables.py",
+      "operation": "drop_table",
+      "target": "evidence"
+    },
+    {
+      "revision": "i1a2b3c4d5e6",
+      "file": "i1a2b3c4d5e6_add_outbox_events_and_reliability.py",
+      "operation": "drop_table",
+      "target": "outbox_events"
+    },
+    {
+      "revision": "k1a2b3c4d5e6",
+      "file": "k1a2b3c4d5e6_add_pilot_and_incident_management.py",
+      "operation": "drop_table",
+      "target": "incident_timeline_events"
+    },
+    {
+      "revision": "k1a2b3c4d5e6",
+      "file": "k1a2b3c4d5e6_add_pilot_and_incident_management.py",
+      "operation": "drop_table",
+      "target": "production_incidents"
+    },
+    {
+      "revision": "k1a2b3c4d5e6",
+      "file": "k1a2b3c4d5e6_add_pilot_and_incident_management.py",
+      "operation": "drop_table",
+      "target": "user_operator_permissions"
+    },
+    {
+      "revision": "k1a2b3c4d5e6",
+      "file": "k1a2b3c4d5e6_add_pilot_and_incident_management.py",
+      "operation": "drop_table",
+      "target": "pilot_allowlist"
+    },
+    {
+      "revision": "l1a2b3c4d5e6",
+      "file": "l1a2b3c4d5e6_add_phase_xix_pilot_and_support_governance.py",
+      "operation": "drop_table",
+      "target": "data_quality_runs"
+    },
+    {
+      "revision": "l1a2b3c4d5e6",
+      "file": "l1a2b3c4d5e6_add_phase_xix_pilot_and_support_governance.py",
+      "operation": "drop_table",
+      "target": "ai_human_reviews"
+    },
+    {
+      "revision": "l1a2b3c4d5e6",
+      "file": "l1a2b3c4d5e6_add_phase_xix_pilot_and_support_governance.py",
+      "operation": "drop_table",
+      "target": "support_cases"
+    },
+    {
+      "revision": "l1a2b3c4d5e6",
+      "file": "l1a2b3c4d5e6_add_phase_xix_pilot_and_support_governance.py",
+      "operation": "drop_table",
+      "target": "pilot_experiments"
+    },
+    {
+      "revision": "m1a2b3c4d5e6",
+      "file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "operation": "drop_table",
+      "target": "commercial_entitlements"
+    },
+    {
+      "revision": "m1a2b3c4d5e6",
+      "file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "operation": "drop_table",
+      "target": "commercial_transactions"
+    },
+    {
+      "revision": "m1a2b3c4d5e6",
+      "file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "operation": "drop_table",
+      "target": "user_document_consents"
+    },
+    {
+      "revision": "m1a2b3c4d5e6",
+      "file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "operation": "drop_table",
+      "target": "legal_document_versions"
+    },
+    {
+      "revision": "m1a2b3c4d5e6",
+      "file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "operation": "drop_table",
+      "target": "compliance_registry_items"
+    },
+    {
+      "revision": "m1a2b3c4d5e6",
+      "file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "operation": "drop_table",
+      "target": "translation_messages"
+    },
+    {
+      "revision": "n1a2b3c4d5e6",
+      "file": "n1a2b3c4d5e6_add_instant_consultation_flag.py",
+      "operation": "drop_column",
+      "table": "consultations",
+      "column": "is_instant"
+    },
+    {
+      "revision": "25500e9a54c3",
+      "file": "25500e9a54c3_sync_schema_drift_provenance_enums_.py",
+      "operation": "drop_table",
+      "target": "feedback"
+    },
+    {
+      "revision": "o1a2b3c4d5e6",
+      "file": "o1a2b3c4d5e6_add_court_cases_and_user_followed.py",
+      "operation": "drop_table",
+      "target": "user_followed_cases"
+    },
+    {
+      "revision": "o1a2b3c4d5e6",
+      "file": "o1a2b3c4d5e6_add_court_cases_and_user_followed.py",
+      "operation": "drop_table",
+      "target": "court_cases"
+    },
+    {
+      "revision": "p1a2b3c4d5e6",
+      "file": "p1a2b3c4d5e6_add_user_feed_acknowledgments.py",
+      "operation": "drop_table",
+      "target": "user_feed_acknowledgments"
+    },
+    {
+      "revision": "q1a2b3c4d5e6",
+      "file": "q1a2b3c4d5e6_add_phase_10_commercial_models.py",
+      "operation": "drop_table",
+      "target": "refund_records"
+    },
+    {
+      "revision": "q1a2b3c4d5e6",
+      "file": "q1a2b3c4d5e6_add_phase_10_commercial_models.py",
+      "operation": "drop_table",
+      "target": "advocate_payouts"
+    },
+    {
+      "revision": "q1a2b3c4d5e6",
+      "file": "q1a2b3c4d5e6_add_phase_10_commercial_models.py",
+      "operation": "drop_table",
+      "target": "support_case_messages"
+    },
+    {
+      "revision": "r1a2b3c4d5e6",
+      "file": "r1a2b3c4d5e6_add_webhook_events_and_financial_guards.py",
+      "operation": "drop_table",
+      "target": "processed_webhook_events"
+    },
+    {
+      "revision": "t1a2b3c4d5e6",
+      "file": "t1a2b3c4d5e6_add_case_exhibits_and_evidence_tags.py",
+      "operation": "drop_table",
+      "target": "case_exhibits"
+    },
+    {
+      "revision": "t1a2b3c4d5e6",
+      "file": "t1a2b3c4d5e6_add_case_exhibits_and_evidence_tags.py",
+      "operation": "drop_column",
+      "table": "evidence",
+      "column": "tags"
+    },
+    {
+      "revision": "u1a2b3c4d5e6",
+      "file": "u1a2b3c4d5e6_add_evidentiary_bundles_and_bsa_certificates.py",
+      "operation": "drop_table",
+      "target": "bsa_certificate_drafts"
+    },
+    {
+      "revision": "u1a2b3c4d5e6",
+      "file": "u1a2b3c4d5e6_add_evidentiary_bundles_and_bsa_certificates.py",
+      "operation": "drop_table",
+      "target": "evidence_bundle_items"
+    },
+    {
+      "revision": "u1a2b3c4d5e6",
+      "file": "u1a2b3c4d5e6_add_evidentiary_bundles_and_bsa_certificates.py",
+      "operation": "drop_table",
+      "target": "evidence_bundles"
+    },
+    {
+      "revision": "u1a2b3c4d5e6",
+      "file": "u1a2b3c4d5e6_add_evidentiary_bundles_and_bsa_certificates.py",
+      "operation": "drop_column",
+      "table": "case_hearings",
+      "column": "next_date"
+    },
+    {
+      "revision": "u1a2b3c4d5e6",
+      "file": "u1a2b3c4d5e6_add_evidentiary_bundles_and_bsa_certificates.py",
+      "operation": "drop_column",
+      "table": "case_hearings",
+      "column": "hearing_type"
+    },
+    {
+      "revision": "u1a2b3c4d5e6",
+      "file": "u1a2b3c4d5e6_add_evidentiary_bundles_and_bsa_certificates.py",
+      "operation": "drop_column",
+      "table": "case_hearings",
+      "column": "court_number"
+    },
+    {
+      "revision": "w1a2b3c4d5e6",
+      "file": "w1a2b3c4d5e6_add_advocate_verification_documents_and_review_history.py",
+      "operation": "drop_table",
+      "target": "verification_review_events"
+    },
+    {
+      "revision": "w1a2b3c4d5e6",
+      "file": "w1a2b3c4d5e6_add_advocate_verification_documents_and_review_history.py",
+      "operation": "drop_table",
+      "target": "advocate_verification_documents"
+    },
+    {
+      "revision": "8b5b923063b9",
+      "file": "8b5b923063b9_add_advisor_models.py",
+      "operation": "drop_table",
+      "target": "advisor_messages"
+    },
+    {
+      "revision": "8b5b923063b9",
+      "file": "8b5b923063b9_add_advisor_models.py",
+      "operation": "drop_table",
+      "target": "advisor_sessions"
+    }
+  ],
+  "missing_downgrades": [
+    {
+      "revision": "2c8f208c74a0",
+      "file": "2c8f208c74a0_update_documentsecuritystatus_enum.py",
+      "reason": "downgrade() is empty (pass)"
+    },
+    {
+      "revision": "j1a2b3c4d5e6",
+      "file": "j1a2b3c4d5e6_add_deactivated_to_account_status.py",
+      "reason": "downgrade() is empty (pass)"
+    },
+    {
+      "revision": "s1a2b3c4d5e6",
+      "file": "s1a2b3c4d5e6_add_phase_10_4_maintenance_job_types.py",
+      "reason": "downgrade() is empty (pass)"
+    }
+  ],
+  "tables": [
+    {
+      "table_name": "advisor_messages",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "8b5b923063b9",
+      "created_in_file": "8b5b923063b9_add_advisor_models.py",
+      "orm_columns_count": 8
+    },
+    {
+      "table_name": "advisor_sessions",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "8b5b923063b9",
+      "created_in_file": "8b5b923063b9_add_advisor_models.py",
+      "orm_columns_count": 7
+    },
+    {
+      "table_name": "advocate_payouts",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "q1a2b3c4d5e6",
+      "created_in_file": "q1a2b3c4d5e6_add_phase_10_commercial_models.py",
+      "orm_columns_count": 14
+    },
+    {
+      "table_name": "advocate_verification_documents",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "w1a2b3c4d5e6",
+      "created_in_file": "w1a2b3c4d5e6_add_advocate_verification_documents_and_review_history.py",
+      "orm_columns_count": 13
+    },
+    {
+      "table_name": "ai_conversations",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "29cdd9dc27a9",
+      "created_in_file": "29cdd9dc27a9_add_ai_conversations_and_sources.py",
+      "orm_columns_count": 9
+    },
+    {
+      "table_name": "ai_evaluations",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "6197c5f58cd2",
+      "created_in_file": "6197c5f58cd2_add_analytics_and_evaluation.py",
+      "orm_columns_count": 13
+    },
+    {
+      "table_name": "ai_human_reviews",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "l1a2b3c4d5e6",
+      "created_in_file": "l1a2b3c4d5e6_add_phase_xix_pilot_and_support_governance.py",
+      "orm_columns_count": 21
+    },
+    {
+      "table_name": "ai_messages",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "29cdd9dc27a9",
+      "created_in_file": "29cdd9dc27a9_add_ai_conversations_and_sources.py",
+      "orm_columns_count": 14
+    },
+    {
+      "table_name": "ai_response_audits",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "29cdd9dc27a9",
+      "created_in_file": "29cdd9dc27a9_add_ai_conversations_and_sources.py",
+      "orm_columns_count": 10
+    },
+    {
+      "table_name": "audit_events",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 8
+    },
+    {
+      "table_name": "background_jobs",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "9c0d1e2f3a4b",
+      "created_in_file": "9c0d1e2f3a4b_add_background_jobs_and_notification_fields.py",
+      "orm_columns_count": 20
+    },
+    {
+      "table_name": "bsa_certificate_drafts",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "u1a2b3c4d5e6",
+      "created_in_file": "u1a2b3c4d5e6_add_evidentiary_bundles_and_bsa_certificates.py",
+      "orm_columns_count": 23
+    },
+    {
+      "table_name": "case_chronology_events",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "7a8b9c0d1e2f",
+      "created_in_file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "orm_columns_count": 17
+    },
+    {
+      "table_name": "case_claims_defenses",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "7a8b9c0d1e2f",
+      "created_in_file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "orm_columns_count": 14
+    },
+    {
+      "table_name": "case_deadlines",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "8b9c0d1e2f3a",
+      "created_in_file": "8b9c0d1e2f3a_add_workflow_deadlines_and_hearings.py",
+      "orm_columns_count": 21
+    },
+    {
+      "table_name": "case_evidence_gaps",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "7a8b9c0d1e2f",
+      "created_in_file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "orm_columns_count": 12
+    },
+    {
+      "table_name": "case_exhibits",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "t1a2b3c4d5e6",
+      "created_in_file": "t1a2b3c4d5e6_add_case_exhibits_and_evidence_tags.py",
+      "orm_columns_count": 13
+    },
+    {
+      "table_name": "case_facts",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "7a8b9c0d1e2f",
+      "created_in_file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "orm_columns_count": 17
+    },
+    {
+      "table_name": "case_hearings",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "8b9c0d1e2f3a",
+      "created_in_file": "8b9c0d1e2f3a_add_workflow_deadlines_and_hearings.py",
+      "orm_columns_count": 19
+    },
+    {
+      "table_name": "case_messages",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "c3d4e5f6a1b2",
+      "created_in_file": "c3d4e5f6a1b2_add_matter_collaboration_and_requests.py",
+      "orm_columns_count": 11
+    },
+    {
+      "table_name": "case_notes",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "3a8f1e2d4c5b",
+      "created_in_file": "3a8f1e2d4c5b_add_case_notes_and_task_fields.py",
+      "orm_columns_count": 10
+    },
+    {
+      "table_name": "case_participants",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 9
+    },
+    {
+      "table_name": "case_reminders",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "8b9c0d1e2f3a",
+      "created_in_file": "8b9c0d1e2f3a_add_workflow_deadlines_and_hearings.py",
+      "orm_columns_count": 11
+    },
+    {
+      "table_name": "case_risk_indicators",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "7a8b9c0d1e2f",
+      "created_in_file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "orm_columns_count": 12
+    },
+    {
+      "table_name": "case_tasks",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "cd540c6fc8d9",
+      "created_in_file": "cd540c6fc8d9_add_case_tasks.py",
+      "orm_columns_count": 19
+    },
+    {
+      "table_name": "case_timeline_events",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 8
+    },
+    {
+      "table_name": "cases",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 7
+    },
+    {
+      "table_name": "client_profiles",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 22
+    },
+    {
+      "table_name": "commercial_entitlements",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "m1a2b3c4d5e6",
+      "created_in_file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "orm_columns_count": 10
+    },
+    {
+      "table_name": "commercial_transactions",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "m1a2b3c4d5e6",
+      "created_in_file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "orm_columns_count": 19
+    },
+    {
+      "table_name": "compliance_registry_items",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "m1a2b3c4d5e6",
+      "created_in_file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "orm_columns_count": 19
+    },
+    {
+      "table_name": "consultation_documents",
+      "status": "MISSING_FROM_MIGRATIONS",
+      "orm_columns_count": 10,
+      "migration_columns_count": 0,
+      "missing_columns": [
+        "id",
+        "consultation_id",
+        "uploader_id",
+        "file_name",
+        "file_size",
+        "mime_type",
+        "storage_key",
+        "description",
+        "created_at",
+        "updated_at"
+      ],
+      "evidence": "Table 'consultation_documents' defined in ORM (Base.metadata) but op.create_table('consultation_documents') does not exist in any of the 54 migration files."
+    },
+    {
+      "table_name": "consultation_notes",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "f1a2b3c4d5e6",
+      "created_in_file": "f1a2b3c4d5e6_add_video_meetings_and_consultation_notes.py",
+      "orm_columns_count": 8
+    },
+    {
+      "table_name": "consultations",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 15
+    },
+    {
+      "table_name": "court_cases",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "o1a2b3c4d5e6",
+      "created_in_file": "o1a2b3c4d5e6_add_court_cases_and_user_followed.py",
+      "orm_columns_count": 30
+    },
+    {
+      "table_name": "data_quality_runs",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "l1a2b3c4d5e6",
+      "created_in_file": "l1a2b3c4d5e6_add_phase_xix_pilot_and_support_governance.py",
+      "orm_columns_count": 16
+    },
+    {
+      "table_name": "direct_messages",
+      "status": "MISSING_FROM_MIGRATIONS",
+      "orm_columns_count": 7,
+      "migration_columns_count": 0,
+      "missing_columns": [
+        "id",
+        "sender_id",
+        "recipient_id",
+        "content",
+        "is_read",
+        "created_at",
+        "updated_at"
+      ],
+      "evidence": "Table 'direct_messages' defined in ORM (Base.metadata) but op.create_table('direct_messages') does not exist in any of the 54 migration files."
+    },
+    {
+      "table_name": "document_chunks",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "cc4c65083235",
+      "created_in_file": "cc4c65083235_add_document_chunks_table.py",
+      "orm_columns_count": 11
+    },
+    {
+      "table_name": "document_pages",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "3c4d5e6f7a8b",
+      "created_in_file": "3c4d5e6f7a8b_add_document_pages_and_processing_status.py",
+      "orm_columns_count": 11
+    },
+    {
+      "table_name": "documents",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 22
+    },
+    {
+      "table_name": "email_verification_tokens",
+      "status": "MISSING_FROM_MIGRATIONS",
+      "orm_columns_count": 8,
+      "migration_columns_count": 0,
+      "missing_columns": [
+        "id",
+        "user_id",
+        "email",
+        "token_hash",
+        "created_at",
+        "expires_at",
+        "used_at",
+        "ip_metadata"
+      ],
+      "evidence": "Table 'email_verification_tokens' defined in ORM (Base.metadata) but op.create_table('email_verification_tokens') does not exist in any of the 54 migration files."
+    },
+    {
+      "table_name": "evidence",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "h1a2b3c4d5e6",
+      "created_in_file": "h1a2b3c4d5e6_add_evidence_locker_tables.py",
+      "orm_columns_count": 17
+    },
+    {
+      "table_name": "evidence_access_grants",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "h1a2b3c4d5e6",
+      "created_in_file": "h1a2b3c4d5e6_add_evidence_locker_tables.py",
+      "orm_columns_count": 10
+    },
+    {
+      "table_name": "evidence_bundle_items",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "u1a2b3c4d5e6",
+      "created_in_file": "u1a2b3c4d5e6_add_evidentiary_bundles_and_bsa_certificates.py",
+      "orm_columns_count": 15
+    },
+    {
+      "table_name": "evidence_bundles",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "u1a2b3c4d5e6",
+      "created_in_file": "u1a2b3c4d5e6_add_evidentiary_bundles_and_bsa_certificates.py",
+      "orm_columns_count": 20
+    },
+    {
+      "table_name": "evidence_custody_events",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "h1a2b3c4d5e6",
+      "created_in_file": "h1a2b3c4d5e6_add_evidence_locker_tables.py",
+      "orm_columns_count": 8
+    },
+    {
+      "table_name": "evidence_versions",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "h1a2b3c4d5e6",
+      "created_in_file": "h1a2b3c4d5e6_add_evidence_locker_tables.py",
+      "orm_columns_count": 15
+    },
+    {
+      "table_name": "incident_timeline_events",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "k1a2b3c4d5e6",
+      "created_in_file": "k1a2b3c4d5e6_add_pilot_and_incident_management.py",
+      "orm_columns_count": 7
+    },
+    {
+      "table_name": "lawyer_availabilities",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "1a2b3c4d5e6f",
+      "created_in_file": "1a2b3c4d5e6f_add_lawyer_availabilities.py",
+      "orm_columns_count": 9
+    },
+    {
+      "table_name": "lawyer_profiles",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 13
+    },
+    {
+      "table_name": "lawyer_verifications",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 20
+    },
+    {
+      "table_name": "legal_document_versions",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "m1a2b3c4d5e6",
+      "created_in_file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "orm_columns_count": 16
+    },
+    {
+      "table_name": "legal_issues",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "7a8b9c0d1e2f",
+      "created_in_file": "7a8b9c0d1e2f_add_case_intelligence_tables.py",
+      "orm_columns_count": 13
+    },
+    {
+      "table_name": "legal_source_versions",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "29cdd9dc27a9",
+      "created_in_file": "29cdd9dc27a9_add_ai_conversations_and_sources.py",
+      "orm_columns_count": 15
+    },
+    {
+      "table_name": "legal_sources",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "29cdd9dc27a9",
+      "created_in_file": "29cdd9dc27a9_add_ai_conversations_and_sources.py",
+      "orm_columns_count": 19
+    },
+    {
+      "table_name": "matter_requests",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "c3d4e5f6a1b2",
+      "created_in_file": "c3d4e5f6a1b2_add_matter_collaboration_and_requests.py",
+      "orm_columns_count": 17
+    },
+    {
+      "table_name": "messages",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "0c8ab9a1ba75",
+      "created_in_file": "0c8ab9a1ba75_add_messages_table_and_paid_status.py",
+      "orm_columns_count": 7
+    },
+    {
+      "table_name": "notifications",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "5c8a1b2e3f4d",
+      "created_in_file": "5c8a1b2e3f4d_create_notifications_table.py",
+      "orm_columns_count": 18
+    },
+    {
+      "table_name": "outbox_events",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "i1a2b3c4d5e6",
+      "created_in_file": "i1a2b3c4d5e6_add_outbox_events_and_reliability.py",
+      "orm_columns_count": 15
+    },
+    {
+      "table_name": "password_reset_tokens",
+      "status": "MISSING_FROM_MIGRATIONS",
+      "orm_columns_count": 7,
+      "migration_columns_count": 0,
+      "missing_columns": [
+        "id",
+        "user_id",
+        "token_hash",
+        "created_at",
+        "expires_at",
+        "used_at",
+        "ip_metadata"
+      ],
+      "evidence": "Table 'password_reset_tokens' defined in ORM (Base.metadata) but op.create_table('password_reset_tokens') does not exist in any of the 54 migration files."
+    },
+    {
+      "table_name": "payments",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 10
+    },
+    {
+      "table_name": "pilot_allowlist",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "k1a2b3c4d5e6",
+      "created_in_file": "k1a2b3c4d5e6_add_pilot_and_incident_management.py",
+      "orm_columns_count": 11
+    },
+    {
+      "table_name": "pilot_experiments",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "l1a2b3c4d5e6",
+      "created_in_file": "l1a2b3c4d5e6_add_phase_xix_pilot_and_support_governance.py",
+      "orm_columns_count": 16
+    },
+    {
+      "table_name": "pilot_feedback",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "d4e5f6a1b2c3",
+      "created_in_file": "d4e5f6a1b2c3_add_pilot_feedback_table.py",
+      "orm_columns_count": 20
+    },
+    {
+      "table_name": "processed_webhook_events",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "r1a2b3c4d5e6",
+      "created_in_file": "r1a2b3c4d5e6_add_webhook_events_and_financial_guards.py",
+      "orm_columns_count": 11
+    },
+    {
+      "table_name": "product_events",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "6197c5f58cd2",
+      "created_in_file": "6197c5f58cd2_add_analytics_and_evaluation.py",
+      "orm_columns_count": 7
+    },
+    {
+      "table_name": "production_incidents",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "k1a2b3c4d5e6",
+      "created_in_file": "k1a2b3c4d5e6_add_pilot_and_incident_management.py",
+      "orm_columns_count": 22
+    },
+    {
+      "table_name": "raw_legal_sources",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "a1b2c3d4e5f6",
+      "created_in_file": "a1b2c3d4e5f6_add_raw_legal_sources_table.py",
+      "orm_columns_count": 14
+    },
+    {
+      "table_name": "refresh_token_sessions",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 10
+    },
+    {
+      "table_name": "refund_records",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "q1a2b3c4d5e6",
+      "created_in_file": "q1a2b3c4d5e6_add_phase_10_commercial_models.py",
+      "orm_columns_count": 13
+    },
+    {
+      "table_name": "support_case_messages",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "q1a2b3c4d5e6",
+      "created_in_file": "q1a2b3c4d5e6_add_phase_10_commercial_models.py",
+      "orm_columns_count": 9
+    },
+    {
+      "table_name": "support_cases",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "l1a2b3c4d5e6",
+      "created_in_file": "l1a2b3c4d5e6_add_phase_xix_pilot_and_support_governance.py",
+      "orm_columns_count": 23
+    },
+    {
+      "table_name": "translation_messages",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "m1a2b3c4d5e6",
+      "created_in_file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "orm_columns_count": 13
+    },
+    {
+      "table_name": "user_document_consents",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "m1a2b3c4d5e6",
+      "created_in_file": "m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py",
+      "orm_columns_count": 12
+    },
+    {
+      "table_name": "user_external_identities",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "b2c3d4e5f6a1",
+      "created_in_file": "b2c3d4e5f6a1_add_user_external_identities_table.py",
+      "orm_columns_count": 9
+    },
+    {
+      "table_name": "user_feed_acknowledgments",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "p1a2b3c4d5e6",
+      "created_in_file": "p1a2b3c4d5e6_add_user_feed_acknowledgments.py",
+      "orm_columns_count": 6
+    },
+    {
+      "table_name": "user_followed_cases",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "o1a2b3c4d5e6",
+      "created_in_file": "o1a2b3c4d5e6_add_court_cases_and_user_followed.py",
+      "orm_columns_count": 5
+    },
+    {
+      "table_name": "user_notification_preferences",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "8f1e2d3c4b5a",
+      "created_in_file": "8f1e2d3c4b5a_add_user_notification_preferences.py",
+      "orm_columns_count": 8
+    },
+    {
+      "table_name": "user_operator_permissions",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "k1a2b3c4d5e6",
+      "created_in_file": "k1a2b3c4d5e6_add_pilot_and_incident_management.py",
+      "orm_columns_count": 7
+    },
+    {
+      "table_name": "users",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "e246d7a7c14d",
+      "created_in_file": "e246d7a7c14d_initial_models.py",
+      "orm_columns_count": 12
+    },
+    {
+      "table_name": "verification_review_events",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "w1a2b3c4d5e6",
+      "created_in_file": "w1a2b3c4d5e6_add_advocate_verification_documents_and_review_history.py",
+      "orm_columns_count": 12
+    },
+    {
+      "table_name": "video_meetings",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "f1a2b3c4d5e6",
+      "created_in_file": "f1a2b3c4d5e6_add_video_meetings_and_consultation_notes.py",
+      "orm_columns_count": 13
+    },
+    {
+      "table_name": "video_recording_consents",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "g1a2b3c4d5e6",
+      "created_in_file": "g1a2b3c4d5e6_add_video_recordings_and_consents.py",
+      "orm_columns_count": 9
+    },
+    {
+      "table_name": "video_recordings",
+      "status": "MIGRATION_EXISTS",
+      "created_in_revision": "g1a2b3c4d5e6",
+      "created_in_file": "g1a2b3c4d5e6_add_video_recordings_and_consents.py",
+      "orm_columns_count": 15
+    }
+  ]
+}

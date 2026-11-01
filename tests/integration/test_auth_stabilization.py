@@ -535,7 +535,7 @@ def test_google_auth_expired_token_rejection(
         priv_key,
         sub="google-expired-sub",
         email="expired_google@example.com",
-        exp_seconds=-10,  # EXPIRED
+        exp_seconds=-600,  # EXPIRED (exceeds 300s clock skew leeway)
         aud="mock-google-client-id",
     )
 

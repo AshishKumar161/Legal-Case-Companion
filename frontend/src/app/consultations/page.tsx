@@ -11,7 +11,7 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { PaymentCheckoutModal } from "@/components/Payment/PaymentCheckoutModal";
 import { ConsultationActionModal } from "@/components/Consultation/ConsultationActionModal";
-import { ConsultationRecordingsModal } from "@/components/Consultation/ConsultationRecordingsModal";
+
 
 type TabType = "UPCOMING" | "TODAY" | "COMPLETED" | "ALL";
 
@@ -26,7 +26,7 @@ export default function ConsultationsPage() {
 
   // Modals state
   const [checkoutConsultation, setCheckoutConsultation] = useState<ConsultationItem | null>(null);
-  const [recordingsConsultation, setRecordingsConsultation] = useState<ConsultationItem | null>(null);
+
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [actionModal, setActionModal] = useState<{
     type: "RESCHEDULE" | "CANCEL" | "REJECT" | "NO_SHOW" | "COMPLETE" | "SCHEDULE";
@@ -273,7 +273,7 @@ export default function ConsultationsPage() {
               Appointments
             </h1>
             <p style={{ color: "var(--text-secondary, #52606D)", fontSize: "15px", marginTop: "6px" }}>
-              Schedule and manage video consultations with your lawyer.
+              Schedule and manage video consultations with your lawyer. {istClock ? `• ${istClock}` : ""}
             </p>
           </div>
 
@@ -535,13 +535,7 @@ export default function ConsultationsPage() {
                     {/* Completed Session Actions */}
                     {con.status === "COMPLETED" && (
                       <>
-                        <button
-                          onClick={() => setRecordingsConsultation(con)}
-                          className="btn btn-secondary"
-                          style={{ padding: "8px 14px", fontSize: "13px" }}
-                        >
-                          Recordings
-                        </button>
+
                         <button
                           onClick={() => openNotesModal(con)}
                           className="btn btn-secondary"
@@ -897,13 +891,7 @@ export default function ConsultationsPage() {
           </div>
         )}
 
-        {/* Recordings Playback Modal */}
-        {recordingsConsultation && (
-          <ConsultationRecordingsModal
-            consultation={recordingsConsultation}
-            onClose={() => setRecordingsConsultation(null)}
-          />
-        )}
+
       </div>
     </div>
   );

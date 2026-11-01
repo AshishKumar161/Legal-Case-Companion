@@ -1,0 +1,1047 @@
+================================================================================
+LEGAL CASE COMPANION (LCC) — PHASE 0 COMPLETE SOURCE FILE MANIFEST
+================================================================================
+
+SUMMARY OF INSPECTED SOURCE FILES:
+- Backend Production Source: 254
+- Frontend Production Source: 163
+- Database / Migrations: 56
+- AI / RAG Source: 35
+- Workers: 2
+- Scripts: 22
+- Tests: 170
+- Configuration: 34
+- CI/CD: 1
+TOTAL INSPECTED SOURCE FILES: 737
+
+--------------------------------------------------------------------------------
+1. BACKEND PRODUCTION SOURCE
+--------------------------------------------------------------------------------
+app/api/deps.py
+app/api/v1/admin.py
+app/api/v1/advisor.py
+app/api/v1/ai.py
+app/api/v1/ai_conversations.py
+app/api/v1/ai_review.py
+app/api/v1/analytics.py
+app/api/v1/assistant.py
+app/api/v1/attention.py
+app/api/v1/audit.py
+app/api/v1/auth.py
+app/api/v1/bundles.py
+app/api/v1/calendar.py
+app/api/v1/case_intelligence.py
+app/api/v1/cases.py
+app/api/v1/change_feed.py
+app/api/v1/commercial.py
+app/api/v1/compliance.py
+app/api/v1/consultations.py
+app/api/v1/court_cases.py
+app/api/v1/data_quality.py
+app/api/v1/documents.py
+app/api/v1/evidence.py
+app/api/v1/experiments.py
+app/api/v1/feedback.py
+app/api/v1/health.py
+app/api/v1/incidents.py
+app/api/v1/kyc.py
+app/api/v1/launch_gates.py
+app/api/v1/lawyers.py
+app/api/v1/legal_authority.py
+app/api/v1/legal_documents.py
+app/api/v1/localization.py
+app/api/v1/messages.py
+app/api/v1/notifications.py
+app/api/v1/payments.py
+app/api/v1/pilot.py
+app/api/v1/profiles.py
+app/api/v1/recordings.py
+app/api/v1/search.py
+app/api/v1/support.py
+app/api/v1/trust.py
+app/api/v1/verification.py
+app/api/v1/video_signaling.py
+app/api/v1/webhooks.py
+app/api/v1/workflow.py
+app/core/ai_config.py
+app/core/ai_exceptions.py
+app/core/authorization.py
+app/core/config.py
+app/core/csrf.py
+app/core/exceptions.py
+app/core/file_validation.py
+app/core/i18n.py
+app/core/identifiers.py
+app/core/locking.py
+app/core/logging.py
+app/core/metrics.py
+app/core/oauth_security.py
+app/core/redis.py
+app/core/security.py
+app/core/storage.py
+app/db/database.py
+app/domain/__init__.py
+app/domain/ai/__init__.py
+app/domain/ai/ai_budget_service.py
+app/domain/ai/ai_conversation_service.py
+app/domain/ai/ai_evaluation_service.py
+app/domain/ai/ai_prompt_policy.py
+app/domain/ai/ai_provider.py
+app/domain/ai/ai_research_service.py
+app/domain/ai/ai_review_service.py
+app/domain/ai/assistant_service.py
+app/domain/ai/citation_normalizer.py
+app/domain/ai/claim_verifier.py
+app/domain/ai/embedding_provider.py
+app/domain/ai/embedding_service.py
+app/domain/ai/legal_authority_ingestion.py
+app/domain/ai/legal_authority_retrieval.py
+app/domain/ai/legal_data_pipeline.py
+app/domain/ai/legal_source_providers/base.py
+app/domain/ai/legal_source_providers/curated_fixtures.py
+app/domain/ai/legal_source_providers/ecourts_provider.py
+app/domain/ai/llm_provider.py
+app/domain/ai/query_understanding.py
+app/domain/ai/retrieval_service.py
+app/domain/auth/__init__.py
+app/domain/auth/auth_service.py
+app/domain/auth/google_oauth_service.py
+app/domain/auth/session_cleanup_service.py
+app/domain/cases/__init__.py
+app/domain/cases/bundle_pdf_engine.py
+app/domain/cases/bundle_service.py
+app/domain/cases/case_attention_service.py
+app/domain/cases/case_intelligence_service.py
+app/domain/cases/case_report_service.py
+app/domain/cases/case_service.py
+app/domain/cases/case_workflow_service.py
+app/domain/cases/collaboration_service.py
+app/domain/consultations/__init__.py
+app/domain/consultations/consultation_service.py
+app/domain/consultations/lawyer_call_channel.py
+app/domain/consultations/message_service.py
+app/domain/consultations/presence_service.py
+app/domain/consultations/recording_storage.py
+app/domain/consultations/video_meeting_service.py
+app/domain/consultations/video_recording_service.py
+app/domain/consultations/video_signaling_manager.py
+app/domain/consultations/video_telemetry_service.py
+app/domain/documents/__init__.py
+app/domain/documents/document_processor.py
+app/domain/documents/document_service.py
+app/domain/documents/legal_document_service.py
+app/domain/evidence/__init__.py
+app/domain/evidence/evidence_service.py
+app/domain/evidence/scanner_service.py
+app/domain/governance/__init__.py
+app/domain/governance/abuse_defense_service.py
+app/domain/governance/compliance_service.py
+app/domain/governance/experiment_service.py
+app/domain/governance/incident_service.py
+app/domain/governance/launch_gate_service.py
+app/domain/governance/translation_service.py
+app/domain/governance/workflow_telemetry_service.py
+app/domain/jobs/__init__.py
+app/domain/jobs/change_feed_service.py
+app/domain/jobs/job_scheduler.py
+app/domain/jobs/job_service.py
+app/domain/jobs/outbox_service.py
+app/domain/notifications/__init__.py
+app/domain/notifications/alert_service.py
+app/domain/notifications/email_service.py
+app/domain/notifications/notification_service.py
+app/domain/notifications/reminder_service.py
+app/domain/payments/__init__.py
+app/domain/payments/cancellation_policy_service.py
+app/domain/payments/commercial_service.py
+app/domain/payments/payment_service.py
+app/domain/payments/reconciliation_service.py
+app/domain/payments/unit_economics_service.py
+app/domain/users/__init__.py
+app/domain/users/admin_service.py
+app/domain/users/lifecycle_service.py
+app/domain/users/operator_service.py
+app/domain/users/profile_service.py
+app/domain/users/support_service.py
+app/domain/users/user_service.py
+app/domain/verification/__init__.py
+app/domain/verification/cohort_governance_service.py
+app/domain/verification/lawyer_dashboard_service.py
+app/domain/verification/lawyer_verification_service.py
+app/main.py
+app/middleware/correlation_id.py
+app/middleware/metrics.py
+app/middleware/payload.py
+app/middleware/pilot.py
+app/middleware/security.py
+app/models/__init__.py
+app/models/advisor.py
+app/models/ai.py
+app/models/ai_review.py
+app/models/analytics.py
+app/models/audit.py
+app/models/auth.py
+app/models/availability.py
+app/models/base.py
+app/models/bundle.py
+app/models/case.py
+app/models/case_collaboration.py
+app/models/case_intelligence.py
+app/models/commercial.py
+app/models/compliance.py
+app/models/consultation.py
+app/models/consultation_document.py
+app/models/consultation_note.py
+app/models/court_case.py
+app/models/data_quality.py
+app/models/direct_message.py
+app/models/document.py
+app/models/document_page.py
+app/models/evaluation.py
+app/models/evidence.py
+app/models/experiment.py
+app/models/feedback.py
+app/models/incident.py
+app/models/job.py
+app/models/legal_authority.py
+app/models/legal_document.py
+app/models/localization.py
+app/models/message.py
+app/models/note.py
+app/models/notification.py
+app/models/operator.py
+app/models/outbox.py
+app/models/payment.py
+app/models/pilot.py
+app/models/support.py
+app/models/task.py
+app/models/user.py
+app/models/user_feed.py
+app/models/video_meeting.py
+app/models/video_recording.py
+app/models/webhook.py
+app/models/workflow.py
+app/repositories/__init__.py
+app/repositories/case_repository.py
+app/repositories/consultation_repository.py
+app/repositories/document_repository.py
+app/repositories/job_repository.py
+app/repositories/payment_repository.py
+app/repositories/user_repository.py
+app/scheduler.py
+app/schemas/admin.py
+app/schemas/ai.py
+app/schemas/ai_review.py
+app/schemas/analytics.py
+app/schemas/assistant.py
+app/schemas/audit.py
+app/schemas/auth.py
+app/schemas/availability.py
+app/schemas/bundle.py
+app/schemas/calendar.py
+app/schemas/case.py
+app/schemas/case_intelligence.py
+app/schemas/collaboration.py
+app/schemas/consultation.py
+app/schemas/consultation_note.py
+app/schemas/court_case.py
+app/schemas/document.py
+app/schemas/evidence.py
+app/schemas/experiment.py
+app/schemas/feedback.py
+app/schemas/incident.py
+app/schemas/job.py
+app/schemas/lawyer_dashboard.py
+app/schemas/legal_authority.py
+app/schemas/localization.py
+app/schemas/message.py
+app/schemas/note.py
+app/schemas/notification.py
+app/schemas/pagination.py
+app/schemas/payment.py
+app/schemas/presence.py
+app/schemas/profile.py
+app/schemas/report.py
+app/schemas/retrieval.py
+app/schemas/search.py
+app/schemas/support.py
+app/schemas/task.py
+app/schemas/user.py
+app/schemas/verification.py
+app/schemas/video_meeting.py
+app/schemas/video_recording.py
+app/schemas/workflow.py
+
+--------------------------------------------------------------------------------
+2. FRONTEND PRODUCTION SOURCE
+--------------------------------------------------------------------------------
+frontend/src/api/client.ts
+frontend/src/api/session.ts
+frontend/src/app/admin/dashboard/page.tsx
+frontend/src/app/admin/page.tsx
+frontend/src/app/admin/reports/page.tsx
+frontend/src/app/admin/users/page.tsx
+frontend/src/app/admin/verification/page.tsx
+frontend/src/app/admin/verification/verification.module.css
+frontend/src/app/ai-advisor/ai-advisor.module.css
+frontend/src/app/ai-advisor/page.tsx
+frontend/src/app/auth/callback/page.tsx
+frontend/src/app/calendar/page.module.css
+frontend/src/app/calendar/page.tsx
+frontend/src/app/cases/[caseId]/bundles/bundles.module.css
+frontend/src/app/cases/[caseId]/bundles/page.tsx
+frontend/src/app/cases/[caseId]/caseDetail.module.css
+frontend/src/app/cases/[caseId]/evidence/[evidenceId]/page.tsx
+frontend/src/app/cases/[caseId]/evidence/evidence.module.css
+frontend/src/app/cases/[caseId]/evidence/page.tsx
+frontend/src/app/cases/[caseId]/page.tsx
+frontend/src/app/cases/[caseId]/timeline/page.module.css
+frontend/src/app/cases/[caseId]/timeline/page.tsx
+frontend/src/app/cases/new/page.tsx
+frontend/src/app/cases/page.tsx
+frontend/src/app/clients/page.tsx
+frontend/src/app/consultations/[id]/room/page.tsx
+frontend/src/app/consultations/page.tsx
+frontend/src/app/court-tracking/page.module.css
+frontend/src/app/court-tracking/page.tsx
+frontend/src/app/dashboard/dashboard.module.css
+frontend/src/app/dashboard/page.tsx
+frontend/src/app/design-system/page.tsx
+frontend/src/app/documents/page.module.css
+frontend/src/app/documents/page.tsx
+frontend/src/app/error.tsx
+frontend/src/app/forgot-password/page.tsx
+frontend/src/app/globals.css
+frontend/src/app/kyc/kyc.module.css
+frontend/src/app/kyc/page.tsx
+frontend/src/app/lawyer/dashboard/page.tsx
+frontend/src/app/lawyer/profile/page.tsx
+frontend/src/app/lawyers/[lawyerId]/page.tsx
+frontend/src/app/lawyers/discovery.module.css
+frontend/src/app/lawyers/page.tsx
+frontend/src/app/layout.tsx
+frontend/src/app/loading.tsx
+frontend/src/app/login/auth.module.css
+frontend/src/app/login/page.tsx
+frontend/src/app/messages/page.tsx
+frontend/src/app/not-found.tsx
+frontend/src/app/notifications/notifications.module.css
+frontend/src/app/notifications/page.tsx
+frontend/src/app/onboarding/advocate/page.tsx
+frontend/src/app/onboarding/client/page.tsx
+frontend/src/app/onboarding/onboarding.module.css
+frontend/src/app/onboarding/page.tsx
+frontend/src/app/page.module.css
+frontend/src/app/page.tsx
+frontend/src/app/payments/page.tsx
+frontend/src/app/profile/page.tsx
+frontend/src/app/register/page.tsx
+frontend/src/app/reset-password/page.tsx
+frontend/src/app/settings/page.tsx
+frontend/src/app/settings/settings.module.css
+frontend/src/app/support/page.tsx
+frontend/src/app/support/support.module.css
+frontend/src/app/trust/page.tsx
+frontend/src/app/trust/trust.module.css
+frontend/src/app/verify-email/page.tsx
+frontend/src/components/ActionCenter/ActionCenter.tsx
+frontend/src/components/ActionCenter/CasePlanView.tsx
+frontend/src/components/ActionCenter/DecisionRecordModal.tsx
+frontend/src/components/ActionCenter/HearingCommandCard.tsx
+frontend/src/components/ActionCenter/TaskComposerModal.tsx
+frontend/src/components/AppShell/AppShell.module.css
+frontend/src/components/AppShell/AppShell.tsx
+frontend/src/components/AppShell/MobileBottomNav.module.css
+frontend/src/components/AppShell/MobileBottomNav.tsx
+frontend/src/components/AppShell/Sidebar.module.css
+frontend/src/components/AppShell/Sidebar.tsx
+frontend/src/components/AppShell/TopBar.module.css
+frontend/src/components/AppShell/TopBar.tsx
+frontend/src/components/CaseAttentionCard.module.css
+frontend/src/components/CaseAttentionCard.tsx
+frontend/src/components/Collaboration/MatterBriefCard.tsx
+frontend/src/components/Collaboration/MatterInbox.tsx
+frontend/src/components/Collaboration/MatterParticipantsPanel.tsx
+frontend/src/components/Collaboration/MatterRequestsBoard.tsx
+frontend/src/components/Consultation/ConsultationActionModal.tsx
+frontend/src/components/Consultation/ConsultationRecordingsModal.tsx
+frontend/src/components/EmptyState.tsx
+frontend/src/components/Evidence/EvidenceShareModal.tsx
+frontend/src/components/GlobalSearchModal.module.css
+frontend/src/components/GlobalSearchModal.tsx
+frontend/src/components/Intelligence/ClaimVerificationList.tsx
+frontend/src/components/Intelligence/CopilotChat.module.css
+frontend/src/components/Intelligence/CopilotChat.tsx
+frontend/src/components/Intelligence/EvidenceAuthorityMatrix.tsx
+frontend/src/components/Intelligence/IntelligenceCenter.tsx
+frontend/src/components/Intelligence/IntelligenceGraph.tsx
+frontend/src/components/Intelligence/TemporalValidityBadge.tsx
+frontend/src/components/LegalTerm.tsx
+frontend/src/components/LoadingSkeleton.tsx
+frontend/src/components/Navbar.tsx
+frontend/src/components/NextStep.module.css
+frontend/src/components/NextStep.tsx
+frontend/src/components/NotificationBell.tsx
+frontend/src/components/Payment/PaymentCheckoutModal.tsx
+frontend/src/components/PilotFeedbackModal.tsx
+frontend/src/components/StatusBadge.tsx
+frontend/src/components/WhatChangedBanner.module.css
+frontend/src/components/WhatChangedBanner.tsx
+frontend/src/components/ui/Alert.tsx
+frontend/src/components/ui/AppointmentCard.tsx
+frontend/src/components/ui/Avatar.tsx
+frontend/src/components/ui/Badge.tsx
+frontend/src/components/ui/BottomSheet.tsx
+frontend/src/components/ui/Breadcrumb.tsx
+frontend/src/components/ui/Button.tsx
+frontend/src/components/ui/Card.tsx
+frontend/src/components/ui/CaseCard.tsx
+frontend/src/components/ui/Checkbox.tsx
+frontend/src/components/ui/DocumentCard.tsx
+frontend/src/components/ui/Drawer.tsx
+frontend/src/components/ui/EmptyState.tsx
+frontend/src/components/ui/ErrorState.tsx
+frontend/src/components/ui/Icons.tsx
+frontend/src/components/ui/Input.tsx
+frontend/src/components/ui/LawyerCard.tsx
+frontend/src/components/ui/Modal.tsx
+frontend/src/components/ui/PageHeader.tsx
+frontend/src/components/ui/Pagination.tsx
+frontend/src/components/ui/Radio.tsx
+frontend/src/components/ui/SearchBar.tsx
+frontend/src/components/ui/SectionHeader.tsx
+frontend/src/components/ui/Select.tsx
+frontend/src/components/ui/Skeleton.tsx
+frontend/src/components/ui/StatusChip.tsx
+frontend/src/components/ui/Table.tsx
+frontend/src/components/ui/Tabs.tsx
+frontend/src/components/ui/Textarea.tsx
+frontend/src/components/ui/ThemeToggle.tsx
+frontend/src/components/ui/TimelineItem.tsx
+frontend/src/components/ui/Tooltip.tsx
+frontend/src/components/ui/index.ts
+frontend/src/i18n/en-IN.json
+frontend/src/i18n/hi-IN.json
+frontend/src/lib/analytics.ts
+frontend/src/lib/api/ai.ts
+frontend/src/lib/api/auth.ts
+frontend/src/lib/api/cases.ts
+frontend/src/lib/api/client.ts
+frontend/src/lib/api/consultations.ts
+frontend/src/lib/api/documents.ts
+frontend/src/lib/api/index.ts
+frontend/src/lib/api/payments.ts
+frontend/src/lib/api/verification.ts
+frontend/src/lib/canonicalStatus.ts
+frontend/src/lib/formatters.ts
+frontend/src/providers/AuthProvider.tsx
+frontend/src/providers/I18nProvider.tsx
+frontend/src/providers/ThemeProvider.tsx
+frontend/src/types/index.ts
+
+--------------------------------------------------------------------------------
+3. DATABASE / MIGRATIONS
+--------------------------------------------------------------------------------
+migrations/env.py
+migrations/script.py.mako
+migrations/versions/04feea1e091d_add_embedding_columns.py
+migrations/versions/0c8ab9a1ba75_add_messages_table_and_paid_status.py
+migrations/versions/1a2b3c4d5e6f_add_lawyer_availabilities.py
+migrations/versions/25500e9a54c3_sync_schema_drift_provenance_enums_.py
+migrations/versions/29cdd9dc27a9_add_ai_conversations_and_sources.py
+migrations/versions/2b3c4d5e6f7a_add_document_metadata_fields.py
+migrations/versions/2c8f208c74a0_update_documentsecuritystatus_enum.py
+migrations/versions/3a8f1e2d4c5b_add_case_notes_and_task_fields.py
+migrations/versions/3c4d5e6f7a8b_add_document_pages_and_processing_status.py
+migrations/versions/4148d4a785b4_add_feedback_table.py
+migrations/versions/4b9e2f1a5c6d_add_consultation_status_and_completion_fields.py
+migrations/versions/4d5e6f7a8b9c_add_pg_trgm_and_chunk_search_indexes.py
+migrations/versions/5c8a1b2e3f4d_create_notifications_table.py
+migrations/versions/5e6f7a8b9c0d_enrich_legal_authorities_and_provisions.py
+migrations/versions/6197c5f58cd2_add_analytics_and_evaluation.py
+migrations/versions/6f7a8b9c0d1e_enrich_ai_conversations_and_messages.py
+migrations/versions/7a8b9c0d1e2f_add_case_intelligence_tables.py
+migrations/versions/7f8a9b0c1d2e_add_lawyer_experience_and_jurisdiction.py
+migrations/versions/8b5b923063b9_add_advisor_models.py
+migrations/versions/8b9c0d1e2f3a_add_workflow_deadlines_and_hearings.py
+migrations/versions/8f1e2d3c4b5a_add_user_notification_preferences.py
+migrations/versions/9b8a7c6d5e4f_add_case_note_visibility.py
+migrations/versions/9c0d1e2f3a4b_add_background_jobs_and_notification_fields.py
+migrations/versions/a1b2c3d4e5f6_add_raw_legal_sources_table.py
+migrations/versions/a3b7c9d1e2f4_reconcile_models_with_architecture.py
+migrations/versions/a94d9a0dabeb_add_timeline_metadata.py
+migrations/versions/afbdf4813237_sync_remaining_model_indexes_and_.py
+migrations/versions/b2c3d4e5f6a1_add_user_external_identities_table.py
+migrations/versions/b4c8d0e1f3g5_recreate_document_enum.py
+migrations/versions/c3d4e5f6a1b2_add_matter_collaboration_and_requests.py
+migrations/versions/cc4c65083235_add_document_chunks_table.py
+migrations/versions/cd540c6fc8d9_add_case_tasks.py
+migrations/versions/d4e5f6a1b2c3_add_pilot_feedback_table.py
+migrations/versions/e246d7a7c14d_initial_models.py
+migrations/versions/e4f8db885ba5_add_foreign_key_indexes.py
+migrations/versions/e5f6a1b2c3d4_add_priority_and_resolution_notes_to_pilot_feedback.py
+migrations/versions/f1a2b3c4d5e6_add_video_meetings_and_consultation_notes.py
+migrations/versions/g1a2b3c4d5e6_add_video_recordings_and_consents.py
+migrations/versions/h1a2b3c4d5e6_add_evidence_locker_tables.py
+migrations/versions/i1a2b3c4d5e6_add_outbox_events_and_reliability.py
+migrations/versions/j1a2b3c4d5e6_add_deactivated_to_account_status.py
+migrations/versions/k1a2b3c4d5e6_add_pilot_and_incident_management.py
+migrations/versions/l1a2b3c4d5e6_add_phase_xix_pilot_and_support_governance.py
+migrations/versions/m1a2b3c4d5e6_add_phase_xx_public_readiness_and_compliance.py
+migrations/versions/n1a2b3c4d5e6_add_instant_consultation_flag.py
+migrations/versions/o1a2b3c4d5e6_add_court_cases_and_user_followed.py
+migrations/versions/p1a2b3c4d5e6_add_user_feed_acknowledgments.py
+migrations/versions/q1a2b3c4d5e6_add_phase_10_commercial_models.py
+migrations/versions/r1a2b3c4d5e6_add_webhook_events_and_financial_guards.py
+migrations/versions/s1a2b3c4d5e6_add_phase_10_4_maintenance_job_types.py
+migrations/versions/t1a2b3c4d5e6_add_case_exhibits_and_evidence_tags.py
+migrations/versions/u1a2b3c4d5e6_add_evidentiary_bundles_and_bsa_certificates.py
+migrations/versions/v1a2b3c4d5e6_add_task_deadline_workflow_links.py
+migrations/versions/w1a2b3c4d5e6_add_advocate_verification_documents_and_review_history.py
+
+--------------------------------------------------------------------------------
+4. AI / RAG SOURCE
+--------------------------------------------------------------------------------
+app/providers/ai/__init__.py
+app/providers/ai/base.py
+app/providers/ai/factory.py
+app/providers/ai/lcc_pipeline.py
+app/providers/ai/mock.py
+app/providers/ai/openai.py
+chatbot/README.md
+chatbot/case_schema_example.json
+chatbot/data/indian_cases_100.json
+chatbot/dataset_pipeline.py
+chatbot/eval.py
+chatbot/model_backend/README.md
+chatbot/model_backend/__init__.py
+chatbot/model_backend/answer_generator.py
+chatbot/model_backend/dataset_loader.py
+chatbot/model_backend/embeddings.py
+chatbot/model_backend/eval_harness.py
+chatbot/model_backend/intake.py
+chatbot/model_backend/legal_reasoner.py
+chatbot/model_backend/llama_model.py
+chatbot/model_backend/pipeline.py
+chatbot/model_backend/prompts.py
+chatbot/model_backend/reranker.py
+chatbot/model_backend/retriever.py
+chatbot/model_backend/safety.py
+chatbot/model_backend/schemas.py
+chatbot/model_backend/test_backend.py
+chatbot/model_backend/vector_store.py
+chatbot/model_backend/verifier.py
+chatbot/pipeline.py
+chatbot/processed/district_court_cases_2023_2025.json
+chatbot/raw_cases/sample1.json
+chatbot/raw_cases/sample2.json
+chatbot/sample_run_test.py
+chatbot/scripts/fetch_indian_kanoon.py
+
+--------------------------------------------------------------------------------
+5. WORKERS
+--------------------------------------------------------------------------------
+app/domain/jobs/job_worker.py
+app/worker.py
+
+--------------------------------------------------------------------------------
+6. SCRIPTS
+--------------------------------------------------------------------------------
+scripts/ci_secret_scanner.py
+scripts/cleanup_test_lawyers.py
+scripts/export_db_markdown.py
+scripts/generate_openapi.py
+scripts/generate_release_manifest.py
+scripts/generate_sbom.py
+scripts/inspect_db.py
+scripts/launcher.cs
+scripts/load_test_phase_10.py
+scripts/measure_performance_baseline.py
+scripts/performance_baseline.py
+scripts/production_smoke_test.py
+scripts/run_scale_validation.py
+scripts/seed_court_cases.py
+scripts/seed_pilot_demo.py
+scripts/test_browser_flow.mjs
+scripts/test_migrations_lifecycle.py
+scripts/verify_backup_restore.py
+scripts/verify_openapi_contract.py
+scripts/verify_production_config.py
+scripts/verify_runtime_live.py
+scripts/verify_two_tab_consultation.mjs
+
+--------------------------------------------------------------------------------
+7. TESTS
+--------------------------------------------------------------------------------
+tests/conftest.py
+tests/e2e/test_admin_journey.py
+tests/e2e/test_background_and_notifications.py
+tests/e2e/test_canonical_pilot_journeys.py
+tests/e2e/test_case_isolation_and_security.py
+tests/e2e/test_client_journey.py
+tests/e2e/test_controlled_pilot_intelligence.py
+tests/e2e/test_copilot_and_intelligence.py
+tests/e2e/test_database_backup_restore.py
+tests/e2e/test_distributed_multi_instance.py
+tests/e2e/test_document_and_retrieval_pipeline.py
+tests/e2e/test_infrastructure_failures.py
+tests/e2e/test_lawyer_journey.py
+tests/e2e/test_phase_xviii_pilot_governance.py
+tests/e2e/test_pilot_failure_modes.py
+tests/e2e/test_production_readiness_and_hardening.py
+tests/e2e/test_production_smoke_suite.py
+tests/e2e/test_production_workflows.py
+tests/e2e/test_session_and_concurrency.py
+tests/evaluation/test_assistant_evaluation.py
+tests/evaluation/test_background_jobs_benchmark.py
+tests/evaluation/test_case_intelligence_benchmark.py
+tests/evaluation/test_case_workflow_benchmark.py
+tests/evaluation/test_copilot_conversation_benchmark.py
+tests/evaluation/test_legal_authority_benchmark.py
+tests/evaluation/test_legal_data_benchmark.py
+tests/evaluation/test_performance_benchmark.py
+tests/evaluation/test_retrieval_benchmark.py
+tests/fixtures/Rental_Agreement_Evidence.txt
+tests/fixtures/curated_legal_authorities.py
+tests/integration/test_account_recovery_and_identity_verification.py
+tests/integration/test_admin_platform_operations_comprehensive.py
+tests/integration/test_admin_security.py
+tests/integration/test_advocate_verification_lifecycle.py
+tests/integration/test_ai_conversations.py
+tests/integration/test_ai_pipeline_hardening.py
+tests/integration/test_ai_research.py
+tests/integration/test_analytics.py
+tests/integration/test_api_matrix.py
+tests/integration/test_api_security_sweep.py
+tests/integration/test_assistant_ai_core.py
+tests/integration/test_audit_fixes.py
+tests/integration/test_auth.py
+tests/integration/test_auth_security.py
+tests/integration/test_auth_stabilization.py
+tests/integration/test_authentication_hardening.py
+tests/integration/test_authentication_runtime_repair.py
+tests/integration/test_authorization.py
+tests/integration/test_background_jobs_and_notifications.py
+tests/integration/test_calendar_aggregation.py
+tests/integration/test_case_access_and_document_confidentiality.py
+tests/integration/test_case_copilot_layer.py
+tests/integration/test_case_document_sharing_and_access.py
+tests/integration/test_case_documents_and_workspace.py
+tests/integration/test_case_intelligence_engine.py
+tests/integration/test_case_management_hardening.py
+tests/integration/test_case_management_v2.py
+tests/integration/test_case_note_privacy.py
+tests/integration/test_case_operations_and_workflow.py
+tests/integration/test_case_summary_report_export.py
+tests/integration/test_case_tasks.py
+tests/integration/test_case_timeline_integrity.py
+tests/integration/test_case_workflow_operations.py
+tests/integration/test_case_workspace_integrity.py
+tests/integration/test_cases.py
+tests/integration/test_collaboration_and_workspace_hardening.py
+tests/integration/test_commercial_concurrency.py
+tests/integration/test_communication_and_notifications_hardening.py
+tests/integration/test_consultation_lifecycle_comprehensive.py
+tests/integration/test_consultation_lifecycle_production.py
+tests/integration/test_consultation_pricing_preview.py
+tests/integration/test_consultation_room_time_access.py
+tests/integration/test_consultations.py
+tests/integration/test_consultations_complete.py
+tests/integration/test_court_hearing_and_bundle.py
+tests/integration/test_court_tracking.py
+tests/integration/test_database_foundation.py
+tests/integration/test_discovery.py
+tests/integration/test_document_intelligence_pipeline.py
+tests/integration/test_document_management_hardening.py
+tests/integration/test_document_security_and_websocket_signaling.py
+tests/integration/test_documents.py
+tests/integration/test_email.py
+tests/integration/test_email_otp_flow.py
+tests/integration/test_error_contract.py
+tests/integration/test_evidence_locker_v1.py
+tests/integration/test_evidence_sharing_security.py
+tests/integration/test_hardening.py
+tests/integration/test_health_checks.py
+tests/integration/test_kyc_verification_flow.py
+tests/integration/test_lawyer_availability_and_booking.py
+tests/integration/test_lawyer_consultation_v3.py
+tests/integration/test_lawyer_discovery_hardening.py
+tests/integration/test_lawyer_operational_dashboard.py
+tests/integration/test_lawyers.py
+tests/integration/test_legal_authority_layer.py
+tests/integration/test_legal_data_pipeline.py
+tests/integration/test_matter_collaboration.py
+tests/integration/test_messages.py
+tests/integration/test_migration_and_recovery_rehearsal.py
+tests/integration/test_native_video_and_recording_pipeline.py
+tests/integration/test_notifications_center_comprehensive.py
+tests/integration/test_notifications_security.py
+tests/integration/test_notifications_v5.py
+tests/integration/test_participants.py
+tests/integration/test_payment_workflow_comprehensive.py
+tests/integration/test_payments.py
+tests/integration/test_payments_v4.py
+tests/integration/test_phase_8_frontend_contracts.py
+tests/integration/test_phase_9_cross_system_reliability.py
+tests/integration/test_phase_xii_session_and_realtime_hardening.py
+tests/integration/test_phase_xiii_authorization_and_resource_isolation.py
+tests/integration/test_phase_xiv_evidence_locker.py
+tests/integration/test_phase_xv_reliability.py
+tests/integration/test_pilot_readiness_validation.py
+tests/integration/test_presence_and_realtime_calls.py
+tests/integration/test_production_deployment_readiness.py
+tests/integration/test_production_hardening.py
+tests/integration/test_profiles.py
+tests/integration/test_retrieval_and_search.py
+tests/integration/test_retrieval_service.py
+tests/integration/test_security_regression.py
+tests/integration/test_storage.py
+tests/integration/test_timeline.py
+tests/integration/test_user_profile_and_settings_hub.py
+tests/integration/test_v1_e2e_product_journeys.py
+tests/integration/test_validation.py
+tests/integration/test_video_consultation_and_case_linking.py
+tests/integration/test_video_session_reliability.py
+tests/integration/test_webhooks.py
+tests/integration/test_worker_multi_instance_concurrency.py
+tests/integration/test_workspace.py
+tests/performance/test_ai_cost_and_context_bounds.py
+tests/performance/test_api_latency_and_throughput.py
+tests/performance/test_database_and_workspace_scaling.py
+tests/performance/test_retrieval_and_authority_benchmarks.py
+tests/performance/test_worker_backpressure_and_concurrency.py
+tests/pilot/test_phase_10_commercial_operations.py
+tests/pilot/test_phase_8_pilot_validation.py
+tests/pilot/test_phase_9_retention_and_intelligence.py
+tests/pilot/test_phase_xix_pilot_execution.py
+tests/public_readiness/test_phase_xx_public_readiness.py
+tests/reliability/test_concurrency_and_failover.py
+tests/security/test_ai_privacy.py
+tests/security/test_ai_red_team.py
+tests/security/test_auth_and_oauth_red_team.py
+tests/security/test_authorization_and_bola_red_team.py
+tests/security/test_background_and_admin_red_team.py
+tests/security/test_document_and_storage_red_team.py
+tests/security/test_evidence_authorization_and_idor.py
+tests/security/test_file_security.py
+tests/security/test_full_spectrum_security_hardening.py
+tests/security/test_phase_5_api_security_audit.py
+tests/security/test_phase_6_ai_security.py
+tests/security/test_phase_7_6_production_security.py
+tests/security/test_phase_7_provider_security.py
+tests/security/test_phase_xvi_security_hardening.py
+tests/security/test_secret_exposure.py
+tests/security/test_secrets_and_privacy_audit.py
+tests/security/test_web_security.py
+tests/test_instant_consultation_flow.py
+tests/test_multi_tab_auth_isolation.py
+tests/unit/test_app.py
+tests/unit/test_background_maintenance_jobs.py
+tests/unit/test_embedding_service.py
+tests/unit/test_monetary_lifecycle.py
+tests/unit/test_reconciliation_engine.py
+tests/unit/test_recording_lifecycle_reliability.py
+tests/unit/test_refund_reliability.py
+tests/unit/test_video_meeting_cleanup.py
+
+--------------------------------------------------------------------------------
+8. CONFIGURATION
+--------------------------------------------------------------------------------
+.dockerignore
+.env
+.env.example
+.env.prod.example
+.gitattributes
+.gitignore
+.mypy_cache/.gitignore
+.pre-commit-config.yaml
+.vscode/settings.json
+Dockerfile
+alembic.ini
+docker-compose.prod.yml
+docker-compose.yml
+frontend/.dockerignore
+frontend/.env.local
+frontend/.gitignore
+frontend/Dockerfile
+frontend/eslint.config.mjs
+frontend/next-env.d.ts
+frontend/next.config.ts
+frontend/package.json
+frontend/patch-fs.js
+frontend/scripts/capture_case_detail_and_copilot.mjs
+frontend/scripts/capture_redesign_screenshots.mjs
+frontend/scripts/test_browser_flow.mjs
+frontend/scripts/test_phase_7_1_qa.mjs
+frontend/scripts/test_video_flow.mjs
+frontend/scripts/verify_two_tab_consultation.mjs
+frontend/tsconfig.json
+pyproject.toml
+release-manifest.json
+render.yaml
+sbom-backend.json
+sbom-frontend.json
+
+--------------------------------------------------------------------------------
+9. CI/CD
+--------------------------------------------------------------------------------
+.github/workflows/ci.yml
+
+================================================================================
+EXCLUDED CATEGORIES & UNINSPECTED FILES
+================================================================================
+
+--------------------------------------------------------------------------------
+10. BINARY FILES EXCLUDED
+--------------------------------------------------------------------------------
+.mypy_cache/3.12/cache.0.db
+.mypy_cache/3.12/cache.1.db
+.mypy_cache/3.12/cache.10.db
+.mypy_cache/3.12/cache.11.db
+.mypy_cache/3.12/cache.12.db
+.mypy_cache/3.12/cache.13.db
+.mypy_cache/3.12/cache.14.db
+.mypy_cache/3.12/cache.15.db
+.mypy_cache/3.12/cache.2.db
+.mypy_cache/3.12/cache.3.db
+.mypy_cache/3.12/cache.4.db
+.mypy_cache/3.12/cache.5.db
+.mypy_cache/3.12/cache.6.db
+.mypy_cache/3.12/cache.7.db
+.mypy_cache/3.12/cache.8.db
+.mypy_cache/3.12/cache.9.db
+LegalCaseCompanion.exe
+LegalCaseCompanion.ico
+Run-LegalCaseCompanion.bat
+cloudflared.exe
+frontend/public/ai-advisor-logo-blue.png
+frontend/public/ai-advisor-logo-navy.png
+frontend/public/ai-advisor-logo-sky.png
+frontend/public/ai-advisor-logo-teal.png
+frontend/public/ai-advisor-logo-white.png
+frontend/public/ai-advisor-logo.png
+frontend/public/favicon.ico
+frontend/public/lcc-logo.png
+frontend/public/logo-icon-white.png
+frontend/public/logo-icon.png
+frontend/public/logo-transparent.png
+frontend/public/logo-white.png
+frontend/public/logo.png
+scratch/client_lease_deed.pdf
+scratch/lawyer_court_order.pdf
+scripts/build_launcher.bat
+start-tunnel.bat
+test.db
+tests/fixtures/Rental_Agreement_Evidence.pdf
+
+--------------------------------------------------------------------------------
+11. GENERATED FILES EXCLUDED
+--------------------------------------------------------------------------------
+frontend/package-lock.json
+
+--------------------------------------------------------------------------------
+12. DEPENDENCY / VENDOR FILES EXCLUDED
+--------------------------------------------------------------------------------
+.venv (Python Virtual Environment / Dependencies)
+frontend/node_modules (Node.js NPM Dependencies)
+.git (Git Version Control Metadata)
+.pytest_cache (Pytest Test Execution Cache)
+.ruff_cache (Ruff Linter Cache)
+__pycache__ (Python Bytecode Cache directories)
+frontend/.next (Next.js Build Output Cache)
+
+--------------------------------------------------------------------------------
+13. FILES NOT INSPECTED (DOCUMENTATION & UNTRACKED ASSETS)
+--------------------------------------------------------------------------------
+.mypy_cache/CACHEDIR.TAG
+README.md
+coturn/turnserver.conf
+docs/00_DECISION_REGISTER.md (Documentation reference)
+docs/00_PROJECT_CONTEXT.md (Documentation reference)
+docs/01_SYSTEM_ARCHITECTURE.md (Documentation reference)
+docs/02_DATABASE_DESIGN.md (Documentation reference)
+docs/03_API_SPECIFICATION.md (Documentation reference)
+docs/04_AUTHORIZATION_SECURITY.md (Documentation reference)
+docs/05_BACKEND_MODULES.md (Documentation reference)
+docs/06_AI_INTEGRATION.md (Documentation reference)
+docs/07_FILE_DOCUMENT_SYSTEM.md (Documentation reference)
+docs/08_FRONTEND_ARCHITECTURE.md (Documentation reference)
+docs/08_PAYMENT_CONSULTATION.md (Documentation reference)
+docs/09_INFRASTRUCTURE_DEPLOYMENT.md (Documentation reference)
+docs/10_TESTING_STRATEGY.md (Documentation reference)
+docs/11_ENVIRONMENT_CONFIGURATION.md (Documentation reference)
+docs/12_ENGINEERING_RULES.md (Documentation reference)
+docs/13_IMPLEMENTATION_PLAN.md (Documentation reference)
+docs/13_IMPLEMENTATION_STATUS.md (Documentation reference)
+docs/14_API_CONTRACT_GAP_REPORT.md (Documentation reference)
+docs/15_ARCHITECTURE_DECISION_REGISTER.md (Documentation reference)
+docs/15_FULL_REPOSITORY_AUDIT.md (Documentation reference)
+docs/16_CODE_AUDIT_AND_FIXES.md (Documentation reference)
+docs/16_DEPLOYMENT_PLAN.md (Documentation reference)
+docs/16_EVIDENCE_LOCKER_SECURITY.md (Documentation reference)
+docs/17_PRODUCTION_HARDENING_REPORT.md (Documentation reference)
+docs/17_PRODUCTION_OPERATIONS.md (Documentation reference)
+docs/17_RUNBOOKS.md (Documentation reference)
+docs/18_DISASTER_RECOVERY.md (Documentation reference)
+docs/18_FINAL_ENGINEERING_VERIFICATION.md (Documentation reference)
+docs/18_PILOT_READINESS_RUNBOOK.md (Documentation reference)
+docs/19_FINAL_API_VERIFICATION.md (Documentation reference)
+docs/19_OBSERVABILITY.md (Documentation reference)
+docs/19_REAL_WORLD_PILOT_GUIDE.md (Documentation reference)
+docs/20_GITHUB_PRE_PUSH_SECURITY_AUDIT.md (Documentation reference)
+docs/20_PRODUCTION_OPERATIONS.md (Documentation reference)
+docs/20_SECURITY_HARDENING.md (Documentation reference)
+docs/21_PILOT_INCIDENT_RESPONSE.md (Documentation reference)
+docs/21_PRIVACY_DATA_MAP.md (Documentation reference)
+docs/22_DEPLOYMENT_SECURITY.md (Documentation reference)
+docs/23_INCIDENT_RESPONSE.md (Documentation reference)
+docs/23_RELEASE_CHECKLIST.md (Documentation reference)
+docs/24_PRODUCTION_DEPLOYMENT_RUNBOOK.md (Documentation reference)
+docs/25_PILOT_RESULTS.md (Documentation reference)
+docs/25_RELEASE_PROCESS.md (Documentation reference)
+docs/26_PRODUCT_DECISION_LOG.md (Documentation reference)
+docs/26_STAGING_VALIDATION.md (Documentation reference)
+docs/27_NATIVE_VIDEO_MEETING_SYSTEM.md (Documentation reference)
+docs/27_ROLLBACK_RUNBOOK.md (Documentation reference)
+docs/28_CONTROLLED_PRODUCTION_PILOT.md (Documentation reference)
+docs/29_SRE_SLOS_AND_ALERTING.md (Documentation reference)
+docs/30_INCIDENT_MANAGEMENT.md (Documentation reference)
+docs/31_DATA_GOVERNANCE_AND_PRIVACY.md (Documentation reference)
+docs/32_AI_PRODUCTION_SAFETY.md (Documentation reference)
+docs/33_SUPPORT_OPERATIONS.md (Documentation reference)
+docs/34_RELEASE_GOVERNANCE.md (Documentation reference)
+docs/35_PILOT_READINESS_SCORECARD.md (Documentation reference)
+docs/36_PILOT_EXECUTION.md (Documentation reference)
+docs/37_PRODUCT_METRICS.md (Documentation reference)
+docs/38_AI_EVALUATION_AND_REVIEW.md (Documentation reference)
+docs/39_SUPPORT_AND_FEEDBACK_OPERATIONS.md (Documentation reference)
+docs/40_CAPACITY_AND_COST_MODEL.md (Documentation reference)
+docs/41_DATA_QUALITY_AND_RECONCILIATION.md (Documentation reference)
+docs/42_PUBLIC_LAUNCH_GATES.md (Documentation reference)
+docs/43_LOCALIZATION_ARCHITECTURE.md (Documentation reference)
+docs/44_LEGAL_DOCUMENT_VERSIONING.md (Documentation reference)
+docs/45_PUBLIC_ONBOARDING.md (Documentation reference)
+docs/46_ADVOCATE_VERIFICATION.md (Documentation reference)
+docs/47_COMMERCIAL_PAYMENT_OPERATIONS.md (Documentation reference)
+docs/48_PUBLIC_ABUSE_DEFENSE.md (Documentation reference)
+docs/49_SCALE_VALIDATION.md (Documentation reference)
+docs/50_AI_COST_AND_CAPACITY.md (Documentation reference)
+docs/51_PUBLIC_LAUNCH_GATES.md (Documentation reference)
+docs/52_TRUST_AND_TRANSPARENCY.md (Documentation reference)
+docs/53_PHASE_7_6_PRODUCTION_READINESS_SCORECARD.md (Documentation reference)
+docs/54_PHASE_8_CONTROLLED_PILOT_VALIDATION.md (Documentation reference)
+docs/55_PHASE_9_PRODUCT_INTELLIGENCE_AND_SCALE_READINESS.md (Documentation reference)
+docs/56_PHASE_10_COMMERCIAL_OPERATIONS_AND_PRODUCT_MARKET_VALIDATION.md (Documentation reference)
+docs/ARCHITECTURE_DECISIONS.md (Documentation reference)
+docs/INCIDENT_RESPONSE.md (Documentation reference)
+docs/PILOT_SAFETY_AND_SCOPE.md (Documentation reference)
+docs/architecture/PHASE_10_ARCHITECTURE.md (Documentation reference)
+docs/architecture/PHASE_10_BASELINE.md (Documentation reference)
+docs/architecture/PHASE_10_DEAD_CODE_CANDIDATES.md (Documentation reference)
+docs/architecture/PHASE_10_DEPENDENCY_GRAPH.md (Documentation reference)
+docs/architecture/PHASE_10_FINAL_DEPENDENCY_GRAPH.md (Documentation reference)
+docs/architecture/PHASE_10_MODULE_INVENTORY.md (Documentation reference)
+docs/architecture/PHASE_6_AI_ARCHITECTURE.md (Documentation reference)
+docs/architecture/PHASE_6_AI_INVENTORY.md (Documentation reference)
+docs/architecture/PHASE_7_PROVIDER_ARCHITECTURE.md (Documentation reference)
+docs/architecture/PHASE_7_PROVIDER_INVENTORY.md (Documentation reference)
+docs/architecture/PROVIDER_CONTRACTS.md (Documentation reference)
+docs/archive/project_report.md (Documentation reference)
+docs/cleanup/PHASE_11_BASELINE.md (Documentation reference)
+docs/cleanup/PHASE_11_DEAD_CODE_REPORT.md (Documentation reference)
+docs/cleanup/PHASE_11_FINAL_STRUCTURE.md (Documentation reference)
+docs/cleanup/PHASE_11_REFERENCE_GRAPH.md (Documentation reference)
+docs/database/MIGRATION_SAFETY.md (Documentation reference)
+docs/database/PHASE_4_BASELINE.md (Documentation reference)
+docs/database/PHASE_4_DATABASE_AUDIT.md (Documentation reference)
+docs/database/SCHEMA_DRIFT_REPORT.md (Documentation reference)
+docs/final-audit/DATABASE_AUDIT.md (Documentation reference)
+docs/final-audit/DEPENDENCY_AUDIT.md (Documentation reference)
+docs/final-audit/FINAL_FINDINGS.md (Documentation reference)
+docs/final-audit/FULL_SYSTEM_AUDIT.md (Documentation reference)
+docs/final-audit/PHASE_13_BASELINE.md (Documentation reference)
+docs/final-audit/PRODUCTION_GO_NO_GO.md (Documentation reference)
+docs/final-audit/SECURITY_AUDIT.md (Documentation reference)
+docs/final-cicd/CI_CD_AUDIT.md (Documentation reference)
+docs/final-cicd/CI_FAILURE_TESTS.md (Documentation reference)
+docs/final-cicd/CI_PIPELINE_REFERENCE.md (Documentation reference)
+docs/final-cicd/CI_RELEASE_ARTIFACTS.md (Documentation reference)
+docs/final-cicd/CI_SECURITY.md (Documentation reference)
+docs/final-cicd/FINAL_CI_CD_CERTIFICATION.md (Documentation reference)
+docs/final-release/BACKUP_RESTORE_RESULTS.md (Documentation reference)
+docs/final-release/DEPLOYMENT_VERIFICATION.md (Documentation reference)
+docs/final-release/FAILURE_INJECTION_RESULTS.md (Documentation reference)
+docs/final-release/FINAL_GO_NO_GO.md (Documentation reference)
+docs/final-release/PHASE_14_RELEASE_CANDIDATE.md (Documentation reference)
+docs/final-release/RELEASE_ARTIFACT_VERIFICATION.md (Documentation reference)
+docs/final-release/ROLLBACK_DRILL_RESULTS.md (Documentation reference)
+docs/final-release/SMOKE_TEST_RESULTS.md (Documentation reference)
+docs/frontend/PHASE_8_ACCESSIBILITY.md (Documentation reference)
+docs/frontend/PHASE_8_API_INTEGRATION.md (Documentation reference)
+docs/frontend/PHASE_8_BASELINE.md (Documentation reference)
+docs/frontend/PHASE_8_COMPONENT_INVENTORY.md (Documentation reference)
+docs/frontend/PHASE_8_FRONTEND_ARCHITECTURE.md (Documentation reference)
+docs/legal/ACCOUNT_CLOSURE_POLICY.md (Documentation reference)
+docs/legal/ADVOCATE_TERMS.md (Documentation reference)
+docs/legal/CONSULTATION_POLICY.md (Documentation reference)
+docs/legal/DOCUMENT_RETENTION_POLICY.md (Documentation reference)
+docs/legal/PRIVACY_NOTICE.md (Documentation reference)
+docs/legal/REFUND_POLICY.md (Documentation reference)
+docs/legal/SUPPORT_POLICY.md (Documentation reference)
+docs/legal/TERMS_OF_SERVICE.md (Documentation reference)
+docs/openapi.json (Documentation reference)
+docs/production_runbook.md (Documentation reference)
+docs/refactor/BASELINE.md (Documentation reference)
+docs/refactor/DEPENDENCY_GRAPH.md (Documentation reference)
+docs/refactor/DUPLICATE_INVENTORY.md (Documentation reference)
+docs/refactor/FILE_INVENTORY.md (Documentation reference)
+docs/refactor/PHASE_1_STRUCTURE_HYGIENE.md (Documentation reference)
+docs/refactor/PHASE_2_BASELINE.md (Documentation reference)
+docs/refactor/PHASE_2_STATIC_QUALITY.md (Documentation reference)
+docs/refactor/PHASE_3_BASELINE.md (Documentation reference)
+docs/refactor/PHASE_3_SERVICE_HOOKUP.md (Documentation reference)
+docs/refactor/PHASE_3_SERVICE_HOOKUP_MATRIX.md (Documentation reference)
+docs/refactor/ROUTE_INVENTORY.md (Documentation reference)
+docs/release/DISASTER_RECOVERY.md (Documentation reference)
+docs/release/PHASE_12_BASELINE.md (Documentation reference)
+docs/release/PHASE_12_DEPLOYMENT_INVENTORY.md (Documentation reference)
+docs/release/PHASE_12_PRODUCTION_HARDENING.md (Documentation reference)
+docs/release/PRODUCTION_DEPLOYMENT.md (Documentation reference)
+docs/release/PRODUCTION_RELEASE_CHECKLIST.md (Documentation reference)
+docs/release/ROLLBACK_PROCEDURE.md (Documentation reference)
+docs/reliability/FAILURE_RECOVERY_MATRIX.md (Documentation reference)
+docs/reliability/OBSERVABILITY.md (Documentation reference)
+docs/reliability/OPERATIONAL_RECOVERY.md (Documentation reference)
+docs/reliability/PHASE_9_BASELINE.md (Documentation reference)
+docs/reliability/PHASE_9_CROSS_SYSTEM_RELIABILITY.md (Documentation reference)
+docs/reliability/STATE_MACHINE_AUDIT.md (Documentation reference)
+docs/security/API_AUTHORIZATION_MATRIX.md (Documentation reference)
+docs/security/IDOR_TEST_MATRIX.md (Documentation reference)
+docs/security/PHASE_5_API_INVENTORY.md (Documentation reference)
+docs/security/PHASE_5_SECURITY_AUDIT.md (Documentation reference)
+docs/security/PHASE_6_AI_SECURITY.md (Documentation reference)
+docs/security/PHASE_7_PROVIDER_SECURITY.md (Documentation reference)
+docs/security/PROMPT_SECURITY.md (Documentation reference)
+frontend/AGENTS.md
+frontend/CLAUDE.md
+frontend/README.md
+frontend/public/file.svg
+frontend/public/globe.svg
+frontend/public/next.svg
+frontend/public/vercel.svg
+frontend/public/window.svg
+frontend/tsconfig.tsbuildinfo
+scratch/audit_scanner.py
+scratch/comprehensive_inventory.py
+scratch/generate_api_inventory_doc.py
+scratch/generate_matrices.py
+scratch/generate_security_audit_doc.py
+scratch/route_inspector.py
+scratch/routes_dump.txt
+scratch/security_code_scan.py
+scratch/test_messaging.py
+scratch/unauthed_endpoints.txt
+scratch/verify_case_sharing.py
+uv.lock
+walkthrough.md
+

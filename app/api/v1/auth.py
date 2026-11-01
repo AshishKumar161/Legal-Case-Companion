@@ -326,6 +326,7 @@ def get_current_user_identity(
     """Authoritative current user identity and profile details."""
     full_name = None
     location = None
+    phone = current_user.phone
     if current_user.role == UserRole.CLIENT:
         client_profile = (
             db.query(ClientProfile).filter(ClientProfile.user_id == current_user.id).first()
@@ -333,6 +334,8 @@ def get_current_user_identity(
         if client_profile:
             full_name = client_profile.full_name
             location = client_profile.location
+            if client_profile.phone:
+                phone = client_profile.phone
     elif current_user.role == UserRole.LAWYER:
         lawyer_profile = (
             db.query(LawyerProfile).filter(LawyerProfile.user_id == current_user.id).first()
@@ -340,6 +343,8 @@ def get_current_user_identity(
         if lawyer_profile:
             full_name = lawyer_profile.full_name
             location = lawyer_profile.location
+            if lawyer_profile.phone:
+                phone = lawyer_profile.phone
     elif current_user.role == UserRole.ADMIN:
         full_name = "System Administrator"
 
@@ -358,6 +363,9 @@ def get_current_user_identity(
         ),
         full_name=full_name,
         location=location,
+        phone=phone,
+        kyc_status=current_user.kyc_status,
+        is_kyc_completed=current_user.is_kyc_completed,
     )
 
 

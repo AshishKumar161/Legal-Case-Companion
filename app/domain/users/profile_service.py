@@ -63,6 +63,7 @@ class ProfileService:
         for field, value in update_data.model_dump(exclude_unset=True).items():
             if field == "phone":
                 user.phone = value
+                profile.phone = value
                 updated_fields["phone"] = value
             else:
                 setattr(profile, field, value)

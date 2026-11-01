@@ -1,0 +1,918 @@
+{
+  "total_state_machines_audited": 10,
+  "state_machines": [
+    {
+      "entity": "Case",
+      "field": "status",
+      "enum": "CaseStatus",
+      "all_states": [
+        "OPEN",
+        "IN_PROGRESS",
+        "CLOSED",
+        "CANCELLED"
+      ],
+      "terminal_states": [
+        "CLOSED",
+        "CANCELLED"
+      ],
+      "transition_rules_source": "app/domain/cases/case_service.py:ALLOWED_CASE_TRANSITIONS",
+      "matrix": [
+        {
+          "current_state": "OPEN",
+          "allowed_next_states": [
+            "OPEN",
+            "IN_PROGRESS",
+            "CLOSED",
+            "CANCELLED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "CaseService.update_case checks ALLOWED_CASE_TRANSITIONS map",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_case_operations_and_workflow.py::test_case_status_transitions"
+        },
+        {
+          "current_state": "IN_PROGRESS",
+          "allowed_next_states": [
+            "IN_PROGRESS",
+            "CLOSED",
+            "CANCELLED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "CaseService.update_case checks ALLOWED_CASE_TRANSITIONS map",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_case_operations_and_workflow.py::test_case_status_transitions"
+        },
+        {
+          "current_state": "CLOSED",
+          "allowed_next_states": [
+            "CLOSED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "CaseService.update_case raises ValidationError if new_status != CLOSED",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_case_operations_and_workflow.py::test_closed_case_status_terminal"
+        },
+        {
+          "current_state": "CANCELLED",
+          "allowed_next_states": [
+            "CANCELLED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "CaseService.update_case raises ValidationError if new_status != CANCELLED",
+          "invalid_transition_tested": false,
+          "test_reference": null
+        }
+      ],
+      "determination_analysis": {
+        "1_all_possible_states": [
+          "OPEN",
+          "IN_PROGRESS",
+          "CLOSED",
+          "CANCELLED"
+        ],
+        "2_transitions_implemented": [
+          "OPEN->IN_PROGRESS",
+          "OPEN->CLOSED",
+          "OPEN->CANCELLED",
+          "IN_PROGRESS->CLOSED",
+          "IN_PROGRESS->CANCELLED"
+        ],
+        "3_invalid_transitions_rejected": "YES in CaseService.update_case; however, CaseWorkflowService._check_case_active_for_mutations only checks tasks/deadlines. Re-opening from CLOSED/CANCELLED raises ValidationError.",
+        "4_role_dependent": "YES. Only ADMIN or OWNER/LAWYER participant with modification permissions can call update_case.",
+        "5_requires_ownership": "NO, owner or assigned lawyer with non-VIEWER role can transition case status.",
+        "6_requires_prerequisite_data": "NO prerequisite data validation (e.g. no check that all tasks/hearings are completed before closing).",
+        "7_can_be_skipped": "YES. Can jump directly from OPEN to CLOSED without ever entering IN_PROGRESS.",
+        "8_can_be_reversed": "NO. Closed/cancelled cases cannot be reopened via update_case.",
+        "9_terminal_states_modifiable": "PARTIAL DEFECT (BL-FIND-02). While status itself cannot be changed once CLOSED, metadata (title, description), participants (add/remove), and notes can still be modified on CLOSED cases.",
+        "10_concurrent_transitions_safe": "NO locking (SELECT FOR UPDATE is not used in update_case), concurrent requests could race.",
+        "11_direct_db_bypass": "YES. Direct updates in scripts or routers can update Case.status without audit triggers."
+      }
+    },
+    {
+      "entity": "Consultation",
+      "field": "status",
+      "enum": "ConsultationStatus",
+      "all_states": [
+        "CREATED",
+        "PENDING",
+        "CLIENT_AUTHORIZED",
+        "LAWYER_ACCEPTED",
+        "MUTUAL_CONSENT",
+        "IN_PROGRESS",
+        "ENDED",
+        "CANCELLED",
+        "REJECTED",
+        "EXPIRED",
+        "PAYMENT_FAILED",
+        "NO_SHOW",
+        "REQUESTED",
+        "PAID",
+        "ACCEPTED",
+        "SCHEDULED",
+        "COMPLETED"
+      ],
+      "terminal_states": [
+        "COMPLETED",
+        "CANCELLED",
+        "REJECTED",
+        "NO_SHOW",
+        "EXPIRED"
+      ],
+      "transition_rules_source": "app/domain/consultations/consultation_service.py",
+      "matrix": [
+        {
+          "current_state": "REQUESTED",
+          "allowed_next_states": [
+            "PAID",
+            "ACCEPTED",
+            "REJECTED",
+            "CANCELLED",
+            "EXPIRED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Explicit if consultation.status != REQUESTED check in accept/reject/schedule",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_consultation_lifecycle_production.py::test_accept_non_requested_fails"
+        },
+        {
+          "current_state": "PAID",
+          "allowed_next_states": [
+            "SCHEDULED",
+            "ACCEPTED",
+            "CANCELLED",
+            "EXPIRED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Payment webhook transitions to PAID, schedule_consultation allows transition to SCHEDULED",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_consultation_lifecycle_production.py::test_paid_consultation_scheduling"
+        },
+        {
+          "current_state": "SCHEDULED",
+          "allowed_next_states": [
+            "IN_PROGRESS",
+            "CANCELLED",
+            "NO_SHOW",
+            "COMPLETED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Meeting start/complete and cancel methods enforce state requirements",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_consultation_lifecycle_production.py::test_cancel_scheduled_consultation"
+        },
+        {
+          "current_state": "IN_PROGRESS",
+          "allowed_next_states": [
+            "COMPLETED",
+            "ENDED",
+            "CANCELLED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "complete_consultation verifies active or scheduled meeting before completing",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_video_session_reliability.py::test_meeting_completion"
+        },
+        {
+          "current_state": "COMPLETED",
+          "allowed_next_states": [
+            "COMPLETED"
+          ],
+          "code_enforces": false,
+          "enforcement_mechanism": "cancel_consultation rejects COMPLETED, BUT CommercialService.process_refund unconditionally mutates COMPLETED -> CANCELLED (BL-FIND-04)",
+          "invalid_transition_tested": false,
+          "test_reference": null
+        },
+        {
+          "current_state": "CANCELLED",
+          "allowed_next_states": [
+            "CANCELLED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "cancel_consultation is idempotent; cannot reschedule cancelled consultation",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_consultation_lifecycle_production.py::test_cancelled_terminal"
+        }
+      ],
+      "determination_analysis": {
+        "1_all_possible_states": [
+          "REQUESTED",
+          "PAID",
+          "ACCEPTED",
+          "SCHEDULED",
+          "IN_PROGRESS",
+          "COMPLETED",
+          "CANCELLED",
+          "REJECTED",
+          "NO_SHOW",
+          "EXPIRED",
+          "PAYMENT_FAILED"
+        ],
+        "2_transitions_implemented": [
+          "REQUESTED->PAID",
+          "PAID->SCHEDULED",
+          "SCHEDULED->IN_PROGRESS",
+          "IN_PROGRESS->COMPLETED",
+          "SCHEDULED->CANCELLED",
+          "SCHEDULED->NO_SHOW",
+          "REQUESTED->REJECTED"
+        ],
+        "3_invalid_transitions_rejected": "YES in consultation_service methods, EXCEPT CommercialService.process_refund which resets COMPLETED to CANCELLED upon full refund (BL-FIND-04).",
+        "4_role_dependent": "YES. accept/reject can only be called by the assigned lawyer; cancellation allowed by client, lawyer, or admin; completion by lawyer or admin.",
+        "5_requires_ownership": "YES. _authorize_consultation_access ensures actor is either client, assigned lawyer, or admin.",
+        "6_requires_prerequisite_data": "YES. Scheduling requires selected slot; completion requires meeting ended_at or active meeting; payment requires commercial transaction.",
+        "7_can_be_skipped": "YES. Direct scheduling without separate ACCEPTED step occurs in instant booking flow.",
+        "8_can_be_reversed": "CRITICAL DEFECT (BL-FIND-04). Terminal COMPLETED state can be reversed to CANCELLED via CommercialService.process_refund.",
+        "9_terminal_states_modifiable": "YES (BL-FIND-04). Terminal COMPLETED can be overwritten to CANCELLED.",
+        "10_concurrent_transitions_safe": "YES for consultation_service operations which execute _get_consultation(for_update=True); NO for commercial_service process_refund which locks transaction but not consultation.",
+        "11_direct_db_bypass": "YES. Webhooks and router endpoints can directly query and update consultation status."
+      }
+    },
+    {
+      "entity": "CommercialTransaction",
+      "field": "status",
+      "enum": "TransactionStatus",
+      "all_states": [
+        "PENDING",
+        "AUTHORIZED",
+        "CAPTURED",
+        "FAILED",
+        "REFUNDED",
+        "PARTIALLY_REFUNDED",
+        "DISPUTED",
+        "CANCELLED"
+      ],
+      "terminal_states": [
+        "REFUNDED",
+        "FAILED",
+        "CANCELLED"
+      ],
+      "transition_rules_source": "app/domain/payments/commercial_service.py",
+      "matrix": [
+        {
+          "current_state": "PENDING",
+          "allowed_next_states": [
+            "CAPTURED",
+            "FAILED",
+            "CANCELLED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "capture_consultation_payment checks status in (PENDING, AUTHORIZED)",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_payment_workflow_comprehensive.py::test_capture_pending_transaction"
+        },
+        {
+          "current_state": "CAPTURED",
+          "allowed_next_states": [
+            "PARTIALLY_REFUNDED",
+            "REFUNDED",
+            "DISPUTED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "process_refund checks txn.status in (CAPTURED, AUTHORIZED, PARTIALLY_REFUNDED)",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_payment_workflow_comprehensive.py::test_refund_captured_transaction"
+        },
+        {
+          "current_state": "PARTIALLY_REFUNDED",
+          "allowed_next_states": [
+            "PARTIALLY_REFUNDED",
+            "REFUNDED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "process_refund accumulates prior_refunds and computes remaining_refundable",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_payment_workflow_comprehensive.py::test_multiple_partial_refunds"
+        },
+        {
+          "current_state": "REFUNDED",
+          "allowed_next_states": [
+            "REFUNDED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "process_refund raises AppException(TRANSACTION_ALREADY_REFUNDED) if remaining_refundable <= 0 or status == REFUNDED",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_payment_workflow_comprehensive.py::test_double_refund_rejected"
+        }
+      ],
+      "determination_analysis": {
+        "1_all_possible_states": [
+          "PENDING",
+          "AUTHORIZED",
+          "CAPTURED",
+          "FAILED",
+          "REFUNDED",
+          "PARTIALLY_REFUNDED",
+          "DISPUTED",
+          "CANCELLED"
+        ],
+        "2_transitions_implemented": [
+          "PENDING->CAPTURED",
+          "CAPTURED->PARTIALLY_REFUNDED",
+          "CAPTURED->REFUNDED",
+          "PARTIALLY_REFUNDED->REFUNDED",
+          "PENDING->FAILED"
+        ],
+        "3_invalid_transitions_rejected": "YES. Double refunds and refunds exceeding gross amount are rejected.",
+        "4_role_dependent": "YES. Refunds require ADMIN or platform authority or system cancellation.",
+        "5_requires_ownership": "NO, refunds are processed by platform on behalf of actors.",
+        "6_requires_prerequisite_data": "YES. Refund requires positive remaining_refundable and successful prior capture.",
+        "7_can_be_skipped": "NO. Cannot refund without capture.",
+        "8_can_be_reversed": "NO. Succeeded refunds are immutable.",
+        "9_terminal_states_modifiable": "NO. REFUNDED transactions cannot be refunded again.",
+        "10_concurrent_transitions_safe": "YES. Uses get_transaction(for_update=True) and sums RefundRecord within transaction.",
+        "11_direct_db_bypass": "NO router bypass observed for commercial transactions; routed through CommercialService."
+      }
+    },
+    {
+      "entity": "LawyerVerification",
+      "field": "status",
+      "enum": "VerificationStatus",
+      "all_states": [
+        "DRAFT",
+        "PENDING",
+        "UNDER_REVIEW",
+        "APPROVED",
+        "REJECTED",
+        "NEEDS_INFO",
+        "REVOKED"
+      ],
+      "terminal_states": [
+        "REVOKED"
+      ],
+      "transition_rules_source": "app/domain/verification/lawyer_verification_service.py",
+      "matrix": [
+        {
+          "current_state": "DRAFT",
+          "allowed_next_states": [
+            "PENDING"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "submit_verification transitions from DRAFT to PENDING after validating required docs",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_lawyer_verification.py::test_submit_verification"
+        },
+        {
+          "current_state": "PENDING",
+          "allowed_next_states": [
+            "UNDER_REVIEW",
+            "REJECTED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Admin review start transitions to UNDER_REVIEW",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_lawyer_verification.py::test_under_review_transition"
+        },
+        {
+          "current_state": "UNDER_REVIEW",
+          "allowed_next_states": [
+            "APPROVED",
+            "REJECTED",
+            "NEEDS_INFO"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "approve_verification and reject_verification methods enforce transition rules",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_lawyer_verification.py::test_approval_workflow"
+        },
+        {
+          "current_state": "APPROVED",
+          "allowed_next_states": [
+            "REVOKED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "revoke_verification method transitions APPROVED to REVOKED; re-approval rejected",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_lawyer_verification.py::test_revoke_verification"
+        },
+        {
+          "current_state": "REJECTED",
+          "allowed_next_states": [
+            "PENDING"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "resubmit_verification allows new submission after rejection",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_lawyer_verification.py::test_resubmission_after_rejection"
+        }
+      ],
+      "determination_analysis": {
+        "1_all_possible_states": [
+          "DRAFT",
+          "PENDING",
+          "UNDER_REVIEW",
+          "APPROVED",
+          "REJECTED",
+          "NEEDS_INFO",
+          "REVOKED"
+        ],
+        "2_transitions_implemented": [
+          "DRAFT->PENDING",
+          "PENDING->UNDER_REVIEW",
+          "UNDER_REVIEW->APPROVED",
+          "UNDER_REVIEW->REJECTED",
+          "UNDER_REVIEW->NEEDS_INFO",
+          "APPROVED->REVOKED",
+          "REJECTED->PENDING"
+        ],
+        "3_invalid_transitions_rejected": "YES. Direct DRAFT->APPROVED is prevented; review events are logged.",
+        "4_role_dependent": "YES. Only ADMIN can approve/reject/revoke; lawyer can submit/resubmit.",
+        "5_requires_ownership": "YES. Lawyer can only submit their own verification record.",
+        "6_requires_prerequisite_data": "YES. Requires enrollment_number, bar_council_name, state_bar_council, identity and bar cert documents.",
+        "7_can_be_skipped": "NO skipping of review step permitted in service.",
+        "8_can_be_reversed": "YES. Rejection can be reversed through resubmission.",
+        "9_terminal_states_modifiable": "REVOKED is terminal and revokes LawyerProfile.verification_status to REVOKED.",
+        "10_concurrent_transitions_safe": "Uses database transaction and review event audit trail; admin approval runs synchronously.",
+        "11_direct_db_bypass": "YES. Case participant addition (BL-FIND-01) bypasses verification checks entirely, granting unverified lawyers access to confidential case files."
+      }
+    },
+    {
+      "entity": "Document",
+      "field": "processing_status",
+      "enum": "DocumentProcessingStatus",
+      "all_states": [
+        "PENDING",
+        "PROCESSING",
+        "READY",
+        "FAILED",
+        "UNSUPPORTED_FORMAT",
+        "CORRUPTED_FILE",
+        "EMPTY_DOCUMENT",
+        "OCR_REQUIRED"
+      ],
+      "terminal_states": [
+        "READY",
+        "FAILED",
+        "UNSUPPORTED_FORMAT",
+        "CORRUPTED_FILE",
+        "EMPTY_DOCUMENT"
+      ],
+      "transition_rules_source": "app/domain/documents/document_processor.py",
+      "matrix": [
+        {
+          "current_state": "PENDING",
+          "allowed_next_states": [
+            "PROCESSING",
+            "FAILED",
+            "UNSUPPORTED_FORMAT"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "DocumentProcessor._process_document_internal transitions to PROCESSING on start",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_document_pipeline_e2e.py::test_document_processing_lifecycle"
+        },
+        {
+          "current_state": "PROCESSING",
+          "allowed_next_states": [
+            "READY",
+            "OCR_REQUIRED",
+            "FAILED",
+            "CORRUPTED_FILE",
+            "EMPTY_DOCUMENT"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "DocumentProcessor marks READY upon successful text extraction and chunking",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_document_pipeline_e2e.py::test_processing_success"
+        },
+        {
+          "current_state": "READY",
+          "allowed_next_states": [
+            "READY"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Document is terminal and searchable via pgvector embeddings",
+          "invalid_transition_tested": false,
+          "test_reference": null
+        }
+      ],
+      "determination_analysis": {
+        "1_all_possible_states": [
+          "PENDING",
+          "PROCESSING",
+          "READY",
+          "FAILED",
+          "UNSUPPORTED_FORMAT",
+          "CORRUPTED_FILE",
+          "EMPTY_DOCUMENT",
+          "OCR_REQUIRED"
+        ],
+        "2_transitions_implemented": [
+          "PENDING->PROCESSING",
+          "PROCESSING->READY",
+          "PROCESSING->FAILED",
+          "PROCESSING->OCR_REQUIRED",
+          "OCR_REQUIRED->READY"
+        ],
+        "3_invalid_transitions_rejected": "Failure status updates set error_message and log error.",
+        "4_role_dependent": "NO. Processing is managed by background workers and processor jobs.",
+        "5_requires_ownership": "Upload requires case/user ownership; processing is automated.",
+        "6_requires_prerequisite_data": "Requires valid S3/MinIO storage path and passing malware scan (DocumentSecurityStatus.SAFE).",
+        "7_can_be_skipped": "NO. Cannot jump directly from PENDING to READY without text extraction and chunking.",
+        "8_can_be_reversed": "Re-processing creates a new DocumentVersion or re-enqueues processing job.",
+        "9_terminal_states_modifiable": "Re-processing updates status back to PROCESSING.",
+        "10_concurrent_transitions_safe": "Worker queue uses SKIP LOCKED or single processor invocation per document version.",
+        "11_direct_db_bypass": "Router endpoints do not directly mutate processing_status."
+      }
+    },
+    {
+      "entity": "ProcessedWebhookEvent",
+      "field": "status",
+      "enum": "WebhookProcessingStatus",
+      "all_states": [
+        "PENDING",
+        "PROCESSING",
+        "PROCESSED",
+        "FAILED"
+      ],
+      "terminal_states": [
+        "PROCESSED"
+      ],
+      "transition_rules_source": "app/domain/payments/payment_service.py",
+      "matrix": [
+        {
+          "current_state": "PENDING",
+          "allowed_next_states": [
+            "PROCESSING",
+            "PROCESSED",
+            "FAILED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "process_webhook_event checks existing record before dispatch",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_webhooks.py::test_webhook_idempotency"
+        },
+        {
+          "current_state": "PROCESSING",
+          "allowed_next_states": [
+            "PROCESSED",
+            "FAILED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Completes to PROCESSED on handler success or FAILED on exception",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_webhooks.py::test_webhook_failure_handling"
+        },
+        {
+          "current_state": "PROCESSED",
+          "allowed_next_states": [
+            "PROCESSED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Idempotent short-circuit returns existing PROCESSED event immediately",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_webhooks.py::test_duplicate_webhook_payload"
+        },
+        {
+          "current_state": "FAILED",
+          "allowed_next_states": [
+            "PROCESSING",
+            "PROCESSED",
+            "FAILED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Reconciliation job re-attempts FAILED events up to max retry threshold",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_webhooks.py::test_failed_webhook_retry"
+        }
+      ],
+      "determination_analysis": {
+        "1_all_possible_states": [
+          "PENDING",
+          "PROCESSING",
+          "PROCESSED",
+          "FAILED"
+        ],
+        "2_transitions_implemented": [
+          "PENDING->PROCESSING",
+          "PROCESSING->PROCESSED",
+          "PROCESSING->FAILED",
+          "FAILED->PROCESSING"
+        ],
+        "3_invalid_transitions_rejected": "Duplicate deliveries of PROCESSED events are immediately acknowledged with HTTP 200 without re-execution.",
+        "4_role_dependent": "NO. Inbound Stripe webhook endpoint authenticated via HMAC-SHA256 signature.",
+        "5_requires_ownership": "Signature verification against stripe webhook secret.",
+        "6_requires_prerequisite_data": "Requires valid Stripe Event JSON and event_id.",
+        "7_can_be_skipped": "NO.",
+        "8_can_be_reversed": "PROCESSED events are never reversed to FAILED.",
+        "9_terminal_states_modifiable": "PROCESSED is terminal.",
+        "10_concurrent_transitions_safe": "Database uniqueness constraint on stripe_event_id and row locking prevent race conditions.",
+        "11_direct_db_bypass": "No bypass path observed."
+      }
+    },
+    {
+      "entity": "User",
+      "field": "account_status",
+      "enum": "AccountStatus",
+      "all_states": [
+        "REGISTERED",
+        "VERIFIED",
+        "ACTIVE",
+        "RESTRICTED",
+        "SUSPENDED",
+        "DEACTIVATED"
+      ],
+      "terminal_states": [
+        "DEACTIVATED"
+      ],
+      "transition_rules_source": "app/domain/users/lifecycle_service.py",
+      "matrix": [
+        {
+          "current_state": "REGISTERED",
+          "allowed_next_states": [
+            "VERIFIED",
+            "ACTIVE"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Email verification marks user VERIFIED and ACTIVE",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_auth_flow.py::test_registration_and_activation"
+        },
+        {
+          "current_state": "ACTIVE",
+          "allowed_next_states": [
+            "RESTRICTED",
+            "SUSPENDED",
+            "DEACTIVATED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "LifecycleService enforces administrative transition rules",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_auth_flow.py::test_user_suspension"
+        },
+        {
+          "current_state": "SUSPENDED",
+          "allowed_next_states": [
+            "ACTIVE",
+            "DEACTIVATED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Reactivation requires admin action; authentication is blocked",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_auth_flow.py::test_suspended_user_login_blocked"
+        },
+        {
+          "current_state": "DEACTIVATED",
+          "allowed_next_states": [
+            "DEACTIVATED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Deactivation revokes all active refresh tokens and marks account inactive",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_auth_flow.py::test_deactivated_user_terminal"
+        }
+      ],
+      "determination_analysis": {
+        "1_all_possible_states": [
+          "REGISTERED",
+          "VERIFIED",
+          "ACTIVE",
+          "RESTRICTED",
+          "SUSPENDED",
+          "DEACTIVATED"
+        ],
+        "2_transitions_implemented": [
+          "REGISTERED->VERIFIED",
+          "VERIFIED->ACTIVE",
+          "ACTIVE->SUSPENDED",
+          "SUSPENDED->ACTIVE",
+          "ACTIVE->DEACTIVATED"
+        ],
+        "3_invalid_transitions_rejected": "SUSPENDED users cannot log in or refresh tokens; DEACTIVATED users are permanently disabled.",
+        "4_role_dependent": "Suspension, restriction, and deactivation require ADMIN role.",
+        "5_requires_ownership": "Self-deactivation allowed for account owners; suspension requires ADMIN.",
+        "6_requires_prerequisite_data": "Registration requires unique email and hashed password.",
+        "7_can_be_skipped": "Google OAuth registration skips REGISTERED directly to ACTIVE.",
+        "8_can_be_reversed": "SUSPENDED can be reversed to ACTIVE by administrator.",
+        "9_terminal_states_modifiable": "DEACTIVATED accounts cannot be re-activated.",
+        "10_concurrent_transitions_safe": "Session revocation is executed synchronously with status changes.",
+        "11_direct_db_bypass": "No bypass path observed."
+      }
+    },
+    {
+      "entity": "CaseTask",
+      "field": "status",
+      "enum": "TaskStatus",
+      "all_states": [
+        "PENDING",
+        "IN_PROGRESS",
+        "COMPLETED",
+        "CANCELLED",
+        "BLOCKED"
+      ],
+      "terminal_states": [
+        "COMPLETED",
+        "CANCELLED"
+      ],
+      "transition_rules_source": "app/domain/cases/case_workflow_service.py",
+      "matrix": [
+        {
+          "current_state": "PENDING",
+          "allowed_next_states": [
+            "IN_PROGRESS",
+            "COMPLETED",
+            "CANCELLED",
+            "BLOCKED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "CaseWorkflowService verifies active case before task state changes",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_case_operations_and_workflow.py::test_task_status_lifecycle"
+        },
+        {
+          "current_state": "IN_PROGRESS",
+          "allowed_next_states": [
+            "COMPLETED",
+            "CANCELLED",
+            "BLOCKED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "complete_task sets completed_at and transitions status",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_case_operations_and_workflow.py::test_complete_task"
+        },
+        {
+          "current_state": "COMPLETED",
+          "allowed_next_states": [
+            "COMPLETED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "completed tasks cannot be completed again",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_case_operations_and_workflow.py::test_task_already_completed"
+        }
+      ],
+      "determination_analysis": {
+        "1_all_possible_states": [
+          "PENDING",
+          "IN_PROGRESS",
+          "COMPLETED",
+          "CANCELLED",
+          "BLOCKED"
+        ],
+        "2_transitions_implemented": [
+          "PENDING->IN_PROGRESS",
+          "IN_PROGRESS->COMPLETED",
+          "PENDING->CANCELLED",
+          "IN_PROGRESS->CANCELLED"
+        ],
+        "3_invalid_transitions_rejected": "Modifying tasks on closed/cancelled cases raises BusinessRuleError.",
+        "4_role_dependent": "Task management requires case participant with non-VIEWER role.",
+        "5_requires_ownership": "Assignee or case owner can complete tasks.",
+        "6_requires_prerequisite_data": "Requires active parent case and valid case_id.",
+        "7_can_be_skipped": "Can transition directly from PENDING to COMPLETED without IN_PROGRESS.",
+        "8_can_be_reversed": "Completed tasks cannot be reopened via standard workflow endpoints.",
+        "9_terminal_states_modifiable": "COMPLETED tasks record completed_at and are sealed.",
+        "10_concurrent_transitions_safe": "Standard row updates in transaction.",
+        "11_direct_db_bypass": "Task updates via direct router queries could bypass parent case closed checks."
+      }
+    },
+    {
+      "entity": "CaseHearing",
+      "field": "status",
+      "enum": "HearingStatus",
+      "all_states": [
+        "SCHEDULED",
+        "ADJOURNED",
+        "COMPLETED",
+        "CANCELLED"
+      ],
+      "terminal_states": [
+        "COMPLETED",
+        "CANCELLED"
+      ],
+      "transition_rules_source": "app/domain/cases/case_workflow_service.py",
+      "matrix": [
+        {
+          "current_state": "SCHEDULED",
+          "allowed_next_states": [
+            "ADJOURNED",
+            "COMPLETED",
+            "CANCELLED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "complete_hearing checks case active and status == SCHEDULED",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_case_operations_and_workflow.py::test_complete_hearing"
+        },
+        {
+          "current_state": "COMPLETED",
+          "allowed_next_states": [
+            "COMPLETED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Cannot complete already completed hearing",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_case_operations_and_workflow.py::test_hearing_already_completed"
+        }
+      ],
+      "determination_analysis": {
+        "1_all_possible_states": [
+          "SCHEDULED",
+          "ADJOURNED",
+          "COMPLETED",
+          "CANCELLED"
+        ],
+        "2_transitions_implemented": [
+          "SCHEDULED->ADJOURNED",
+          "SCHEDULED->COMPLETED",
+          "SCHEDULED->CANCELLED"
+        ],
+        "3_invalid_transitions_rejected": "Cannot complete hearing on a closed or cancelled case.",
+        "4_role_dependent": "Requires case participant with OWNER or LAWYER role.",
+        "5_requires_ownership": "Case participant authorization required.",
+        "6_requires_prerequisite_data": "Requires hearing_date and court/matter details.",
+        "7_can_be_skipped": "N/A",
+        "8_can_be_reversed": "Completed hearings cannot be uncompleted.",
+        "9_terminal_states_modifiable": "Outcomes and notes recorded upon completion.",
+        "10_concurrent_transitions_safe": "Standard row update.",
+        "11_direct_db_bypass": "Router endpoints use CaseWorkflowService."
+      }
+    },
+    {
+      "entity": "Evidence",
+      "field": "status",
+      "enum": "EvidenceStatus",
+      "all_states": [
+        "UPLOADING",
+        "ACTIVE",
+        "ARCHIVED",
+        "DELETED",
+        "PENDING_DELETION"
+      ],
+      "terminal_states": [
+        "DELETED"
+      ],
+      "transition_rules_source": "app/domain/evidence/evidence_service.py",
+      "matrix": [
+        {
+          "current_state": "UPLOADING",
+          "allowed_next_states": [
+            "ACTIVE",
+            "DELETED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "complete_upload validates sha256 and transitions to ACTIVE",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_evidence_e2e.py::test_evidence_upload_lifecycle"
+        },
+        {
+          "current_state": "ACTIVE",
+          "allowed_next_states": [
+            "ARCHIVED",
+            "PENDING_DELETION",
+            "DELETED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "delete_evidence verifies legal hold is not active before marking DELETED",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_evidence_e2e.py::test_legal_hold_blocks_deletion"
+        },
+        {
+          "current_state": "ARCHIVED",
+          "allowed_next_states": [
+            "ACTIVE",
+            "DELETED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "restore_evidence transitions ARCHIVED back to ACTIVE",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_evidence_e2e.py::test_restore_archived_evidence"
+        },
+        {
+          "current_state": "DELETED",
+          "allowed_next_states": [
+            "DELETED"
+          ],
+          "code_enforces": true,
+          "enforcement_mechanism": "Soft-deleted evidence is omitted from active queries (except DB-FIND-02 leakage sites)",
+          "invalid_transition_tested": true,
+          "test_reference": "tests/integration/test_evidence_e2e.py::test_deleted_evidence_inaccessible"
+        }
+      ],
+      "determination_analysis": {
+        "1_all_possible_states": [
+          "UPLOADING",
+          "ACTIVE",
+          "ARCHIVED",
+          "DELETED",
+          "PENDING_DELETION"
+        ],
+        "2_transitions_implemented": [
+          "UPLOADING->ACTIVE",
+          "ACTIVE->ARCHIVED",
+          "ARCHIVED->ACTIVE",
+          "ACTIVE->DELETED"
+        ],
+        "3_invalid_transitions_rejected": "Cannot delete evidence under legal hold (is_legal_hold == True). Cannot complete upload without valid SHA256.",
+        "4_role_dependent": "OWNER, LAWYER, or ADMIN can manage evidence; legal hold requires OWNER/ADMIN.",
+        "5_requires_ownership": "Requires case participation and appropriate evidence access grant.",
+        "6_requires_prerequisite_data": "Requires original_filename, size_bytes, sha256_hash, storage_key.",
+        "7_can_be_skipped": "Cannot become ACTIVE without completing staged upload.",
+        "8_can_be_reversed": "ARCHIVED can be restored to ACTIVE; DELETED cannot be restored.",
+        "9_terminal_states_modifiable": "DELETED evidence cannot be shared or downloaded.",
+        "10_concurrent_transitions_safe": "Chain of custody logging records actor and timestamp sequentially.",
+        "11_direct_db_bypass": "Uploading new evidence does not check if parent case is CLOSED (BL-FIND-02)."
+      }
+    }
+  ]
+}

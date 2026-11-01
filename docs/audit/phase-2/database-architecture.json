@@ -1,0 +1,65 @@
+{
+  "database_engine": {
+    "primary_production_engine": "PostgreSQL",
+    "postgresql_version_assumptions": "PostgreSQL 15+ (uses JSONB, TIMESTAMPTZ, UUID, ARRAY, partial indexes, and advisory locks)",
+    "local_development_engine": "SQLite / PostgreSQL",
+    "test_engine": "SQLite in-memory (:memory:) or SQLite file (test.db)",
+    "sqlite_fallback_active_in_dev": true,
+    "database_url_configured": "sqlite:///./test.db"
+  },
+  "orm_framework": {
+    "name": "SQLAlchemy",
+    "version": "2.0.52",
+    "orm_declarative_base": "app.models.base.Base",
+    "model_metadata_tables_count": 84,
+    "access_pattern": "Synchronous (Sync DB API)",
+    "driver_production": "psycopg2 / psycopg",
+    "driver_development": "sqlite3"
+  },
+  "connection_pool_configuration": {
+    "pool_class_production": "QueuePool (SQLAlchemy default for PostgreSQL)",
+    "pool_class_alembic": "NullPool (configured in migrations/env.py:54)",
+    "pool_size": 20,
+    "max_overflow": 10,
+    "pool_timeout_seconds": 30.0,
+    "pool_recycle_seconds": 1800,
+    "pool_pre_ping": true,
+    "statement_timeout_ms": 30000,
+    "statement_timeout_setting": "-c statement_timeout=30000",
+    "ssl_mode_production": "require (enforced when ENVIRONMENT in ('production', 'staging'))"
+  },
+  "transaction_and_session_lifecycle": {
+    "session_factory": "sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+    "scoped_sessions_used": false,
+    "session_factory_symbol": "app.db.database.SessionLocal",
+    "default_isolation_level": "READ COMMITTED (PostgreSQL engine default)",
+    "autocommit": false,
+    "autoflush": false,
+    "request_session_dependency": "app.api.deps.get_db / app.db.database.get_db",
+    "request_session_scope": "Per-request generator dependency (yield db; finally db.close())",
+    "request_commit_policy": "Explicit commit in domain services or router handlers; get_db() does NOT auto-commit on exit",
+    "request_rollback_policy": "Explicit rollback in exception handlers or manual service try/except blocks; get_db() closes session without unconditional rollback on uncaught exceptions",
+    "background_worker_sessions": "Direct instantiation of SessionLocal() per task/job in background worker loops",
+    "cli_admin_sessions": "Standalone SessionLocal() instantiation in scripts/ and management commands"
+  },
+  "alembic_configuration": {
+    "config_file": "alembic.ini",
+    "env_script": "migrations/env.py",
+    "version_locations": "migrations/versions/",
+    "total_migration_files": 54,
+    "migration_heads": [
+      "8b5b923063b9"
+    ],
+    "target_metadata": "app.models.base.Base.metadata",
+    "compare_type_enabled": true,
+    "offline_mode_supported": true,
+    "online_mode_supported": true,
+    "sqlite_use_alter_filter": "foreign_key_constraint with use_alter is filtered on SQLite"
+  },
+  "test_database_architecture": {
+    "test_database_fixture": "tests/conftest.py (db_session fixture)",
+    "test_db_isolation": "In-memory SQLite with StaticPool or separate test.db",
+    "test_schema_creation": "Base.metadata.create_all(bind=engine) called inside test setup",
+    "test_discrepancy_risk": "CRITICAL RISK: Base.metadata.create_all() creates tables directly from ORM definitions, bypassing Alembic migrations entirely during test execution, hiding missing Alembic migration scripts."
+  }
+}

@@ -538,6 +538,44 @@ export interface ClientProfileItem {
   location?: string;
   email?: string;
   phone?: string;
+  date_of_birth?: string;
+  gender?: string;
+  id_type?: string;
+  id_number?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  kyc_status?: "PENDING" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
+  is_kyc_completed?: boolean;
+  kyc_document_filename?: string;
+  kyc_submitted_at?: string;
+  kyc_verified_at?: string;
+}
+
+export interface KYCStatusResponse {
+  role: "CLIENT" | "LAWYER" | "ADMIN";
+  kyc_status: "PENDING" | "UNDER_REVIEW" | "VERIFIED" | "APPROVED" | "REJECTED";
+  is_kyc_completed: boolean;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  date_of_birth?: string;
+  gender?: string;
+  id_type?: string;
+  id_number?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  kyc_document_filename?: string;
+  kyc_submitted_at?: string;
+  kyc_verified_at?: string;
+  kyc_rejection_reason?: string;
+  enrollment_number?: string;
+  state_bar_council?: string;
+  practice_areas?: string[];
+  court_jurisdictions?: string[];
 }
 
 export interface LawyerProfileItem {

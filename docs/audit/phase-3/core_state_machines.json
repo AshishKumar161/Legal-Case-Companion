@@ -1,0 +1,175 @@
+[
+  {
+    "entity": "Case",
+    "field": "status",
+    "states": [
+      "OPEN",
+      "IN_PROGRESS",
+      "CLOSED",
+      "CANCELLED"
+    ],
+    "service_files": [
+      "app/domain/cases/case_service.py",
+      "app/domain/cases/case_workflow_service.py",
+      "app/api/v1/cases.py"
+    ]
+  },
+  {
+    "entity": "CaseParticipant",
+    "field": "status",
+    "states": [
+      "ACTIVE",
+      "INACTIVE"
+    ],
+    "service_files": [
+      "app/domain/cases/case_service.py",
+      "app/api/v1/cases.py"
+    ]
+  },
+  {
+    "entity": "Consultation",
+    "field": "status",
+    "states": [
+      "CREATED",
+      "PENDING",
+      "CLIENT_AUTHORIZED",
+      "LAWYER_ACCEPTED",
+      "MUTUAL_CONSENT",
+      "IN_PROGRESS",
+      "ENDED",
+      "CANCELLED",
+      "REJECTED",
+      "EXPIRED",
+      "PAYMENT_FAILED",
+      "NO_SHOW",
+      "REQUESTED",
+      "PAID",
+      "ACCEPTED",
+      "SCHEDULED",
+      "COMPLETED"
+    ],
+    "service_files": [
+      "app/domain/consultations/consultation_service.py",
+      "app/api/v1/consultations.py"
+    ]
+  },
+  {
+    "entity": "Payment",
+    "field": "status",
+    "states": [
+      "CREATED",
+      "PENDING",
+      "AUTHORIZED",
+      "CAPTURED",
+      "SUCCEEDED",
+      "FAILED",
+      "REFUNDED",
+      "PARTIALLY_REFUNDED",
+      "DISPUTED",
+      "CANCELLED"
+    ],
+    "service_files": [
+      "app/domain/payments/payment_service.py",
+      "app/api/v1/payments.py"
+    ]
+  },
+  {
+    "entity": "CommercialTransaction",
+    "field": "status",
+    "states": [
+      "PENDING",
+      "AUTHORIZED",
+      "CAPTURED",
+      "FAILED",
+      "REFUNDED",
+      "PARTIALLY_REFUNDED",
+      "DISPUTED",
+      "CANCELLED"
+    ],
+    "service_files": [
+      "app/domain/payments/commercial_service.py",
+      "app/api/v1/commercial.py"
+    ]
+  },
+  {
+    "entity": "Document",
+    "field": "processing_status",
+    "states": [
+      "PENDING",
+      "PROCESSING",
+      "READY",
+      "FAILED",
+      "UNSUPPORTED_FORMAT",
+      "CORRUPTED_FILE",
+      "EMPTY_DOCUMENT",
+      "OCR_REQUIRED"
+    ],
+    "service_files": [
+      "app/domain/documents/document_processor.py",
+      "app/api/v1/documents.py"
+    ]
+  },
+  {
+    "entity": "Document",
+    "field": "security_status",
+    "states": [
+      "PENDING",
+      "QUARANTINED",
+      "VALIDATING",
+      "SCANNING",
+      "SAFE",
+      "REJECTED"
+    ],
+    "service_files": [
+      "app/domain/documents/document_processor.py",
+      "app/api/v1/documents.py"
+    ]
+  },
+  {
+    "entity": "User",
+    "field": "status",
+    "states": [
+      "REGISTERED",
+      "VERIFIED",
+      "ACTIVE",
+      "RESTRICTED",
+      "SUSPENDED",
+      "DEACTIVATED"
+    ],
+    "service_files": [
+      "app/domain/users/lifecycle_service.py",
+      "app/domain/auth/auth_service.py"
+    ]
+  },
+  {
+    "entity": "LawyerVerification",
+    "field": "status",
+    "states": [
+      "DRAFT",
+      "PENDING",
+      "UNDER_REVIEW",
+      "APPROVED",
+      "REJECTED",
+      "NEEDS_INFO",
+      "REVOKED"
+    ],
+    "service_files": [
+      "app/domain/verification/lawyer_verification_service.py",
+      "app/api/v1/verification.py"
+    ]
+  },
+  {
+    "entity": "ProcessedWebhookEvent",
+    "field": "status",
+    "states": [
+      "PENDING",
+      "PROCESSING",
+      "PROCESSED",
+      "FAILED"
+    ],
+    "service_files": [
+      "app/domain/payments/payment_service.py",
+      "app/api/v1/webhooks.py"
+    ]
+  }
+]

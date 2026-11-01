@@ -92,6 +92,18 @@ function AuthCallbackContent() {
             res.refresh_token
           );
 
+          // Check authoritative identity and KYC status
+          let isKycCompleted = false;
+          try {
+            const me = (await apiClient.get("/api/v1/auth/me")) as {
+              kyc_status?: string;
+              is_kyc_completed?: boolean;
+            };
+            isKycCompleted = Boolean(me?.is_kyc_completed);
+          } catch (meErr) {
+            console.warn("Could not check KYC status immediately upon OAuth login:", meErr);
+          }
+
           setStatus("success");
 
           // Validate internal redirect destination against open redirect
@@ -103,10 +115,15 @@ function AuthCallbackContent() {
               ? res.return_url
               : null;
 
-          if (safeReturnUrl && safeReturnUrl !== "/dashboard") {
+          if (userRole === "ADMIN") {
+            router.push(safeReturnUrl || "/admin/dashboard");
+          } else if (!isKycCompleted) {
+            const targetUrl = safeReturnUrl && safeReturnUrl !== "/dashboard"
+              ? `/kyc?redirect=${encodeURIComponent(safeReturnUrl)}`
+              : "/kyc";
+            router.push(targetUrl);
+          } else if (safeReturnUrl && safeReturnUrl !== "/dashboard") {
             router.push(safeReturnUrl);
-          } else if (userRole === "ADMIN") {
-            router.push("/admin/dashboard");
           } else if (userRole === "LAWYER") {
             router.push("/lawyer/dashboard");
           } else {

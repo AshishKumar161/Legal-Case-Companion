@@ -1019,11 +1019,12 @@ def grant_recording_consent(
 ):
     """
     Explicitly grant or revoke recording consent for a consultation.
-    Both Client and assigned Lawyer must consent before a recording can be started.
+    Recording is disabled.
     """
-    service = VideoRecordingService(db)
-    consent = service.grant_consent(current_user, consultation_id, consented=req.consented)
-    return RecordingConsentResponse.model_validate(consent)
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Video call recording is disabled.",
+    )
 
 
 @router.get(
@@ -1038,8 +1039,12 @@ def get_recording_consent_status(
     """
     Retrieve current recording consent status for both participants.
     """
-    service = VideoRecordingService(db)
-    return service.get_consent_status(current_user, consultation_id)
+    return ConsentStatusResponse(
+        consultation_id=consultation_id,
+        client_consented=False,
+        lawyer_consented=False,
+        can_record=False,
+    )
 
 
 @router.post(
@@ -1054,16 +1059,11 @@ def start_recording(
     db: Session = Depends(get_db),
 ):
     """
-    Authoritatively begin a video recording session for an active consultation.
-    Requires mutual consent from both client and lawyer.
+    Video call recording is disabled.
     """
-    service = VideoRecordingService(db)
-    rec = service.start_recording(current_user, consultation_id)
-    return RecordingStartResponse(
-        recording_id=rec.id,
-        consultation_id=rec.consultation_id,
-        status=rec.status,
-        started_at=rec.started_at or datetime.now(UTC),
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Video call recording is disabled.",
     )
 
 
@@ -1080,16 +1080,11 @@ def stop_recording(
     db: Session = Depends(get_db),
 ):
     """
-    Stop the currently active recording session and prepare for binary finalization.
+    Video call recording is disabled.
     """
-    service = VideoRecordingService(db)
-    rec = service.stop_recording(current_user, consultation_id, recording_id=recording_id)
-    return RecordingStopResponse(
-        recording_id=rec.id,
-        consultation_id=rec.consultation_id,
-        status=rec.status,
-        duration_seconds=rec.duration_seconds,
-        ended_at=rec.ended_at,
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Video call recording is disabled.",
     )
 
 
@@ -1107,20 +1102,12 @@ async def upload_recording_file(
     db: Session = Depends(get_db),
 ):
     """
-    Stream and finalize recorded video binary into local storage.
-    Calculates SHA-256 checksum and marks the recording AVAILABLE.
+    Video call recording upload is disabled.
     """
-    service = VideoRecordingService(db)
-    content_type = request.headers.get("content-type", "video/webm")
-    rec = await service.finalize_upload_stream(
-        user=current_user,
-        consultation_id=consultation_id,
-        recording_id=recording_id,
-        async_stream=request.stream(),
-        filename=filename,
-        content_type=content_type,
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Video call recording upload is disabled.",
     )
-    return _format_recording_response(rec)
 
 
 @router.get(
@@ -1135,10 +1122,7 @@ def list_consultation_recordings(
     """
     Retrieve all authorized video recordings for a consultation.
     """
-    service = VideoRecordingService(db)
-    recordings = service.list_recordings(current_user, consultation_id)
-    formatted = [_format_recording_response(r) for r in recordings]
-    return RecordingListResponse(items=formatted, total=len(formatted))
+    return RecordingListResponse(items=[], total=0)
 
 
 # --- Consultation -> Case Linking Endpoints ---
