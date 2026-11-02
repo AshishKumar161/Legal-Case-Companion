@@ -68,11 +68,13 @@ legal-case-companion/
 │   ├── performance/            # Latency baselines and load tests
 │   └── pilot/                  # Real-world pilot execution simulation
 │
-├── docs/                       # System Specifications & Runbooks
+├── docs/                       # System Specifications, Runbooks & Reports (see docs/README.md)
+│   ├── ops/                    # Deployment topology, DR plans, and checklists
+│   ├── reports/                # Milestone, DevSecOps, and verification reports
+│   ├── audit/                  # Security audits, vulnerability registers, bug tracker
+│   ├── legal/                  # DPDPA 2023 & BSA statutory compliance policies
 │   ├── 01_SYSTEM_ARCHITECTURE.md
 │   ├── 02_DATABASE_DESIGN.md   # Authoritative database model rules & constraints
-│   ├── 03_API_SPECIFICATION.md
-│   ├── 04_AUTHORIZATION_SECURITY.md
 │   └── 24_PRODUCTION_DEPLOYMENT_RUNBOOK.md
 │
 ├── scripts/                    # Operational & Maintenance Utilities
@@ -185,3 +187,15 @@ This repository includes a multi-agent orchestration architecture documented in 
 - **`sequential-thinking`**: Structured hypothesis verification and decision trees.
 - **`backend-hierarchy`**: Business head objectives, tech lead architecture, and staff server management.
 - **`git` & `fetch`**: Git workflows and web documentation retrieval.
+
+---
+
+## 6. Technical Documentation Hub
+
+All detailed system specifications, operational runbooks, and audit reports are organized in the [`docs/`](docs/README.md) directory:
+
+- 🚀 **[Operations & Deployment](docs/ops/LCC_DEPLOYMENT_ARCHITECTURE.md)**: Deployment topology, disaster recovery strategy, and production rollout gates.
+- 📋 **[Verification & Audit Reports](docs/reports/LCC_FINAL_PRODUCTION_READINESS_REPORT.md)**: Stage 1–4 validation reports, DevSecOps certifications, and bug resolution matrix.
+- 🔒 **[Security & Authorization](docs/security/API_AUTHORIZATION_MATRIX.md)**: RBAC permission matrices, IDOR protection tests, and prompt security guardrails.
+- 📜 **[Legal & Statutory Compliance](docs/legal/PRIVACY_NOTICE.md)**: DPDPA 2023 privacy notices, BCI advocate terms, and BSA 2023 evidence retention policies.
+- 📖 **[Master Documentation Index](docs/README.md)**: Full catalog of all 56+ system design specifications and runbooks.
