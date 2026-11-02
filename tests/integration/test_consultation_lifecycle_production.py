@@ -160,18 +160,42 @@ def test_concurrency_and_double_start_protection(client: TestClient, db: Session
     assert pay_res.status_code == 200
 
     results = []
+    errors = []
 
     def call_start(headers):
-        res = client.post(f"/api/v1/consultations/{con_id}/video/start", headers=headers)
-        results.append(res)
+        try:
+            res = client.post(f"/api/v1/consultations/{con_id}/video/start", headers=headers)
+            results.append(res)
+        except Exception as e:
+            errors.append(e)
 
-    t1 = threading.Thread(target=call_start, args=(h_client,))
-    t2 = threading.Thread(target=call_start, args=(h_lawyer,))
+    from tests.conftest import TestingSessionLocal
+    from app.db.database import get_db
 
-    t1.start()
-    t2.start()
-    t1.join()
-    t2.join()
+    def thread_safe_get_db():
+        s = TestingSessionLocal()
+        try:
+            yield s
+        finally:
+            s.close()
+
+    original_override = client.app.dependency_overrides.get(get_db)
+    client.app.dependency_overrides[get_db] = thread_safe_get_db
+    try:
+        t1 = threading.Thread(target=call_start, args=(h_client,))
+        t2 = threading.Thread(target=call_start, args=(h_lawyer,))
+        t1.start()
+        t2.start()
+        t1.join(timeout=10.0)
+        t2.join(timeout=10.0)
+    finally:
+        if original_override:
+            client.app.dependency_overrides[get_db] = original_override
+        else:
+            client.app.dependency_overrides.pop(get_db, None)
+
+    assert not errors, f"Thread error occurred: {errors}"
+    assert len(results) == 2
 
     # Both must succeed without crash or conflict
     for r in results:

@@ -523,3 +523,33 @@ def list_operator_permissions(
     perms = service.list_user_permissions(user_id)
     return {"user_id": str(user_id), "permissions": [p.value for p in perms]}
 
+
+# --------------------------------------------------------------------------
+# DOCUMENT QUARANTINE & MALWARE SECURITY
+# --------------------------------------------------------------------------
+
+
+@router.post("/security/quarantine/{document_id}/reprocess", response_model=AdminDocumentSecurityResponse)
+def reprocess_quarantined_document(
+    document_id: UUID,
+    force: bool = Query(False, description="Force retry even if maximum retries were exhausted"),
+    current_user: User = Depends(RequireRole([UserRole.ADMIN])),
+    db: Session = Depends(get_db),
+):
+    """
+    Manually reprocesses an exhausted quarantined document through the antivirus scanning engine.
+    Strictly admin-only; maintains fail-closed behavior if scanning cannot be verified.
+    """
+    from app.domain.evidence.scanner_service import ScannerService
+
+    scanner_svc = ScannerService(db)
+    doc = scanner_svc.reprocess_quarantined_document(document_id, current_user, force=force)
+    return AdminDocumentSecurityResponse(
+        document_id=doc.id,
+        filename=doc.filename,
+        security_status=doc.security_status.value,
+        processing_error=doc.processing_error,
+        updated_at=doc.updated_at,
+    )
+
+

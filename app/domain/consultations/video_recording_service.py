@@ -138,6 +138,28 @@ class VideoRecordingService:
             )
             self.db.add(consent)
 
+        if not consented:
+            # Stop any active recording for this consultation immediately upon consent revocation
+            active_recs = (
+                self.db.query(VideoRecording)
+                .filter(
+                    VideoRecording.consultation_id == consultation_id,
+                    VideoRecording.status == VideoRecordingStatus.RECORDING,
+                    VideoRecording.deleted_at.is_(None),
+                )
+                .all()
+            )
+            for rec in active_recs:
+                rec.status = VideoRecordingStatus.FAILED
+                rec.ended_at = now_dt
+                rec.error_message = f"Recording halted: consent revoked by participant {user.id}"
+                self._log_audit(
+                    event_type="RECORDING_HALTED_CONSENT_REVOKED",
+                    user_id=user.id,
+                    metadata={"recording_id": str(rec.id), "consultation_id": str(consultation_id)},
+                    entity_id=rec.id,
+                )
+
         self.db.commit()
         self.db.refresh(consent)
 
@@ -208,6 +230,14 @@ class VideoRecordingService:
             raise ResourceNotFoundError("Consultation not found")
 
         self._authorize_participant(user, consultation)
+
+        # 0. Production Feature Flag Check (Disabled by default in production)
+        is_prod = settings.ENVIRONMENT in ("production", "staging")
+        if is_prod and not getattr(settings, "ENABLE_CONSULTATION_RECORDING", False):
+            raise ConfigurationError(
+                "Consultation video recording is disabled by default in production. "
+                "The workflow must be reviewed and certified by qualified Indian legal counsel before deployment."
+            )
 
         # 1. State check
         allowed_statuses = {
@@ -546,6 +576,19 @@ class VideoRecordingService:
             .all()
         )
 
+    _revoked_tickets: ClassVar[set[str]] = set()
+
+    @classmethod
+    def revoke_playback_ticket(cls, ticket_or_jti: str) -> None:
+        """Revokes an active media playback ticket by ticket string or jti."""
+        if ticket_or_jti:
+            cls._revoked_tickets.add(ticket_or_jti)
+
+    @classmethod
+    def is_ticket_revoked(cls, ticket_or_jti: str) -> bool:
+        """Checks if a playback ticket or its jti has been explicitly revoked."""
+        return ticket_or_jti in cls._revoked_tickets
+
     @staticmethod
     def _get_signing_secret() -> str:
         secret = (
@@ -568,7 +611,8 @@ class VideoRecordingService:
         """
         Generate an ephemeral, single-purpose media playback ticket.
         Prevents leaking primary bearer access tokens in URLs / browser history.
-        Strictly valid for 60 seconds and bound to (user_id, recording_id).
+        Strictly valid for specified TTL (default 60s) and cryptographically bound
+        to (user_id, consultation_id, recording_id) with unique jti.
         """
         recording = (
             self.db.query(VideoRecording)
@@ -588,8 +632,11 @@ class VideoRecordingService:
 
         now_dt = datetime.now(UTC)
         exp_ts = int((now_dt + timedelta(seconds=expires_in_seconds)).timestamp())
+        ticket_jti = generate_uuid7().hex
         payload = {
+            "jti": ticket_jti,
             "sub": str(user.id),
+            "consultation_id": str(recording.consultation_id),
             "rec_id": str(recording.id),
             "purpose": "media_playback",
             "iat": int(now_dt.timestamp()),
@@ -605,14 +652,19 @@ class VideoRecordingService:
         self,
         ticket: str,
         expected_recording_id: UUID,
+        expected_consultation_id: UUID | None = None,
     ) -> User:
         """
         Verify an ephemeral media playback ticket.
-        Validates HMAC signature, expiration window, purpose, and recording binding.
+        Validates HMAC signature, expiration window, purpose, revocation, and 
+        independent binding to user, consultation, and recording.
         Returns the authenticated User.
         """
         if not ticket or not ticket.startswith("mpt_") or "." not in ticket:
             raise ValidationError("Invalid playback ticket format")
+
+        if self.is_ticket_revoked(ticket):
+            raise ValidationError("Playback ticket has been revoked")
 
         token_body = ticket[4:]
         parts = token_body.split(".", 1)
@@ -636,6 +688,11 @@ class VideoRecordingService:
         except Exception as e:
             raise ValidationError("Malformed JSON in playback ticket payload") from e
 
+        # Check explicit jti revocation
+        jti = payload.get("jti")
+        if jti and self.is_ticket_revoked(jti):
+            raise ValidationError("Playback ticket has been revoked")
+
         now_ts = int(datetime.now(UTC).timestamp())
         if payload.get("exp", 0) < now_ts:
             raise ValidationError("Playback ticket has expired")
@@ -645,6 +702,30 @@ class VideoRecordingService:
 
         if payload.get("rec_id") != str(expected_recording_id):
             raise ValidationError("Playback ticket is not authorized for this recording")
+
+        # Verify consultation binding
+        ticket_consultation_id = payload.get("consultation_id")
+        if not ticket_consultation_id:
+            raise ValidationError("Playback ticket missing consultation binding")
+
+        if expected_consultation_id and ticket_consultation_id != str(expected_consultation_id):
+            raise ValidationError("Playback ticket is not authorized for this consultation")
+
+        # Verify underlying recording is active and accessible
+        recording = (
+            self.db.query(VideoRecording)
+            .filter(
+                VideoRecording.id == expected_recording_id,
+                VideoRecording.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not recording:
+            raise ResourceNotFoundError("Recording not found or deleted")
+        if str(recording.consultation_id) != ticket_consultation_id:
+            raise ValidationError("Recording does not belong to the ticket consultation")
+        if recording.status != VideoRecordingStatus.AVAILABLE:
+            raise ValidationError(f"Recording is no longer available (status: {recording.status.value})")
 
         user_id_str = payload.get("sub")
         if not user_id_str:
@@ -797,3 +878,88 @@ class VideoRecordingService:
             "recovered_count": recovered_count,
             "exhausted_count": exhausted_count,
         }
+
+    def generate_download_url(
+        self,
+        user: User,
+        recording_id: UUID,
+        expires_in_seconds: int = 60,
+    ) -> str:
+        """Generates a short-lived signed download URL or playback ticket with strict access authorization."""
+        recording = (
+            self.db.query(VideoRecording)
+            .filter(
+                VideoRecording.id == recording_id,
+                VideoRecording.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not recording:
+            raise ResourceNotFoundError("Recording not found")
+
+        self._authorize_playback(user, recording)
+
+        if recording.status != VideoRecordingStatus.AVAILABLE:
+            raise ValidationError("Recording is not available for download")
+
+        # If S3 provider, generate short-lived signed S3 URL; otherwise generate signed playback ticket
+        if hasattr(self.storage_provider, "generate_presigned_playback_url"):
+            url = self.storage_provider.generate_presigned_playback_url(
+                recording.storage_path, expires_in=expires_in_seconds
+            )
+        else:
+            ticket = self.generate_playback_ticket(user, recording_id, expires_in_seconds=expires_in_seconds)
+            url = f"/api/v1/consultations/{recording.consultation_id}/recordings/{recording.id}/stream?ticket={ticket}"
+
+        self._log_audit(
+            event_type="RECORDING_DOWNLOAD_URL_GENERATED",
+            user_id=user.id,
+            metadata={
+                "recording_id": str(recording.id),
+                "consultation_id": str(recording.consultation_id),
+                "expires_in": expires_in_seconds,
+            },
+            entity_id=recording.id,
+        )
+        return url
+
+    def delete_recording(
+        self,
+        user: User,
+        recording_id: UUID,
+    ) -> bool:
+        """Deletes a recording with authorization, legal retention audit trail, and physical storage removal."""
+        recording = (
+            self.db.query(VideoRecording)
+            .filter(
+                VideoRecording.id == recording_id,
+                VideoRecording.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not recording:
+            raise ResourceNotFoundError("Recording not found")
+
+        self._authorize_playback(user, recording)
+
+        now_dt = datetime.now(UTC)
+        recording.deleted_at = now_dt
+        self.db.commit()
+
+        # Remove physical file from private object storage
+        try:
+            self.storage_provider.delete_recording(recording.storage_path)
+        except Exception as e:
+            logger.warning(f"Error purging recording file from storage: {e}")
+
+        self._log_audit(
+            event_type="RECORDING_DELETED",
+            user_id=user.id,
+            metadata={
+                "recording_id": str(recording.id),
+                "consultation_id": str(recording.consultation_id),
+                "deleted_at": now_dt.isoformat(),
+            },
+            entity_id=recording.id,
+        )
+        return True

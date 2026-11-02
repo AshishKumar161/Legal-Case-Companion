@@ -22,7 +22,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15-alpine
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgrespassword
@@ -158,8 +158,18 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false
-          no-cache: true
+          load: true
           tags: lcc-backend:ci-test
+
+      - name: Container Vulnerability Scan (Trivy Backend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'lcc-backend:ci-test'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
 
       - name: Build Frontend Production Image
         uses: docker/build-push-action@v5
@@ -167,8 +177,18 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: false
-          no-cache: true
+          load: true
           tags: lcc-frontend:ci-test
+
+      - name: Container Vulnerability Scan (Trivy Frontend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'lcc-frontend:ci-test'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
 
   release-artifacts-ci:
     name: Release Artifacts & SBOM Generation

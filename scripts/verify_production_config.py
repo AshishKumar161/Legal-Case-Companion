@@ -175,6 +175,14 @@ def main():
     if "*" in str(settings.BACKEND_CORS_ORIGINS):
         issues.append("Wildcard '*' CORS origin is prohibited in authenticated production environments.")
 
+    # 10. Observability & Telemetry (OpenTelemetry & Prometheus)
+    print("\n[10] Observability & Telemetry:")
+    from app.core.telemetry import telemetry
+    print(f"  - OpenTelemetry Tracing : {'[ACTIVE]' if telemetry.enabled else '[INACTIVE / FALLBACK NO-OP]'}")
+    if telemetry.otlp_endpoint:
+        print(f"  - OTLP Exporter Endpoint: {telemetry.otlp_endpoint}")
+    print(f"  - Prometheus Scrape Path: /metrics (OpenMetrics text exposition active)")
+
     # Summary
     print("\n" + "=" * 72)
     print("  DIAGNOSTICS SUMMARY")

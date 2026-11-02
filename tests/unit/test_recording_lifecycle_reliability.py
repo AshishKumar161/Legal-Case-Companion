@@ -267,3 +267,72 @@ def test_ephemeral_playback_ticket_lifecycle(recording_fixtures):
     # 3. Malformed ticket rejected
     with pytest.raises(ValidationError, match="Invalid playback ticket format"):
         service.verify_playback_ticket(ticket="mpt_invalid_parts", expected_recording_id=rec.id)
+
+    # 4. Ticket rejected if verifying against mismatched consultation ID
+    wrong_consultation_id = uuid.uuid4()
+    with pytest.raises(ValidationError, match="not authorized for this consultation"):
+        service.verify_playback_ticket(
+            ticket=ticket,
+            expected_recording_id=rec.id,
+            expected_consultation_id=wrong_consultation_id,
+        )
+
+    # 5. Expired ticket rejected
+    expired_ticket = service.generate_playback_ticket(user=client, recording_id=rec.id, expires_in_seconds=-10)
+    with pytest.raises(ValidationError, match="Playback ticket has expired"):
+        service.verify_playback_ticket(ticket=expired_ticket, expected_recording_id=rec.id)
+
+    # 6. Ticket revocation rejected
+    service.revoke_playback_ticket(ticket)
+    with pytest.raises(ValidationError, match="Playback ticket has been revoked"):
+        service.verify_playback_ticket(ticket=ticket, expected_recording_id=rec.id)
+
+
+def test_consent_withdrawal_immediately_halts_active_recording(recording_fixtures):
+    """Verifies that withdrawing consent immediately cancels any active recording session."""
+    from app.models.video_recording import VideoRecordingStatus
+
+    f = recording_fixtures
+    service: VideoRecordingService = f["service"]
+    client: User = f["client"]
+    consultation: Consultation = f["consultation"]
+
+    # Start recording session
+    rec = service.start_recording(client, consultation.id)
+    assert rec.status == VideoRecordingStatus.RECORDING
+
+    # Client revokes consent mid-recording
+    service.grant_consent(client, consultation.id, consented=False)
+
+    # Active recording session must be halted immediately
+    service.db.refresh(rec)
+    assert rec.status == VideoRecordingStatus.FAILED
+    assert "consent revoked" in rec.error_message
+
+
+def test_secure_recording_deletion_and_ticket_invalidation(recording_fixtures):
+    """Verifies that deleting a recording purges physical storage and invalidates playback."""
+    from app.core.exceptions import ResourceNotFoundError
+
+    f = recording_fixtures
+    service: VideoRecordingService = f["service"]
+    client: User = f["client"]
+    consultation: Consultation = f["consultation"]
+
+    rec = service.start_recording(client, consultation.id)
+    service.stop_recording(client, consultation.id, rec.id)
+    service.finalize_upload(client, consultation.id, rec.id, b"secure_bytes", "video.webm")
+
+    ticket = service.generate_playback_ticket(client, rec.id, expires_in_seconds=60)
+    assert service.verify_playback_ticket(ticket, rec.id).id == client.id
+
+    # Secure deletion
+    deleted = service.delete_recording(client, rec.id)
+    assert deleted is True
+
+    # Physical file removed
+    assert not service.storage_provider.recording_exists(rec.storage_path)
+
+    # Subsequent playback attempts fail
+    with pytest.raises(ResourceNotFoundError):
+        service.verify_playback_ticket(ticket, rec.id)

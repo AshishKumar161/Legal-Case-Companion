@@ -1,0 +1,79 @@
+# ==============================================================================
+# Legal Case Companion (LCC) — Production Prometheus Alerting Rules
+# ==============================================================================
+
+groups:
+  - name: lcc_operational_alerts
+    rules:
+      - alert: APIHigh5xxErrorRate
+        expr: (sum(rate(lcc_http_status_total{status=~"5.."}[5m])) / sum(rate(lcc_http_requests_total[5m]))) * 100 > 0.5
+        for: 3m
+        labels:
+          severity: critical
+          tier: application
+        annotations:
+          summary: "LCC API 5xx error rate exceeds 0.5% SLO threshold"
+          description: "Current error rate is {{ $value | printf \"%.2f\" }}% over the last 5 minutes. Breaches 99.9% availability SLO."
+          runbook_url: "https://docs.legalcasecompanion.in/runbooks/api-5xx-spike"
+
+      - alert: APIP95LatencyHigh
+        expr: lcc_http_latency_ms{quantile="0.95"} > 500
+        for: 5m
+        labels:
+          severity: warning
+          tier: application
+        annotations:
+          summary: "LCC API P95 latency exceeds 500ms target"
+          description: "P95 latency is currently {{ $value }}ms, degrading user experience."
+
+      - alert: ClamAVScannerOffline
+        expr: lcc_auth_failures_total{reason="CLAMAV_OFFLINE"} > 0 or up{job="clamav"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: security
+        annotations:
+          summary: "ClamAV malware scanner daemon is unreachable"
+          description: "Production scanner daemon is offline. Evidence uploads are failing closed to prevent malware ingestion."
+          runbook_url: "https://docs.legalcasecompanion.in/runbooks/clamav-recovery"
+
+      - alert: DatabaseConnectivityFailure
+        expr: rate(lcc_http_status_total{status="503"}[2m]) > 0
+        for: 1m
+        labels:
+          severity: page
+          tier: database
+        annotations:
+          summary: "Database connectivity failure detected via readiness probes"
+          description: "Backend health check returned 503 Service Unavailable."
+
+      - alert: CryptographicTamperDetected
+        expr: increase(lcc_tamper_events_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: page
+          tier: security
+        annotations:
+          summary: "SECURITY ALERT: Cryptographic tamper detected on legal evidence"
+          description: "An evidence hash or electronic signature mismatch occurred. Immediate forensic investigation required."
+          runbook_url: "https://docs.legalcasecompanion.in/runbooks/security-tamper-response"
+
+      - alert: OutboxDeadLetterBacklog
+        expr: lcc_outbox_events_total{status="DEAD_LETTER"} > 0
+        for: 10m
+        labels:
+          severity: warning
+          tier: async_worker
+        annotations:
+          summary: "Dead-letter outbox events pending operator review"
+          description: "There are {{ $value }} transactional events in DEAD_LETTER status."
+
+      - alert: AuthorizationDenialsSpike
+        expr: sum(rate(lcc_authorization_denials_total[5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+          tier: security
+        annotations:
+          summary: "Potential BOLA / IDOR attack in progress"
+          description: "High rate of authorization denials ({{ $value }} denials/sec). Check security logs."

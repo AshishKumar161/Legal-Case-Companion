@@ -6,7 +6,7 @@ networks:
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg16
     container_name: lcc_postgres_prod
     restart: unless-stopped
     security_opt:
@@ -19,6 +19,7 @@ services:
       - "5432"
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
+      - ./deploy/postgres/01-init-pgvector.sql:/docker-entrypoint-initdb.d/01-init-pgvector.sql:ro
     networks:
       - lcc_internal
     healthcheck:

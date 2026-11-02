@@ -13,11 +13,18 @@ from app.api.deps import get_current_user, get_db
 from app.api.v1.auth import limiter
 from app.core.exceptions import AuthorizationError, ResourceNotFoundError, ValidationError
 from app.core.storage import get_storage_provider, validate_storage_object_key
+from app.domain.auth.auth_service import AuthService
 from app.models.user import AccountStatus, ClientProfile, LawyerProfile, User, UserRole
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/kyc", tags=["kyc"])
+
+
+class KYCDocumentDownloadResponse(BaseModel):
+    download_url: str
+    filename: str | None = None
+    expires_in_seconds: int = 300
 
 ALLOWED_DOC_TYPES = {
     "application/pdf": ".pdf",
@@ -260,7 +267,11 @@ def submit_client_kyc(
     client_prof.pincode = cleaned_pincode
 
     if payload.kyc_document_storage_key:
-        client_prof.kyc_document_storage_key = validate_storage_object_key(payload.kyc_document_storage_key)
+        clean_key = validate_storage_object_key(payload.kyc_document_storage_key)
+        expected_prefix = f"kyc/{current_user.id}/"
+        if not clean_key.startswith(expected_prefix):
+            raise AuthorizationError("Access denied: KYC document does not belong to the authenticated user.")
+        client_prof.kyc_document_storage_key = clean_key
     if payload.kyc_document_filename:
         client_prof.kyc_document_filename = payload.kyc_document_filename.strip()
 
@@ -295,3 +306,53 @@ def submit_client_kyc(
         kyc_submitted_at=client_prof.kyc_submitted_at,
         kyc_verified_at=client_prof.kyc_verified_at,
     )
+
+
+@router.get("/client/document/download", response_model=KYCDocumentDownloadResponse)
+@limiter.limit("20/minute")
+def download_client_kyc_document(
+    request: Request,
+    user_id: uuid.UUID | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Generates a secure, authorized, signed URL to view or download a client KYC document.
+    Access strictly restricted to the owning client or platform administrators.
+    """
+    target_user_id = user_id or current_user.id
+    if target_user_id != current_user.id and current_user.role != UserRole.ADMIN:
+        raise AuthorizationError("Access denied: you are not authorized to view this KYC document.")
+
+    client_prof = db.query(ClientProfile).filter(ClientProfile.user_id == target_user_id).first()
+    if not client_prof or not client_prof.kyc_document_storage_key:
+        raise ResourceNotFoundError("KYC document not found for user.")
+
+    storage = get_storage_provider()
+    expires_in = 300
+    if hasattr(storage, "generate_presigned_download_url"):
+        download_url = storage.generate_presigned_download_url(
+            client_prof.kyc_document_storage_key, expires_in=expires_in
+        )
+    else:
+        download_url = f"/api/v1/storage/{client_prof.kyc_document_storage_key}"
+
+    auth_svc = AuthService(db)
+    auth_svc.log_audit_event(
+        event_type="KYC_DOCUMENT_DOWNLOADED",
+        user_id=current_user.id,
+        metadata={
+            "target_user_id": str(target_user_id),
+            "filename": client_prof.kyc_document_filename,
+            "storage_key": client_prof.kyc_document_storage_key,
+        },
+        action="user_mutation",
+    )
+    db.commit()
+
+    return KYCDocumentDownloadResponse(
+        download_url=download_url,
+        filename=client_prof.kyc_document_filename,
+        expires_in_seconds=expires_in,
+    )
+

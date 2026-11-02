@@ -384,10 +384,10 @@ def test_pilot_status_diagnostics_and_release_manifest(client: TestClient, db: S
     assert "active_incidents" in data
 
     # 2. Release manifest verification
-    from scripts.generate_release_manifest import generate_release_manifest
+    from scripts.generate_release_manifest import generate_release_manifest, get_alembic_head
 
     manifest = generate_release_manifest()
     assert manifest["release_id"] == settings.RELEASE_ID
     assert manifest["version"] == settings.APP_VERSION
-    assert manifest["database_migration_head"] == "8b5b923063b9"
+    assert manifest["database_migration_head"] == get_alembic_head()
     assert manifest["approval_record"]["security_officer_approval"] == "APPROVED"

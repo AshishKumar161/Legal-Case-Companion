@@ -3,14 +3,14 @@
   "release_id": "prod-2026.09.04",
   "application": "Legal Case Companion",
   "version": "1.0.0",
-  "build_timestamp": "2026-11-01T20:14:25.999091+00:00",
-  "git_commit_sha": "0e8a049675a73f59379733389383fb61dbae1dc6",
-  "database_migration_head": "8b5b923063b9",
+  "build_timestamp": "2026-11-02T20:29:25.535979+00:00",
+  "git_commit_sha": "c8dfc11a8864168854260bdb27388eef496ada3b",
+  "database_migration_head": "z3a4b5c6d7e8",
   "environment_target": "production",
   "release_owner": "Platform Engineering & Release Operations",
   "quality_gates": {
     "unit_probes": "PASSED (verified)",
-    "integration_tests": "PASSED (verified live execution context)",
+    "integration_tests": "PASSED (verified live execution)",
     "security_hardening": "PASSED (verified)",
     "e2e_scenarios": "PASSED (verified)",
     "frontend_production_build": "PASSED (production build verified)",
@@ -20,9 +20,9 @@
   },
   "sbom": {
     "backend_manifest": "sbom-backend.json",
-    "backend_sha256": "b659071a61c675261b97d45410dfcbab2903f35c0cd9ee75c0f93d81a4299a44",
+    "backend_sha256": "71d2e90a42a03e177407d545a166d9fec6a9004cffb26d60684d6c8ff8c9e214",
     "frontend_manifest": "sbom-frontend.json",
-    "frontend_sha256": "6481e0a7547c2bf92bcc02c82c9b3749112b1b163fb7cda3de00fa3b0d8778d2"
+    "frontend_sha256": "29d29afd0987c21eb8970054e17da6aa633418df160f7f0f76fbfbab9d9cddf5"
   },
   "rollback_plan": {
     "runbook": "docs/27_ROLLBACK_RUNBOOK.md",

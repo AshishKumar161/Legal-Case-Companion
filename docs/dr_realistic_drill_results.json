@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-11-02T20:49:46.387965+00:00",
+  "status": "PASS",
+  "representative_workload": {
+    "active_db_size": "335 MB",
+    "tables_count": 81,
+    "vector_chunks_count": 20000,
+    "envelope_size_bytes": 268339548,
+    "envelope_size_mb": 255.91,
+    "key_id": "arn:aws:kms:ap-south-1:123456789012:key/lcc-prod-dr-cmk-v1"
+  },
+  "durations_seconds": {
+    "incident_detection": 15.0,
+    "recovery_initiation": 10.0,
+    "envelope_decryption_and_auth": 0.458,
+    "database_restore": 78.528,
+    "application_recovery": 0.449,
+    "total_measured_rto": 104.44,
+    "target_rto": 1800.0,
+    "rto_margin_percent": 94.2
+  },
+  "data_loss_and_rpo": {
+    "disaster_timestamp_utc": "2026-11-02T20:48:26.891599+00:00",
+    "last_acknowledged_transaction_id": "TX_003_ADVOCATE_PAYOUT",
+    "last_acknowledged_timestamp_utc": "2026-11-02T20:48:26.887014+00:00",
+    "measured_data_loss_window_seconds": 0.005,
+    "target_rpo_seconds": 900.0,
+    "rpo_margin_percent": 100.0
+  },
+  "post_restore_verification": {
+    "database_health_probe": true,
+    "hnsw_vector_query": "VERIFIED",
+    "top_match_distance": 0.9195
+  }
+}

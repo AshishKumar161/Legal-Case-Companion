@@ -46,8 +46,8 @@ def test_openapi_contract_parity():
                 baseline_ops.append((path, m.upper()))
 
     # 3. Assertions
-    assert len(live_paths) == 333, f"Expected 333 paths, got {len(live_paths)}"
-    assert len(live_ops) == 392, f"Expected 392 operations, got {len(live_ops)}"
+    assert len(live_paths) == 340, f"Expected 340 paths, got {len(live_paths)}"
+    assert len(live_ops) == 399, f"Expected 399 operations, got {len(live_ops)}"
 
     live_set = set(live_ops)
     base_set = set(baseline_ops)

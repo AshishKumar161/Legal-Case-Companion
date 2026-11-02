@@ -16488,6 +16488,67 @@
         }
       }
     },
+    "/api/v1/admin/security/quarantine/{document_id}/reprocess": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Reprocess Quarantined Document",
+        "description": "Manually reprocesses an exhausted quarantined document through the antivirus scanning engine.\nStrictly admin-only; maintains fail-closed behavior if scanning cannot be verified.",
+        "operationId": "reprocess_quarantined_document_api_v1_admin_security_quarantine__document_id__reprocess_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Force retry even if maximum retries were exhausted",
+              "default": false,
+              "title": "Force"
+            },
+            "description": "Force retry even if maximum retries were exhausted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDocumentSecurityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit": {
       "get": {
         "tags": [
@@ -16806,13 +16867,42 @@
         }
       }
     },
+    "/api/v1/health/scanner": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Detailed Scanner Health",
+        "description": "Restricted operator health check for malware scanner subsystem.\n\nExposes ClamAV connectivity, quarantine backlog depth, and active alerts.\nStrictly restricted to administrators/operators.",
+        "operationId": "detailed_scanner_health_api_v1_health_scanner_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Detailed Scanner Health Api V1 Health Scanner Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/webhooks/aws/malware": {
       "post": {
         "tags": [
           "webhooks"
         ],
         "summary": "Aws Malware Webhook",
-        "description": "Internal Webhook for AWS EventBridge / Lambda to report malware scan results.\nAuthorizes via a shared secret (AWS_WEBHOOK_SECRET) with constant-time verification.",
+        "description": "Internal Webhook for AWS EventBridge / Lambda to report malware scan results.\nAuthorizes via a shared secret (AWS_WEBHOOK_SECRET) with constant-time verification.\nFails safely without disclosing internal configuration state.",
         "operationId": "aws_malware_webhook_api_v1_webhooks_aws_malware_post",
         "parameters": [
           {
@@ -20189,6 +20279,67 @@
         ]
       }
     },
+    "/api/v1/commercial/payouts/recover": {
+      "post": {
+        "tags": [
+          "commercial"
+        ],
+        "summary": "Recover Interrupted Payouts",
+        "description": "Recovers stale or interrupted advocate payouts across application instances.",
+        "operationId": "recover_interrupted_payouts_api_v1_commercial_payouts_recover_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "stale_threshold_minutes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 15,
+              "title": "Stale Threshold Minutes"
+            }
+          },
+          {
+            "name": "max_batch",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Max Batch"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Recover Interrupted Payouts Api V1 Commercial Payouts Recover Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/commercial/refunds/request": {
       "post": {
         "tags": [
@@ -21093,6 +21244,183 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/kyc/status": {
+      "get": {
+        "tags": [
+          "kyc"
+        ],
+        "summary": "Get Kyc Status",
+        "description": "Retrieves authoritative KYC / profile verification dossier for the active user.",
+        "operationId": "get_kyc_status_api_v1_kyc_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KYCStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/kyc/client/document": {
+      "post": {
+        "tags": [
+          "kyc"
+        ],
+        "summary": "Upload Client Kyc Document",
+        "description": "Uploads and cryptographically hashes client identity proof document (PDF, PNG, JPG).",
+        "operationId": "upload_client_kyc_document_api_v1_kyc_client_document_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_client_kyc_document_api_v1_kyc_client_document_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KYCDocumentUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/kyc/client/submit": {
+      "post": {
+        "tags": [
+          "kyc"
+        ],
+        "summary": "Submit Client Kyc",
+        "description": "Submits client profile details and identity verification declaration.",
+        "operationId": "submit_client_kyc_api_v1_kyc_client_submit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientKYCSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KYCStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/kyc/client/document/download": {
+      "get": {
+        "tags": [
+          "kyc"
+        ],
+        "summary": "Download Client Kyc Document",
+        "description": "Generates a secure, authorized, signed URL to view or download a client KYC document.\nAccess strictly restricted to the owning client or platform administrators.",
+        "operationId": "download_client_kyc_document_api_v1_kyc_client_document_download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KYCDocumentDownloadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -24524,6 +24852,44 @@
             "type": "boolean",
             "title": "Is Confirmed",
             "description": "Explicit human confirmation of statutory facts"
+          },
+          "expert_examiner_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expert Examiner Name",
+            "description": "Name of expert under BSA Section 63(4) Schedule Part B"
+          },
+          "expert_examiner_designation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expert Examiner Designation",
+            "description": "Designation of expert examiner under BSA Section 63(4) Schedule Part B"
+          },
+          "expert_examination_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expert Examination Details",
+            "description": "Summary of expert examination under BSA Section 63(4) Schedule Part B"
           }
         },
         "additionalProperties": false,
@@ -24671,6 +25037,33 @@
             ],
             "title": "Storage Key"
           },
+          "expert_examiner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expert Examiner Name"
+          },
+          "expert_examiner_designation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expert Examiner Designation"
+          },
+          "legal_counsel_advisory": {
+            "type": "string",
+            "title": "Legal Counsel Advisory",
+            "default": "Statutory admissibility under BSA Section 63 must be evaluated by qualified Indian legal counsel."
+          },
           "created_by_user_id": {
             "type": "string",
             "format": "uuid",
@@ -24761,6 +25154,20 @@
           "file"
         ],
         "title": "Body_upload_case_document_direct_api_v1_cases__case_id__documents_post"
+      },
+      "Body_upload_client_kyc_document_api_v1_kyc_client_document_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_client_kyc_document_api_v1_kyc_client_document_post"
       },
       "Body_upload_consultation_document_api_v1_consultations__consultation_id__documents_post": {
         "properties": {
@@ -29303,6 +29710,119 @@
         ],
         "title": "ClaimSupportStatus"
       },
+      "ClientKYCSubmitRequest": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 2,
+            "title": "Full Name"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 10,
+            "title": "Phone"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "id_type": {
+            "type": "string",
+            "title": "Id Type",
+            "description": "AADHAAR, PAN, PASSPORT, VOTER_ID, DRIVING_LICENSE"
+          },
+          "id_number": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 4,
+            "title": "Id Number"
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Address"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "City"
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "State"
+          },
+          "pincode": {
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 6,
+            "title": "Pincode"
+          },
+          "kyc_document_storage_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Document Storage Key"
+          },
+          "kyc_document_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Document Filename"
+          },
+          "dpdp_consent": {
+            "type": "boolean",
+            "title": "Dpdp Consent",
+            "description": "Consent under Digital Personal Data Protection Act",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "full_name",
+          "phone",
+          "id_type",
+          "id_number",
+          "address",
+          "city",
+          "state",
+          "pincode"
+        ],
+        "title": "ClientKYCSubmitRequest"
+      },
       "ClientProfileResponse": {
         "properties": {
           "id": {
@@ -29351,6 +29871,139 @@
               }
             ],
             "title": "Phone"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "id_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Type"
+          },
+          "id_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Number"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "pincode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pincode"
+          },
+          "kyc_status": {
+            "type": "string",
+            "title": "Kyc Status",
+            "default": "PENDING"
+          },
+          "is_kyc_completed": {
+            "type": "boolean",
+            "title": "Is Kyc Completed",
+            "default": false
+          },
+          "kyc_document_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Document Filename"
+          },
+          "kyc_submitted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Submitted At"
+          },
+          "kyc_verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Verified At"
           }
         },
         "type": "object",
@@ -29395,6 +30048,94 @@
               }
             ],
             "title": "Phone"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "id_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Type"
+          },
+          "id_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Number"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "pincode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pincode"
           }
         },
         "additionalProperties": false,
@@ -29534,6 +30275,11 @@
           "can_record": {
             "type": "boolean",
             "title": "Can Record"
+          },
+          "legal_counsel_advisory": {
+            "type": "string",
+            "title": "Legal Counsel Advisory",
+            "default": "Video recording of legal consultations is subject to advocate-client privilege under Indian law, the Advocates Act, 1961, and the DPDP Act, 2023. Consultation recording flags do not automatically confer legal compliance or court admissibility. All recording workflows must be reviewed by qualified Indian legal counsel before deployment."
           }
         },
         "type": "object",
@@ -30793,6 +31539,27 @@
               }
             ],
             "title": "Location"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "kyc_status": {
+            "type": "string",
+            "title": "Kyc Status",
+            "default": "PENDING"
+          },
+          "is_kyc_completed": {
+            "type": "boolean",
+            "title": "Is Kyc Completed",
+            "default": false
           }
         },
         "type": "object",
@@ -33847,6 +34614,308 @@
           "NOTIFICATION_RETRY"
         ],
         "title": "JobType"
+      },
+      "KYCDocumentDownloadResponse": {
+        "properties": {
+          "download_url": {
+            "type": "string",
+            "title": "Download Url"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "expires_in_seconds": {
+            "type": "integer",
+            "title": "Expires In Seconds",
+            "default": 300
+          }
+        },
+        "type": "object",
+        "required": [
+          "download_url"
+        ],
+        "title": "KYCDocumentDownloadResponse"
+      },
+      "KYCDocumentUploadResponse": {
+        "properties": {
+          "storage_key": {
+            "type": "string",
+            "title": "Storage Key"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "sha256_hash": {
+            "type": "string",
+            "title": "Sha256 Hash"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "file_size_bytes": {
+            "type": "integer",
+            "title": "File Size Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "storage_key",
+          "filename",
+          "sha256_hash",
+          "content_type",
+          "file_size_bytes"
+        ],
+        "title": "KYCDocumentUploadResponse"
+      },
+      "KYCStatusResponse": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "kyc_status": {
+            "type": "string",
+            "title": "Kyc Status"
+          },
+          "is_kyc_completed": {
+            "type": "boolean",
+            "title": "Is Kyc Completed"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "id_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Type"
+          },
+          "id_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Number"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "pincode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pincode"
+          },
+          "kyc_document_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Document Filename"
+          },
+          "kyc_submitted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Submitted At"
+          },
+          "kyc_verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Verified At"
+          },
+          "kyc_rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Rejection Reason"
+          },
+          "enrollment_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollment Number"
+          },
+          "state_bar_council": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Bar Council"
+          },
+          "practice_areas": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Practice Areas"
+          },
+          "court_jurisdictions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Court Jurisdictions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "kyc_status",
+          "is_kyc_completed"
+        ],
+        "title": "KYCStatusResponse"
       },
       "LawyerAvailabilityCreate": {
         "properties": {
@@ -37832,6 +38901,17 @@
             "type": "string",
             "title": "Provider",
             "default": "RAZORPAYX"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
           },
           "metadata": {
             "additionalProperties": true,

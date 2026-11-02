@@ -899,6 +899,9 @@ class EvidenceService:
             if not version:
                 raise ResourceNotFoundError("No active version available")
 
+        if version.scan_status != EvidenceScanStatus.PASSED:
+            raise ValidationError("Cannot preview unverified or quarantined evidence")
+
         # Defense-in-depth: Only allow safe viewing formats inline. Unsafe/executable/scriptable formats force attachment.
         SAFE_INLINE_MIME_TYPES = {"application/pdf", "image/png", "image/jpeg", "image/jpg"}
         safe_filename = version.original_filename.replace('"', '').replace('\r', '').replace('\n', '')

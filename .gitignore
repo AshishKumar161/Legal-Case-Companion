@@ -69,12 +69,15 @@ yarn-error.log*
 *.db
 test.db
 *.sql
+!deploy/**/*.sql
 storage/recordings/
 uploads/
 docs/users.csv
 docs/database.json
 docs/database_data.md
 docs/view_database.html
+.pgdata_pgvector/
+.pg_overlay/
 
 # IDE & OS
 .vscode/

@@ -26,6 +26,12 @@ class ConsentStatusResponse(BaseModel):
     client_consented: bool
     lawyer_consented: bool
     can_record: bool
+    legal_counsel_advisory: str = (
+        "Video recording of legal consultations is subject to advocate-client privilege under Indian law, "
+        "the Advocates Act, 1961, and the DPDP Act, 2023. Consultation recording flags do not automatically "
+        "confer legal compliance or court admissibility. All recording workflows must be reviewed by qualified "
+        "Indian legal counsel before deployment."
+    )
 
 
 class RecordingStartResponse(BaseModel):

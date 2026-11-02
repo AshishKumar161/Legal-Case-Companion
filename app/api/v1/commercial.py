@@ -1,14 +1,15 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import RequireOperatorPermission, get_current_user, get_db
+from app.api.deps import RequireOperatorPermission, RequireRole, get_current_user, get_db
+from app.api.v1.auth import limiter
 from app.models.commercial import CommercialEntitlement, CommercialTransaction
 from app.models.operator import OperationalPermission
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.domain.payments.commercial_service import CommercialService
 
 router = APIRouter(prefix="/commercial", tags=["commercial"])
@@ -137,6 +138,7 @@ class PayoutRequest(BaseModel):
     commercial_transaction_id: UUID | None = None
     amount: float | None = None
     provider: str = "RAZORPAYX"
+    idempotency_key: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -184,21 +186,21 @@ def get_invoice_receipt(
 
 
 @router.post("/payouts/process")
+@limiter.limit("20/minute")
 def process_payout(
+    request: Request,
     req: PayoutRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(RequireRole(UserRole.ADMIN)),
 ) -> dict[str, Any]:
     """Creates and immediately settles an advocate payout with double-payout guards."""
-    if current_user.role.value != "ADMIN":
-        from app.core.exceptions import AuthorizationError
-        raise AuthorizationError("Admin authorization required.")
     service = CommercialService(db)
     payout = service.create_advocate_payout(
         advocate_user_id=req.advocate_user_id,
         commercial_transaction_id=req.commercial_transaction_id,
         amount=req.amount,
         provider=req.provider,
+        idempotency_key=req.idempotency_key,
         metadata_=req.metadata,
     )
     settled = service.settle_advocate_payout(payout.id, actor=current_user)
@@ -211,16 +213,38 @@ def process_payout(
     }
 
 
+@router.post("/payouts/recover")
+@limiter.limit("5/minute")
+def recover_interrupted_payouts(
+    request: Request,
+    stale_threshold_minutes: int = 15,
+    max_batch: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(RequireRole(UserRole.ADMIN)),
+) -> dict[str, Any]:
+    """Recovers stale or interrupted advocate payouts across application instances."""
+    service = CommercialService(db)
+    recovered = service.recover_interrupted_payouts(
+        stale_threshold_minutes=stale_threshold_minutes,
+        max_batch=max_batch,
+        actor=current_user,
+    )
+    return {
+        "status": "SUCCESS",
+        "recovered_count": len(recovered),
+        "payout_ids": [p.payout_id for p in recovered],
+    }
+
+
 @router.post("/refunds/request")
+@limiter.limit("20/minute")
 def request_deterministic_refund(
+    request: Request,
     req: RefundExecutionRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(RequireRole(UserRole.ADMIN)),
 ) -> dict[str, Any]:
     """Executes a deterministic refund enforcing defined cancellation rules."""
-    if current_user.role.value != "ADMIN":
-        from app.core.exceptions import AuthorizationError
-        raise AuthorizationError("Admin authorization required.")
     service = CommercialService(db)
     record = service.execute_deterministic_refund(
         transaction_identifier=req.transaction_identifier,

@@ -57,10 +57,10 @@ def is_allowed_dummy(line: str) -> bool:
     return any(marker in lower for marker in ALLOWED_DUMMY_MARKERS)
 
 
-def get_tracked_files():
+def get_working_tree_files():
     try:
         res = subprocess.run(
-            ["git", "ls-files"],
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
             cwd=str(ROOT_DIR),
             capture_output=True,
             text=True,
@@ -70,7 +70,13 @@ def get_tracked_files():
     except Exception as e:
         print(f"Warning: git ls-files failed: {e}. Falling back to os.walk.")
         tracked = []
-        for root, _, files in os.walk(ROOT_DIR):
+        ignored_dirs = {
+            ".git", ".venv", "venv", "env", "node_modules",
+            "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache",
+            ".next", "dist", "build", ".coverage"
+        }
+        for root, dirs, files in os.walk(ROOT_DIR):
+            dirs[:] = [d for d in dirs if d not in ignored_dirs]
             for file in files:
                 p = Path(root) / file
                 tracked.append(str(p.relative_to(ROOT_DIR)).replace("\\", "/"))
@@ -79,19 +85,22 @@ def get_tracked_files():
 
 def scan_tracked_files():
     print("========================================================================")
-    print("  CI/CD GATE: STATIC REPOSITORY SECRET & CREDENTIAL SCAN")
+    print("  CI/CD GATE: COMPLETE WORKING TREE SECRET & CREDENTIAL SCAN")
     print("========================================================================")
 
-    tracked_files = get_tracked_files()
+    working_files = get_working_tree_files()
     findings = []
     scanned_count = 0
 
-    for rel_path_str in tracked_files:
+    for rel_path_str in working_files:
         norm_path = rel_path_str.replace("\\", "/")
 
         if norm_path in EXCLUDED_TRACKED_FILES:
             continue
-        if norm_path.endswith((".pyc", ".db", ".png", ".jpg", ".jpeg", ".ico", ".woff", ".woff2")):
+        if norm_path.endswith((
+            ".pyc", ".db", ".png", ".jpg", ".jpeg", ".ico", ".woff", ".woff2",
+            ".exe", ".so", ".bc", ".tar.gz", ".svg", ".webp", ".pdf"
+        )):
             continue
 
         file_path = ROOT_DIR / norm_path
@@ -117,7 +126,7 @@ def scan_tracked_files():
         except Exception as e:
             print(f"Warning: Could not read {norm_path}: {e}")
 
-    print(f"Scanned {scanned_count} git-tracked files across repository.")
+    print(f"Scanned {scanned_count} working-tree files (tracked + untracked) across repository.")
 
     if findings:
         print(f"\n[FAIL] Found {len(findings)} potential secret exposure(s):")

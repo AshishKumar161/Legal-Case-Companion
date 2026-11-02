@@ -134,8 +134,24 @@ def run_benchmark():
 
     # Use PostgreSQL if available, otherwise SQLite
     pg_url = os.environ.get("DATABASE_URL")
-    if not pg_url and os.path.exists("/home/ashish/.gemini/antigravity-ide/brain/0ed2a832-9031-4ee2-af0f-e83080170cca/scratch/pgdata"):
-        pg_url = "postgresql://postgres@127.0.0.1:5433/postgres"
+    if pg_url:
+        try:
+            chk_eng = create_engine(pg_url, connect_args={"connect_timeout": 2})
+            with chk_eng.connect() as chk_conn:
+                chk_conn.execute(text("SELECT 1"))
+            chk_eng.dispose()
+        except Exception:
+            pg_url = None
+    elif os.path.exists("/home/ashish/.gemini/antigravity-ide/brain/0ed2a832-9031-4ee2-af0f-e83080170cca/scratch/pgdata"):
+        test_url = "postgresql://postgres@127.0.0.1:5433/postgres"
+        try:
+            chk_eng = create_engine(test_url, connect_args={"connect_timeout": 2})
+            with chk_eng.connect() as chk_conn:
+                chk_conn.execute(text("SELECT 1"))
+            chk_eng.dispose()
+            pg_url = test_url
+        except Exception:
+            pg_url = None
 
     db_url = pg_url or "sqlite:///:memory:"
     engine = create_engine(db_url, echo=False)
@@ -190,8 +206,8 @@ def run_benchmark():
     db.add(doc)
     db.commit()
 
-    # Generate 500 chunks with 256-dimensional embeddings for realistic density
-    EMB_DIM = 256
+    # Generate 500 chunks with 1536-dimensional embeddings for canonical production model
+    EMB_DIM = 1536
     NUM_CHUNKS = 500
     np.random.seed(42)
     random_vectors = np.random.randn(NUM_CHUNKS, EMB_DIM).astype(np.float32)
@@ -218,10 +234,15 @@ def run_benchmark():
     db.bulk_save_objects(chunks)
     db.commit()
 
+    if engine.dialect.name == "postgresql":
+        db.execute(text("ANALYZE document_chunks;"))
+        db.execute(text("ANALYZE documents;"))
+        db.execute(text("ANALYZE cases;"))
+
     search_req = CaseSearchRequest(
         query="Section 10 Indian Contract Act dispute",
         top_k=10,
-        search_mode=SearchMode.HYBRID,
+        search_mode=SearchMode.SEMANTIC,
         min_score=0.05,
     )
 
@@ -235,53 +256,140 @@ def run_benchmark():
     base_lat = sum(r["elapsed_ms"] for r in baseline_runs) / len(baseline_runs)
     base_mem = max(r["peak_mem_kb"] for r in baseline_runs)
 
-    # 2. Benchmark Improved (NumPy Vectorized BLAS + Column Projection + Bounded Retrieval)
-    print("Benchmarking Improved (Vectorized NumPy BLAS, Column Projections, Bounded Window)...")
+    # 2. Benchmark Improved (PostgreSQL pgvector HNSW / NumPy BLAS)
+    print("Benchmarking Improved (Native pgvector HNSW / BLAS, Column Projections, Bounded Window)...")
     opt_runs = []
-    for _ in range(5):
+    for _ in range(20):
         res = optimized_retrieval_search(db, user, case_id, search_req, query_vec)
         opt_runs.append(res)
 
     opt_lat = sum(r["elapsed_ms"] for r in opt_runs) / len(opt_runs)
     opt_mem = max(r["peak_mem_kb"] for r in opt_runs)
 
-    # 3. Query Plan inspection via EXPLAIN ANALYZE if PostgreSQL
-    query_plan = "N/A (SQLite)"
+    # Compute P50, P90, P95 latency
+    lat_values = [r["elapsed_ms"] for r in opt_runs]
+    p50_lat = float(np.percentile(lat_values, 50))
+    p90_lat = float(np.percentile(lat_values, 90))
+    p95_lat = float(np.percentile(lat_values, 95))
+
+    # Recall@K and Precision@K against exact brute-force search over full corpus
+    gt_scores = batch_cosine_similarity(query_vec, random_vectors)
+    ranked_indices = np.argsort(gt_scores)[::-1]
+    top_k = search_req.top_k
+    gt_top_ids = set(str(chunks[idx].id) for idx in ranked_indices[:top_k])
+    opt_top_ids = set(opt_runs[0]["top_ids"])
+    overlap_count = len(gt_top_ids.intersection(opt_top_ids))
+    recall_at_k = overlap_count / float(top_k)
+    precision_at_k = overlap_count / float(len(opt_top_ids)) if opt_top_ids else 0.0
+
+    # 3. Exact Vector Search vs HNSW Vector Search in PostgreSQL
+    exact_runs_ms = []
+    hnsw_runs_ms = []
+    exact_plan = "N/A (SQLite)"
+    hnsw_plan = "N/A (SQLite)"
+
     if engine.dialect.name == "postgresql":
-        try:
-            explain_sql = text("""
-                EXPLAIN ANALYZE
-                SELECT dc.id, dc.content, dc.metadata, dc.embedding, d.id, d.version
-                FROM document_chunks dc
-                JOIN documents d ON dc.document_id = d.id
-                JOIN cases c ON dc.case_id = c.id
-                WHERE dc.case_id = :case_id
-                  AND dc.deleted_at IS NULL
-                  AND d.deleted_at IS NULL
-                  AND d.security_status = 'SAFE'
-                  AND c.id = :case_id
-                  AND c.deleted_at IS NULL
-                LIMIT 500;
-            """)
-            plan_res = db.execute(explain_sql, {"case_id": case_id}).fetchall()
-            query_plan = "\n".join([row[0] for row in plan_res])
-        except Exception as plan_err:
-            query_plan = f"Explain failed: {plan_err}"
+        print("Benchmarking PostgreSQL Exact Search vs HNSW Index Search...")
+        qvec_str = "[" + ",".join(str(float(x)) for x in query_vec) + "]"
+        vector_query_sql = f"""
+            SELECT dc.id, (CAST(dc.embedding AS real[])::vector(1536) <=> CAST(:qvec AS vector(1536))) as dist
+            FROM document_chunks dc
+            JOIN documents d ON dc.document_id = d.id
+            JOIN cases c ON dc.case_id = c.id
+            WHERE dc.case_id = :case_id
+              AND dc.deleted_at IS NULL
+              AND d.deleted_at IS NULL
+              AND d.security_status::text = 'SAFE'
+              AND c.deleted_at IS NULL
+              AND c.id = :case_id
+              AND array_length(dc.embedding, 1) = 1536
+            ORDER BY (CAST(dc.embedding AS real[])::vector(1536) <=> CAST(:qvec AS vector(1536))) ASC
+            LIMIT :top_k;
+        """
+
+        # Exact Search (forcing sequential scan without index)
+        db.execute(text("SET enable_indexscan = off;"))
+        db.execute(text("SET enable_bitmapscan = off;"))
+        for _ in range(15):
+            t0 = time.perf_counter()
+            db.execute(text(vector_query_sql), {"case_id": str(case_id), "qvec": qvec_str, "top_k": top_k}).fetchall()
+            exact_runs_ms.append((time.perf_counter() - t0) * 1000)
+
+        exact_plan_rows = db.execute(text("EXPLAIN (ANALYZE, BUFFERS) " + vector_query_sql), {"case_id": str(case_id), "qvec": qvec_str, "top_k": top_k}).fetchall()
+        exact_plan = "\n".join([r[0] for r in exact_plan_rows])
+
+        # HNSW Index Search (enabling indexes)
+        db.execute(text("SET enable_indexscan = on;"))
+        db.execute(text("SET enable_bitmapscan = on;"))
+        db.execute(text("SET enable_seqscan = off;"))
+        for _ in range(15):
+            t0 = time.perf_counter()
+            db.execute(text(vector_query_sql), {"case_id": str(case_id), "qvec": qvec_str, "top_k": top_k}).fetchall()
+            hnsw_runs_ms.append((time.perf_counter() - t0) * 1000)
+
+        hnsw_plan_rows = db.execute(text("EXPLAIN (ANALYZE, BUFFERS) " + vector_query_sql), {"case_id": str(case_id), "qvec": qvec_str, "top_k": top_k}).fetchall()
+        hnsw_plan = "\n".join([r[0] for r in hnsw_plan_rows])
+        db.execute(text("SET enable_seqscan = on;"))
+
+    exact_p50 = float(np.percentile(exact_runs_ms, 50)) if exact_runs_ms else 0.0
+    exact_p95 = float(np.percentile(exact_runs_ms, 95)) if exact_runs_ms else 0.0
+    exact_mean = sum(exact_runs_ms) / len(exact_runs_ms) if exact_runs_ms else 0.0
+
+    hnsw_p50 = float(np.percentile(hnsw_runs_ms, 50)) if hnsw_runs_ms else 0.0
+    hnsw_p95 = float(np.percentile(hnsw_runs_ms, 95)) if hnsw_runs_ms else 0.0
+    hnsw_mean = sum(hnsw_runs_ms) / len(hnsw_runs_ms) if hnsw_runs_ms else 0.0
+
+    # Filter-selectivity effects
+    print("Benchmarking Filter-Selectivity Effects...")
+    cat_req = CaseSearchRequest(
+        query="Section 10 Indian Contract Act dispute",
+        document_category=DocumentCategory.CONTRACT,
+        top_k=10,
+        search_mode=SearchMode.HYBRID,
+        min_score=0.05,
+    )
+    cat_runs = [optimized_retrieval_search(db, user, case_id, cat_req, query_vec) for _ in range(5)]
+    cat_lat = sum(r["elapsed_ms"] for r in cat_runs) / len(cat_runs)
+
+    doc_req = CaseSearchRequest(
+        query="Section 10 Indian Contract Act dispute",
+        document_id=doc.id,
+        top_k=10,
+        search_mode=SearchMode.HYBRID,
+        min_score=0.05,
+    )
+    doc_runs = [optimized_retrieval_search(db, user, case_id, doc_req, query_vec) for _ in range(5)]
+    doc_lat = sum(r["elapsed_ms"] for r in doc_runs) / len(doc_runs)
 
     # Results Table
     speedup = base_lat / opt_lat if opt_lat > 0 else 1.0
     mem_reduction = ((base_mem - opt_mem) / base_mem * 100) if base_mem > 0 else 0.0
 
-    print("\n" + "=" * 72)
-    print(f"{'METRIC':<30} | {'BASELINE (OLD)':<18} | {'IMPROVED (NEW)':<18}")
-    print("-" * 72)
-    print(f"{'Mean Latency (5 runs)':<30} | {base_lat:>14.2f} ms | {opt_lat:>14.2f} ms")
-    print(f"{'Peak Memory Delta':<30} | {base_mem:>14.2f} KB | {opt_mem:>14.2f} KB")
-    print(f"{'Corpus Chunks Evaluated':<30} | {NUM_CHUNKS:>18} | {min(NUM_CHUNKS, 500):>18}")
-    print(f"{'Retrieved Output Top-K':<30} | {10:>18} | {len(opt_runs[0]['top_ids']):>18}")
-    print(f"{'Execution Speedup':<30} | {'1.00x':>18} | {f'{speedup:.2f}x':>18}")
-    print(f"{'Memory Reduction':<30} | {'0.0%':>18} | {f'{mem_reduction:.1f}%':>18}")
-    print("=" * 72)
+    print("\n" + "=" * 76)
+    print(f"{'METRIC':<34} | {'BASELINE (OLD)':<18} | {'IMPROVED (NEW)':<18}")
+    print("-" * 76)
+    print(f"{'Mean Latency (ms)':<34} | {base_lat:>14.2f} ms | {opt_lat:>14.2f} ms")
+    print(f"{'P50 Latency (ms)':<34} | {'N/A':>18} | {p50_lat:>14.2f} ms")
+    print(f"{'P90 Latency (ms)':<34} | {'N/A':>18} | {p90_lat:>14.2f} ms")
+    print(f"{'P95 Latency (ms)':<34} | {'N/A':>18} | {p95_lat:>14.2f} ms")
+    print(f"{'Peak Memory Delta':<34} | {base_mem:>14.2f} KB | {opt_mem:>14.2f} KB")
+    print(f"{'Corpus Chunks Evaluated':<34} | {NUM_CHUNKS:>18} | {min(NUM_CHUNKS, 500):>18}")
+    print(f"{'Recall@10 vs Exact Ground Truth':<34} | {'1.00 (Brute)':>18} | {f'{recall_at_k:.2f}':>18}")
+    print(f"{'Precision@10':<34} | {'1.00 (Brute)':>18} | {f'{precision_at_k:.2f}':>18}")
+    print(f"{'Execution Speedup':<34} | {'1.00x':>18} | {f'{speedup:.2f}x':>18}")
+    print(f"{'Memory Reduction':<34} | {'0.0%':>18} | {f'{mem_reduction:.1f}%':>18}")
+    print(f"{'Category-Filtered Latency':<34} | {'N/A':>18} | {cat_lat:>14.2f} ms")
+    print(f"{'Document-Filtered Latency':<34} | {'N/A':>18} | {doc_lat:>14.2f} ms")
+    print("=" * 76)
+
+    if exact_runs_ms:
+        print("\n" + "=" * 76)
+        print(f"{'PGVECTOR SEARCH MODE':<34} | {'EXACT (SEQ SCAN)':<18} | {'HNSW (INDEX)':<18}")
+        print("-" * 76)
+        print(f"{'Mean Latency (ms)':<34} | {exact_mean:>14.2f} ms | {hnsw_mean:>14.2f} ms")
+        print(f"{'P50 Latency (ms)':<34} | {exact_p50:>14.2f} ms | {hnsw_p50:>14.2f} ms")
+        print(f"{'P95 Latency (ms)':<34} | {exact_p95:>14.2f} ms | {hnsw_p95:>14.2f} ms")
+        print("=" * 76)
 
     # Retrieval Correctness Validation
     print("\nRetrieval Correctness Check:")
@@ -291,8 +399,10 @@ def run_benchmark():
     print("  -> [PASS] Top-K bounding and ranking preserved correctly.")
 
     if engine.dialect.name == "postgresql":
-        print("\nPostgreSQL EXPLAIN ANALYZE Plan:")
-        print(query_plan)
+        print("\nPostgreSQL HNSW EXPLAIN (ANALYZE, BUFFERS) Plan:")
+        print(hnsw_plan)
+        print("\nPostgreSQL EXACT EXPLAIN (ANALYZE, BUFFERS) Plan:")
+        print(exact_plan)
 
     # Save benchmark artifact
     benchmark_report = {
@@ -305,11 +415,31 @@ def run_benchmark():
         },
         "improved": {
             "mean_latency_ms": round(opt_lat, 2),
+            "p50_latency_ms": round(p50_lat, 2),
+            "p90_latency_ms": round(p90_lat, 2),
+            "p95_latency_ms": round(p95_lat, 2),
             "peak_memory_kb": round(opt_mem, 2),
             "speedup_factor": round(speedup, 2),
             "memory_reduction_pct": round(mem_reduction, 1),
+            "recall_at_10": round(recall_at_k, 2),
+            "precision_at_10": round(precision_at_k, 2),
         },
-        "query_plan": query_plan,
+        "pgvector_exact_vs_hnsw": {
+            "exact_mean_ms": round(exact_mean, 2),
+            "exact_p50_ms": round(exact_p50, 2),
+            "exact_p95_ms": round(exact_p95, 2),
+            "hnsw_mean_ms": round(hnsw_mean, 2),
+            "hnsw_p50_ms": round(hnsw_p50, 2),
+            "hnsw_p95_ms": round(hnsw_p95, 2),
+            "hnsw_speedup_vs_exact": round(exact_mean / hnsw_mean, 2) if hnsw_mean > 0 else 1.0,
+        },
+        "filter_selectivity": {
+            "unfiltered_latency_ms": round(opt_lat, 2),
+            "category_filtered_latency_ms": round(cat_lat, 2),
+            "document_filtered_latency_ms": round(doc_lat, 2),
+        },
+        "hnsw_query_plan": hnsw_plan,
+        "exact_query_plan": exact_plan,
         "correctness_verified": True,
     }
 

@@ -150,4 +150,64 @@ class AlertService:
             ).to_dict()
         )
 
+        # 6. ClamAV Daemon Availability
+        from app.core.config import settings
+        from app.domain.evidence.scanner_service import DefaultMalwareScanner
+        clamav_healthy = True
+        try:
+            clamav_healthy = DefaultMalwareScanner().is_clamav_available()
+        except Exception:
+            clamav_healthy = False
+
+        is_prod = getattr(settings, "ENVIRONMENT", "").lower() in ("production", "staging")
+        clamav_configured = bool(getattr(settings, "CLAMAV_HOST", None))
+        clamav_status = "HEALTHY"
+        if is_prod and (not clamav_configured or not clamav_healthy):
+            clamav_status = "FIRING"
+        elif clamav_configured and not clamav_healthy:
+            clamav_status = "FIRING"
+
+        alerts.append(
+            ProductionAlert(
+                alert_id="ALERT-CLAMAV-UNAVAILABLE",
+                name="Antivirus Scanning Daemon Unavailable",
+                severity=IncidentSeverity.SEV1_CRITICAL if is_prod else IncidentSeverity.SEV2_HIGH,
+                status=clamav_status,
+                trigger_condition="ClamAV daemon unreachable on TCP 3310 socket or unconfigured in production",
+                current_value="UNREACHABLE" if not clamav_healthy else "HEALTHY",
+                threshold="HEALTHY",
+                recommended_action="Inspect ClamAV daemon container, verify clamd service and TCP port 3310 connectivity.",
+                owner="Security Operations (SecOps)",
+                runbook_ref="docs/24_PRODUCTION_DEPLOYMENT_RUNBOOK.md#clamav-daemon-outage",
+            ).to_dict()
+        )
+
+        # 7. Quarantined Documents Accumulation Backlog
+        quarantined_count = 0
+        if self.db:
+            from app.models.document import Document, DocumentSecurityStatus
+            quarantined_count = (
+                self.db.query(Document)
+                .filter(
+                    Document.security_status == DocumentSecurityStatus.QUARANTINED,
+                    Document.deleted_at.is_(None),
+                )
+                .count()
+            )
+        status_quarantine = "FIRING" if quarantined_count >= 10 else "HEALTHY"
+        alerts.append(
+            ProductionAlert(
+                alert_id="ALERT-QUARANTINE-ACCUMULATION",
+                name="Quarantined Documents Accumulation Spike",
+                severity=IncidentSeverity.SEV2_HIGH,
+                status=status_quarantine,
+                trigger_condition="Active quarantined documents >= 10",
+                current_value=quarantined_count,
+                threshold=10,
+                recommended_action="Review quarantine backlog in admin console; check ClamAV health or trigger manual reprocessing.",
+                owner="Security Operations (SecOps)",
+                runbook_ref="docs/23_INCIDENT_RESPONSE.md#playbook-quarantine-backlog",
+            ).to_dict()
+        )
+
         return alerts

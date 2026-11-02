@@ -44,23 +44,29 @@ from app.db.database import get_db
 from app.main import app
 from app.models import Base
 
-TEST_DB_URL = "sqlite:///./test_pytest.db"
+TEST_DB_URL = os.environ.get("TEST_DATABASE_URL", "sqlite:///./test_pytest.db")
 
 connect_args = (
-    {"check_same_thread": False, "timeout": 30}
+    {"check_same_thread": False, "timeout": 60}
     if TEST_DB_URL.startswith("sqlite")
     else {}
 )
 test_engine = create_engine(TEST_DB_URL, connect_args=connect_args)
 
 
-# Enable WAL mode and foreign keys for SQLite
+# Enable WAL mode, busy timeout, and foreign keys for SQLite
 @event.listens_for(test_engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     if TEST_DB_URL.startswith("sqlite"):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=60000")
         cursor.close()
+
+
+
 
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
@@ -75,6 +81,9 @@ def db_engine():
     try:
         if os.path.exists("./test_pytest.db"):
             os.remove("./test_pytest.db")
+        for extra in ["./test_pytest.db-wal", "./test_pytest.db-shm"]:
+            if os.path.exists(extra):
+                os.remove(extra)
     except PermissionError:
         pass
 
@@ -83,7 +92,6 @@ def db_engine():
 def db(db_engine):
     # Truncate tables for clean state
     from sqlalchemy import text
-    Base.metadata.create_all(bind=test_engine)
     session = TestingSessionLocal()
     if TEST_DB_URL.startswith("sqlite"):
         session.execute(text("PRAGMA foreign_keys = OFF"))

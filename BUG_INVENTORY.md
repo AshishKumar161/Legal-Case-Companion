@@ -13,10 +13,15 @@
 | **BUG-001** | **Critical** | Google OAuth JWT Verification | **RESOLVED & HARDENED** | `tests/unit/test_google_oauth_token_validation.py` (9/9 passed) |
 | **BUG-002** | **Critical** | Database Migrations Lifecycle | **RESOLVED & HARDENED** | `scripts/test_migrations_lifecycle.py` (PostgreSQL + SQLite passed) |
 | **BUG-003** | **High** | Document Security & Quarantine | **RESOLVED & HARDENED** | `tests/security/test_direct_upload_security.py` (16/16 passed) |
-| **BUG-004** | **High** | OpenAPI Schema Contract Drift | **RESOLVED & HARDENED** | `scripts/verify_openapi_contract.py` (333 paths / 392 ops 100% match) |
+| **BUG-004** | **High** | OpenAPI Schema Contract Drift | **RESOLVED & HARDENED** | `scripts/verify_openapi_contract.py` (337 paths / 396 ops 100% match) |
 | **BUG-005** | **Medium** | Pytest Configuration (`pythonpath`) | **RESOLVED & HARDENED** | `pyproject.toml` + clean `pytest -q` execution |
 | **BUG-006** | **Medium** | Vector Retrieval Performance | **RESOLVED & HARDENED** | `scripts/benchmark_vector_retrieval.py` (3.75x speedup, 78.7% mem reduction) |
 | **BUG-007** | **Low** | Webhook Config Disclosure | **RESOLVED & HARDENED** | `tests/security/test_webhook_security.py` (3/3 passed, safe 503/401 errors) |
+| **BUG-008** | **Critical** | Distributed Payout Safety & Concurrency | **RESOLVED & HARDENED** | `tests/unit/test_distributed_payout_safety.py` (5/5 passed) |
+| **BUG-009** | **High** | Native pgvector HNSW Indexed Retrieval | **RESOLVED & HARDENED** | `tests/integration/test_native_pgvector_retrieval.py` (3/3 passed) |
+| **BUG-010** | **High** | Antivirus Fail-Closed Production Behavior | **RESOLVED & HARDENED** | `tests/unit/test_antivirus_hardening.py` (6/6 passed) |
+| **BUG-011** | **Medium** | Consultation Video Recording Endpoints | **RESOLVED & HARDENED** | `tests/integration/test_native_video_and_recording_pipeline.py` (8/8 passed) |
+| **BUG-012** | **Medium** | BSA 2023 Sec 63 Statutory Certification | **RESOLVED & HARDENED** | `tests/unit/test_bsa_certificate_workflow.py` (3/3 passed) |
 
 ---
 
@@ -148,4 +153,105 @@
   - Created dedicated security regression test suite `tests/security/test_webhook_security.py`.
 - **Verification & Regression Tests**:
   - `tests/security/test_webhook_security.py` (3 passed).
+- **Final Status**: **COMPLETED & VERIFIED**
+
+---
+
+## BUG-008: Process-Local Mutex (`threading.Lock()`) Fails Distributed Payout Safety Across Multiple Instances
+
+- **Bug ID**: `BUG-008`
+- **File and Function**: `app/domain/payments/commercial_service.py` -> `create_payout_request` & `process_payout_webhook`
+- **Severity**: **Critical**
+- **Original Root Cause**:
+  `CommercialService` utilized a process-local `threading.Lock()`, which is ineffective across horizontal application replicas, Gunicorn/Uvicorn worker processes, and distributed task queues. Concurrent payout requests or duplicated webhook events across different processes could create duplicate financial payouts for the same advocate earnings.
+- **Implemented Fix**:
+  - Removed process-local `threading.Lock()`.
+  - Implemented database-level uniqueness for payout idempotency via `idempotency_key` backed by unique partial index `ix_payouts_idempotency_key` (migration `y1a2b3c4d5e6`).
+  - Added PostgreSQL row-level concurrency protection using `SELECT ... FOR UPDATE` with `nowait=True` / `skip_locked=True` locking patterns.
+  - Implemented atomic payout creation catching database `IntegrityError` to safely handle racing threads/processes.
+  - Integrated payment gateway idempotency keys (`Idempotency-Key` headers) for third-party provider calls.
+  - Hardened webhook handling against duplicated deliveries with status transition validation.
+  - Implemented batch recovery for interrupted payouts via `recover_interrupted_payouts`.
+- **Verification & Regression Tests**:
+  - `tests/unit/test_distributed_payout_safety.py` (5 passed: concurrent requests, independent DB sessions, worker execution, duplicate webhook delivery, app restart recovery).
+- **Final Status**: **COMPLETED & VERIFIED**
+
+---
+
+## BUG-009: Vector Retrieval Relies on In-Memory Array Iteration Instead of Native pgvector HNSW Nearest-Neighbor Indexing
+
+- **Bug ID**: `BUG-009`
+- **File and Function**: `app/domain/ai/retrieval_service.py` -> `RetrievalService.search_case_evidence`
+- **Severity**: **High**
+- **Original Root Cause**:
+  Retrieval relied on application-memory cosine calculation (`batch_cosine_similarity`) over fetched float arrays. While optimized with NumPy BLAS, it loaded embeddings over the network and lacked native indexed nearest-neighbor search (`<=>`), scaling poorly with large corpora.
+- **Implemented Fix**:
+  - Implemented PostgreSQL native retrieval path `_search_case_evidence_pgvector` using pgvector `<=>` cosine distance operator.
+  - Created forward corrective migration `z1a2b3c4d5e6_add_pgvector_hnsw_indexes.py` establishing `vector` extension and HNSW cosine index `ix_document_chunks_embedding_hnsw` (`m=16`, `ef_construction=64`).
+  - Implemented bounded top-K retrieval with database-side filtering (`case_id`, `deleted_at IS NULL`, `security_status == SAFE`).
+  - Guaranteed tenant and case authorization isolation.
+  - Preserved hybrid retrieval behavior by combining dense pgvector search with database-side lexical title/content matching.
+  - Explicitly tagged retrieval engine and approximate nearest neighbor status in chunk metadata (`retrieval_engine="pgvector_hnsw"`, `approximate_nearest_neighbor=True`).
+  - Maintained BLAS NumPy fallback for SQLite environments and unit testing.
+- **Verification & Regression Tests**:
+  - `tests/integration/test_native_pgvector_retrieval.py` (3 passed).
+  - `scripts/benchmark_vector_retrieval.py` (3.79x speedup, 79.3% memory reduction, zero ranking degradation).
+- **Final Status**: **COMPLETED & VERIFIED**
+
+---
+
+## BUG-010: Heuristic Antivirus Fallback Permits Safe Certification in Production When Scanner Daemon Is Unreachable
+
+- **Bug ID**: `BUG-010`
+- **File and Function**: `app/domain/evidence/scanner_service.py` & `app/api/v1/health.py`
+- **Severity**: **High**
+- **Original Root Cause**:
+  When ClamAV daemon was unconfigured or timed out in production, `DefaultMalwareScanner` fell back to a heuristic scanner which marked files `SAFE`. Under production zero-trust standards, heuristic-only inspection must never certify arbitrary files as malware-free, and scanner failures must fail closed.
+- **Implemented Fix**:
+  - Enforced mandatory ClamAV in production and staging (`CLAMAV_HOST` required); raises `ScannerUnavailableError` if unconfigured.
+  - Prohibited heuristic scanner from ever returning `MalwareScanVerdict.SAFE` in production/staging environments.
+  - Implemented socket connection and read timeouts on ClamAV network calls that fail closed.
+  - Guaranteed that scanner unavailability leaves documents in `DocumentSecurityStatus.QUARANTINED`.
+  - Added retry attempt tracking with bounded limits (`max_retries=3`) and audit logging (`DOCUMENT_SCAN_RETRY_EXHAUSTED`).
+  - Added dedicated health endpoint `/api/v1/health/scanner` exposing ClamAV daemon connectivity, operational status, and quarantined document count alerts.
+- **Verification & Regression Tests**:
+  - `tests/unit/test_antivirus_hardening.py` (6 passed).
+- **Final Status**: **COMPLETED & VERIFIED**
+
+---
+
+## BUG-011: Video Recording Subsystem Stubbed with HTTP 403 Forbidden Disabling Consultation Recording Lifecycle
+
+- **Bug ID**: `BUG-011`
+- **File and Function**: `app/api/v1/consultations.py` -> recording routes
+- **Severity**: **Medium**
+- **Original Root Cause**:
+  Six consultation recording endpoints (`consent`, `consent-status`, `start`, `stop`, `upload`, `recordings`) were hardcoded to return `HTTP 403 Forbidden: Video call recording is disabled`, completely severing the video recording lifecycle and causing consultation end-call auto-finalization to fail.
+- **Implemented Fix**:
+  - Re-wired active `VideoRecordingService` into consultation recording endpoints with dependency injection.
+  - Enforced dual-party recording consent validation, cryptographic upload hashing, and state transitions.
+  - Restored automatic finalization of active recordings when consultations terminate.
+- **Verification & Regression Tests**:
+  - `tests/integration/test_native_video_and_recording_pipeline.py` (8 passed).
+  - `tests/integration/test_consultation_lifecycle_production.py` (4 passed).
+- **Final Status**: **COMPLETED & VERIFIED**
+
+---
+
+## BUG-012: BSA 2023 Section 63 Certificate Merged Technical Facts with Unverified Legal Declarations
+
+- **Bug ID**: `BUG-012`
+- **File and Function**: `app/domain/cases/bundle_pdf_engine.py` & `app/schemas/bundle.py`
+- **Severity**: **Medium**
+- **Original Root Cause**:
+  Digital evidence certificates under Section 63 Bharatiya Sakshya Adhiniyam, 2023 conflated automated cryptographic checksums with statutory declarations of device custody and expert witness statements, risking improper statutory certifications in Indian court proceedings.
+- **Implemented Fix**:
+  - Redesigned Section 63 BSA certificate into 4 clearly demarcated sections:
+    1. Part 1: System-Generated Technical Facts (SHA-256 integrity, page count, bundle timestamp).
+    2. Part 2: Device & Storage Environment Details (system architecture, database platform, OS version).
+    3. Part 3: Person in Charge / Management Declaration (statutory signatory declaration of lawful custody and normal operation).
+    4. Part 4: Optional Section 39 BSA Expert Examination (signatory box and examiner credentials).
+  - Added prominent legal counsel advisory banner requiring review by qualified Indian legal counsel prior to courtroom submission.
+- **Verification & Regression Tests**:
+  - `tests/unit/test_bsa_certificate_workflow.py` (3 passed).
 - **Final Status**: **COMPLETED & VERIFIED**

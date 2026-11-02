@@ -1,3 +1,4 @@
+import os
 import sys
 from logging.config import fileConfig
 from pathlib import Path
@@ -8,7 +9,7 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 from app.core.config import settings
 from app.models import Base
@@ -70,6 +71,9 @@ def run_migrations_online() -> None:
         )
 
         with context.begin_transaction():
+            if not is_sqlite and connection.dialect.name == "postgresql":
+                # Acquire transactional advisory lock to prevent concurrent migration collisions
+                connection.execute(text("SELECT pg_advisory_xact_lock(74291845182937102);"))
             context.run_migrations()
 
 

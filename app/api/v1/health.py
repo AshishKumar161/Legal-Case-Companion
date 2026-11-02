@@ -2,18 +2,21 @@ import logging
 import time
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import RequireRole, get_db
 from app.core.config import settings
 from app.core.redis import get_redis_client
 from app.core.storage import get_storage_provider
+from app.models.document import Document, DocumentSecurityStatus
 from app.models.job import BackgroundJob, JobStatus
 from app.models.outbox import OutboxEvent, OutboxStatus
+from app.models.user import User, UserRole
 from app.domain.evidence.scanner_service import DefaultMalwareScanner
+from app.api.v1.auth import limiter
 
 router = APIRouter(tags=["health"])
 root_router = APIRouter(tags=["health"])
@@ -32,6 +35,17 @@ def liveness_check():
     Does not verify external dependencies to prevent cascading restarts.
     """
     return {"status": "alive", "service": "lcc-backend", "environment": settings.ENVIRONMENT}
+
+
+@root_router.get("/metrics", include_in_schema=False)
+@router.get("/health/metrics", include_in_schema=False)
+def prometheus_metrics():
+    """Prometheus exposition format scraping endpoint for SRE/DevOps monitoring."""
+    from app.core.metrics import metrics_collector
+    return Response(
+        content=metrics_collector.generate_prometheus_text(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 @router.get("/health/ready")
@@ -123,12 +137,26 @@ def dependency_health_check(db: Session = Depends(get_db)):
     # 4. Malware Scanner Check
     try:
         scanner = DefaultMalwareScanner()
+        clamav_live = scanner.is_clamav_available()
+        quarantined_count = (
+            db.query(func.count(Document.id))
+            .filter(Document.security_status == DocumentSecurityStatus.QUARANTINED)
+            .scalar()
+            or 0
+        )
+        is_prod = settings.ENVIRONMENT in ("production", "staging")
+        scanner_status = "operational" if clamav_live else ("unavailable" if is_prod else "heuristic_dev")
+        scanner_alert = None
+        if is_prod and not clamav_live:
+            scanner_alert = "CRITICAL: ClamAV daemon is unreachable in production. Uploaded documents remain quarantined."
+            is_degraded = True
+
         dependencies["scanner"] = {
-            "status": "operational",
-            "clamav_available": scanner.is_clamav_available(),
+            "status": scanner_status,
+            "clamav_available": clamav_live,
         }
     except Exception:  # noqa: BLE001
-        dependencies["scanner"] = {"status": "heuristic_only"}
+        dependencies["scanner"] = {"status": "degraded"}
         is_degraded = True
 
     # 5. Background Jobs & Outbox Health
@@ -195,3 +223,38 @@ def dependency_health_check(db: Session = Depends(get_db)):
             "dependencies": dependencies,
         },
     )
+
+
+@router.get("/health/scanner")
+@limiter.limit("15/minute")
+def detailed_scanner_health(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(RequireRole(UserRole.ADMIN)),
+) -> dict[str, Any]:
+    """Restricted operator health check for malware scanner subsystem.
+
+    Exposes ClamAV connectivity, quarantine backlog depth, and active alerts.
+    Strictly restricted to administrators/operators.
+    """
+    scanner = DefaultMalwareScanner()
+    clamav_live = scanner.is_clamav_available()
+    quarantined_count = (
+        db.query(func.count(Document.id))
+        .filter(Document.security_status == DocumentSecurityStatus.QUARANTINED)
+        .scalar()
+        or 0
+    )
+    is_prod = settings.ENVIRONMENT in ("production", "staging")
+    scanner_status = "operational" if clamav_live else ("unavailable" if is_prod else "heuristic_dev")
+    alert = None
+    if is_prod and not clamav_live:
+        alert = "CRITICAL: ClamAV daemon is unreachable in production. Uploaded documents remain quarantined."
+
+    return {
+        "status": scanner_status,
+        "clamav_available": clamav_live,
+        "environment": settings.ENVIRONMENT,
+        "quarantined_documents_count": quarantined_count,
+        "alert": alert,
+    }

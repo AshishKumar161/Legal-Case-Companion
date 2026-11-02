@@ -12,7 +12,9 @@ if settings.DATABASE_URL.startswith("postgresql"):
         "options": f"-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}"
     }
     if settings.ENVIRONMENT in ("production", "staging"):
-        connect_args["sslmode"] = "require"
+        connect_args["sslmode"] = settings.DB_SSL_MODE
+        if settings.DB_SSL_ROOT_CERT:
+            connect_args["sslrootcert"] = settings.DB_SSL_ROOT_CERT
     engine_kwargs.update(
         {
             "pool_size": settings.DB_POOL_SIZE,

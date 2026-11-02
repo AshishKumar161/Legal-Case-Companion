@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-11-02T20:34:58Z",
+  "status": "PASS",
+  "representative_dataset": {
+    "dump_size_bytes": 268338963,
+    "dump_size_mb": 255.91,
+    "ciphertext_size_bytes": 268338992,
+    "sha256": "28eb7dfa4f64b1645d8050259379927af4cdd4e092633c216bdee8eaefadcefb",
+    "tables_restored": 81,
+    "chunks_restored": 20000,
+    "cases_restored": 21,
+    "payouts_restored": 500
+  },
+  "durations_seconds": {
+    "base_backup": 36.418,
+    "encryption": 0.33,
+    "decryption": 0.166,
+    "restore": 86.527,
+    "measured_rto": 123.44,
+    "measured_rpo_window": 0.011
+  },
+  "wal_tracking": {
+    "pre_backup_lsn": "1/2E9CD700",
+    "pre_backup_segment": "00000001000000010000002E",
+    "post_backup_lsn": "1/2E9F6CE8",
+    "target_pitr_lsn": "1/2E9F6DE0",
+    "wal_delta_bytes": 248
+  },
+  "objectives": {
+    "target_rto_seconds": 1800,
+    "achieved_rto_seconds": 123.44,
+    "rto_status": "EXCEEDED",
+    "target_rpo_seconds": 900,
+    "achieved_rpo_seconds": 0.011,
+    "rpo_status": "EXCEEDED"
+  }
+}

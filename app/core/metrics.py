@@ -291,5 +291,102 @@ class MetricsCollector:
         with self._lock:
             self.abuse_anomalies[anomaly_type] += 1
 
+    def generate_prometheus_text(self) -> str:
+        """Serializes current metrics snapshot to standard OpenMetrics/Prometheus text exposition format."""
+        with self._lock:
+            lines = []
+            uptime = int(time.time() - self.start_time)
+            lines.append("# HELP lcc_uptime_seconds Total application process uptime in seconds.")
+            lines.append("# TYPE lcc_uptime_seconds gauge")
+            lines.append(f"lcc_uptime_seconds {uptime}")
+
+            # HTTP Requests Total
+            lines.append("# HELP lcc_http_requests_total Total number of HTTP requests processed.")
+            lines.append("# TYPE lcc_http_requests_total counter")
+            for key, count in sorted(self.request_counts.items()):
+                parts = key.split(" ", 1)
+                method = parts[0] if len(parts) > 0 else "UNKNOWN"
+                path = parts[1] if len(parts) > 1 else "/"
+                # Escape path and method for prometheus labels
+                clean_path = path.replace('"', '\\"')
+                clean_method = method.replace('"', '\\"')
+                lines.append(f'lcc_http_requests_total{{method="{clean_method}",path="{clean_path}"}} {count}')
+
+            # HTTP Status Total
+            lines.append("# HELP lcc_http_status_total HTTP responses by status code.")
+            lines.append("# TYPE lcc_http_status_total counter")
+            for code, count in sorted(self.status_counts.items()):
+                lines.append(f'lcc_http_status_total{{status="{code}"}} {count}')
+
+            # HTTP Latency Quantiles
+            lines.append("# HELP lcc_http_latency_ms HTTP request latency distribution in milliseconds.")
+            lines.append("# TYPE lcc_http_latency_ms summary")
+            if self.request_latencies:
+                sorted_lats = sorted(self.request_latencies)
+                n = len(sorted_lats)
+                p50 = round(sorted_lats[int(n * 0.5)], 2)
+                p90 = round(sorted_lats[int(n * 0.9)], 2)
+                p95 = round(sorted_lats[int(n * 0.95)], 2)
+                p99 = round(sorted_lats[min(int(n * 0.99), n - 1)], 2)
+                tot = round(sum(sorted_lats), 2)
+                lines.append(f'lcc_http_latency_ms{{quantile="0.5"}} {p50}')
+                lines.append(f'lcc_http_latency_ms{{quantile="0.9"}} {p90}')
+                lines.append(f'lcc_http_latency_ms{{quantile="0.95"}} {p95}')
+                lines.append(f'lcc_http_latency_ms{{quantile="0.99"}} {p99}')
+                lines.append(f'lcc_http_latency_ms_sum {tot}')
+                lines.append(f'lcc_http_latency_ms_count {n}')
+            else:
+                lines.append('lcc_http_latency_ms_sum 0.0')
+                lines.append('lcc_http_latency_ms_count 0')
+
+            # Security: Auth Failures
+            lines.append("# HELP lcc_auth_failures_total Count of authentication failures by reason.")
+            lines.append("# TYPE lcc_auth_failures_total counter")
+            for reason, count in sorted(self.auth_failures_count.items()):
+                clean_reason = reason.replace('"', '\\"')
+                lines.append(f'lcc_auth_failures_total{{reason="{clean_reason}"}} {count}')
+
+            # Security: Authorization Denials & BOLA
+            lines.append("# HELP lcc_authorization_denials_total Count of authorization denials and BOLA blocks.")
+            lines.append("# TYPE lcc_authorization_denials_total counter")
+            for res_type, count in sorted(self.authorization_denials_count.items()):
+                clean_res = res_type.replace('"', '\\"')
+                lines.append(f'lcc_authorization_denials_total{{resource="{clean_res}"}} {count}')
+
+            # Security: Tamper Events
+            lines.append("# HELP lcc_tamper_events_total Cryptographic tamper and integrity violations detected.")
+            lines.append("# TYPE lcc_tamper_events_total counter")
+            lines.append(f"lcc_tamper_events_total {self.tamper_events_total}")
+
+            # AI Operations
+            lines.append("# HELP lcc_ai_requests_total AI research and copilot requests by operation and outcome.")
+            lines.append("# TYPE lcc_ai_requests_total counter")
+            for op_key, count in sorted(self.ai_requests_count.items()):
+                parts = op_key.split(":", 1)
+                op = parts[0]
+                outcome = parts[1] if len(parts) > 1 else "unknown"
+                lines.append(f'lcc_ai_requests_total{{operation="{op}",outcome="{outcome}"}} {count}')
+
+            # Queue & Background Jobs
+            lines.append("# HELP lcc_queue_jobs_total Background worker jobs processed by type and status.")
+            lines.append("# TYPE lcc_queue_jobs_total counter")
+            for job_key, count in sorted(self.queue_jobs_count.items()):
+                parts = job_key.split(":", 1)
+                jtype = parts[0]
+                jstatus = parts[1] if len(parts) > 1 else "unknown"
+                lines.append(f'lcc_queue_jobs_total{{job_type="{jtype}",status="{jstatus}"}} {count}')
+
+            # Outbox Events
+            lines.append("# HELP lcc_outbox_events_total Transactional outbox events by type and status.")
+            lines.append("# TYPE lcc_outbox_events_total counter")
+            for out_key, count in sorted(self.outbox_events_count.items()):
+                parts = out_key.split(":", 1)
+                etype = parts[0]
+                estatus = parts[1] if len(parts) > 1 else "unknown"
+                lines.append(f'lcc_outbox_events_total{{event_type="{etype}",status="{estatus}"}} {count}')
+
+            lines.append("")  # Trailing newline required by Prometheus exposition standard
+            return "\n".join(lines)
+
 
 metrics_collector = MetricsCollector()

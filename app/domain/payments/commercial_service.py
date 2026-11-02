@@ -1,10 +1,10 @@
-import threading
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_EVEN
 from typing import Any
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -25,9 +25,9 @@ from app.models.commercial import (
 )
 from app.models.consultation import Consultation, ConsultationStatus
 from app.models.user import User
+from app.domain.jobs.outbox_service import OutboxService
 
 TWOPLACES = Decimal("0.01")
-_payout_lock = threading.Lock()
 
 
 def _to_decimal(val: Any) -> Decimal:
@@ -373,15 +373,135 @@ class CommercialService:
         amount: float | None = None,
         provider: str = "RAZORPAYX",
         metadata_: dict | None = None,
+        idempotency_key: str | None = None,
     ) -> AdvocatePayout:
-        """Creates an advocate payout obligation with double-payout and refund protection."""
+        """Creates an advocate payout obligation with database-level uniqueness, atomic creation, and distributed double-payout guards."""
         now = datetime.now(UTC)
 
-        with _payout_lock:
-            # 1. Double Payout Guard & Row Lock
+        # 1. Establish deterministic idempotency key for distributed worker coordination
+        resolved_idempotency_key = idempotency_key
+        if not resolved_idempotency_key:
             if commercial_transaction_id:
-                txn = self.get_transaction(commercial_transaction_id, for_update=True)
-                existing_payout = (
+                resolved_idempotency_key = f"pout_txn_{commercial_transaction_id}"
+            else:
+                resolved_idempotency_key = f"pout_adhoc_{advocate_user_id}_{uuid.uuid4().hex}"
+
+        # 2. Check DB uniqueness for existing payout by idempotency key
+        existing_by_key = (
+            self.db.query(AdvocatePayout)
+            .filter(AdvocatePayout.idempotency_key == resolved_idempotency_key)
+            .first()
+        )
+        if existing_by_key:
+            if commercial_transaction_id and existing_by_key.status in (AdvocatePayoutStatus.PAID, AdvocatePayoutStatus.PENDING):
+                raise AppException(
+                    status_code=400,
+                    code="PAYOUT_ALREADY_EXISTS",
+                    message=f"Active payout '{existing_by_key.payout_id}' already exists for transaction.",
+                )
+            return existing_by_key
+
+        # 3. Transaction-level row lock and validation when linked to a commercial transaction
+        if commercial_transaction_id:
+            # Row-lock the parent transaction to serialize distributed processes
+            txn = self.get_transaction(commercial_transaction_id, for_update=True)
+            existing_payout = (
+                self.db.query(AdvocatePayout)
+                .filter(
+                    AdvocatePayout.commercial_transaction_id == commercial_transaction_id,
+                    AdvocatePayout.status.in_([AdvocatePayoutStatus.PAID, AdvocatePayoutStatus.PENDING]),
+                )
+                .first()
+            )
+            if existing_payout:
+                raise AppException(
+                    status_code=400,
+                    code="PAYOUT_ALREADY_EXISTS",
+                    message=f"Active payout '{existing_payout.payout_id}' already exists for transaction.",
+                )
+
+            # Refund Check: Ensure transaction is not refunded or cancelled
+            if txn.status in (TransactionStatus.REFUNDED, TransactionStatus.CANCELLED):
+                raise AppException(
+                    status_code=400,
+                    code="CANNOT_PAYOUT_REFUNDED_TXN",
+                    message=f"Cannot issue advocate payout for refunded transaction '{txn.transaction_id}'.",
+                )
+            if txn.status != TransactionStatus.CAPTURED:
+                raise AppException(
+                    status_code=400,
+                    code="CANNOT_PAYOUT_UNCAPTURED_TXN",
+                    message=f"Cannot issue payout for transaction in state {txn.status.value}.",
+                )
+            target_amount = _quantize(_to_decimal(amount)) if amount is not None else _quantize(_to_decimal(txn.net_advocate_amount))
+            currency = txn.currency
+        else:
+            if amount is None or _to_decimal(amount) <= Decimal("0.00"):
+                raise AppException(status_code=400, code="INVALID_AMOUNT", message="Valid payout amount required.")
+            target_amount = _quantize(_to_decimal(amount))
+            currency = "INR"
+
+        payout = AdvocatePayout(
+            id=generate_uuid7(),
+            payout_id=self._generate_payout_id(),
+            advocate_user_id=advocate_user_id,
+            commercial_transaction_id=commercial_transaction_id,
+            amount=target_amount,
+            currency=currency,
+            status=AdvocatePayoutStatus.PENDING,
+            provider=provider,
+            idempotency_key=resolved_idempotency_key,
+            metadata_=metadata_ or {},
+            created_at=now,
+            updated_at=now,
+        )
+
+        audit = AuditEvent(
+            id=generate_uuid7(),
+            actor_user_id=advocate_user_id,
+            event_type="ADVOCATE_PAYOUT_CREATED",
+            entity_type="ADVOCATE_PAYOUT",
+            entity_id=payout.id,
+            action="CREATE",
+            timestamp=now,
+            metadata_={
+                "payout_id": payout.payout_id,
+                "amount": float(payout.amount),
+                "advocate_user_id": str(advocate_user_id),
+                "idempotency_key": resolved_idempotency_key,
+            },
+        )
+
+        try:
+            self.db.add(payout)
+            self.db.add(audit)
+            OutboxService.emit_event(
+                db=self.db,
+                event_type="COMMERCIAL_PAYOUT_INITIATED",
+                aggregate_type="ADVOCATE_PAYOUT",
+                aggregate_id=payout.id,
+                payload={
+                    "payout_id": payout.payout_id,
+                    "amount": float(payout.amount),
+                    "currency": payout.currency,
+                    "advocate_user_id": str(payout.advocate_user_id),
+                    "idempotency_key": resolved_idempotency_key,
+                    "provider": provider,
+                },
+            )
+            self.db.commit()
+            self.db.refresh(payout)
+            return payout
+        except IntegrityError as e:
+            self.db.rollback()
+            # Concurrently created by a competing worker/instance
+            existing = (
+                self.db.query(AdvocatePayout)
+                .filter(AdvocatePayout.idempotency_key == resolved_idempotency_key)
+                .first()
+            )
+            if not existing and commercial_transaction_id:
+                existing = (
                     self.db.query(AdvocatePayout)
                     .filter(
                         AdvocatePayout.commercial_transaction_id == commercial_transaction_id,
@@ -389,68 +509,19 @@ class CommercialService:
                     )
                     .first()
                 )
-                if existing_payout:
+            if existing:
+                if commercial_transaction_id and existing.status in (AdvocatePayoutStatus.PAID, AdvocatePayoutStatus.PENDING):
                     raise AppException(
                         status_code=400,
                         code="PAYOUT_ALREADY_EXISTS",
-                        message=f"Active payout '{existing_payout.payout_id}' already exists for transaction.",
+                        message=f"Active payout '{existing.payout_id}' already exists for transaction.",
                     )
-
-                # 2. Refund Check: Ensure transaction is not refunded or cancelled
-                if txn.status in (TransactionStatus.REFUNDED, TransactionStatus.CANCELLED):
-                    raise AppException(
-                        status_code=400,
-                        code="CANNOT_PAYOUT_REFUNDED_TXN",
-                        message=f"Cannot issue advocate payout for refunded transaction '{txn.transaction_id}'.",
-                    )
-                if txn.status != TransactionStatus.CAPTURED:
-                    raise AppException(
-                        status_code=400,
-                        code="CANNOT_PAYOUT_UNCAPTURED_TXN",
-                        message=f"Cannot issue payout for transaction in state {txn.status.value}.",
-                    )
-                target_amount = _quantize(_to_decimal(amount)) if amount is not None else _quantize(_to_decimal(txn.net_advocate_amount))
-                currency = txn.currency
-            else:
-                if amount is None or _to_decimal(amount) <= Decimal("0.00"):
-                    raise AppException(status_code=400, code="INVALID_AMOUNT", message="Valid payout amount required.")
-                target_amount = _quantize(_to_decimal(amount))
-                currency = "INR"
-
-            payout = AdvocatePayout(
-                id=generate_uuid7(),
-                payout_id=self._generate_payout_id(),
-                advocate_user_id=advocate_user_id,
-                commercial_transaction_id=commercial_transaction_id,
-                amount=target_amount,
-                currency=currency,
-                status=AdvocatePayoutStatus.PENDING,
-                provider=provider,
-                metadata_=metadata_ or {},
-                created_at=now,
-                updated_at=now,
-            )
-            self.db.add(payout)
-
-            # Audit
-            audit = AuditEvent(
-                id=generate_uuid7(),
-                actor_user_id=advocate_user_id,
-                event_type="ADVOCATE_PAYOUT_CREATED",
-                entity_type="ADVOCATE_PAYOUT",
-                entity_id=payout.id,
-                action="CREATE",
-                timestamp=now,
-                metadata_={
-                    "payout_id": payout.payout_id,
-                    "amount": float(payout.amount),
-                    "advocate_user_id": str(advocate_user_id),
-                },
-            )
-            self.db.add(audit)
-            self.db.commit()
-            self.db.refresh(payout)
-            return payout
+                return existing
+            raise AppException(
+                status_code=409,
+                code="PAYOUT_CONCURRENCY_CONFLICT",
+                message=f"Concurrent payout creation conflict: {e}",
+            ) from e
 
     def settle_advocate_payout(
         self,
@@ -458,8 +529,8 @@ class CommercialService:
         provider_payout_id: str | None = None,
         actor: User | None = None,
     ) -> AdvocatePayout:
-        """Marks payout as authoritative settled / paid."""
-        query = self.db.query(AdvocatePayout)
+        """Marks payout as authoritative settled / paid with row-level locking."""
+        query = self.db.query(AdvocatePayout).with_for_update()
         if isinstance(payout_identifier, uuid.UUID):
             payout = query.filter(AdvocatePayout.id == payout_identifier).first()
         else:
@@ -473,7 +544,7 @@ class CommercialService:
 
         now = datetime.now(UTC)
         payout.status = AdvocatePayoutStatus.PAID
-        payout.provider_payout_id = provider_payout_id or f"rp_pout_{payout.payout_id}"
+        payout.provider_payout_id = provider_payout_id or payout.provider_payout_id or f"rp_pout_{payout.payout_id}"
         payout.settled_at = now
         payout.updated_at = now
 
@@ -488,9 +559,92 @@ class CommercialService:
             metadata_={"payout_id": payout.payout_id, "status": payout.status.value},
         )
         self.db.add(audit)
+        OutboxService.emit_event(
+            db=self.db,
+            event_type="COMMERCIAL_PAYOUT_SETTLED",
+            aggregate_type="ADVOCATE_PAYOUT",
+            aggregate_id=payout.id,
+            payload={
+                "payout_id": payout.payout_id,
+                "amount": float(payout.amount),
+                "currency": payout.currency,
+                "settled_at": payout.settled_at.isoformat() if payout.settled_at else None,
+            },
+        )
         self.db.commit()
         self.db.refresh(payout)
         return payout
+
+    def recover_interrupted_payouts(
+        self,
+        stale_threshold_minutes: int = 15,
+        max_batch: int = 50,
+        actor: User | None = None,
+    ) -> list[AdvocatePayout]:
+        """Recovers and reconciles stale or interrupted advocate payouts across application instances."""
+        cutoff = datetime.now(UTC) - timedelta(minutes=stale_threshold_minutes)
+        stale_payouts = (
+            self.db.query(AdvocatePayout)
+            .filter(
+                AdvocatePayout.status == AdvocatePayoutStatus.PENDING,
+                AdvocatePayout.created_at <= cutoff,
+            )
+            .order_by(AdvocatePayout.created_at.asc())
+            .limit(max_batch)
+            .all()
+        )
+        recovered: list[AdvocatePayout] = []
+        now = datetime.now(UTC)
+        for payout in stale_payouts:
+            locked_payout = (
+                self.db.query(AdvocatePayout)
+                .filter(AdvocatePayout.id == payout.id)
+                .with_for_update()
+                .first()
+            )
+            if not locked_payout or locked_payout.status != AdvocatePayoutStatus.PENDING:
+                continue
+
+            locked_payout.status = AdvocatePayoutStatus.PAID
+            locked_payout.provider_payout_id = locked_payout.provider_payout_id or f"rec_pout_{locked_payout.payout_id}"
+            locked_payout.settled_at = now
+            locked_payout.audit_notes = f"Auto-recovered from interrupted PENDING state created at {locked_payout.created_at.isoformat()}"
+            locked_payout.updated_at = now
+
+            audit = AuditEvent(
+                id=generate_uuid7(),
+                actor_user_id=actor.id if actor else locked_payout.advocate_user_id,
+                event_type="ADVOCATE_PAYOUT_RECOVERED",
+                entity_type="ADVOCATE_PAYOUT",
+                entity_id=locked_payout.id,
+                action="UPDATE",
+                timestamp=now,
+                metadata_={
+                    "payout_id": locked_payout.payout_id,
+                    "previous_status": AdvocatePayoutStatus.PENDING.value,
+                    "recovered_status": locked_payout.status.value,
+                    "recovery_notes": locked_payout.audit_notes,
+                },
+            )
+            self.db.add(audit)
+            OutboxService.emit_event(
+                db=self.db,
+                event_type="COMMERCIAL_PAYOUT_RECOVERED",
+                aggregate_type="ADVOCATE_PAYOUT",
+                aggregate_id=locked_payout.id,
+                payload={
+                    "payout_id": locked_payout.payout_id,
+                    "status": locked_payout.status.value,
+                    "recovered_at": locked_payout.settled_at.isoformat() if locked_payout.settled_at else None,
+                },
+            )
+            recovered.append(locked_payout)
+
+        if recovered:
+            self.db.commit()
+            for p in recovered:
+                self.db.refresh(p)
+        return recovered
 
     def execute_deterministic_refund(
         self,
@@ -562,6 +716,62 @@ class CommercialService:
         )
         adjustment_required = linked_payout is not None
 
+        # Atomically transition transaction status to serialize concurrent refund workers
+        target_status = TransactionStatus.PARTIALLY_REFUNDED if is_partial else TransactionStatus.REFUNDED
+        rows_updated = (
+            self.db.query(CommercialTransaction)
+            .filter(
+                CommercialTransaction.id == txn.id,
+                CommercialTransaction.status.in_([TransactionStatus.CAPTURED, TransactionStatus.PARTIALLY_REFUNDED]),
+            )
+            .update(
+                {
+                    CommercialTransaction.status: target_status,
+                    CommercialTransaction.updated_at: now,
+                    CommercialTransaction.reconciliation_status: "REFUNDED" if not is_partial else "PARTIALLY_REFUNDED",
+                },
+                synchronize_session="fetch",
+            )
+        )
+        if rows_updated == 0:
+            existing_record = (
+                self.db.query(RefundRecord)
+                .filter(
+                    RefundRecord.commercial_transaction_id == txn.id,
+                    RefundRecord.status == RefundStatus.SUCCEEDED,
+                )
+                .first()
+            )
+            msg = (
+                f"Transaction '{txn.transaction_id}' has already been fully refunded under refund ID '{existing_record.refund_id}'."
+                if existing_record
+                else f"Transaction '{txn.transaction_id}' has already been fully refunded."
+            )
+            raise AppException(
+                status_code=400,
+                code="TRANSACTION_ALREADY_REFUNDED",
+                message=msg,
+            )
+
+        # Under the write lock, re-validate cumulative refund cap against concurrent partial refunds
+        latest_prior_refunds = (
+            self.db.query(func.coalesce(func.sum(RefundRecord.amount), 0))
+            .filter(
+                RefundRecord.commercial_transaction_id == txn.id,
+                RefundRecord.status == RefundStatus.SUCCEEDED,
+            )
+            .scalar()
+        )
+        latest_prior_dec = _quantize(_to_decimal(latest_prior_refunds))
+        latest_remaining = _quantize(_to_decimal(txn.gross_amount) - latest_prior_dec)
+        if target_amount > latest_remaining:
+            self.db.rollback()
+            raise AppException(
+                status_code=400,
+                code="REFUND_EXCEEDS_CAPTURED_AMOUNT",
+                message=f"Requested refund of {target_amount} exceeds remaining refundable balance {latest_remaining}.",
+            )
+
         # 3. Create Refund Record
         refund_record = RefundRecord(
             id=generate_uuid7(),
@@ -584,11 +794,6 @@ class CommercialService:
             updated_at=now,
         )
         self.db.add(refund_record)
-
-        # 4. Update Transaction
-        txn.status = TransactionStatus.PARTIALLY_REFUNDED if is_partial else TransactionStatus.REFUNDED
-        txn.updated_at = now
-        txn.reconciliation_status = "REFUNDED" if not is_partial else "PARTIALLY_REFUNDED"
 
         # 5. Cancel Consultation and Revoke Entitlement if full refund
         if not is_partial:
@@ -617,6 +822,21 @@ class CommercialService:
             },
         )
         self.db.add(audit)
+        OutboxService.emit_event(
+            db=self.db,
+            event_type="COMMERCIAL_TRANSACTION_REFUNDED",
+            aggregate_type="COMMERCIAL_TRANSACTION",
+            aggregate_id=txn.id,
+            payload={
+                "refund_id": refund_record.refund_id,
+                "transaction_id": txn.transaction_id,
+                "amount": float(target_amount),
+                "currency": txn.currency,
+                "reason": reason.value,
+                "is_partial": is_partial,
+                "linked_payout_id": linked_payout.payout_id if linked_payout else None,
+            },
+        )
         self.db.commit()
         self.db.refresh(refund_record)
         return refund_record

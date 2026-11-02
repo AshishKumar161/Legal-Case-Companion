@@ -642,6 +642,9 @@ class BundleService:
             "declaration_date": req.declaration_date,
             "hash_value": bundle.sha256_hash,
             "hash_algorithm": "SHA-256",
+            "expert_examiner_name": req.expert_examiner_name.strip() if req.expert_examiner_name else None,
+            "expert_examiner_designation": req.expert_examiner_designation.strip() if req.expert_examiner_designation else None,
+            "expert_examination_details": req.expert_examination_details.strip() if req.expert_examination_details else None,
         }
 
         # Generate certificate PDF

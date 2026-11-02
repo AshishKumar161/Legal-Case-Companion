@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.exceptions import (
+    AuthorizationError,
     ResourceNotFoundError,
     ScannerUnavailableError,
     ValidationError,
@@ -16,6 +17,7 @@ from app.core.file_validation import validate_file_magic_bytes
 from app.core.storage import get_storage_provider
 from app.models.document import Document, DocumentSecurityStatus
 from app.models.job import JobType
+from app.models.user import User, UserRole
 from app.domain.auth.auth_service import AuthService
 from app.domain.jobs.job_service import JobService
 
@@ -77,8 +79,14 @@ class ClamAVScanner:
         self.port = port or getattr(settings, "CLAMAV_PORT", 3310)
 
     def scan_bytes(self, file_bytes: bytes, filename: str) -> tuple[bool, str | None]:
+        is_prod = getattr(settings, "ENVIRONMENT", "").lower() in ("production", "staging")
         if not self.host:
-            # ClamAV daemon host is not configured; pass through to secondary scanner
+            if is_prod:
+                logger.error("ClamAV daemon host is not configured in production environment!")
+                raise ScannerUnavailableError(
+                    "ClamAV daemon host is not configured. Production environment prohibits heuristic-only certification."
+                )
+            # ClamAV daemon host is not configured; pass through to secondary scanner in local dev/test
             return True, None
 
         try:
@@ -103,6 +111,11 @@ class ClamAVScanner:
                 if "FOUND" in response:
                     return False, f"ClamAV threat detected: {response}"
                 return True, None
+        except socket.timeout as te:
+            logger.error(f"ClamAV daemon timed out during scan of {filename} ({self.host}:{self.port}): {te}")
+            raise ScannerUnavailableError(
+                f"ClamAV daemon timed out after 10.0s scanning {filename} at {self.host}:{self.port}"
+            ) from te
         except Exception as e:
             logger.error(f"ClamAV daemon connection failed ({self.host}:{self.port}): {e}")
             raise ScannerUnavailableError(
@@ -118,12 +131,21 @@ class DefaultMalwareScanner:
         self.clamav_scanner = ClamAVScanner()
 
     def scan_bytes(self, file_bytes: bytes, filename: str) -> tuple[bool, str | None]:
+        is_prod = getattr(settings, "ENVIRONMENT", "").lower() in ("production", "staging")
+
         # 1. First run deterministic signature/heuristic checks
         is_safe, reason = self.heuristic_scanner.scan_bytes(file_bytes, filename)
         if not is_safe:
             return False, reason
 
-        # 2. Then invoke ClamAV daemon if enabled
+        # 2. In production or staging, heuristic scanner must NOT independently certify arbitrary files
+        if is_prod and not self.clamav_scanner.host:
+            raise ScannerUnavailableError(
+                "ClamAV daemon host is not configured in production environment. "
+                "Heuristic scanning cannot independently certify files as malware-free."
+            )
+
+        # 3. Then invoke ClamAV daemon
         is_safe, reason = self.clamav_scanner.scan_bytes(file_bytes, filename)
         if not is_safe:
             return False, reason
@@ -224,14 +246,16 @@ class ScannerService:
         try:
             is_safe, threat_reason = self.scanner.scan_bytes(file_bytes, document.filename)
         except ScannerUnavailableError as scan_err:
-            document.security_status = DocumentSecurityStatus.QUARANTINED
             current_attempts = 1
             if document.processing_error and "attempt " in document.processing_error:
                 match = re.search(r"attempt (\d+)", document.processing_error)
                 if match:
                     current_attempts = int(match.group(1)) + 1
+
+            max_retries = getattr(settings, "MALWARE_SCAN_MAX_RETRIES", 3)
+            document.security_status = DocumentSecurityStatus.QUARANTINED
             document.processing_error = (
-                f"Malware scanner service is temporarily unavailable (attempt {current_attempts}). "
+                f"Malware scanner service is temporarily unavailable (attempt {current_attempts}/{max_retries}). "
                 "Document remains quarantined."
             )
             auth_svc.log_audit_event(
@@ -240,6 +264,7 @@ class ScannerService:
                 metadata={
                     "document_id": str(document.id),
                     "attempt": current_attempts,
+                    "max_retries": max_retries,
                     "error": str(scan_err),
                 },
                 action="document_mutation",
@@ -428,3 +453,48 @@ class ScannerService:
                 results["still_quarantined"] += 1
 
         return results
+
+    def reprocess_quarantined_document(
+        self,
+        document_id: UUID,
+        admin_user: User,
+        force: bool = False,
+    ) -> Document:
+        """
+        Manually reprocesses a quarantined document after automatic retry exhaustion.
+        Strictly requires ADMIN authorization and logs an authoritative audit event.
+        Maintains fail-closed behavior: if scanning fails or scanner is unavailable,
+        the document remains QUARANTINED and raises ScannerUnavailableError.
+        """
+        if admin_user.role != UserRole.ADMIN:
+            raise AuthorizationError("Only administrators can manually reprocess quarantined documents.")
+
+        document = self.db.query(Document).filter(Document.id == document_id).first()
+        if not document:
+            raise ResourceNotFoundError("Document not found")
+
+        if document.security_status != DocumentSecurityStatus.QUARANTINED:
+            raise ValidationError(
+                f"Cannot reprocess document in state '{document.security_status.name}'. Only QUARANTINED documents can be reprocessed."
+            )
+
+        auth_svc = AuthService(self.db)
+        auth_svc.log_audit_event(
+            event_type="DOCUMENT_QUARANTINE_MANUALLY_REPROCESSED",
+            user_id=admin_user.id,
+            metadata={
+                "document_id": str(document.id),
+                "admin_id": str(admin_user.id),
+                "force": force,
+                "prior_error": document.processing_error,
+            },
+            action="document_mutation",
+        )
+
+        if force:
+            document.processing_error = None
+            self.db.commit()
+
+        # Re-execute byte validation and malware scan (fail-closed)
+        return self.scan_document(document.id)
+

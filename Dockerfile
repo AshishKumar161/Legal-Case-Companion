@@ -46,7 +46,7 @@ COPY --from=builder /app/app /app/app
 COPY --from=builder /app/alembic.ini /app/alembic.ini
 COPY --from=builder /app/migrations /app/migrations
 
-RUN chown -R appuser:appuser /app
+RUN mkdir -p /app/storage/recordings /app/storage/evidence /app/storage/kyc && chown -R appuser:appuser /app
 
 USER appuser
 

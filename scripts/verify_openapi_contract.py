@@ -67,8 +67,8 @@ def verify_openapi_contract():
     print(f"Baseline Contract OpenAPI Operations: {len(baseline_ops)}")
 
     # 3. Contract Assertions
-    EXPECTED_PATHS = 333
-    EXPECTED_OPERATIONS = 392
+    EXPECTED_PATHS = 340
+    EXPECTED_OPERATIONS = 399
 
     errors = []
 

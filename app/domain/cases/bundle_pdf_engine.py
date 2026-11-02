@@ -291,49 +291,60 @@ class BundlePdfEngine:
         decl_date = cert_data.get("declaration_date")
         date_str = decl_date.strftime("%d %B %Y") if isinstance(decl_date, datetime) else str(decl_date)
         sha_hash = cert_data.get("hash_value") or ""
+        expert_name = _escape_pdf_text(cert_data.get("expert_examiner_name") or "N/A - Custody Declarant Path")
+        expert_desig = _escape_pdf_text(cert_data.get("expert_examiner_designation") or "Examiner of Electronic Records")
 
         cmds = [
             # Top Banner
-            "0.5 w 50 800 m 545 800 l S",
-            "BT /F2 13 Tf 50 778 Td (CERTIFICATE UNDER SECTION 63(4)) Tj ET",
-            "BT /F2 13 Tf 50 762 Td (BHARATIYA SAKSHYA ADHINIYAM, 2023) Tj ET",
-            "0.5 w 50 750 m 545 750 l S",
-            # Warning Banner
-            "0.8 w 50 685 495 50 re S",
-            "BT /F2 9.5 Tf 70 718 Td (PREPARED DRAFT FORM -- REQUIRES STATUTORY DECLARANT CONFIRMATION) Tj ET",
-            "BT /F1 8.5 Tf 70 700 Td (This certificate draft organizes technical metadata. Judicial admissibility is not guaranteed.) Tj ET",
-            # Section 1: Identification
-            "BT /F2 10 Tf 50 660 Td (PART A: IDENTIFICATION OF ELECTRONIC RECORD) Tj ET",
-            "0.2 w 50 652 m 545 652 l S",
-            f"BT /F1 9 Tf 50 635 Td (Record Description: {rec_id[:80]}) Tj ET",
-            f"BT /F1 8.5 Tf 50 618 Td (Cryptographic SHA-256 Digest: {sha_hash}) Tj ET",
-            # Section 2: Device Information
-            "BT /F2 10 Tf 50 585 Td (PART B: PARTICULARS OF DEVICE / STORAGE MEDIUM) Tj ET",
-            "0.2 w 50 577 m 545 577 l S",
-            f"BT /F1 9 Tf 50 560 Td (Source Device Category: {dev_type}) Tj ET",
-            f"BT /F1 9 Tf 50 542 Td (Device / System Particulars: {dev_details[:80]}) Tj ET",
-            # Section 3: Lawful Control
-            "BT /F2 10 Tf 50 508 Td (PART C: LAWFUL CONTROL & OPERATIONAL INTEGRITY) Tj ET",
-            "0.2 w 50 500 m 545 500 l S",
-            "BT /F1 8.5 Tf 50 482 Td (1. Statement of Lawful Control:) Tj ET",
-            f"BT /F1 8 Tf 60 466 Td ({lawful[:95]}) Tj ET",
-            "BT /F1 8.5 Tf 50 440 Td (2. Statement of Normal Operation:) Tj ET",
-            f"BT /F1 8 Tf 60 424 Td ({operational[:95]}) Tj ET",
-            # Section 4: Declarant Attestation
-            "BT /F2 10 Tf 50 380 Td (PART D: DECLARANT DETAILS & ATTESTATION) Tj ET",
-            "0.2 w 50 372 m 545 372 l S",
-            f"BT /F1 9 Tf 50 350 Td (Name: {name}) Tj ET",
-            f"BT /F1 9 Tf 50 332 Td (Designation: {designation}) Tj ET",
-            f"BT /F1 9 Tf 50 314 Td (Organization: {org or 'N/A'}) Tj ET",
-            f"BT /F1 9 Tf 50 296 Td (Place: {place}) Tj ET",
-            f"BT /F1 9 Tf 50 278 Td (Date of Declaration: {date_str}) Tj ET",
-            # Signature Box
-            "0.5 w 350 180 195 70 re S",
-            "BT /F2 8.5 Tf 360 235 Td (Signature / Digital Attestation) Tj ET",
-            "BT /F1 7.5 Tf 360 195 Td (Confirmed by authorized declarant) Tj ET",
+            "0.5 w 50 805 m 545 805 l S",
+            "BT /F2 12 Tf 50 788 Td (STATUTORY CERTIFICATE UNDER SECTION 63(4) & SCHEDULE) Tj ET",
+            "BT /F2 12 Tf 50 774 Td (BHARATIYA SAKSHYA ADHINIYAM, 2023) Tj ET",
+            "0.5 w 50 766 m 545 766 l S",
+            # Warning Banner & Counsel Advisory Flag
+            "0.8 w 50 706 495 54 re S",
+            "BT /F2 8.5 Tf 60 746 Td (LEGAL COUNSEL ADVISORY -- STATUTORY ADMISSIBILITY NOTICE) Tj ET",
+            "BT /F1 7.5 Tf 60 732 Td (1. Platform records cryptographic technical facts; it does NOT independently certify unverified claims.) Tj ET",
+            "BT /F1 7.5 Tf 60 720 Td (2. All statutory interpretations and admissibility under BSA Section 63(4) must be reviewed by qualified Indian counsel.) Tj ET",
+            # Part 1: System-Generated Technical Facts
+            "BT /F2 9.5 Tf 50 688 Td (PART 1: SYSTEM-GENERATED TECHNICAL FACTS & INTEGRITY DIGEST) Tj ET",
+            "0.2 w 50 682 m 545 682 l S",
+            f"BT /F1 8.5 Tf 50 668 Td (Cryptographic Hash Algorithm: SHA-256 (FIPS 180-4 standard)) Tj ET",
+            f"BT /F1 8 Tf 50 654 Td (System Calculated SHA-256: {sha_hash}) Tj ET",
+            "BT /F1 7.5 Tf 50 642 Td (Integrity Assertion: Computed mathematically from immutable byte stream upon bundle finalization.) Tj ET",
+            # Part 2: Device Information
+            "BT /F2 9.5 Tf 50 622 Td (PART 2: DEVICE & STORAGE RECORD INFORMATION) Tj ET",
+            "0.2 w 50 616 m 545 616 l S",
+            f"BT /F1 8.5 Tf 50 602 Td (Record Identification: {rec_id[:85]}) Tj ET",
+            f"BT /F1 8.5 Tf 50 588 Td (Source Device Category: {dev_type}) Tj ET",
+            f"BT /F1 8 Tf 50 574 Td (Device/Storage System Particulars: {dev_details[:85]}) Tj ET",
+            # Part 3: Schedule Part A - Party Declaration
+            "BT /F2 9.5 Tf 50 552 Td (SCHEDULE -- PART A: PARTY DECLARATION [SEC 63(4)]) Tj ET",
+            "0.2 w 50 546 m 545 546 l S",
+            "BT /F1 8 Tf 50 532 Td (A. Lawful Custody & Control Statement (Furnished by Party):) Tj ET",
+            f"BT /F1 7.5 Tf 60 520 Td ({lawful[:105]}) Tj ET",
+            "BT /F1 8 Tf 50 504 Td (B. Operational Integrity & Regular Activity Statement:) Tj ET",
+            f"BT /F1 7.5 Tf 60 492 Td ({operational[:105]}) Tj ET",
+            f"BT /F1 8 Tf 50 476 Td (Party/Declarant: {name} | Designation: {designation} | Org: {org or 'N/A'}) Tj ET",
+            f"BT /F1 8 Tf 50 462 Td (Place: {place} | Date of Declaration: {date_str}) Tj ET",
+            # Signatory Box 1: Party / Person in Charge
+            "0.5 w 50 380 235 70 re S",
+            "BT /F2 8 Tf 60 435 Td (SIGNATURE: PARTY / PERSON IN CHARGE (SCHEDULE PART A)) Tj ET",
+            f"BT /F1 7.5 Tf 60 415 Td (Declarant Name: {name[:30]}) Tj ET",
+            "BT /F1 7 Tf 60 395 Td (Attestation: Statements attested to best of knowledge) Tj ET",
+            # Part 4: Schedule Part B - Expert Declaration
+            "BT /F2 9.5 Tf 50 355 Td (SCHEDULE -- PART B: EXPERT DECLARATION [SEC 63(4)]) Tj ET",
+            "0.2 w 50 349 m 545 349 l S",
+            f"BT /F1 8 Tf 50 335 Td (Expert Examiner: {expert_name}) Tj ET",
+            f"BT /F1 8 Tf 50 321 Td (Expert Designation / Organization: {expert_desig}) Tj ET",
+            "BT /F1 7.5 Tf 50 307 Td (Forensic Examination: Verification of digital signatures, hashes, and forensic preservation.) Tj ET",
+            # Signatory Box 2: Expert Examiner
+            "0.5 w 310 225 235 70 re S",
+            "BT /F2 8 Tf 320 280 Td (SIGNATURE: EXPERT (SCHEDULE PART B)) Tj ET",
+            f"BT /F1 7.5 Tf 320 260 Td (Expert: {expert_name[:30]}) Tj ET",
+            "BT /F1 7 Tf 320 240 Td (Technical Forensic Examination Attestation) Tj ET",
             # Statutory Disclaimer Footer
             "0.5 w 50 60 m 545 60 l S",
-            "BT /F1 7.5 Tf 50 48 Td (Prepared pursuant to Section 63(4) Schedule format of BSA, 2023. Not a judicial guarantee.) Tj ET",
+            "BT /F1 7.5 Tf 50 48 Td (Prepared pursuant to Section 63(4) Schedule Parts A & B of BSA, 2023. Review by qualified Indian counsel required.) Tj ET",
         ]
 
         page = _create_single_page_pdf(cmds)

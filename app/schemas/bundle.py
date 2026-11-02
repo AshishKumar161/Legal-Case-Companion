@@ -96,6 +96,9 @@ class BSACertificateCreateRequest(BaseModel):
     place: str = Field(..., min_length=2, max_length=255)
     declaration_date: datetime
     is_confirmed: bool = Field(..., description="Explicit human confirmation of statutory facts")
+    expert_examiner_name: str | None = Field(None, max_length=255, description="Name of expert under BSA Section 63(4) Schedule Part B")
+    expert_examiner_designation: str | None = Field(None, max_length=255, description="Designation of expert examiner under BSA Section 63(4) Schedule Part B")
+    expert_examination_details: str | None = Field(None, description="Summary of expert examination under BSA Section 63(4) Schedule Part B")
 
     model_config = ConfigDict(extra="forbid")
 
@@ -121,6 +124,9 @@ class BSACertificateResponse(BaseModel):
     is_confirmed: bool
     status: str
     storage_key: str | None = None
+    expert_examiner_name: str | None = None
+    expert_examiner_designation: str | None = None
+    legal_counsel_advisory: str = "Statutory admissibility under BSA Section 63 must be evaluated by qualified Indian legal counsel."
     created_by_user_id: uuid.UUID
     created_at: datetime
 

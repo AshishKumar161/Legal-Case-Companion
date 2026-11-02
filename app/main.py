@@ -39,6 +39,7 @@ from app.api.v1.feedback import router as feedback_router
 from app.api.v1.health import root_router as root_health_router
 from app.api.v1.health import router as health_router
 from app.api.v1.incidents import router as incidents_router
+from app.api.v1.kyc import router as kyc_router
 from app.api.v1.launch_gates import router as launch_gates_router
 from app.api.v1.lawyers import router as lawyers_router
 from app.api.v1.legal_authority import router as legal_authority_router
@@ -250,6 +251,7 @@ app.include_router(legal_documents_router, prefix=settings.API_V1_STR)
 app.include_router(trust_router, prefix=settings.API_V1_STR)
 app.include_router(commercial_router, prefix=settings.API_V1_STR)
 app.include_router(verification_router, prefix=settings.API_V1_STR)
+app.include_router(kyc_router, prefix=settings.API_V1_STR)
 app.include_router(launch_gates_router, prefix=settings.API_V1_STR)
 app.include_router(court_cases_router, prefix=settings.API_V1_STR)
 app.include_router(calendar_router, prefix=settings.API_V1_STR)

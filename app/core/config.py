@@ -83,6 +83,8 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: float = 30.0
     DB_POOL_RECYCLE: int = 1800
     DB_STATEMENT_TIMEOUT_MS: int = 30000
+    DB_SSL_MODE: str = Field(default="require", description="PostgreSQL SSL mode: require, verify-ca, verify-full")
+    DB_SSL_ROOT_CERT: str | None = Field(default=None, description="Path to trusted root CA certificate bundle for verify-ca or verify-full")
 
     # Logging Configuration
     LOG_LEVEL: str = "INFO"
@@ -114,6 +116,8 @@ class Settings(BaseSettings):
     # Antivirus / Malware Scanner Configuration (ClamAV)
     CLAMAV_HOST: str | None = None
     CLAMAV_PORT: int = 3310
+    MALWARE_SCAN_MAX_RETRIES: int = 3
+    MALWARE_SCAN_TIMEOUT_SECONDS: float = 10.0
 
     # WebRTC / TURN Relay Configuration (Coturn / Managed TURN)
     TURN_SERVER_URL: str | None = None
@@ -187,6 +191,8 @@ class Settings(BaseSettings):
 
     # Video Recording Storage Configuration
     LOCAL_RECORDING_STORAGE_PATH: str = "./storage/recordings"
+    ENABLE_CONSULTATION_RECORDING: bool = False
+    VIDEO_RECORDING_ENABLED: bool = False
 
     # Native Video & LiveKit SFU Configuration
     LIVEKIT_URL: str | None = None

@@ -1,0 +1,47 @@
+# ==============================================================================
+# Legal Case Companion (LCC) — Production Prometheus Scrape Configuration
+# ==============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    environment: 'production'
+    service: 'lcc-platform'
+
+rule_files:
+  - '/etc/prometheus/alert.rules.yml'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'
+
+scrape_configs:
+  - job_name: 'lcc-backend'
+    metrics_path: '/metrics'
+    scheme: 'http'
+    static_configs:
+      - targets:
+          - 'backend:8000'
+        labels:
+          tier: 'application'
+          component: 'api'
+
+  - job_name: 'lcc-postgres'
+    static_configs:
+      - targets:
+          - 'postgres-exporter:9187'
+        labels:
+          tier: 'database'
+          component: 'postgresql'
+
+  - job_name: 'lcc-redis'
+    static_configs:
+      - targets:
+          - 'redis-exporter:9121'
+        labels:
+          tier: 'cache'
+          component: 'redis'

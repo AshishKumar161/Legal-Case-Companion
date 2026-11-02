@@ -137,7 +137,7 @@ class AdvocatePayout(Base, TimestampMixin):
         index=True,
     )
     provider: Mapped[str] = mapped_column(String(50), default="RAZORPAYX", nullable=False)
-    idempotency_key: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     provider_payout_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     audit_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
