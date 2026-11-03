@@ -52,7 +52,7 @@ def test_google_oauth_configured_authorization_url(client: TestClient):
 def test_console_email_provider_extracts_links(caplog: pytest.LogCaptureFixture):
     """Verifies that ConsoleEmailProvider formats output and extracts action links in development."""
     provider = ConsoleEmailProvider()
-    with caplog.at_level("INFO"):
+    with caplog.at_level("INFO", logger="app"):
         success = provider.send_email(
             to_email="dev_user@example.com",
             subject="Reset Your Password",

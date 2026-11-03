@@ -349,6 +349,7 @@ def test_full_authentication_lifecycle_and_multitab(client: TestClient, db: Sess
     assert refresh_token2 != refresh_token1
 
     # 6. Replayed old refresh token -> fails and revokes family
+    client.cookies.clear()
     replay_res = client.post(
         "/api/v1/auth/refresh",
         headers={"X-CSRF-Token": csrf_token1},
@@ -357,6 +358,7 @@ def test_full_authentication_lifecycle_and_multitab(client: TestClient, db: Sess
     assert replay_res.status_code == 401
 
     # 7. Use active refresh_token2 after replay -> fails due to family revocation
+    client.cookies.clear()
     victim_res = client.post(
         "/api/v1/auth/refresh",
         headers={"X-CSRF-Token": csrf_token2},
