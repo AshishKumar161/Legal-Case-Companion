@@ -73,7 +73,7 @@ jobs:
         run: ruff check .
 
       - name: Static Type Safety Check (Mypy)
-        run: mypy app || (mypy app | while IFS= read -r line; do echo "::error::$line"; done; exit 1)
+        run: mypy app
 
       - name: Static Secret & Credential Scan
         run: python scripts/ci_secret_scanner.py

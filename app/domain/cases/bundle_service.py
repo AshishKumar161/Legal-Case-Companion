@@ -13,7 +13,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pypdf
-from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.core.authorization import (
@@ -322,7 +321,7 @@ class BundleService:
             query = query.filter(EvidenceBundle.status == status)
 
         return (
-            query.order_by(desc(EvidenceBundle.created_at), desc(EvidenceBundle.id))
+            query.order_by(EvidenceBundle.created_at.desc(), EvidenceBundle.id.desc())
             .offset(offset)
             .limit(bounded_limit)
             .all()
