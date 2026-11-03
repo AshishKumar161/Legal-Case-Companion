@@ -2,10 +2,17 @@ name: LCC Production CI Pipeline
 
 on:
   push:
-    branches: [main, 'fix/**']
-    tags: ['v*']
+    branches:
+      - main
+      - 'fix/**'
+      - 'feature/**'
+      - 'security/**'
+      - 'release/**'
+    tags:
+      - 'v*'
   pull_request:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -201,11 +208,11 @@ jobs:
           tags: lcc-backend:ci-test
 
       - name: Container Vulnerability Scan (Trivy Backend)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: 'lcc-backend:ci-test'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
@@ -220,11 +227,11 @@ jobs:
           tags: lcc-frontend:ci-test
 
       - name: Container Vulnerability Scan (Trivy Frontend)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: 'lcc-frontend:ci-test'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'

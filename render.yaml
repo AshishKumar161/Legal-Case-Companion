@@ -19,6 +19,7 @@ services:
   - type: web
     name: lcc-backend
     env: docker
+    branch: main
     region: singapore
     plan: starter
     healthCheckPath: /api/v1/health/live
@@ -94,6 +95,7 @@ services:
   - type: worker
     name: lcc-worker
     env: docker
+    branch: main
     region: singapore
     plan: starter
     dockerCommand: "python -m app.worker"
@@ -124,6 +126,7 @@ services:
   - type: worker
     name: lcc-scheduler
     env: docker
+    branch: main
     region: singapore
     plan: starter
     dockerCommand: "python -m app.scheduler"
@@ -140,6 +143,7 @@ services:
   - type: web
     name: lcc-frontend
     env: docker
+    branch: main
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
     region: singapore
