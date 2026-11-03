@@ -465,7 +465,8 @@ class LawyerDashboardService:
                     .all()
                 )
                 for hid, total, comp in tasks_data:
-                    task_counts[hid] = (total or 0, int(comp or 0))
+                    if hid:
+                        task_counts[hid] = (total or 0, int(comp or 0))
 
                 bundles = (
                     self.db.query(EvidenceBundle.hearing_id, EvidenceBundle.status)
