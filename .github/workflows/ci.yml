@@ -108,7 +108,20 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           ENVIRONMENT: test
           LOG_LEVEL: WARNING
-        run: pytest -v --maxfail=5
+        run: |
+          set -o pipefail
+          pytest -v --tb=short | tee pytest_output.txt || {
+            echo "### Pytest Test Failures" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "FAILED|ERROR" pytest_output.txt -A 20 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            while IFS= read -r line; do
+              if [[ "$line" =~ FAILED\ tests/ ]]; then
+                echo "::error::$line"
+              fi
+            done < pytest_output.txt
+            exit 1
+          }
 
       - name: Run Security & Threat Model Test Suite
         env:
@@ -116,7 +129,20 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           ENVIRONMENT: test
           LOG_LEVEL: WARNING
-        run: pytest tests/security/ -v
+        run: |
+          set -o pipefail
+          pytest tests/security/ -v --tb=short | tee pytest_sec_output.txt || {
+            echo "### Security Pytest Test Failures" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "FAILED|ERROR" pytest_sec_output.txt -A 20 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            while IFS= read -r line; do
+              if [[ "$line" =~ FAILED\ tests/ ]]; then
+                echo "::error::$line"
+              fi
+            done < pytest_sec_output.txt
+            exit 1
+          }
 
   frontend-ci:
     name: Frontend TypeScript, Lint & Build Gates
