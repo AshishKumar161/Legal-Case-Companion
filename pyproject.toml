@@ -65,6 +65,7 @@ known-first-party = ["app"]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "app.api.deps.RequireRole"]
 
 [tool.mypy]
+mypy_path = "."
 strict = false
 ignore_missing_imports = true
 explicit_package_bases = true
