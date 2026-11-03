@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
-from sqlalchemy import desc, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import (
@@ -94,7 +94,7 @@ class LawyerVerificationService:
                     ]
                 ),
             )
-            .order_by(desc(LawyerVerification.created_at))
+            .order_by(LawyerVerification.created_at.desc())
             .first()
         )
 
@@ -403,7 +403,7 @@ class LawyerVerificationService:
 
         total = query.count()
         records = (
-            query.order_by(desc(LawyerVerification.updated_at))
+            query.order_by(LawyerVerification.updated_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
             .all()
@@ -468,7 +468,7 @@ class LawyerVerificationService:
         events = (
             self.db.query(VerificationReviewEvent)
             .filter(VerificationReviewEvent.verification_id == verification.id)
-            .order_by(desc(VerificationReviewEvent.created_at))
+            .order_by(VerificationReviewEvent.created_at.desc())
             .all()
         )
 
@@ -1032,7 +1032,7 @@ class LawyerVerificationService:
                 LawyerVerification.lawyer_profile_id == profile.id,
                 LawyerVerification.status == VerificationStatus.APPROVED,
             )
-            .order_by(desc(LawyerVerification.created_at))
+            .order_by(LawyerVerification.created_at.desc())
             .first()
         )
 

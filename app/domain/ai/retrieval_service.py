@@ -68,10 +68,12 @@ class RetrievalService:
         self.db = db
         self.case_service = CaseService(db)
         self.embedding_service = EmbeddingService()
+        self._is_postgres_cache: bool | None = None
+        self._is_pgvector_cache: bool | None = None
 
     def _is_postgres(self) -> bool:
         """Determines if the active database session connects to a PostgreSQL instance."""
-        if hasattr(self, "_is_postgres_cache"):
+        if self._is_postgres_cache is not None:
             return self._is_postgres_cache
         try:
             self._is_postgres_cache = bool(self.db.bind and self.db.bind.dialect.name == "postgresql")
@@ -81,7 +83,7 @@ class RetrievalService:
 
     def _is_pgvector_available(self) -> bool:
         """Determines if the active database session connects to PostgreSQL with pgvector extension enabled."""
-        if hasattr(self, "_is_pgvector_cache"):
+        if self._is_pgvector_cache is not None:
             return self._is_pgvector_cache
         if not self._is_postgres():
             self._is_pgvector_cache = False
@@ -242,8 +244,8 @@ class RetrievalService:
                 chunk_meta["approximate_nearest_neighbor"] = use_hnsw
                 chunk_meta["native_vector_distance"] = round(distance, 4)
 
-                page_start = chunk_meta.get("page_start", chunk_meta.get("page_number", 1))
-                page_end = chunk_meta.get("page_end", page_start)
+                page_start = int(chunk_meta.get("page_start", chunk_meta.get("page_number", 1)) or 1)
+                page_end = int(chunk_meta.get("page_end", page_start) or page_start)
                 doc_cat_val = (
                     row.doc_document_type.value
                     if hasattr(row.doc_document_type, "value")
@@ -328,8 +330,8 @@ class RetrievalService:
 
                     chunk_meta["retrieval_engine"] = "lexical_supplement"
                     chunk_meta["approximate_nearest_neighbor"] = False
-                    page_start = chunk_meta.get("page_start", chunk_meta.get("page_number", 1))
-                    page_end = chunk_meta.get("page_end", page_start)
+                    page_start = int(chunk_meta.get("page_start", chunk_meta.get("page_number", 1)) or 1)
+                    page_end = int(chunk_meta.get("page_end", page_start) or page_start)
                     doc_cat_val = (
                         row.doc_document_type.value
                         if hasattr(row.doc_document_type, "value")
@@ -499,7 +501,7 @@ class RetrievalService:
                         try:
                             vec_matrix = [c.embedding for c in emb_chunks]
                             scores = batch_cosine_similarity(query_vec, vec_matrix)
-                            for c, s in zip(emb_chunks, scores):
+                            for c, s in zip(emb_chunks, scores, strict=False):
                                 semantic_scores[c.id] = float(s)
                         except Exception:
                             for c in emb_chunks:

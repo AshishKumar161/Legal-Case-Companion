@@ -105,8 +105,8 @@ function KYCContent() {
   // Lawyer Specific Form State
   const [barCouncil, setBarCouncil] = useState(STATE_BAR_COUNCILS[0]);
   const [enrollmentNo, setEnrollmentNo] = useState("");
-  const [selectedAreas, setSelectedAreas] = useState<string[]>([PRACTICE_AREAS[0], PRACTICE_AREAS[1]]);
-  const [selectedCourts, setSelectedCourts] = useState<string[]>([PILOT_COURTS[0]]);
+  const [selectedAreas] = useState<string[]>([PRACTICE_AREAS[0], PRACTICE_AREAS[1]]);
+  const [selectedCourts] = useState<string[]>([PILOT_COURTS[0]]);
   const [consultationFee, setConsultationFee] = useState("1000");
 
   // Consent checkboxes

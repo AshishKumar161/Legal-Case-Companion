@@ -15,6 +15,13 @@ terraform {
   }
 }
 
+provider "aws" {
+  region                      = var.aws_region
+  skip_credentials_validation = var.aws_account_id != null
+  skip_requesting_account_id  = var.aws_account_id != null
+  skip_metadata_api_check     = var.aws_account_id != null
+}
+
 variable "aws_region" {
   type        = string
   default     = "ap-south-1" # Mumbai region for Indian Data Sovereignty compliance
@@ -25,6 +32,16 @@ variable "environment" {
   type        = string
   default     = "prod"
   description = "Target environment moniker (prod, staging)."
+}
+
+variable "aws_account_id" {
+  type        = string
+  default     = null
+  description = "Optional AWS Account ID override for offline planning or mock environments."
+}
+
+locals {
+  account_id = var.aws_account_id != null ? var.aws_account_id : try(data.aws_caller_identity.current[0].account_id, "123456789012")
 }
 
 # ------------------------------------------------------------------------------
@@ -42,7 +59,7 @@ resource "aws_kms_key" "lcc_storage_key" {
         Sid    = "EnableRootPermissions"
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+          AWS = "arn:aws:iam::${local.account_id}:root"
         }
         Action   = "kms:*"
         Resource = "*"
@@ -77,7 +94,9 @@ resource "aws_kms_alias" "lcc_storage_key_alias" {
   target_key_id = aws_kms_key.lcc_storage_key.key_id
 }
 
-data "aws_caller_identity" "current" {}
+data "aws_caller_identity" "current" {
+  count = var.aws_account_id == null ? 1 : 0
+}
 
 # ------------------------------------------------------------------------------
 # 2. Evidence Locker Storage Bucket (Private, KMS Encrypted, WORM Object Lock)
@@ -284,6 +303,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "recordings_lifecycle" {
   rule {
     id     = "archive-consultation-recordings-tiered"
     status = "Enabled"
+
+    filter {}
 
     transition {
       days          = 90

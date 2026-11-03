@@ -90,6 +90,7 @@ def test_refresh_token_replay_and_family_invalidation(client: TestClient, db: Se
     refresh_token2 = ref1_res.cookies.get("refresh_token")
 
     # 3. Attacker replays compromised refresh_token1
+    client.cookies.clear()
     replay_res = client.post(
         "/api/v1/auth/refresh",
         headers={"X-CSRF-Token": csrf_token1},
@@ -98,6 +99,7 @@ def test_refresh_token_replay_and_family_invalidation(client: TestClient, db: Se
     assert replay_res.status_code == 401
 
     # 4. Legitimate user tries to use active refresh_token2 -> MUST FAIL due to family revocation
+    client.cookies.clear()
     victim_refresh = client.post(
         "/api/v1/auth/refresh",
         headers={"X-CSRF-Token": csrf_token2},

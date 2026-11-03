@@ -1,9 +1,9 @@
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim-bookworm AS builder
 
 WORKDIR /app
 
 # Install build dependencies if needed (e.g. for psycopg or cryptography)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -15,7 +15,11 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY pyproject.toml README.md ./
 # Create a dummy app structure to install dependencies
 RUN mkdir -p app && touch app/__init__.py
-RUN pip install --no-cache-dir .
+# Upgrade build tools, install production dependencies, and remove build tools from venv
+# to eliminate any vulnerabilities in pip/setuptools/wheel/jaraco from the production image
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir . && \
+    pip uninstall -y pip setuptools wheel
 
 # Now copy the actual application code
 COPY app/ ./app/
@@ -23,13 +27,12 @@ COPY alembic.ini ./
 COPY migrations/ ./migrations/
 
 # Stage 2: Runner
-FROM python:3.11-slim
+FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 
-# Install runtime dependencies (libpq is needed for psycopg if not using binary, but we use binary)
-# Still good to have just in case.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install runtime dependencies and upgrade base packages to remediate known CVEs
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
     && rm -rf /var/lib/apt/lists/*

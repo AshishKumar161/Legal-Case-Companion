@@ -1,10 +1,10 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:8bcd7980-7ddd-4cf3-99a5-75808e233df4",
+  "serialNumber": "urn:uuid:bdbdf4c9-1e1a-4a19-8d0f-5cfc356f9775",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-02T20:29:21Z",
+    "timestamp": "2026-11-03T12:30:43Z",
     "component": {
       "type": "application",
       "name": "legal-case-companion-backend",
@@ -537,6 +537,21 @@
         }
       ],
       "purl": "pkg:pypi/asn1tools@0.169.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/ast_serialize@0.13.1",
+      "name": "ast_serialize",
+      "version": "0.13.1",
+      "description": "Python bindings for mypy AST serialization",
+      "licenses": [
+        {
+          "license": {
+            "name": "Unknown"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/ast_serialize@0.13.1"
     },
     {
       "type": "library",
@@ -3225,6 +3240,21 @@
     },
     {
       "type": "library",
+      "bom-ref": "pkg:pypi/librt@0.16.0",
+      "name": "librt",
+      "version": "0.16.0",
+      "description": "Mypyc runtime library",
+      "licenses": [
+        {
+          "license": {
+            "name": "Unknown"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/librt@0.16.0"
+    },
+    {
+      "type": "library",
       "bom-ref": "pkg:pypi/lightdm-gtk-greeter-settings@1.2.3",
       "name": "lightdm-gtk-greeter-settings",
       "version": "1.2.3",
@@ -3822,6 +3852,36 @@
         }
       ],
       "purl": "pkg:pypi/mutagen@1.48.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/mypy@2.4.1",
+      "name": "mypy",
+      "version": "2.4.1",
+      "description": "Optional static typing for Python",
+      "licenses": [
+        {
+          "license": {
+            "name": "Unknown"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/mypy@2.4.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/mypy_extensions@1.1.0",
+      "name": "mypy_extensions",
+      "version": "1.1.0",
+      "description": "Type system extensions for programs checked with the mypy type checker.",
+      "licenses": [
+        {
+          "license": {
+            "name": "Unknown"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/mypy_extensions@1.1.0"
     },
     {
       "type": "library",
@@ -6597,6 +6657,21 @@
         }
       ],
       "purl": "pkg:pypi/ruamel.yaml.clib@0.2.15"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/ruff@0.17.3",
+      "name": "ruff",
+      "version": "0.17.3",
+      "description": "An extremely fast Python linter and code formatter, written in Rust.",
+      "licenses": [
+        {
+          "license": {
+            "name": "Unknown"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/ruff@0.17.3"
     },
     {
       "type": "library",

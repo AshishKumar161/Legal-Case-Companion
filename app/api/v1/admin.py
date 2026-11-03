@@ -545,11 +545,13 @@ def reprocess_quarantined_document(
     scanner_svc = ScannerService(db)
     doc = scanner_svc.reprocess_quarantined_document(document_id, current_user, force=force)
     return AdminDocumentSecurityResponse(
-        document_id=doc.id,
+        id=doc.id,
+        case_id=doc.case_id,
         filename=doc.filename,
-        security_status=doc.security_status.value,
-        processing_error=doc.processing_error,
-        updated_at=doc.updated_at,
+        mime_type=doc.mime_type,
+        file_size=doc.file_size,
+        security_status=doc.security_status,
+        created_at=doc.created_at,
     )
 
 

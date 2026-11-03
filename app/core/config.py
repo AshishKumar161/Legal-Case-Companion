@@ -309,6 +309,23 @@ class Settings(BaseSettings):
                     f"DATABASE_URL must not disable SSL (sslmode=disable) in {self.ENVIRONMENT}."
                 )
 
+            # Validate DB SSL mode and CA certificate configuration
+            valid_ssl_modes = ("require", "verify-ca", "verify-full")
+            if self.DB_SSL_MODE not in valid_ssl_modes:
+                raise ValueError(
+                    f"DB_SSL_MODE must be one of {valid_ssl_modes} in {self.ENVIRONMENT}, got '{self.DB_SSL_MODE}'."
+                )
+            if self.DB_SSL_MODE in ("verify-ca", "verify-full"):
+                if not self.DB_SSL_ROOT_CERT:
+                    raise ValueError(
+                        f"DB_SSL_ROOT_CERT path is required when DB_SSL_MODE is '{self.DB_SSL_MODE}' in {self.ENVIRONMENT}."
+                    )
+                import os
+                if not os.path.exists(self.DB_SSL_ROOT_CERT):
+                    raise ValueError(
+                        f"DB_SSL_ROOT_CERT file not found at '{self.DB_SSL_ROOT_CERT}' for DB_SSL_MODE='{self.DB_SSL_MODE}' in {self.ENVIRONMENT}."
+                    )
+
             # Require Google OAuth configuration only if enabled
             if self.GOOGLE_OAUTH_ENABLED and (
                 not self.GOOGLE_CLIENT_ID or not self.GOOGLE_CLIENT_SECRET

@@ -2,10 +2,17 @@ name: LCC Production CI Pipeline
 
 on:
   push:
-    branches: [main]
-    tags: ['v*']
+    branches:
+      - main
+      - 'fix/**'
+      - 'feature/**'
+      - 'security/**'
+      - 'release/**'
+    tags:
+      - 'v*'
   pull_request:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -73,7 +80,20 @@ jobs:
         run: ruff check .
 
       - name: Static Type Safety Check (Mypy)
-        run: mypy app
+        run: |
+          set -o pipefail
+          python -m mypy app | tee mypy_output.txt || {
+            echo "### Mypy Type Safety Errors" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat mypy_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            while IFS= read -r line; do
+              if [[ "$line" =~ :[0-9]+:\ error: ]]; then
+                echo "::error::$line"
+              fi
+            done < mypy_output.txt
+            exit 1
+          }
 
       - name: Static Secret & Credential Scan
         run: python scripts/ci_secret_scanner.py
@@ -95,7 +115,20 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           ENVIRONMENT: test
           LOG_LEVEL: WARNING
-        run: pytest -v --maxfail=5
+        run: |
+          set -o pipefail
+          pytest -v --tb=short | tee pytest_output.txt || {
+            echo "### Pytest Test Failures" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "FAILED|ERROR" pytest_output.txt -A 20 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            while IFS= read -r line; do
+              if [[ "$line" =~ FAILED\ tests/ ]]; then
+                echo "::error::$line"
+              fi
+            done < pytest_output.txt
+            exit 1
+          }
 
       - name: Run Security & Threat Model Test Suite
         env:
@@ -103,7 +136,20 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           ENVIRONMENT: test
           LOG_LEVEL: WARNING
-        run: pytest tests/security/ -v
+        run: |
+          set -o pipefail
+          pytest tests/security/ -v --tb=short | tee pytest_sec_output.txt || {
+            echo "### Security Pytest Test Failures" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "FAILED|ERROR" pytest_sec_output.txt -A 20 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            while IFS= read -r line; do
+              if [[ "$line" =~ FAILED\ tests/ ]]; then
+                echo "::error::$line"
+              fi
+            done < pytest_sec_output.txt
+            exit 1
+          }
 
   frontend-ci:
     name: Frontend TypeScript, Lint & Build Gates
@@ -162,11 +208,11 @@ jobs:
           tags: lcc-backend:ci-test
 
       - name: Container Vulnerability Scan (Trivy Backend)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: 'lcc-backend:ci-test'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
@@ -181,11 +227,11 @@ jobs:
           tags: lcc-frontend:ci-test
 
       - name: Container Vulnerability Scan (Trivy Frontend)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: 'lcc-frontend:ci-test'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'

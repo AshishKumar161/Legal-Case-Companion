@@ -273,7 +273,7 @@ export default function ConsultationsPage() {
               Appointments
             </h1>
             <p style={{ color: "var(--text-secondary, #52606D)", fontSize: "15px", marginTop: "6px" }}>
-              Schedule and manage video consultations with your lawyer. {istClock ? `• ${istClock}` : ""}
+              Schedule and manage video consultations with your lawyer.
             </p>
           </div>
 

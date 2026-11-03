@@ -3,7 +3,7 @@ import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import desc, func, or_, String
+from sqlalchemy import func, or_, String
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -100,7 +100,7 @@ class EvidenceService:
         last_event = (
             self.db.query(EvidenceCustodyEvent)
             .filter(EvidenceCustodyEvent.evidence_id == evidence_id)
-            .order_by(desc(EvidenceCustodyEvent.timestamp))
+            .order_by(EvidenceCustodyEvent.timestamp.desc())
             .first()
         )
 
@@ -395,7 +395,7 @@ class EvidenceService:
         latest_version = (
             self.db.query(EvidenceVersion)
             .filter(EvidenceVersion.evidence_id == evidence_id)
-            .order_by(desc(EvidenceVersion.version_number))
+            .order_by(EvidenceVersion.version_number.desc())
             .first()
         )
         next_version_number = (latest_version.version_number + 1) if latest_version else 1

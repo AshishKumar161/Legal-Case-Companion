@@ -515,7 +515,7 @@ class CommercialService:
                         status_code=400,
                         code="PAYOUT_ALREADY_EXISTS",
                         message=f"Active payout '{existing.payout_id}' already exists for transaction.",
-                    )
+                    ) from e
                 return existing
             raise AppException(
                 status_code=409,

@@ -55,11 +55,11 @@ class SentenceTransformerEmbeddings(BaseEmbeddings):
             self._model = SentenceTransformer(model_name)
             self._dim = self._model.get_sentence_embedding_dimension()
             logger.info(f"Loaded SentenceTransformer: {model_name} (dim={self._dim})")
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 "sentence-transformers is not installed. "
                 "Install with `pip install sentence-transformers` or use LocalTFIDFEmbeddings."
-            )
+            ) from e
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         embeddings = self._model.encode(texts, normalize_embeddings=True, show_progress_bar=False)

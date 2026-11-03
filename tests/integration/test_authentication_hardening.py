@@ -197,6 +197,7 @@ def test_refresh_token_rotation_and_replay_family_revocation(client: TestClient,
     assert token_b != token_a
 
     # Replay Token A -> 401 and family revocation
+    client.cookies.clear()
     replay_res = client.post(
         "/api/v1/auth/refresh",
         cookies={"refresh_token": token_a, "csrf_token": csrf_a},
@@ -205,6 +206,7 @@ def test_refresh_token_rotation_and_replay_family_revocation(client: TestClient,
     assert replay_res.status_code == 401
 
     # Subsequent refresh on Token B must now fail because family was revoked
+    client.cookies.clear()
     res_b_fail = client.post(
         "/api/v1/auth/refresh",
         cookies={"refresh_token": token_b, "csrf_token": csrf_b},

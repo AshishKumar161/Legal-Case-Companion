@@ -267,7 +267,7 @@ class ReminderService:
                 )
                 recipients = [p[0] for p in participants]
 
-            due_str = t.due_date.strftime("%d %b %Y")
+            due_str = t.due_date.strftime("%d %b %Y") if t.due_date else "soon"
             what_happened = f"Task '{t.title}' is due on {due_str}."
             why_it_matters = f"Operational case action required for matter '{case_title}'."
             what_to_do = "Review and progress task deliverables."
@@ -288,7 +288,7 @@ class ReminderService:
                         "what_to_do": what_to_do,
                         "action_url": f"/cases/{t.case_id}?tab=tasks",
                         "action_label": "Review Task",
-                        "due_date": t.due_date.isoformat(),
+                        "due_date": t.due_date.isoformat() if t.due_date else None,
                     },
                 )
                 if notif:
@@ -386,19 +386,20 @@ class ReminderService:
                     )
                     recipients = [p[0] for p in participants]
 
+                due_fmt = t.due_date.strftime("%d %b %Y") if t.due_date else "previously"
                 for uid in recipients:
                     event_dedup_id = f"overdue-task-{t.id}-{uid}"
                     notif = self.notification_service.create_notification(
                         user_id=uid,
                         type=NotificationType.TASK_OVERDUE,
                         title=f"OVERDUE: Task '{t.title}' in {case_title}",
-                        message=f"Task '{t.title}' was due on {t.due_date.strftime('%d %b %Y')}. Action required.",
+                        message=f"Task '{t.title}' was due on {due_fmt}. Action required.",
                         case_id=t.case_id,
                         task_id=t.id,
                         event_id=event_dedup_id,
                         metadata={
                             "action_url": f"/cases/{t.case_id}?tab=tasks",
-                            "due_date": t.due_date.isoformat(),
+                            "due_date": t.due_date.isoformat() if t.due_date else None,
                         },
                     )
                     if notif:

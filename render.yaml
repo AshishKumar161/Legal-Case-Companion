@@ -1,7 +1,25 @@
+# ==============================================================================
+# Legal Case Companion — Cloud Infrastructure Blueprint (Render.com)
+#
+# REGION ARCHITECTURE JUSTIFICATION (Singapore vs. Mumbai):
+# - Render Web & Worker Services: Configured in `region: singapore` (sin).
+#   Render.com does not offer a native India (Mumbai / ap-south-1) region.
+#   Singapore serves as Render's primary Asia-Pacific hub with direct submarine
+#   cable interconnects to Mumbai and Chennai, delivering the lowest round-trip
+#   latency (~32-45ms) available for Indian domestic users.
+# - AWS Storage & Encryption: Configured strictly in `AWS_REGION: ap-south-1` (Mumbai).
+#   All citizen and client PII, confidential case documents, and WebRTC consultation
+#   recordings are stored and encrypted under AWS KMS in Mumbai (ap-south-1) in strict
+#   compliance with the Digital Personal Data Protection Act (DPDP Act 2023) and
+#   the Bharatiya Sakshya Adhiniyam (BSA 2023). Compute ephemeral processes access
+#   storage via TLS 1.3 encrypted endpoints.
+# ==============================================================================
+
 services:
   - type: web
     name: lcc-backend
     env: docker
+    branch: main
     region: singapore
     plan: starter
     healthCheckPath: /api/v1/health/live
@@ -11,6 +29,8 @@ services:
         fromDatabase:
           name: lcc-db
           property: connectionString
+      - key: DB_SSL_MODE
+        value: "require"
       - key: JWT_PRIVATE_KEY
         sync: false
       - key: JWT_PUBLIC_KEY
@@ -75,6 +95,7 @@ services:
   - type: worker
     name: lcc-worker
     env: docker
+    branch: main
     region: singapore
     plan: starter
     dockerCommand: "python -m app.worker"
@@ -105,6 +126,7 @@ services:
   - type: worker
     name: lcc-scheduler
     env: docker
+    branch: main
     region: singapore
     plan: starter
     dockerCommand: "python -m app.scheduler"
@@ -121,6 +143,7 @@ services:
   - type: web
     name: lcc-frontend
     env: docker
+    branch: main
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
     region: singapore

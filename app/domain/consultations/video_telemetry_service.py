@@ -36,7 +36,7 @@ class VideoTelemetryEvent(str, enum.Enum):
 class VideoMetricsRegistry:
     """In-memory operational metric counters and latency histograms for video infrastructure."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._counters: dict[str, int] = {
             "video_room_creation_failures": 0,
             "video_join_failures": 0,

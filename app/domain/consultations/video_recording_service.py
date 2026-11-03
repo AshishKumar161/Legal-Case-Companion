@@ -152,7 +152,7 @@ class VideoRecordingService:
             for rec in active_recs:
                 rec.status = VideoRecordingStatus.FAILED
                 rec.ended_at = now_dt
-                rec.error_message = f"Recording halted: consent revoked by participant {user.id}"
+                rec.error_message = f"Recording halted: consent revoked by participant {user.id}"  # type: ignore[attr-defined]
                 self._log_audit(
                     event_type="RECORDING_HALTED_CONSENT_REVOKED",
                     user_id=user.id,
