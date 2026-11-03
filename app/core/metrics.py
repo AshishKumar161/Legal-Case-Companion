@@ -10,30 +10,30 @@ class MetricsCollector:
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls):
+    def __new__(cls) -> "MetricsCollector":
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
                 cls._instance._initialized = False
             return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if getattr(self, "_initialized", False):
             return
         self._lock = threading.Lock()
-        self.request_counts = defaultdict(int)
-        self.status_counts = defaultdict(int)
+        self.request_counts: dict[str, int] = defaultdict(int)
+        self.status_counts: dict[str, int] = defaultdict(int)
         self.request_latencies: list[float] = []
         self.max_latency_samples = 1000
         self.start_time = time.time()
-        self.ai_requests_count = defaultdict(int)
-        self.auth_failures_count = defaultdict(int)
-        self.authorization_denials_count = defaultdict(int)
-        self.evidence_operations_count = defaultdict(int)
-        self.queue_jobs_count = defaultdict(int)
-        self.dependency_failures_count = defaultdict(int)
+        self.ai_requests_count: dict[str, int] = defaultdict(int)
+        self.auth_failures_count: dict[str, int] = defaultdict(int)
+        self.authorization_denials_count: dict[str, int] = defaultdict(int)
+        self.evidence_operations_count: dict[str, int] = defaultdict(int)
+        self.queue_jobs_count: dict[str, int] = defaultdict(int)
+        self.dependency_failures_count: dict[str, int] = defaultdict(int)
         self.tamper_events_total = 0
-        self.outbox_events_count = defaultdict(int)
+        self.outbox_events_count: dict[str, int] = defaultdict(int)
         self.registration_events: dict[str, int] = defaultdict(int)
         self.payment_events: dict[str, int] = defaultdict(int)
         self.localization_fallbacks: dict[str, int] = defaultdict(int)

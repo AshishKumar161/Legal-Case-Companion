@@ -73,7 +73,20 @@ jobs:
         run: ruff check .
 
       - name: Static Type Safety Check (Mypy)
-        run: mypy app
+        run: |
+          set -o pipefail
+          python -m mypy app | tee mypy_output.txt || {
+            echo "### Mypy Type Safety Errors" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat mypy_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            while IFS= read -r line; do
+              if [[ "$line" =~ :[0-9]+:\ error: ]]; then
+                echo "::error::$line"
+              fi
+            done < mypy_output.txt
+            exit 1
+          }
 
       - name: Static Secret & Credential Scan
         run: python scripts/ci_secret_scanner.py
