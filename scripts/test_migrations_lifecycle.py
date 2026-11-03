@@ -12,10 +12,10 @@ import sqlalchemy as sa
 
 
 def test_postgres_migration_lifecycle():
-    pg_url = os.environ.get("TEST_POSTGRES_URL", "postgresql+psycopg2://postgres@127.0.0.1:5433/lcc_migration_test")
+    pg_url = os.environ.get("TEST_POSTGRES_URL", "postgresql+psycopg://postgres:postgrespassword@127.0.0.1:5432/lcc_migration_test")
     try:
         # Check if Postgres is reachable via admin url
-        admin_url = os.environ.get("TEST_POSTGRES_ADMIN_URL", "postgresql+psycopg2://postgres@127.0.0.1:5433/postgres")
+        admin_url = os.environ.get("TEST_POSTGRES_ADMIN_URL", "postgresql+psycopg://postgres:postgrespassword@127.0.0.1:5432/postgres")
         engine_check = sa.create_engine(admin_url, connect_args={"connect_timeout": 2})
         with engine_check.connect() as conn:
             conn.execute(sa.text("SELECT 1"))
