@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/api/client";
-import { getSessionAccessToken } from "@/api/session";
 import {
   InMeetingChatMessage,
   VideoRoomAccessStatus,

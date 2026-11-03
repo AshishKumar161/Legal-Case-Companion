@@ -70,7 +70,7 @@ class CrossEncoderReranker(BaseReranker):
         raw_array = np.atleast_1d(np.array(raw_scores, dtype=np.float32))
         scores = (1.0 / (1.0 + np.exp(-raw_array))).tolist()
 
-        scored = list(zip(candidates, scores))
+        scored = list(zip(candidates, scores, strict=False))
         scored.sort(key=lambda x: x[1], reverse=True)
 
         results = []
@@ -164,7 +164,7 @@ class HeuristicLexicalReranker(BaseReranker):
             # 4. Domain concept cluster matching with word boundaries
             cluster_match = False
             cluster_score = 0.0
-            for cat, terms in self.CONCEPT_CLUSTERS.items():
+            for terms in self.CONCEPT_CLUSTERS.values():
                 q_has = any(re.search(r"\b" + re.escape(t) + r"\b", query_lower) for t in terms)
                 c_has = any(re.search(r"\b" + re.escape(t) + r"\b", cand_text) for t in terms)
                 if q_has and c_has:

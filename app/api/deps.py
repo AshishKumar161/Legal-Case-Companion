@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 import jwt
 from fastapi import Depends, Request
@@ -87,12 +88,15 @@ def get_current_admin_user(current_user: User = Depends(get_current_user)) -> Us
 class RequireRole:
     """Dependency that checks the current user has one of the allowed roles.
 
-    Accepts both ``UserRole`` enum members and plain strings for
+    Accepts both ``UserRole`` enum members, lists/tuples of roles, and plain strings for
     backward compatibility.
     """
 
-    def __init__(self, allowed_roles: list):
-        self.allowed_roles = allowed_roles
+    def __init__(self, allowed_roles: Any):
+        if isinstance(allowed_roles, (list, tuple, set)):
+            self.allowed_roles = list(allowed_roles)
+        else:
+            self.allowed_roles = [allowed_roles]
 
     def __call__(self, current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in self.allowed_roles:

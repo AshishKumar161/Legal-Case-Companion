@@ -10,8 +10,20 @@ PG_URL = os.environ.get(
     "postgresql://postgres@127.0.0.1:5433/lcc_migration_test",
 )
 
+def _pg_available() -> bool:
+    if not PG_URL.startswith("postgresql"):
+        return False
+    try:
+        test_engine = create_engine(PG_URL, connect_args={"connect_timeout": 2})
+        with test_engine.connect() as conn:
+            conn.execute(text("SELECT 1;"))
+            return True
+    except Exception:
+        return False
+
+
 pytestmark = pytest.mark.skipif(
-    not PG_URL.startswith("postgresql"),
+    not _pg_available(),
     reason="PostgreSQL integration environment required for migration testing",
 )
 

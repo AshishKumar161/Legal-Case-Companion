@@ -76,7 +76,7 @@ def pure_python_baseline_search(db: Session, user: User, case_id: uuid.UUID, req
 
     alpha = 0.6
     scored = []
-    for chunk, doc in chunk_doc_pairs:
+    for chunk, _doc in chunk_doc_pairs:
         sem_score = semantic_scores.get(chunk.id, 0.0)
         # Simple token match for baseline
         lex_score = 1.0 if req.query.lower() in chunk.content.lower() else 0.1

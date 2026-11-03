@@ -107,15 +107,52 @@ class ClamAVScanner:
                 # Send terminal 0-length chunk
                 sock.sendall(b"\x00\x00\x00\x00")
 
-                response = sock.recv(1024).decode("utf-8", errors="replace").strip()
+                # Read complete streaming response until null byte, newline, or EOF
+                response_chunks: list[bytes] = []
+                while True:
+                    data = sock.recv(1024)
+                    if not data:
+                        break
+                    response_chunks.append(data)
+                    if b"\0" in data or b"\n" in data:
+                        break
+
+                raw_bytes = b"".join(response_chunks)
+                if not raw_bytes:
+                    raise ScannerUnavailableError(
+                        f"ClamAV daemon returned empty or incomplete response for {filename}."
+                    )
+
+                response = raw_bytes.decode("utf-8", errors="replace").strip().strip("\0").strip()
+                if not response:
+                    raise ScannerUnavailableError(
+                        f"ClamAV daemon returned blank response for {filename}."
+                    )
+
+                if "ERROR" in response:
+                    logger.error(f"ClamAV daemon reported scan error for {filename}: {response}")
+                    raise ScannerUnavailableError(f"ClamAV daemon scan error: {response}")
+
                 if "FOUND" in response:
-                    return False, f"ClamAV threat detected: {response}"
-                return True, None
+                    match = re.search(r":\s*(.+?)\s+FOUND", response)
+                    threat = match.group(1) if match else response
+                    return False, f"ClamAV threat detected: {threat}"
+
+                if response == "stream: OK" or response.endswith(": OK") or response == "OK":
+                    return True, None
+
+                # Reject malformed or unexpected response format
+                logger.error(f"Malformed or unexpected ClamAV response for {filename}: {response!r}")
+                raise ScannerUnavailableError(
+                    f"Malformed ClamAV response: expected ': OK' or 'FOUND', got {response!r}"
+                )
         except socket.timeout as te:
             logger.error(f"ClamAV daemon timed out during scan of {filename} ({self.host}:{self.port}): {te}")
             raise ScannerUnavailableError(
                 f"ClamAV daemon timed out after 10.0s scanning {filename} at {self.host}:{self.port}"
             ) from te
+        except ScannerUnavailableError:
+            raise
         except Exception as e:
             logger.error(f"ClamAV daemon connection failed ({self.host}:{self.port}): {e}")
             raise ScannerUnavailableError(

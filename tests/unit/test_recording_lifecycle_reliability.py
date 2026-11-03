@@ -312,8 +312,6 @@ def test_consent_withdrawal_immediately_halts_active_recording(recording_fixture
 
 def test_secure_recording_deletion_and_ticket_invalidation(recording_fixtures):
     """Verifies that deleting a recording purges physical storage and invalidates playback."""
-    from app.core.exceptions import ResourceNotFoundError
-
     f = recording_fixtures
     service: VideoRecordingService = f["service"]
     client: User = f["client"]

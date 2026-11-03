@@ -472,3 +472,72 @@ def test_kyc_document_storage_key_object_authorization(db):
     assert "does not belong to the authenticated user" in str(exc_info.value)
 
 
+def test_clamav_clean_response_accepted(monkeypatch):
+    """ClamAV returning 'stream: OK' must certify document as safe."""
+    scanner = ClamAVScanner(host="127.0.0.1", port=3310)
+
+    mock_sock = MagicMock()
+    mock_sock.__enter__.return_value = mock_sock
+    mock_sock.recv.side_effect = [b"stream: OK\0", b""]
+    monkeypatch.setattr(socket, "socket", lambda *args, **kwargs: mock_sock)
+
+    is_safe, threat = scanner.scan_bytes(b"Normal clean text bytes", "clean.pdf")
+    assert is_safe is True
+    assert threat is None
+
+
+def test_clamav_infected_response_rejected(monkeypatch):
+    """ClamAV returning 'stream: <threat> FOUND' must reject document as unsafe with threat name."""
+    scanner = ClamAVScanner(host="127.0.0.1", port=3310)
+
+    mock_sock = MagicMock()
+    mock_sock.__enter__.return_value = mock_sock
+    mock_sock.recv.side_effect = [b"stream: Win.Test.EICAR_HDB-1 FOUND\0", b""]
+    monkeypatch.setattr(socket, "socket", lambda *args, **kwargs: mock_sock)
+
+    is_safe, threat = scanner.scan_bytes(b"eicar bytes", "eicar.com")
+    assert is_safe is False
+    assert "Win.Test.EICAR_HDB-1" in threat
+
+
+def test_clamav_malformed_response_fails_closed(monkeypatch):
+    """ClamAV returning unexpected/garbage response must fail closed to ScannerUnavailableError."""
+    scanner = ClamAVScanner(host="127.0.0.1", port=3310)
+
+    mock_sock = MagicMock()
+    mock_sock.__enter__.return_value = mock_sock
+    mock_sock.recv.side_effect = [b"SOME_GARBAGE_LINE\n", b""]
+    monkeypatch.setattr(socket, "socket", lambda *args, **kwargs: mock_sock)
+
+    with pytest.raises(ScannerUnavailableError) as exc:
+        scanner.scan_bytes(b"document bytes", "doc.pdf")
+    assert "Malformed ClamAV response" in str(exc.value)
+
+
+def test_clamav_partial_or_empty_response_fails_closed(monkeypatch):
+    """ClamAV returning empty or truncated response must fail closed to ScannerUnavailableError."""
+    scanner = ClamAVScanner(host="127.0.0.1", port=3310)
+
+    mock_sock = MagicMock()
+    mock_sock.__enter__.return_value = mock_sock
+    mock_sock.recv.side_effect = [b""]
+    monkeypatch.setattr(socket, "socket", lambda *args, **kwargs: mock_sock)
+
+    with pytest.raises(ScannerUnavailableError) as exc:
+        scanner.scan_bytes(b"document bytes", "doc.pdf")
+    assert "empty or incomplete" in str(exc.value)
+
+
+def test_clamav_daemon_error_fails_closed(monkeypatch):
+    """ClamAV daemon reporting ERROR must fail closed to ScannerUnavailableError."""
+    scanner = ClamAVScanner(host="127.0.0.1", port=3310)
+
+    mock_sock = MagicMock()
+    mock_sock.__enter__.return_value = mock_sock
+    mock_sock.recv.side_effect = [b"stream: File size limit exceeded ERROR\0", b""]
+    monkeypatch.setattr(socket, "socket", lambda *args, **kwargs: mock_sock)
+
+    with pytest.raises(ScannerUnavailableError) as exc:
+        scanner.scan_bytes(b"document bytes", "doc.pdf")
+    assert "scan error" in str(exc.value)
+

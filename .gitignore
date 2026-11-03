@@ -91,3 +91,12 @@ Desktop.ini
 scratch/
 cloudflared.exe
 *.exe
+
+# Infrastructure & Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json

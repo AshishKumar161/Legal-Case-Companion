@@ -133,7 +133,7 @@ Draft a structured legal information response in JSON format adhering strictly t
             # Map available sources
             case_sources = {c.source.source_id: c.source for c in reranked_candidates if c.source.source_type == "case"}
             stat_sources = [c.source for c in reranked_candidates if c.source.source_type == "statute"]
-            valid_source_ids = {c.source.source_id for c in reranked_candidates}
+            valid_source_id_set = {c.source.source_id for c in reranked_candidates}
             valid_case_list = list(case_sources.values())
 
             # Enrich and sanitize existing similar_cases
@@ -195,7 +195,7 @@ Draft a structured legal information response in JSON format adhering strictly t
                 # Sanitize any hallucinated inline citations in raw_text
                 def _replace_invalid_tag(match):
                     tag = match.group(1)
-                    if tag in valid_source_ids:
+                    if tag in valid_source_id_set:
                         return f"[{tag}]"
                     if tag.startswith("case:") and valid_case_list:
                         return f"[{valid_case_list[0].source_id}]"

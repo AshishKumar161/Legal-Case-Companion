@@ -6,11 +6,22 @@ networks:
 
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:0.8.0-pg16
     container_name: lcc_postgres_prod
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=100m
+      - /var/run/postgresql:rw,noexec,nosuid,size=50m
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-lcc_admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in production}
@@ -39,11 +50,17 @@ services:
         max-file: "5"
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.2-alpine
     container_name: lcc_redis_prod
     restart: unless-stopped
+    user: "999:999"
+    read_only: true
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=50m
     expose:
       - "6379"
     volumes:
@@ -72,6 +89,10 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=200m
     expose:
       - "3310"
     volumes:
@@ -101,6 +122,8 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - "3478:3478/tcp"
       - "3478:3478/udp"
@@ -128,10 +151,13 @@ services:
       dockerfile: Dockerfile
     container_name: lcc_backend_prod
     restart: unless-stopped
+    read_only: true
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -141,10 +167,13 @@ services:
         condition: service_started
     environment:
       - ENVIRONMENT=production
+      - PYTHONDONTWRITEBYTECODE=1
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-lcc_admin}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-legal_db}
       - REDIS_URL=redis://redis:6379/0
       - CLAMAV_HOST=clamav
       - CLAMAV_PORT=3310
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=100m
     volumes:
       - app_storage:/app/storage
     networks:
@@ -171,8 +200,11 @@ services:
       dockerfile: Dockerfile
     container_name: lcc_worker_prod
     restart: unless-stopped
+    read_only: true
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     command: ["python", "-m", "app.worker"]
     depends_on:
       postgres:
@@ -183,10 +215,13 @@ services:
         condition: service_started
     environment:
       - ENVIRONMENT=production
+      - PYTHONDONTWRITEBYTECODE=1
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-lcc_admin}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-legal_db}
       - REDIS_URL=redis://redis:6379/0
       - CLAMAV_HOST=clamav
       - CLAMAV_PORT=3310
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=100m
     volumes:
       - app_storage:/app/storage
     networks:
@@ -208,8 +243,11 @@ services:
       dockerfile: Dockerfile
     container_name: lcc_scheduler_prod
     restart: unless-stopped
+    read_only: true
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     command: ["python", "-m", "app.scheduler"]
     depends_on:
       postgres:
@@ -220,8 +258,11 @@ services:
         condition: service_started
     environment:
       - ENVIRONMENT=production
+      - PYTHONDONTWRITEBYTECODE=1
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-lcc_admin}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-legal_db}
       - REDIS_URL=redis://redis:6379/0
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=100m
     networks:
       - lcc_internal
     deploy:
@@ -243,14 +284,18 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       backend:
         condition: service_started
     environment:
       - NODE_ENV=production
       - BACKEND_INTERNAL_URL=http://backend:8000
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=100m
     networks:
       - lcc_internal
     healthcheck:
