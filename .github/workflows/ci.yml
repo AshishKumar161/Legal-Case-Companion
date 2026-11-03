@@ -2,7 +2,7 @@ name: LCC Production CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'fix/**']
     tags: ['v*']
   pull_request:
     branches: [main]
